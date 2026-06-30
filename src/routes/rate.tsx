@@ -87,6 +87,32 @@ function useBottleSearch(query: string, typeFilter: TypeFilter, letter: string |
   });
 }
 
+function typeVariantsFor(typeFilter: TypeFilter): string[] | null {
+  if (typeFilter === "all") return null;
+  if (typeFilter === "red") return ["Red"];
+  if (typeFilter === "white") return ["White"];
+  if (typeFilter === "rose") return ["Rosé", "Rose"];
+  return ["Sparkling"];
+}
+
+function useFuzzySearch(query: string, typeFilter: TypeFilter, enabled: boolean) {
+  return useQuery({
+    queryKey: ["bottles", "fuzzy", query, typeFilter],
+    enabled: enabled && query.trim().length >= 3,
+    staleTime: 30_000,
+    queryFn: async (): Promise<BottleRow[]> => {
+      const { data, error } = await supabase.rpc("search_bottles_fuzzy", {
+        q: query.trim(),
+        type_variants: typeVariantsFor(typeFilter),
+        lim: 25,
+        threshold: 0.35,
+      });
+      if (error) throw error;
+      return (data ?? []) as BottleRow[];
+    },
+  });
+}
+
 function typeLabel(t: string | null): string | null {
   if (!t) return null;
   return t;
