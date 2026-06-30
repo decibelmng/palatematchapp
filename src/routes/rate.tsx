@@ -317,7 +317,6 @@ function Rate() {
       <ul className="mt-2 divide-y divide-border">
         {list.map((b) => {
           const v = ratingMap.get(b.id) ?? null;
-          const tLabel = typeLabel(b.type);
           return (
             <li key={b.id} className="py-3 flex items-center justify-between gap-3">
               <div className="min-w-0">
@@ -325,11 +324,7 @@ function Rate() {
                 <p className="text-xs text-muted-foreground truncate">
                   {[b.producer, b.region, b.grape, b.vintage].filter(Boolean).join(" · ")}
                 </p>
-                {tLabel && (
-                  <span className={`mt-1 inline-block rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider ${typeTone(b.type)}`}>
-                    {tLabel}
-                  </span>
-                )}
+                <div className="mt-1"><WineTypeBadge type={b.type} /></div>
               </div>
               <StarTap
                 value={v}
