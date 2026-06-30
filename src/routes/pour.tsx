@@ -2,8 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { AuthGate } from "@/components/AuthGate";
 import { WineTypeBadge } from "@/components/WineTypeBadge";
-import { useAllBottlesPaged, useBottlesByIds, useRatings, bottleToFp, bottleType, type BottleRow } from "@/hooks/use-palate-data";
+import { useAllBottlesPaged, useBottlesByIds, useRatings, bottleToFp, bottleType } from "@/hooks/use-palate-data";
 import { recommend, type BottleFp, type RatedFp, type Recommendation, type WineType } from "@/lib/recommender";
+import { aggregateRated, aggregateCandidates, cuveeKey, type CuveeCandidate, type CuveeRated } from "@/lib/cuvee";
 
 export const Route = createFileRoute("/pour")({
   ssr: false,
@@ -24,17 +25,19 @@ const TYPE_LABEL: Record<WineType, string> = {
   rose: "Rosés for you",
   dessert: "Dessert wines for you",
 };
-const TYPE_BADGE: Record<WineType, string> = {
-  red: "Red",
-  white: "White",
-  sparkling: "Sparkling",
-  rose: "Rosé",
-  dessert: "Dessert",
-};
+
+type RankedCuvee = Recommendation & { cuvee: CuveeCandidate; nearestCuvee: CuveeRated | null };
 
 type Section =
-  | { type: WineType; mode: "personalized"; nSameType: number; items: Recommendation[] }
-  | { type: WineType; mode: "fallback"; nSameType: 0; items: { bottle: BottleFp; critic: number | null }[] };
+  | { type: WineType; mode: "personalized"; nSameType: number; items: RankedCuvee[] }
+  | { type: WineType; mode: "fallback"; nSameType: 0; items: CuveeCandidate[] };
+
+function vintageLabel(vs: number[]): string | null {
+  if (vs.length === 0) return null;
+  if (vs.length === 1) return `${vs[0]}`;
+  if (vs.length <= 3) return vs.join(", ");
+  return `${vs[0]}–${vs[vs.length - 1]} (${vs.length} vintages)`;
+}
 
 function Pour() {
   const { data: ratings } = useRatings();
@@ -44,58 +47,70 @@ function Pour() {
 
   const sections: Section[] = useMemo(() => {
     if (!ratings || !pool) return [];
-    const ratedIdSet = new Set(ratedIds);
-    const ratedRows: RatedFp[] = (ratedBottles ?? []).map((b) => ({
+
+    // 1. Aggregate the user's ratings to the cuvée level.
+    const ratedRowsRaw: RatedFp[] = (ratedBottles ?? []).map((b) => ({
       id: b.id, name: b.name, producer: b.producer, region: b.region,
       type: bottleType(b),
       fp: bottleToFp(b),
       stars: ratings.find((r) => r.bottle_id === b.id)!.stars,
     }));
+    const ratedCuvees = aggregateRated(
+      ratedRowsRaw.map((r, i) => ({ ...r, vintage: (ratedBottles ?? [])[i]?.vintage ?? null })),
+    );
+    const ratedCuveeKeys = new Set(ratedCuvees.map((c) => c.cuvee));
+    const ratedCuveeByKey = new Map(ratedCuvees.map((c) => [c.cuvee, c]));
 
-    // Group catalog candidates by type.
-    const byType = new Map<WineType, BottleRow[]>();
-    for (const b of pool) {
-      if (ratedIdSet.has(b.id)) continue;
-      const t = bottleType(b);
-      if (!byType.has(t)) byType.set(t, []);
-      byType.get(t)!.push(b);
-    }
+    // 2. Group catalog candidates by cuvée, excluding any cuvée the user has already rated.
+    const candidatesRaw = pool.map((b) => ({
+      id: b.id, name: b.name, producer: b.producer, region: b.region,
+      type: bottleType(b), vintage: b.vintage, fp: bottleToFp(b),
+      critic_score: b.critic_score,
+    }));
+    const allCuvees = aggregateCandidates(candidatesRaw)
+      .filter((c) => !ratedCuveeKeys.has(c.cuvee));
 
+    // 3. Per-type sections.
     const out: Section[] = [];
     for (const type of TYPE_ORDER) {
-      const cands = byType.get(type);
-      if (!cands || cands.length === 0) continue;
-      const sameTypeRated = ratedRows.filter((r) => r.type === type);
-      const candFp: BottleFp[] = cands.map((b) => ({
-        id: b.id, name: b.name, producer: b.producer, region: b.region,
-        type, fp: bottleToFp(b),
-      }));
+      const cands = allCuvees.filter((c) => c.type === type);
+      if (cands.length === 0) continue;
+      const sameTypeRated = ratedCuvees.filter((r) => r.type === type);
 
       if (sameTypeRated.length === 0) {
-        // Neutral fallback: rank by critic_score.
-        const ranked = cands
-          .map((b, i) => ({
-            bottle: candFp[i],
-            critic: typeof b.critic_score === "number" ? b.critic_score : null,
-          }))
-          .filter((x) => x.critic !== null)
-          .sort((a, b) => (b.critic ?? 0) - (a.critic ?? 0))
+        const ranked = [...cands]
+          .filter((c) => c.critic_score !== null)
+          .sort((a, b) => (b.critic_score ?? 0) - (a.critic_score ?? 0))
           .slice(0, 10);
-        if (ranked.length > 0) {
-          out.push({ type, mode: "fallback", nSameType: 0, items: ranked });
-        }
+        if (ranked.length > 0) out.push({ type, mode: "fallback", nSameType: 0, items: ranked });
       } else {
-        // Personalized: feed engine only the same-type ratings.
-        // Engine already enforces same-type scoring; passing same-type rated
-        // keeps importance learning focused on this type's signal.
-        const recs = recommend(sameTypeRated, candFp).slice(0, 10);
-        if (recs.length > 0) {
-          out.push({ type, mode: "personalized", nSameType: sameTypeRated.length, items: recs });
-        }
+        // Feed the recommender cuvée-aggregated rated rows and candidate cuvées.
+        const ratedFp: RatedFp[] = sameTypeRated.map((r) => ({
+          id: r.id, name: r.name, producer: r.producer, region: r.region,
+          type: r.type, fp: r.fp, stars: r.stars,
+        }));
+        const candFp: BottleFp[] = cands.map((c) => ({
+          id: c.id, name: c.name, producer: c.producer, region: c.region,
+          type: c.type, fp: c.fp,
+        }));
+        const recs = recommend(ratedFp, candFp).slice(0, 10);
+        const candByRepId = new Map(cands.map((c) => [c.id, c]));
+        const ratedByRepId = new Map(sameTypeRated.map((r) => [r.id, r]));
+        const items: RankedCuvee[] = recs
+          .map((r) => {
+            const cuvee = candByRepId.get(r.bottle.id);
+            if (!cuvee) return null;
+            const nearestCuvee = r.nearest ? ratedByRepId.get(r.nearest.id) ?? null : null;
+            return { ...r, cuvee, nearestCuvee };
+          })
+          .filter((x): x is RankedCuvee => x !== null);
+        if (items.length > 0) out.push({ type, mode: "personalized", nSameType: sameTypeRated.length, items });
       }
     }
+    // Suppress unused var warning for cuveeKey/ratedCuveeByKey (kept for future debug).
+    void cuveeKey; void ratedCuveeByKey;
     return out;
-  }, [ratedBottles, ratings, ratedIds, pool]);
+  }, [ratedBottles, ratings, pool]);
 
   const nRated = ratings?.length ?? 0;
   const loading = !ratings || (ratedIds.length > 0 && !ratedBottles) || !pool;
@@ -104,6 +119,9 @@ function Pour() {
     <div className="pt-2">
       <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Pour these next</p>
       <h1 className="font-serif text-3xl mt-2">Bottles you'd likely love</h1>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Vintages of the same wine are grouped — we match on style, not year.
+      </p>
 
       {loading ? (
         <p className="mt-8 text-sm text-muted-foreground">Loading recommendations…</p>
@@ -131,12 +149,22 @@ function Pour() {
   );
 }
 
+function CuveeMeta({ producer, region, vintages }: { producer: string | null; region: string | null; vintages: number[] }) {
+  const meta = [producer, region].filter(Boolean).join(" · ");
+  const vl = vintageLabel(vintages);
+  return (
+    <p className="text-xs text-muted-foreground truncate mt-0.5">
+      {meta}{vl ? <span className="text-muted-foreground/80"> · {vl}</span> : null}
+    </p>
+  );
+}
+
 function SectionView({ section }: { section: Section }) {
   const tag =
     section.mode === "fallback"
       ? "Popular picks — rate some to personalize"
       : section.nSameType < 3
-      ? `Still learning — based on ${section.nSameType} rating${section.nSameType === 1 ? "" : "s"}`
+      ? `Still learning — based on ${section.nSameType} cuvée${section.nSameType === 1 ? "" : "s"} you've rated`
       : null;
 
   return (
@@ -148,18 +176,16 @@ function SectionView({ section }: { section: Section }) {
       <ul className="mt-3 divide-y divide-border">
         {section.mode === "personalized"
           ? section.items.map((r) => (
-              <li key={r.bottle.id} className="py-4 flex items-start justify-between gap-3">
+              <li key={r.cuvee.cuvee} className="py-4 flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <WineTypeBadge type={section.type} />
-                    <p className="font-medium leading-tight truncate">{r.bottle.name}</p>
+                    <p className="font-medium leading-tight truncate">{r.cuvee.name}</p>
                   </div>
-                  <p className="text-xs text-muted-foreground truncate mt-0.5">
-                    {[r.bottle.producer, r.bottle.region].filter(Boolean).join(" · ")}
-                  </p>
-                  {r.nearest && (
+                  <CuveeMeta producer={r.cuvee.producer} region={r.cuvee.region} vintages={r.cuvee.vintages} />
+                  {r.nearestCuvee && (
                     <p className="mt-1 text-[11px] text-muted-foreground">
-                      like your {r.nearest.stars}★ <span className="text-foreground/80">{r.nearest.name}</span>
+                      like your {r.nearestCuvee.stars.toFixed(1)}★ <span className="text-foreground/80">{r.nearestCuvee.name}</span>
                     </p>
                   )}
                 </div>
@@ -169,20 +195,18 @@ function SectionView({ section }: { section: Section }) {
                 </div>
               </li>
             ))
-          : section.items.map((r) => (
-              <li key={r.bottle.id} className="py-4 flex items-start justify-between gap-3">
+          : section.items.map((c) => (
+              <li key={c.cuvee} className="py-4 flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
                     <WineTypeBadge type={section.type} />
-                    <p className="font-medium leading-tight truncate">{r.bottle.name}</p>
+                    <p className="font-medium leading-tight truncate">{c.name}</p>
                   </div>
-                  <p className="text-xs text-muted-foreground truncate mt-0.5">
-                    {[r.bottle.producer, r.bottle.region].filter(Boolean).join(" · ")}
-                  </p>
+                  <CuveeMeta producer={c.producer} region={c.region} vintages={c.vintages} />
                 </div>
-                {r.critic !== null && (
+                {c.critic_score !== null && (
                   <div className="shrink-0 text-right">
-                    <span className="font-serif text-muted-foreground text-base">{r.critic.toFixed(0)}</span>
+                    <span className="font-serif text-muted-foreground text-base">{c.critic_score.toFixed(0)}</span>
                     <span className="text-muted-foreground text-xs"> critic</span>
                   </div>
                 )}
