@@ -163,6 +163,45 @@ export type Database = {
           },
         ]
       }
+      scan_logs: {
+        Row: {
+          created_at: string
+          estimated_count: number
+          id: string
+          matched_count: number
+          n_photos: number
+          raw_vision: Json | null
+          total_wines: number
+          unreadable_count: number
+          user_id: string
+          wines: Json
+        }
+        Insert: {
+          created_at?: string
+          estimated_count?: number
+          id?: string
+          matched_count?: number
+          n_photos?: number
+          raw_vision?: Json | null
+          total_wines?: number
+          unreadable_count?: number
+          user_id: string
+          wines?: Json
+        }
+        Update: {
+          created_at?: string
+          estimated_count?: number
+          id?: string
+          matched_count?: number
+          n_photos?: number
+          raw_vision?: Json | null
+          total_wines?: number
+          unreadable_count?: number
+          user_id?: string
+          wines?: Json
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
