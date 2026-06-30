@@ -31,9 +31,9 @@ function tokenize(q: string): string[] {
   return q.trim().toLowerCase().split(/\s+/).filter((t) => t.length > 0);
 }
 
-function useBottleSearch(query: string, typeFilter: TypeFilter) {
+function useBottleSearch(query: string, typeFilter: TypeFilter, letter: string | null) {
   return useQuery({
-    queryKey: ["bottles", "search", query, typeFilter],
+    queryKey: ["bottles", "search", query, typeFilter, letter],
     queryFn: async (): Promise<BottleRow[]> => {
       const tokens = tokenize(query);
       let req = supabase.from("bottles").select(BOTTLE_COLS).order("name").limit(50);
@@ -52,8 +52,6 @@ function useBottleSearch(query: string, typeFilter: TypeFilter) {
       }
 
       if (typeFilter !== "all") {
-        // Match type case-insensitively; "rose" matches "Rosé" too via ilike on a normalized value would need unaccent.
-        // Use exact common spellings instead.
         const variants =
           typeFilter === "red" ? ["Red"]
           : typeFilter === "white" ? ["White"]
@@ -62,12 +60,30 @@ function useBottleSearch(query: string, typeFilter: TypeFilter) {
         req = req.in("type", variants);
       }
 
+      if (letter) {
+        if (letter === "#") {
+          // Non-alphabetic starts (numbers, symbols).
+          req = req.not("name", "ilike", "a%")
+            .not("name", "ilike", "b%").not("name", "ilike", "c%").not("name", "ilike", "d%")
+            .not("name", "ilike", "e%").not("name", "ilike", "f%").not("name", "ilike", "g%")
+            .not("name", "ilike", "h%").not("name", "ilike", "i%").not("name", "ilike", "j%")
+            .not("name", "ilike", "k%").not("name", "ilike", "l%").not("name", "ilike", "m%")
+            .not("name", "ilike", "n%").not("name", "ilike", "o%").not("name", "ilike", "p%")
+            .not("name", "ilike", "q%").not("name", "ilike", "r%").not("name", "ilike", "s%")
+            .not("name", "ilike", "t%").not("name", "ilike", "u%").not("name", "ilike", "v%")
+            .not("name", "ilike", "w%").not("name", "ilike", "x%").not("name", "ilike", "y%")
+            .not("name", "ilike", "z%");
+        } else {
+          req = req.ilike("name", `${escapeLike(letter)}%`);
+        }
+      }
+
       const { data, error } = await req;
       if (error) throw error;
       return (data ?? []) as BottleRow[];
     },
     staleTime: 30_000,
-    enabled: query.trim().length > 0 || typeFilter !== "all",
+    enabled: query.trim().length > 0 || typeFilter !== "all" || letter !== null,
   });
 }
 
