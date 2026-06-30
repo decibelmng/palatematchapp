@@ -9,10 +9,16 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ScanRouteImport } from './routes/scan'
 import { Route as RateRouteImport } from './routes/rate'
 import { Route as PourRouteImport } from './routes/pour'
 import { Route as IndexRouteImport } from './routes/index'
 
+const ScanRoute = ScanRouteImport.update({
+  id: '/scan',
+  path: '/scan',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RateRoute = RateRouteImport.update({
   id: '/rate',
   path: '/rate',
@@ -33,34 +39,45 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/pour': typeof PourRoute
   '/rate': typeof RateRoute
+  '/scan': typeof ScanRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/pour': typeof PourRoute
   '/rate': typeof RateRoute
+  '/scan': typeof ScanRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/pour': typeof PourRoute
   '/rate': typeof RateRoute
+  '/scan': typeof ScanRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/pour' | '/rate'
+  fullPaths: '/' | '/pour' | '/rate' | '/scan'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/pour' | '/rate'
-  id: '__root__' | '/' | '/pour' | '/rate'
+  to: '/' | '/pour' | '/rate' | '/scan'
+  id: '__root__' | '/' | '/pour' | '/rate' | '/scan'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   PourRoute: typeof PourRoute
   RateRoute: typeof RateRoute
+  ScanRoute: typeof ScanRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/scan': {
+      id: '/scan'
+      path: '/scan'
+      fullPath: '/scan'
+      preLoaderRoute: typeof ScanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/rate': {
       id: '/rate'
       path: '/rate'
@@ -89,6 +106,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   PourRoute: PourRoute,
   RateRoute: RateRoute,
+  ScanRoute: ScanRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

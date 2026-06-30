@@ -46,8 +46,7 @@ function Scan() {
   const mutation = useMutation({
     mutationFn: async (file: File) => {
       const { base64, mediaType } = await fileToBase64(file);
-      // @ts-expect-error narrow at runtime
-      return await scan({ data: { image_base64: base64, media_type: mediaType } });
+      return await scan({ data: { image_base64: base64, media_type: mediaType as "image/jpeg" | "image/png" | "image/webp" | "image/heic" } });
     },
   });
 
