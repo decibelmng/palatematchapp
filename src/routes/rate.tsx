@@ -1,8 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { AuthGate } from "@/components/AuthGate";
-import { useBottles, useRatings, useRate } from "@/hooks/use-palate-data";
+import { useRatings, useRate, type BottleRow } from "@/hooks/use-palate-data";
 import { StarTap } from "@/components/StarTap";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/rate")({
   ssr: false,
@@ -15,11 +17,44 @@ export const Route = createFileRoute("/rate")({
   component: () => <AuthGate><Rate /></AuthGate>,
 });
 
+const BOTTLE_COLS =
+  "id,name,producer,region,grape,vintage,fp_fresh,fp_acid,fp_tannin,fp_fruit_dark,fp_ripe,fp_oak,fp_body,fp_savory,ax_body,ax_fruit_char,ax_tannin,ax_acidity,ax_sweet";
+
+function escapeLike(s: string) {
+  // Escape PostgREST or-filter separators and SQL LIKE wildcards.
+  return s.replace(/([\\%_,()])/g, "\\$1");
+}
+
+function useBottleSearch(query: string) {
+  return useQuery({
+    queryKey: ["bottles", "search", query],
+    queryFn: async (): Promise<BottleRow[]> => {
+      const q = query.trim();
+      let req = supabase.from("bottles").select(BOTTLE_COLS).order("name").limit(50);
+      if (q) {
+        const needle = `%${escapeLike(q)}%`;
+        req = req.or(`name.ilike.${needle},producer.ilike.${needle}`);
+      }
+      const { data, error } = await req;
+      if (error) throw error;
+      return (data ?? []) as BottleRow[];
+    },
+    staleTime: 30_000,
+  });
+}
+
 function Rate() {
-  const { data: bottles } = useBottles();
   const { data: ratings } = useRatings();
   const rate = useRate();
   const [q, setQ] = useState("");
+  const [debounced, setDebounced] = useState("");
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(q), 250);
+    return () => clearTimeout(t);
+  }, [q]);
+
+  const { data: results, isFetching } = useBottleSearch(debounced);
 
   const ratingMap = useMemo(() => {
     const m = new Map<string, number>();
@@ -27,19 +62,7 @@ function Rate() {
     return m;
   }, [ratings]);
 
-  const filtered = useMemo(() => {
-    const list = bottles ?? [];
-    if (!q.trim()) return list.slice(0, 40);
-    const needle = q.toLowerCase();
-    return list
-      .filter((b) =>
-        b.name.toLowerCase().includes(needle) ||
-        (b.producer ?? "").toLowerCase().includes(needle) ||
-        (b.region ?? "").toLowerCase().includes(needle) ||
-        (b.grape ?? "").toLowerCase().includes(needle)
-      )
-      .slice(0, 60);
-  }, [bottles, q]);
+  const list = results ?? [];
 
   return (
     <div className="pt-2">
@@ -50,12 +73,12 @@ function Rate() {
         type="search"
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder="Search by name, producer, region, grape…"
+        placeholder="Search by name or producer…"
         className="mt-5 w-full rounded-md bg-input border border-border px-3 py-2.5 text-sm outline-none focus:border-primary"
       />
 
       <ul className="mt-4 divide-y divide-border">
-        {filtered.map((b) => {
+        {list.map((b) => {
           const v = ratingMap.get(b.id) ?? null;
           return (
             <li key={b.id} className="py-3 flex items-center justify-between gap-3">
@@ -72,12 +95,7 @@ function Rate() {
             </li>
           );
         })}
-        {(bottles?.length ?? 0) === 0 && (
-          <li className="py-6 text-sm text-muted-foreground">
-            No bottles in the cellar yet. Seed the <code>bottles</code> table to get started.
-          </li>
-        )}
-        {bottles && bottles.length > 0 && filtered.length === 0 && (
+        {!isFetching && list.length === 0 && (
           <li className="py-6 text-sm text-muted-foreground">No matches.</li>
         )}
       </ul>
