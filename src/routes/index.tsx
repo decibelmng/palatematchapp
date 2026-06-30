@@ -71,8 +71,25 @@ function Home() {
         </div>
       )}
 
+      {rated.length > 0 && (
+        <div className="mt-6 flex flex-wrap gap-2">
+          <Link
+            to="/my-ratings"
+            className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent"
+          >
+            Edit your ratings ({rated.length})
+          </Link>
+          <Link
+            to="/rate"
+            className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent"
+          >
+            Rate more
+          </Link>
+        </div>
+      )}
+
       {rated.length > 0 && rated.length < 5 && (
-        <p className="mt-6 text-xs text-muted-foreground italic">
+        <p className="mt-4 text-xs text-muted-foreground italic">
           Rate a few more — and try rating wines you <em>disliked</em> too, so we learn your limits.
         </p>
       )}
