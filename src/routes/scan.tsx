@@ -71,8 +71,17 @@ function Scan() {
 
 
   const wines = mutation.data?.wines ?? [];
-  const readable = wines.filter((w) => w.fp);
-  const unreadable = wines.filter((w) => !w.fp);
+  const stats = mutation.data?.stats;
+  const readable = wines.filter((w) => w.fp_resolved);
+  const unreadable = wines.filter((w) => !w.fp_resolved);
+
+  // Diagnostic: log the resolved scan payload so it's easy to verify in console.
+  useEffect(() => {
+    if (mutation.data) {
+      // eslint-disable-next-line no-console
+      console.log("[scan] resolved", mutation.data);
+    }
+  }, [mutation.data]);
 
   const ratedRows: RatedFp[] = useMemo(() => {
     if (!ratedBottles || !ratings) return [];
@@ -92,7 +101,7 @@ function Scan() {
       producer: w.producer ?? null,
       region: w.region ?? null,
       type: (w.type ?? "red") as WineType,
-      fp: w.fp!,
+      fp: w.fp_resolved!,
     }));
     if (ratedRows.length === 0) {
       return candidates.map((b, i) => ({
