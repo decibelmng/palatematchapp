@@ -33,7 +33,7 @@ async function fileToBase64(file: File): Promise<{ base64: string; mediaType: st
   return { base64, mediaType: mt };
 }
 
-type Ranked = Recommendation & { scanned: ScannedWine };
+type Ranked = Recommendation & { scanned: ResolvedWine };
 
 function Scan() {
   const { data: ratings } = useRatings();
