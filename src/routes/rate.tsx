@@ -209,6 +209,36 @@ function Rate() {
         })}
       </div>
 
+      <div className="mt-3 -mx-1 overflow-x-auto">
+        <div className="flex gap-0.5 px-1 min-w-max">
+          {(["#", ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("")] as string[]).map((L) => {
+            const active = letter === L;
+            return (
+              <button
+                key={L}
+                onClick={() => setLetter(active ? null : L)}
+                aria-label={`Filter names starting with ${L}`}
+                className={`min-w-[22px] h-7 px-1 rounded text-[11px] font-medium transition ${
+                  active
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                }`}
+              >
+                {L}
+              </button>
+            );
+          })}
+          {letter && (
+            <button
+              onClick={() => setLetter(null)}
+              className="ml-1 h-7 px-2 rounded text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent"
+            >
+              clear
+            </button>
+          )}
+        </div>
+      </div>
+
       <p className="mt-3 text-[11px] text-muted-foreground">
         {idle
           ? recentRatedIds.length > 0
