@@ -203,8 +203,18 @@ function Rate() {
 
   return (
     <div className="pt-2">
-      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Rate</p>
-      <h1 className="font-serif text-3xl mt-2">Tap stars on bottles you've tried</h1>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Rate</p>
+          <h1 className="font-serif text-3xl mt-2">Tap stars on bottles you've tried</h1>
+        </div>
+        <button
+          onClick={() => setAddOpen(true)}
+          className="mt-1 shrink-0 rounded-md border border-primary text-primary px-3 py-1.5 text-xs font-medium hover:bg-primary/10"
+        >
+          + Add a bottle
+        </button>
+      </div>
 
       {ratedCount > 0 && (
         <div className="mt-5 rounded-lg border border-border bg-card p-3 flex items-center justify-between gap-3">
