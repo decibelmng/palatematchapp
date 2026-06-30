@@ -242,34 +242,43 @@ function Rate() {
       </div>
 
       <div className="mt-3 -mx-1 overflow-x-auto">
-        <div className="flex gap-0.5 px-1 min-w-max">
-          {(["#", ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("")] as string[]).map((L) => {
+        <div className="flex gap-0.5 px-1 min-w-max items-stretch">
+          {(["#", ...ALPHABET] as string[]).map((L) => {
             const active = letter === L;
+            const count = letterCounts?.[L];
+            const isZero = count === 0;
             return (
               <button
                 key={L}
                 onClick={() => setLetter(active ? null : L)}
-                aria-label={`Filter names starting with ${L}`}
-                className={`min-w-[22px] h-7 px-1 rounded text-[11px] font-medium transition ${
+                disabled={isZero}
+                aria-label={`Filter names starting with ${L}${count != null ? ` (${count})` : ""}`}
+                className={`min-w-[26px] py-1 px-1 rounded flex flex-col items-center justify-center leading-none transition ${
                   active
                     ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                    : isZero
+                      ? "text-muted-foreground/30 cursor-not-allowed"
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent"
                 }`}
               >
-                {L}
+                <span className="text-[11px] font-medium">{L}</span>
+                <span className={`text-[8px] mt-0.5 tabular-nums ${active ? "opacity-80" : "opacity-60"}`}>
+                  {count == null ? "·" : count > 999 ? `${Math.floor(count / 1000)}k` : count}
+                </span>
               </button>
             );
           })}
           {letter && (
             <button
               onClick={() => setLetter(null)}
-              className="ml-1 h-7 px-2 rounded text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent"
+              className="ml-1 h-7 px-2 rounded text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent self-center"
             >
               clear
             </button>
           )}
         </div>
       </div>
+
 
       <p className="mt-3 text-[11px] text-muted-foreground">
         {idle
