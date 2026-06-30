@@ -40,7 +40,8 @@ function Scan() {
   const ratedIds = useMemo(() => (ratings ?? []).map((r) => r.bottle_id), [ratings]);
   const { data: ratedBottles } = useBottlesByIds(ratedIds);
   const scan = useServerFn(scanWineList);
-  const fileRef = useRef<HTMLInputElement>(null);
+  const cameraRef = useRef<HTMLInputElement>(null);
+  const libraryRef = useRef<HTMLInputElement>(null);
   const [preview, setPreview] = useState<string | null>(null);
 
   const mutation = useMutation({
@@ -113,21 +114,35 @@ function Scan() {
         is sent to a vision model and not stored.
       </p>
 
-      <div className="mt-5 flex gap-3">
+      <div className="mt-5 flex flex-wrap gap-3">
         <input
-          ref={fileRef}
+          ref={cameraRef}
           type="file"
           accept="image/*"
           capture="environment"
           className="hidden"
           onChange={(e) => onPick(e.target.files?.[0])}
         />
+        <input
+          ref={libraryRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => onPick(e.target.files?.[0])}
+        />
         <button
-          onClick={() => fileRef.current?.click()}
+          onClick={() => cameraRef.current?.click()}
           disabled={mutation.isPending}
           className="rounded-md bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium disabled:opacity-60"
         >
-          {mutation.isPending ? "Reading…" : preview ? "Scan another" : "Take or upload photo"}
+          {mutation.isPending ? "Reading…" : "Take a photo"}
+        </button>
+        <button
+          onClick={() => libraryRef.current?.click()}
+          disabled={mutation.isPending}
+          className="rounded-md border border-border bg-card px-4 py-2.5 text-sm font-medium disabled:opacity-60"
+        >
+          Upload from photos
         </button>
       </div>
 
