@@ -150,14 +150,7 @@ function useLetterCounts(typeFilter: TypeFilter) {
   });
 }
 
-function typeTone(t: string | null): string {
-  const v = (t ?? "").toLowerCase();
-  if (v.startsWith("red")) return "bg-[hsl(0_55%_28%/0.25)] text-[hsl(0_70%_75%)] border-[hsl(0_55%_40%/0.4)]";
-  if (v.startsWith("white")) return "bg-[hsl(48_60%_30%/0.18)] text-[hsl(48_70%_75%)] border-[hsl(48_60%_45%/0.35)]";
-  if (v.startsWith("ros")) return "bg-[hsl(340_50%_35%/0.22)] text-[hsl(340_70%_80%)] border-[hsl(340_50%_50%/0.4)]";
-  if (v.startsWith("spark")) return "bg-[hsl(200_50%_30%/0.22)] text-[hsl(200_70%_80%)] border-[hsl(200_50%_50%/0.4)]";
-  return "bg-muted text-muted-foreground border-border";
-}
+// (badge styling lives in <WineTypeBadge />)
 
 const TYPE_OPTIONS: { id: TypeFilter; label: string }[] = [
   { id: "all", label: "All" },
