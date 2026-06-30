@@ -229,6 +229,23 @@ function Scan() {
         </div>
       )}
 
+      {mutation.isPending && (
+        <div className="mt-4 rounded-md border border-primary/40 bg-primary/5 p-3 flex items-center gap-3">
+          <span
+            aria-hidden
+            className="inline-block h-4 w-4 rounded-full border-2 border-primary border-r-transparent animate-spin"
+          />
+          <div className="text-sm">
+            <p className="font-medium">
+              Reading {staged.length} photo{staged.length > 1 ? "s" : ""}…
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {elapsed}s elapsed · usually 10–40 seconds. Keep this screen open.
+            </p>
+          </div>
+        </div>
+      )}
+
       {mutation.isError && (
         <div className="mt-4 rounded-md border border-destructive/40 bg-destructive/10 p-3">
           <p className="text-sm text-destructive">{(mutation.error as Error).message}</p>
