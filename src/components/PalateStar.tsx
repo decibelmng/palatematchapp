@@ -32,8 +32,15 @@ function needlePath(angleDeg: number, len: number, baseHalf = 4) {
   return `M ${bx1.toFixed(2)} ${by1.toFixed(2)} L ${ox.toFixed(2)} ${oy.toFixed(2)} L ${bx2.toFixed(2)} ${by2.toFixed(2)} Z`;
 }
 
+const AXIS_COLOR: Record<string, string> = {
+  body: "var(--color-axis-body)",
+  fruit_char: "var(--color-axis-fruit)",
+  tannin: "var(--color-axis-tannin)",
+  acidity: "var(--color-axis-acidity)",
+  sweet: "var(--color-axis-sweet)",
+};
+
 export function PalateStar({ letters, size = SIZE }: Props) {
-  // Map by axis key in case order shifts.
   const byAxis = new Map(letters.map((l) => [l.axis, l]));
 
   return (
@@ -45,10 +52,7 @@ export function PalateStar({ letters, size = SIZE }: Props) {
       aria-label="Palate star"
       className="block mx-auto"
     >
-      {/* faint guide circle */}
-      <circle cx={CX} cy={CY} r={SPOKE_LEN} fill="none" stroke="var(--color-border)" strokeOpacity="0.35" strokeDasharray="2 4" />
-
-      {/* neutral center */}
+      <circle cx={CX} cy={CY} r={SPOKE_LEN} fill="none" stroke="var(--color-border)" strokeOpacity="0.5" strokeDasharray="2 4" />
       <circle cx={CX} cy={CY} r={5} fill="var(--color-card)" stroke="var(--color-border)" />
 
       {AXES.map((axisDef, i) => {
@@ -56,11 +60,11 @@ export function PalateStar({ letters, size = SIZE }: Props) {
         const result = byAxis.get(axisDef.key);
         if (!result) return null;
 
+        const axisColor = AXIS_COLOR[axisDef.key];
         const isNa = result.na;
         const isResolved = result.resolved;
         const dim = isNa || !isResolved;
 
-        // Two ends: high pole at `angle`, low pole at angle+180
         const highAngle = angle;
         const lowAngle = angle + 180;
 
@@ -68,18 +72,14 @@ export function PalateStar({ letters, size = SIZE }: Props) {
         const lowLit = isResolved && !isNa && (result.letter === axisDef.low || result.bimodal);
         const neutralLit = isResolved && !isNa && result.letter === "N" && !result.bimodal;
 
-        const goldStrong = "var(--color-gold)";
-        const goldSoft = "var(--color-gold-soft)";
-        const muted = "color-mix(in oklab, var(--color-muted-foreground) 60%, transparent)";
-        const veryDim = "color-mix(in oklab, var(--color-muted-foreground) 25%, transparent)";
+        const dimColor = `color-mix(in oklab, ${axisColor} 40%, transparent)`;
+        const veryDimColor = `color-mix(in oklab, var(--color-muted-foreground) 35%, transparent)`;
 
-        const highFill = highLit ? goldStrong : dim ? veryDim : muted;
-        const lowFill = lowLit ? goldStrong : dim ? veryDim : muted;
+        const highFill = highLit ? axisColor : dim ? veryDimColor : dimColor;
+        const lowFill = lowLit ? axisColor : dim ? veryDimColor : dimColor;
 
-        // Marker for the user's position along the spoke (resolved & not bimodal).
         let markerPos: readonly [number, number] | null = null;
         if (isResolved && !isNa && !result.bimodal && result.value !== null) {
-          // value 0 → low end, 1 → high end, 0.5 → center
           const offset = (result.value - 0.5) * 2 * SPOKE_LEN;
           markerPos = pt(highAngle, offset);
         }
@@ -88,45 +88,43 @@ export function PalateStar({ letters, size = SIZE }: Props) {
         const [lLetterX, lLetterY] = pt(lowAngle, LETTER_R);
         const [labelX, labelY] = pt(highAngle, LABEL_R);
 
+        const highLetterColor = highLit ? axisColor : dim ? veryDimColor : dimColor;
+        const lowLetterColor = lowLit ? axisColor : dim ? veryDimColor : dimColor;
+
         return (
           <g key={axisDef.key}>
-            {/* tapered needles in both directions */}
-            <path d={needlePath(highAngle, SPOKE_LEN)} fill={highFill} opacity={dim ? 0.5 : 0.9} />
-            <path d={needlePath(lowAngle, SPOKE_LEN)} fill={lowFill} opacity={dim ? 0.5 : 0.9} />
+            <path d={needlePath(highAngle, SPOKE_LEN)} fill={highFill} opacity={dim ? 0.6 : 1} />
+            <path d={needlePath(lowAngle, SPOKE_LEN)} fill={lowFill} opacity={dim ? 0.6 : 1} />
 
-            {/* user-position dot */}
             {markerPos && (
               <circle
                 cx={markerPos[0]}
                 cy={markerPos[1]}
                 r={6}
-                fill={goldStrong}
+                fill={axisColor}
                 stroke="var(--color-background)"
                 strokeWidth={2}
               />
             )}
-            {/* neutral center highlight if user is "N" */}
             {neutralLit && (
-              <circle cx={CX} cy={CY} r={7} fill={goldStrong} stroke="var(--color-background)" strokeWidth={2} />
+              <circle cx={CX} cy={CY} r={7} fill="var(--color-primary)" stroke="var(--color-background)" strokeWidth={2} />
             )}
 
-            {/* pole letters */}
             <text
               x={hLetterX} y={hLetterY}
               textAnchor="middle" dominantBaseline="central"
               fontFamily="var(--font-serif)" fontSize="18"
-              fill={highLit ? goldStrong : dim ? veryDim : muted}
+              fill={highLetterColor}
               fontWeight={highLit ? 600 : 400}
             >{axisDef.high}</text>
             <text
               x={lLetterX} y={lLetterY}
               textAnchor="middle" dominantBaseline="central"
               fontFamily="var(--font-serif)" fontSize="18"
-              fill={lowLit ? goldStrong : dim ? veryDim : muted}
+              fill={lowLetterColor}
               fontWeight={lowLit ? 600 : 400}
             >{axisDef.low}</text>
 
-            {/* tiny axis label near the high-pole end */}
             <text
               x={labelX} y={labelY}
               textAnchor="middle" dominantBaseline="central"
@@ -140,3 +138,4 @@ export function PalateStar({ letters, size = SIZE }: Props) {
     </svg>
   );
 }
+

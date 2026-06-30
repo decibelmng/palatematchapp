@@ -1,6 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { ThemeToggle } from "./ThemeToggle";
 
 const TABS = [
   { to: "/", label: "Palate", icon: "✦" },
@@ -40,6 +41,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         </Link>
 
         <div className="flex items-center gap-2" ref={menuRef}>
+          <ThemeToggle />
           <div className="relative">
             <button
               onClick={() => setMenuOpen((v) => !v)}
