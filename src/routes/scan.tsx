@@ -5,7 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { AuthGate } from "@/components/AuthGate";
 import { useRatings, useBottlesByIds, bottleToFp, bottleType } from "@/hooks/use-palate-data";
 import { recommend, type BottleFp, type RatedFp, type Recommendation, type WineType } from "@/lib/recommender";
-import { scanWineList, type ScannedWine } from "@/lib/scan.functions";
+import { scanWineList, type ResolvedWine } from "@/lib/scan.functions";
 
 export const Route = createFileRoute("/scan")({
   ssr: false,
@@ -33,7 +33,7 @@ async function fileToBase64(file: File): Promise<{ base64: string; mediaType: st
   return { base64, mediaType: mt };
 }
 
-type Ranked = Recommendation & { scanned: ScannedWine };
+type Ranked = Recommendation & { scanned: ResolvedWine };
 
 function Scan() {
   const { data: ratings } = useRatings();
@@ -71,8 +71,17 @@ function Scan() {
 
 
   const wines = mutation.data?.wines ?? [];
-  const readable = wines.filter((w) => w.fp);
-  const unreadable = wines.filter((w) => !w.fp);
+  const stats = mutation.data?.stats;
+  const readable = wines.filter((w) => w.fp_resolved);
+  const unreadable = wines.filter((w) => !w.fp_resolved);
+
+  // Diagnostic: log the resolved scan payload so it's easy to verify in console.
+  useEffect(() => {
+    if (mutation.data) {
+      // eslint-disable-next-line no-console
+      console.log("[scan] resolved", mutation.data);
+    }
+  }, [mutation.data]);
 
   const ratedRows: RatedFp[] = useMemo(() => {
     if (!ratedBottles || !ratings) return [];
@@ -92,7 +101,7 @@ function Scan() {
       producer: w.producer ?? null,
       region: w.region ?? null,
       type: (w.type ?? "red") as WineType,
-      fp: w.fp!,
+      fp: w.fp_resolved!,
     }));
     if (ratedRows.length === 0) {
       return candidates.map((b, i) => ({
@@ -272,14 +281,37 @@ function Scan() {
         </div>
       )}
 
+      {stats && stats.total > 0 && (
+        <div className="mt-5 rounded-md border border-border bg-card/60 p-3 text-xs text-muted-foreground">
+          Read {stats.total} wine{stats.total > 1 ? "s" : ""} ·{" "}
+          <span className="text-foreground">{stats.matched} matched the catalog</span> ·{" "}
+          {stats.estimated} estimated
+          {stats.unreadable > 0 ? ` · ${stats.unreadable} unreadable` : ""}.
+          Catalog matches use calibrated fingerprints; estimated wines use a calibrated LLM inference on the same scale.
+        </div>
+      )}
+
       {displayList.length > 0 && (
         <ul className="mt-6 divide-y divide-border">
           {displayList.map((r) => {
             const flag = flagFor(r);
+            const isCatalog = r.scanned.fp_source === "catalog";
             return (
               <li key={r.bottle.id} className="py-4 flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-medium leading-tight truncate">{r.bottle.name}</p>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-medium leading-tight truncate">{r.bottle.name}</p>
+                    <span
+                      className={`shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border ${
+                        isCatalog
+                          ? "border-primary/40 bg-primary/10 text-primary"
+                          : "border-border bg-muted text-muted-foreground"
+                      }`}
+                      title={isCatalog ? `Matched: ${r.scanned.matched_bottle_name}` : "No catalog match — calibrated LLM estimate"}
+                    >
+                      {isCatalog ? "catalog" : "estimated"}
+                    </span>
+                  </div>
                   <p className="text-xs text-muted-foreground truncate">
                     {[r.bottle.region, r.scanned.grape, r.scanned.price].filter(Boolean).join(" · ")}
                   </p>
