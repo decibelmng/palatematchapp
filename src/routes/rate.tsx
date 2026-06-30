@@ -350,7 +350,18 @@ function Rate() {
           <li className="py-6 text-sm text-muted-foreground">
             {fuzzyFetching
               ? "No exact matches — looking for close spellings…"
-              : "No matches, even with typo-tolerant search. Try fewer words or remove the type filter."}
+              : (
+                <>
+                  No matches in the catalog.{" "}
+                  <button
+                    type="button"
+                    onClick={() => setAddOpen(true)}
+                    className="text-primary underline font-medium"
+                  >
+                    Add this bottle manually →
+                  </button>
+                </>
+              )}
           </li>
         )}
         {showFuzzy && (
