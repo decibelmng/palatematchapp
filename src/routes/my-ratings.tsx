@@ -34,6 +34,30 @@ function MyRatings() {
   const { data: bottles, isLoading } = useBottlesByIds(ratedIds);
   const rate = useRate();
   const [sort, setSort] = useState<SortKey>("recent");
+  const session = useSession();
+  const qc = useQueryClient();
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [draftNote, setDraftNote] = useState("");
+
+  const bottleById = useMemo(() => {
+    const m = new Map<string, (typeof bottles extends (infer T)[] | undefined ? T : never)>();
+    for (const b of bottles ?? []) m.set(b.id, b);
+    return m;
+  }, [bottles]);
+
+  async function saveNote(bottleId: string) {
+    const note = draftNote.trim();
+    await supabase
+      .from("bottles")
+      .update({
+        tasting_note: note || null,
+        source: note ? "user-added; user tasting note" : "user-added; LLM-researched fingerprint",
+      })
+      .eq("id", bottleId);
+    setEditingId(null);
+    setDraftNote("");
+    qc.invalidateQueries({ queryKey: ["bottles"] });
+  }
 
   const rows = useMemo(() => {
     if (!bottles || !ratings) return [];
