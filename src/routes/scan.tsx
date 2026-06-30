@@ -85,11 +85,15 @@ function Scan() {
 
   const ratedRows: RatedFp[] = useMemo(() => {
     if (!ratedBottles || !ratings) return [];
-    return ratedBottles.map((b) => ({
+    const raw = ratedBottles.map((b) => ({
       id: b.id, name: b.name, producer: b.producer, region: b.region,
-      type: bottleType(b),
-      fp: bottleToFp(b),
+      type: bottleType(b), vintage: b.vintage, fp: bottleToFp(b),
       stars: ratings.find((r) => r.bottle_id === b.id)!.stars,
+    }));
+    // Aggregate to the cuvée — vintages of the same wine reinforce one signal.
+    return aggregateRated(raw).map((c) => ({
+      id: c.id, name: c.name, producer: c.producer, region: c.region,
+      type: c.type, fp: c.fp, stars: c.stars,
     }));
   }, [ratedBottles, ratings]);
 
