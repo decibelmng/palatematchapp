@@ -395,6 +395,12 @@ function Rate() {
           </li>
         )}
       </ul>
+
+      <AddBottleDialog
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        initialQuery={debounced.trim() || undefined}
+      />
     </div>
   );
 }
