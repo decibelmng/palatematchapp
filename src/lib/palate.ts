@@ -25,7 +25,11 @@ export type LetterResult = {
   letter: string;        // 'L'|'B'|'N'|'·'|'—'
   descriptor: string;    // human readable
   resolved: boolean;
+  value: number | null;  // weighted mean, 0..1 (low pole → high pole); null if unresolved
+  bimodal: boolean;
+  na: boolean;           // true when the axis doesn't apply to current scope (e.g. tannin w/ no reds)
 };
+
 
 const NEUTRAL_DESCRIPTORS: Record<AxisKey, string> = {
   body: "balanced",
