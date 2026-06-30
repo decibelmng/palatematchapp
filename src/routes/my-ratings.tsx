@@ -132,9 +132,14 @@ function MyRatings() {
             {rows.map((c) => {
               const vl = vintageLabel(c.vintages);
               const aggregated = c.bottleIds.length > 1;
+              const rep = bottleById.get(c.id);
+              const note = rep?.tasting_note ?? null;
+              const isOwn = !!rep && !!session && rep.added_by === session.user.id;
+              const isResearched = rep?.source?.includes("LLM-researched") ?? false;
+              const editing = editingId === c.id;
               return (
-                <li key={c.cuvee} className="py-3 flex items-center justify-between gap-3">
-                  <div className="min-w-0">
+                <li key={c.cuvee} className="py-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium leading-tight truncate">{c.name}</p>
                     <p className="text-xs text-muted-foreground truncate">
                       {[c.producer, c.region].filter(Boolean).join(" · ")}
@@ -144,6 +149,39 @@ function MyRatings() {
                       <p className="text-[11px] text-muted-foreground/80 mt-0.5">
                         avg of {c.bottleIds.length} ratings across vintages
                       </p>
+                    )}
+                    {note && !editing && (
+                      <div className="mt-1.5 rounded border-l-2 border-primary/40 pl-2 py-0.5">
+                        {isResearched && (
+                          <p className="text-[9px] uppercase tracking-[0.15em] text-muted-foreground">
+                            researched estimate
+                          </p>
+                        )}
+                        <p className="text-[11px] italic text-muted-foreground leading-snug">"{note}"</p>
+                      </div>
+                    )}
+                    {isOwn && !editing && (
+                      <button
+                        className="mt-1 text-[10px] text-primary underline"
+                        onClick={() => { setEditingId(c.id); setDraftNote(note ?? ""); }}
+                      >
+                        {note ? "edit note" : "+ add your note"}
+                      </button>
+                    )}
+                    {editing && (
+                      <div className="mt-1.5">
+                        <textarea
+                          value={draftNote}
+                          onChange={(e) => setDraftNote(e.target.value)}
+                          rows={2}
+                          placeholder="Your tasting impression…"
+                          className="w-full bg-input border border-border rounded-md px-2 py-1 text-xs"
+                        />
+                        <div className="flex gap-2 mt-1">
+                          <button onClick={() => setEditingId(null)} className="text-[10px] text-muted-foreground underline">cancel</button>
+                          <button onClick={() => saveNote(c.id)} className="text-[10px] text-primary underline font-medium">save</button>
+                        </div>
+                      </div>
                     )}
                   </div>
                   {aggregated ? (
