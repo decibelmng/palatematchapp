@@ -183,6 +183,9 @@ function Rate() {
   const { data: results, isFetching } = useBottleSearch(debounced, typeFilter, letter);
   const { data: letterCounts } = useLetterCounts(typeFilter);
 
+  const exactEmpty = !isFetching && (results?.length ?? 0) === 0 && debounced.trim().length >= 3;
+  const { data: fuzzy, isFetching: fuzzyFetching } = useFuzzySearch(debounced, typeFilter, exactEmpty);
+
   const ratingMap = useMemo(() => {
     const m = new Map<string, number>();
     for (const r of ratings ?? []) m.set(r.bottle_id, r.stars);
@@ -198,6 +201,7 @@ function Rate() {
 
   const idle = debounced.trim().length === 0 && typeFilter === "all" && letter === null;
   const list = idle ? (recentRated ?? []) : (results ?? []);
+  const showFuzzy = exactEmpty && (fuzzy?.length ?? 0) > 0;
 
   const ratedCount = ratings?.length ?? 0;
 
