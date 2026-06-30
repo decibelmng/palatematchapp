@@ -103,7 +103,7 @@ function useFuzzySearch(query: string, typeFilter: TypeFilter, enabled: boolean)
     queryFn: async (): Promise<BottleRow[]> => {
       const { data, error } = await supabase.rpc("search_bottles_fuzzy", {
         q: query.trim(),
-        type_variants: typeVariantsFor(typeFilter),
+        type_variants: typeVariantsFor(typeFilter) ?? undefined,
         lim: 25,
         threshold: 0.35,
       });
