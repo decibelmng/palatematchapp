@@ -26,11 +26,22 @@ export function bottleType(b: BottleRow): WineType {
   if (t === "white" || t === "sparkling" || t === "rose" || t === "dessert") return t;
   return "red";
 }
-export function bottleToAx(b: BottleRow): Record<AxisKey, number> {
+/** Build the per-axis value map for a bottle, using the requested palate type's
+ *  axis set. White's Oak axis reads fp_oak (the fingerprint signal). */
+export function bottleToValues(b: BottleRow, type: PaletteType): Record<string, number> {
+  if (type === "red") {
+    return {
+      body: b.ax_body,
+      fruit_char: b.ax_fruit_char,
+      tannin: b.ax_tannin,
+      acidity: b.ax_acidity,
+      sweet: b.ax_sweet,
+    };
+  }
   return {
     body: b.ax_body,
     fruit_char: b.ax_fruit_char,
-    tannin: b.ax_tannin,
+    oak: b.fp_oak,
     acidity: b.ax_acidity,
     sweet: b.ax_sweet,
   };
