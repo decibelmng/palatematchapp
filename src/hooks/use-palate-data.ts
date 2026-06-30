@@ -22,7 +22,7 @@ const BOTTLE_COLS =
 
 export function bottleType(b: BottleRow): WineType {
   const t = (b.type ?? "red").toLowerCase();
-  if (t === "white" || t === "sparkling" || t === "rose") return t;
+  if (t === "white" || t === "sparkling" || t === "rose" || t === "dessert") return t;
   return "red";
 }
 export function bottleToAx(b: BottleRow): Record<AxisKey, number> {
