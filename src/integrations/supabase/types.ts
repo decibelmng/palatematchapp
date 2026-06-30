@@ -95,6 +95,81 @@ export type Database = {
         }
         Relationships: []
       }
+      bottles_llm_staging: {
+        Row: {
+          ax_acidity: number | null
+          ax_body: number | null
+          ax_fruit_char: number | null
+          ax_sweet: number | null
+          ax_tannin: number | null
+          critic_score: number | null
+          fp_acid: number | null
+          fp_body: number | null
+          fp_fresh: number | null
+          fp_fruit_dark: number | null
+          fp_oak: number | null
+          fp_ripe: number | null
+          fp_savory: number | null
+          fp_tannin: number | null
+          grape: string | null
+          name: string | null
+          price_band: string | null
+          producer: string | null
+          region: string | null
+          source: string | null
+          type: string | null
+          vintage: number | null
+        }
+        Insert: {
+          ax_acidity?: number | null
+          ax_body?: number | null
+          ax_fruit_char?: number | null
+          ax_sweet?: number | null
+          ax_tannin?: number | null
+          critic_score?: number | null
+          fp_acid?: number | null
+          fp_body?: number | null
+          fp_fresh?: number | null
+          fp_fruit_dark?: number | null
+          fp_oak?: number | null
+          fp_ripe?: number | null
+          fp_savory?: number | null
+          fp_tannin?: number | null
+          grape?: string | null
+          name?: string | null
+          price_band?: string | null
+          producer?: string | null
+          region?: string | null
+          source?: string | null
+          type?: string | null
+          vintage?: number | null
+        }
+        Update: {
+          ax_acidity?: number | null
+          ax_body?: number | null
+          ax_fruit_char?: number | null
+          ax_sweet?: number | null
+          ax_tannin?: number | null
+          critic_score?: number | null
+          fp_acid?: number | null
+          fp_body?: number | null
+          fp_fresh?: number | null
+          fp_fruit_dark?: number | null
+          fp_oak?: number | null
+          fp_ripe?: number | null
+          fp_savory?: number | null
+          fp_tannin?: number | null
+          grape?: string | null
+          name?: string | null
+          price_band?: string | null
+          producer?: string | null
+          region?: string | null
+          source?: string | null
+          type?: string | null
+          vintage?: number | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
