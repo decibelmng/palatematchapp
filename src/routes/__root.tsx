@@ -12,6 +12,7 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { supabase } from "@/integrations/supabase/client";
+import { ThemeProvider, themeBootstrapScript } from "@/lib/theme";
 
 function NotFoundComponent() {
   return (
@@ -75,8 +76,11 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
-      <head><HeadContent /></head>
+    <html lang="en" data-theme="light">
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
+        <HeadContent />
+      </head>
       <body>{children}<Scripts /></body>
     </html>
   );
@@ -93,8 +97,10 @@ function RootComponent() {
     return () => sub.subscription.unsubscribe();
   }, [queryClient]);
   return (
-    <QueryClientProvider client={queryClient}>
-      <Outlet />
-    </QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <Outlet />
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }
