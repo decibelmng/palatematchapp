@@ -92,6 +92,38 @@ function typeLabel(t: string | null): string | null {
   return t;
 }
 
+const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
+function useLetterCounts(typeFilter: TypeFilter) {
+  return useQuery({
+    queryKey: ["bottles", "letterCounts", typeFilter],
+    staleTime: 5 * 60_000,
+    queryFn: async (): Promise<Record<string, number>> => {
+      const variants =
+        typeFilter === "all" ? null
+        : typeFilter === "red" ? ["Red"]
+        : typeFilter === "white" ? ["White"]
+        : typeFilter === "rose" ? ["Rosé", "Rose"]
+        : ["Sparkling"];
+
+      const letters = [...ALPHABET, "#"];
+      const results = await Promise.all(letters.map(async (L) => {
+        let req = supabase.from("bottles").select("id", { count: "exact", head: true });
+        if (variants) req = req.in("type", variants);
+        if (L === "#") {
+          for (const A of ALPHABET) req = req.not("name", "ilike", `${A}%`);
+        } else {
+          req = req.ilike("name", `${L}%`);
+        }
+        const { count, error } = await req;
+        if (error) throw error;
+        return [L, count ?? 0] as const;
+      }));
+      return Object.fromEntries(results);
+    },
+  });
+}
+
 function typeTone(t: string | null): string {
   const v = (t ?? "").toLowerCase();
   if (v.startsWith("red")) return "bg-[hsl(0_55%_28%/0.25)] text-[hsl(0_70%_75%)] border-[hsl(0_55%_40%/0.4)]";
