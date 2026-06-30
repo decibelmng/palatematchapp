@@ -101,6 +101,8 @@ export type Database = {
           id: string
           n_rated: number
           palate_code: string
+          palate_code_red: string
+          palate_code_white: string
           theme: string | null
           updated_at: string
         }
@@ -109,6 +111,8 @@ export type Database = {
           id: string
           n_rated?: number
           palate_code?: string
+          palate_code_red?: string
+          palate_code_white?: string
           theme?: string | null
           updated_at?: string
         }
@@ -117,6 +121,8 @@ export type Database = {
           id?: string
           n_rated?: number
           palate_code?: string
+          palate_code_red?: string
+          palate_code_white?: string
           theme?: string | null
           updated_at?: string
         }
