@@ -31,9 +31,9 @@ function tokenize(q: string): string[] {
   return q.trim().toLowerCase().split(/\s+/).filter((t) => t.length > 0);
 }
 
-function useBottleSearch(query: string, typeFilter: TypeFilter) {
+function useBottleSearch(query: string, typeFilter: TypeFilter, letter: string | null) {
   return useQuery({
-    queryKey: ["bottles", "search", query, typeFilter],
+    queryKey: ["bottles", "search", query, typeFilter, letter],
     queryFn: async (): Promise<BottleRow[]> => {
       const tokens = tokenize(query);
       let req = supabase.from("bottles").select(BOTTLE_COLS).order("name").limit(50);
@@ -52,8 +52,6 @@ function useBottleSearch(query: string, typeFilter: TypeFilter) {
       }
 
       if (typeFilter !== "all") {
-        // Match type case-insensitively; "rose" matches "Rosé" too via ilike on a normalized value would need unaccent.
-        // Use exact common spellings instead.
         const variants =
           typeFilter === "red" ? ["Red"]
           : typeFilter === "white" ? ["White"]
@@ -62,12 +60,30 @@ function useBottleSearch(query: string, typeFilter: TypeFilter) {
         req = req.in("type", variants);
       }
 
+      if (letter) {
+        if (letter === "#") {
+          // Non-alphabetic starts (numbers, symbols).
+          req = req.not("name", "ilike", "a%")
+            .not("name", "ilike", "b%").not("name", "ilike", "c%").not("name", "ilike", "d%")
+            .not("name", "ilike", "e%").not("name", "ilike", "f%").not("name", "ilike", "g%")
+            .not("name", "ilike", "h%").not("name", "ilike", "i%").not("name", "ilike", "j%")
+            .not("name", "ilike", "k%").not("name", "ilike", "l%").not("name", "ilike", "m%")
+            .not("name", "ilike", "n%").not("name", "ilike", "o%").not("name", "ilike", "p%")
+            .not("name", "ilike", "q%").not("name", "ilike", "r%").not("name", "ilike", "s%")
+            .not("name", "ilike", "t%").not("name", "ilike", "u%").not("name", "ilike", "v%")
+            .not("name", "ilike", "w%").not("name", "ilike", "x%").not("name", "ilike", "y%")
+            .not("name", "ilike", "z%");
+        } else {
+          req = req.ilike("name", `${escapeLike(letter)}%`);
+        }
+      }
+
       const { data, error } = await req;
       if (error) throw error;
       return (data ?? []) as BottleRow[];
     },
     staleTime: 30_000,
-    enabled: query.trim().length > 0 || typeFilter !== "all",
+    enabled: query.trim().length > 0 || typeFilter !== "all" || letter !== null,
   });
 }
 
@@ -99,13 +115,14 @@ function Rate() {
   const [q, setQ] = useState("");
   const [debounced, setDebounced] = useState("");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  const [letter, setLetter] = useState<string | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(q), 250);
     return () => clearTimeout(t);
   }, [q]);
 
-  const { data: results, isFetching } = useBottleSearch(debounced, typeFilter);
+  const { data: results, isFetching } = useBottleSearch(debounced, typeFilter, letter);
 
   const ratingMap = useMemo(() => {
     const m = new Map<string, number>();
@@ -113,17 +130,14 @@ function Rate() {
     return m;
   }, [ratings]);
 
-  // When idle (no query, no filter), show the user's most-recently-rated bottles
-  // so they can quickly re-find and adjust them.
   const recentRatedIds = useMemo(() => {
     if (!ratings) return [];
-    // Show most recent ratings first; ratings come back ordered by created_at desc.
     return ratings.slice(0, 25).map((r) => r.bottle_id);
   }, [ratings]);
 
   const { data: recentRated } = useBottlesByIds(recentRatedIds);
 
-  const idle = debounced.trim().length === 0 && typeFilter === "all";
+  const idle = debounced.trim().length === 0 && typeFilter === "all" && letter === null;
   const list = idle ? (recentRated ?? []) : (results ?? []);
 
   const ratedCount = ratings?.length ?? 0;
@@ -193,6 +207,36 @@ function Rate() {
             </button>
           );
         })}
+      </div>
+
+      <div className="mt-3 -mx-1 overflow-x-auto">
+        <div className="flex gap-0.5 px-1 min-w-max">
+          {(["#", ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("")] as string[]).map((L) => {
+            const active = letter === L;
+            return (
+              <button
+                key={L}
+                onClick={() => setLetter(active ? null : L)}
+                aria-label={`Filter names starting with ${L}`}
+                className={`min-w-[22px] h-7 px-1 rounded text-[11px] font-medium transition ${
+                  active
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                }`}
+              >
+                {L}
+              </button>
+            );
+          })}
+          {letter && (
+            <button
+              onClick={() => setLetter(null)}
+              className="ml-1 h-7 px-2 rounded text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent"
+            >
+              clear
+            </button>
+          )}
+        </div>
       </div>
 
       <p className="mt-3 text-[11px] text-muted-foreground">
