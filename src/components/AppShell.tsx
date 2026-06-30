@@ -5,11 +5,12 @@ import { supabase } from "@/integrations/supabase/client";
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const tabs = [
-    { to: "/", label: "Code" },
-    { to: "/pour", label: "Pour next" },
-    { to: "/rate", label: "Rate" },
-    { to: "/scan", label: "Scan list" },
+    { to: "/", label: "Code", icon: "✦" },
+    { to: "/pour", label: "Pour next", icon: "◐" },
+    { to: "/rate", label: "Rate", icon: "★" },
+    { to: "/scan", label: "Scan list", icon: "⌬" },
   ] as const;
+
 
   return (
     <div className="cellar-bg min-h-screen flex flex-col">
