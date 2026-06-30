@@ -87,6 +87,32 @@ function useBottleSearch(query: string, typeFilter: TypeFilter, letter: string |
   });
 }
 
+function typeVariantsFor(typeFilter: TypeFilter): string[] | null {
+  if (typeFilter === "all") return null;
+  if (typeFilter === "red") return ["Red"];
+  if (typeFilter === "white") return ["White"];
+  if (typeFilter === "rose") return ["Rosé", "Rose"];
+  return ["Sparkling"];
+}
+
+function useFuzzySearch(query: string, typeFilter: TypeFilter, enabled: boolean) {
+  return useQuery({
+    queryKey: ["bottles", "fuzzy", query, typeFilter],
+    enabled: enabled && query.trim().length >= 3,
+    staleTime: 30_000,
+    queryFn: async (): Promise<BottleRow[]> => {
+      const { data, error } = await supabase.rpc("search_bottles_fuzzy", {
+        q: query.trim(),
+        type_variants: typeVariantsFor(typeFilter) ?? undefined,
+        lim: 25,
+        threshold: 0.35,
+      });
+      if (error) throw error;
+      return (data ?? []) as BottleRow[];
+    },
+  });
+}
+
 function typeLabel(t: string | null): string | null {
   if (!t) return null;
   return t;
@@ -157,6 +183,9 @@ function Rate() {
   const { data: results, isFetching } = useBottleSearch(debounced, typeFilter, letter);
   const { data: letterCounts } = useLetterCounts(typeFilter);
 
+  const exactEmpty = !isFetching && (results?.length ?? 0) === 0 && debounced.trim().length >= 3;
+  const { data: fuzzy, isFetching: fuzzyFetching } = useFuzzySearch(debounced, typeFilter, exactEmpty);
+
   const ratingMap = useMemo(() => {
     const m = new Map<string, number>();
     for (const r of ratings ?? []) m.set(r.bottle_id, r.stars);
@@ -172,6 +201,7 @@ function Rate() {
 
   const idle = debounced.trim().length === 0 && typeFilter === "all" && letter === null;
   const list = idle ? (recentRated ?? []) : (results ?? []);
+  const showFuzzy = exactEmpty && (fuzzy?.length ?? 0) > 0;
 
   const ratedCount = ratings?.length ?? 0;
 
@@ -315,10 +345,42 @@ function Rate() {
             </li>
           );
         })}
-        {!isFetching && !idle && list.length === 0 && (
+        {!isFetching && !idle && list.length === 0 && !showFuzzy && (
           <li className="py-6 text-sm text-muted-foreground">
-            No matches. Try fewer words, a different spelling, or remove the type filter.
+            {fuzzyFetching
+              ? "No exact matches — looking for close spellings…"
+              : "No matches, even with typo-tolerant search. Try fewer words or remove the type filter."}
           </li>
+        )}
+        {showFuzzy && (
+          <>
+            <li className="pt-5 pb-2 text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+              Did you mean… (close spellings)
+            </li>
+            {(fuzzy ?? []).map((b) => {
+              const v = ratingMap.get(b.id) ?? null;
+              const tLabel = typeLabel(b.type);
+              return (
+                <li key={b.id} className="py-3 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium leading-tight truncate">{b.name}</p>
+                    <p className="text-xs text-muted-foreground truncate">
+                      {[b.producer, b.region, b.grape, b.vintage].filter(Boolean).join(" · ")}
+                    </p>
+                    {tLabel && (
+                      <span className={`mt-1 inline-block rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider ${typeTone(b.type)}`}>
+                        {tLabel}
+                      </span>
+                    )}
+                  </div>
+                  <StarTap
+                    value={v}
+                    onChange={(stars) => rate.mutate({ bottleId: b.id, stars })}
+                  />
+                </li>
+              );
+            })}
+          </>
         )}
         {idle && recentRatedIds.length === 0 && (
           <li className="py-6 text-sm text-muted-foreground">

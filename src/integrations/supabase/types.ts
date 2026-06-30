@@ -162,7 +162,46 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      search_bottles_fuzzy: {
+        Args: {
+          lim?: number
+          q: string
+          threshold?: number
+          type_variants?: string[]
+        }
+        Returns: {
+          ax_acidity: number
+          ax_body: number
+          ax_fruit_char: number
+          ax_sweet: number
+          ax_tannin: number
+          created_at: string
+          critic_score: number | null
+          fp_acid: number
+          fp_body: number
+          fp_fresh: number
+          fp_fruit_dark: number
+          fp_oak: number
+          fp_ripe: number
+          fp_savory: number
+          fp_tannin: number
+          grape: string | null
+          id: string
+          name: string
+          price_band: string | null
+          producer: string | null
+          region: string | null
+          source: string | null
+          type: string
+          vintage: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "bottles"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
     }
     Enums: {
       [_ in never]: never
