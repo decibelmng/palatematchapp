@@ -155,6 +155,7 @@ function Rate() {
   }, [q]);
 
   const { data: results, isFetching } = useBottleSearch(debounced, typeFilter, letter);
+  const { data: letterCounts } = useLetterCounts(typeFilter);
 
   const ratingMap = useMemo(() => {
     const m = new Map<string, number>();
