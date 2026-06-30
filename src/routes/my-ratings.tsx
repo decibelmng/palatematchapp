@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AuthGate } from "@/components/AuthGate";
-import { useBottlesByIds, useRatings, useRate, bottleToFp, bottleType } from "@/hooks/use-palate-data";
+import { useBottlesByIds, useRatings, useRate, bottleToFp, bottleType, type BottleRow } from "@/hooks/use-palate-data";
 import { StarTap } from "@/components/StarTap";
 import { aggregateRated } from "@/lib/cuvee";
 import { useSession } from "@/hooks/use-session";
