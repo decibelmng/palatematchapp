@@ -82,7 +82,7 @@ function Rate() {
               to="/"
               className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-accent"
             >
-              Your code
+              Your palate
             </Link>
             <Link
               to="/pour"

@@ -3,7 +3,7 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
 const TABS = [
-  { to: "/", label: "Code", icon: "✦" },
+  { to: "/", label: "Palate", icon: "✦" },
   { to: "/pour", label: "Pour next", icon: "◐" },
   { to: "/rate", label: "Rate", icon: "★" },
   { to: "/scan", label: "Scan list", icon: "⌬" },
