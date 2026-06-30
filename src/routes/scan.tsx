@@ -106,22 +106,48 @@ function Scan() {
     return null;
   }
 
-  function onPick(fileList: FileList | null) {
+  function onPick(fileList: FileList | null, inputEl: HTMLInputElement | null) {
     if (!fileList || fileList.length === 0) return;
-    const files = Array.from(fileList).slice(0, 8);
-    setPreviews(files.map((f) => URL.createObjectURL(f)));
+    const incoming = Array.from(fileList);
+    setStaged((prev) => {
+      const next = [...prev];
+      for (const f of incoming) {
+        if (next.length >= 8) break;
+        next.push({ file: f, url: URL.createObjectURL(f) });
+      }
+      return next;
+    });
+    if (inputEl) inputEl.value = "";
     mutation.reset();
-    mutation.mutate(files);
   }
 
+  function removeAt(i: number) {
+    setStaged((prev) => {
+      const next = [...prev];
+      const [removed] = next.splice(i, 1);
+      if (removed) URL.revokeObjectURL(removed.url);
+      return next;
+    });
+    mutation.reset();
+  }
+
+  function startOver() {
+    staged.forEach((s) => URL.revokeObjectURL(s.url));
+    setStaged([]);
+    mutation.reset();
+  }
+
+  function submit() {
+    mutation.mutate(staged.map((s) => s.file));
+  }
 
   return (
     <div className="pt-2">
       <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Scan a list</p>
       <h1 className="font-serif text-3xl mt-2">Photograph a wine list</h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        I'll read every wine on the list and rank them by predicted stars for your palate. The photo
-        is sent to a vision model and not stored.
+        I'll read every wine on the list and rank them by predicted stars for your palate. Add as many
+        photos as the list has pages (up to 8) — they're sent to a vision model and not stored.
       </p>
 
       <div className="mt-5 flex flex-wrap gap-3">
@@ -131,7 +157,7 @@ function Scan() {
           accept="image/*"
           capture="environment"
           className="hidden"
-          onChange={(e) => onPick(e.target.files)}
+          onChange={(e) => onPick(e.target.files, e.currentTarget)}
         />
         <input
           ref={libraryRef}
@@ -139,35 +165,73 @@ function Scan() {
           accept="image/*"
           multiple
           className="hidden"
-          onChange={(e) => onPick(e.target.files)}
+          onChange={(e) => onPick(e.target.files, e.currentTarget)}
         />
         <button
           onClick={() => cameraRef.current?.click()}
-          disabled={mutation.isPending}
-          className="rounded-md bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium disabled:opacity-60"
+          disabled={mutation.isPending || staged.length >= 8}
+          className="rounded-md border border-border bg-card px-4 py-2.5 text-sm font-medium disabled:opacity-60"
         >
-          {mutation.isPending ? "Reading…" : "Take a photo"}
+          Take a photo
         </button>
         <button
           onClick={() => libraryRef.current?.click()}
-          disabled={mutation.isPending}
+          disabled={mutation.isPending || staged.length >= 8}
           className="rounded-md border border-border bg-card px-4 py-2.5 text-sm font-medium disabled:opacity-60"
         >
-          Upload photos (multiple OK)
+          Upload photos
         </button>
+        {staged.length > 0 && (
+          <button
+            onClick={submit}
+            disabled={mutation.isPending}
+            className="rounded-md bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium disabled:opacity-60"
+          >
+            {mutation.isPending ? "Reading…" : `Scan ${staged.length} photo${staged.length > 1 ? "s" : ""}`}
+          </button>
+        )}
+        {staged.length > 0 && !mutation.isPending && (
+          <button
+            onClick={startOver}
+            className="rounded-md border border-border bg-card px-4 py-2.5 text-sm font-medium"
+          >
+            Start over
+          </button>
+        )}
       </div>
 
-      {previews.length > 0 && (
+      {staged.length > 0 && (
         <div className="mt-4 flex flex-wrap gap-2">
-          {previews.map((src, i) => (
-            <img key={i} src={src} alt={`page ${i + 1}`} className="h-24 rounded-md border border-border object-cover" />
+          {staged.map((s, i) => (
+            <div key={s.url} className="relative">
+              <img src={s.url} alt={`page ${i + 1}`} className="h-24 rounded-md border border-border object-cover" />
+              {!mutation.isPending && (
+                <button
+                  onClick={() => removeAt(i)}
+                  aria-label={`Remove photo ${i + 1}`}
+                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-background border border-border text-xs leading-none flex items-center justify-center shadow"
+                >
+                  ×
+                </button>
+              )}
+            </div>
           ))}
         </div>
       )}
 
       {mutation.isError && (
-        <p className="mt-4 text-sm text-destructive">{(mutation.error as Error).message}</p>
+        <div className="mt-4 rounded-md border border-destructive/40 bg-destructive/10 p-3">
+          <p className="text-sm text-destructive">{(mutation.error as Error).message}</p>
+          <button
+            onClick={submit}
+            disabled={mutation.isPending || staged.length === 0}
+            className="mt-2 rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-xs font-medium disabled:opacity-60"
+          >
+            Try again
+          </button>
+        </div>
       )}
+
 
       {mutation.isSuccess && readable.length === 0 && (
         <p className="mt-6 text-sm text-muted-foreground">
