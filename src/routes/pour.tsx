@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { AuthGate } from "@/components/AuthGate";
+import { WineTypeBadge } from "@/components/WineTypeBadge";
 import { useAllBottlesPaged, useBottlesByIds, useRatings, bottleToFp, bottleType, type BottleRow } from "@/hooks/use-palate-data";
 import { recommend, type BottleFp, type RatedFp, type Recommendation, type WineType } from "@/lib/recommender";
 
@@ -150,9 +151,7 @@ function SectionView({ section }: { section: Section }) {
               <li key={r.bottle.id} className="py-4 flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded border border-border text-muted-foreground">
-                      {TYPE_BADGE[section.type]}
-                    </span>
+                    <WineTypeBadge type={section.type} />
                     <p className="font-medium leading-tight truncate">{r.bottle.name}</p>
                   </div>
                   <p className="text-xs text-muted-foreground truncate mt-0.5">
@@ -174,9 +173,7 @@ function SectionView({ section }: { section: Section }) {
               <li key={r.bottle.id} className="py-4 flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <div className="flex items-center gap-2">
-                    <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded border border-border text-muted-foreground">
-                      {TYPE_BADGE[section.type]}
-                    </span>
+                    <WineTypeBadge type={section.type} />
                     <p className="font-medium leading-tight truncate">{r.bottle.name}</p>
                   </div>
                   <p className="text-xs text-muted-foreground truncate mt-0.5">

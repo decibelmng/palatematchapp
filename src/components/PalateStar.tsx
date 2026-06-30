@@ -1,12 +1,11 @@
-import { AXES, type LetterResult } from "@/lib/palate";
+import type { AxisDef, LetterResult } from "@/lib/palate";
 
 type Props = {
+  axes: AxisDef[];
   letters: LetterResult[];
   size?: number;
 };
 
-// Angles in degrees for each axis, starting at top going clockwise.
-// Order follows AXES: body, fruit_char, tannin, acidity, sweet.
 const SPOKE_ANGLES_DEG = [-90, -18, 54, 126, 198];
 
 const SIZE = 320;
@@ -21,12 +20,10 @@ function pt(angleDeg: number, r: number) {
   return [CX + r * Math.cos(toRad(angleDeg)), CY + r * Math.sin(toRad(angleDeg))] as const;
 }
 
-/** Build a tapered needle polygon from center → outer pole at the given angle. */
 function needlePath(angleDeg: number, len: number, baseHalf = 4) {
   const [ox, oy] = pt(angleDeg, len);
   const perp = angleDeg + 90;
   const [px, py] = [Math.cos(toRad(perp)) * baseHalf, Math.sin(toRad(perp)) * baseHalf];
-  // base near center (slightly offset so two needles don't overlap awkwardly), tip at outer
   const [bx1, by1] = [CX + px, CY + py];
   const [bx2, by2] = [CX - px, CY - py];
   return `M ${bx1.toFixed(2)} ${by1.toFixed(2)} L ${ox.toFixed(2)} ${oy.toFixed(2)} L ${bx2.toFixed(2)} ${by2.toFixed(2)} Z`;
@@ -36,11 +33,12 @@ const AXIS_COLOR: Record<string, string> = {
   body: "var(--color-axis-body)",
   fruit_char: "var(--color-axis-fruit)",
   tannin: "var(--color-axis-tannin)",
+  oak: "var(--color-axis-oak)",
   acidity: "var(--color-axis-acidity)",
   sweet: "var(--color-axis-sweet)",
 };
 
-export function PalateStar({ letters, size = SIZE }: Props) {
+export function PalateStar({ axes, letters, size = SIZE }: Props) {
   const byAxis = new Map(letters.map((l) => [l.axis, l]));
 
   return (
@@ -55,22 +53,21 @@ export function PalateStar({ letters, size = SIZE }: Props) {
       <circle cx={CX} cy={CY} r={SPOKE_LEN} fill="none" stroke="var(--color-border)" strokeOpacity="0.5" strokeDasharray="2 4" />
       <circle cx={CX} cy={CY} r={5} fill="var(--color-card)" stroke="var(--color-border)" />
 
-      {AXES.map((axisDef, i) => {
+      {axes.map((axisDef, i) => {
         const angle = SPOKE_ANGLES_DEG[i];
         const result = byAxis.get(axisDef.key);
         if (!result) return null;
 
-        const axisColor = AXIS_COLOR[axisDef.key];
-        const isNa = result.na;
+        const axisColor = AXIS_COLOR[axisDef.key] ?? "var(--color-primary)";
         const isResolved = result.resolved;
-        const dim = isNa || !isResolved;
+        const dim = !isResolved;
 
         const highAngle = angle;
         const lowAngle = angle + 180;
 
-        const highLit = isResolved && !isNa && (result.letter === axisDef.high || result.bimodal);
-        const lowLit = isResolved && !isNa && (result.letter === axisDef.low || result.bimodal);
-        const neutralLit = isResolved && !isNa && result.letter === "N" && !result.bimodal;
+        const highLit = isResolved && (result.letter === axisDef.high || result.bimodal);
+        const lowLit = isResolved && (result.letter === axisDef.low || result.bimodal);
+        const neutralLit = isResolved && result.letter === "N" && !result.bimodal;
 
         const dimColor = `color-mix(in oklab, ${axisColor} 40%, transparent)`;
         const veryDimColor = `color-mix(in oklab, var(--color-muted-foreground) 35%, transparent)`;
@@ -79,7 +76,7 @@ export function PalateStar({ letters, size = SIZE }: Props) {
         const lowFill = lowLit ? axisColor : dim ? veryDimColor : dimColor;
 
         let markerPos: readonly [number, number] | null = null;
-        if (isResolved && !isNa && !result.bimodal && result.value !== null) {
+        if (isResolved && !result.bimodal && result.value !== null) {
           const offset = (result.value - 0.5) * 2 * SPOKE_LEN;
           markerPos = pt(highAngle, offset);
         }
@@ -97,45 +94,26 @@ export function PalateStar({ letters, size = SIZE }: Props) {
             <path d={needlePath(lowAngle, SPOKE_LEN)} fill={lowFill} opacity={dim ? 0.6 : 1} />
 
             {markerPos && (
-              <circle
-                cx={markerPos[0]}
-                cy={markerPos[1]}
-                r={6}
-                fill={axisColor}
-                stroke="var(--color-background)"
-                strokeWidth={2}
-              />
+              <circle cx={markerPos[0]} cy={markerPos[1]} r={6} fill={axisColor}
+                stroke="var(--color-background)" strokeWidth={2} />
             )}
             {neutralLit && (
               <circle cx={CX} cy={CY} r={7} fill="var(--color-primary)" stroke="var(--color-background)" strokeWidth={2} />
             )}
 
-            <text
-              x={hLetterX} y={hLetterY}
-              textAnchor="middle" dominantBaseline="central"
-              fontFamily="var(--font-serif)" fontSize="18"
-              fill={highLetterColor}
-              fontWeight={highLit ? 600 : 400}
-            >{axisDef.high}</text>
-            <text
-              x={lLetterX} y={lLetterY}
-              textAnchor="middle" dominantBaseline="central"
-              fontFamily="var(--font-serif)" fontSize="18"
-              fill={lowLetterColor}
-              fontWeight={lowLit ? 600 : 400}
-            >{axisDef.low}</text>
+            <text x={hLetterX} y={hLetterY} textAnchor="middle" dominantBaseline="central"
+              fontFamily="var(--font-serif)" fontSize="18" fill={highLetterColor}
+              fontWeight={highLit ? 600 : 400}>{axisDef.high}</text>
+            <text x={lLetterX} y={lLetterY} textAnchor="middle" dominantBaseline="central"
+              fontFamily="var(--font-serif)" fontSize="18" fill={lowLetterColor}
+              fontWeight={lowLit ? 600 : 400}>{axisDef.low}</text>
 
-            <text
-              x={labelX} y={labelY}
-              textAnchor="middle" dominantBaseline="central"
-              fontSize="9"
-              fill="var(--color-muted-foreground)"
-              style={{ textTransform: "uppercase", letterSpacing: "0.15em" }}
-            >{axisDef.label}</text>
+            <text x={labelX} y={labelY} textAnchor="middle" dominantBaseline="central"
+              fontSize="9" fill="var(--color-muted-foreground)"
+              style={{ textTransform: "uppercase", letterSpacing: "0.15em" }}>{axisDef.label}</text>
           </g>
         );
       })}
     </svg>
   );
 }
-

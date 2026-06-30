@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AuthGate } from "@/components/AuthGate";
 import { useRatings, useRate, useBottlesByIds, type BottleRow } from "@/hooks/use-palate-data";
 import { StarTap } from "@/components/StarTap";
+import { WineTypeBadge } from "@/components/WineTypeBadge";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/rate")({
@@ -150,14 +151,7 @@ function useLetterCounts(typeFilter: TypeFilter) {
   });
 }
 
-function typeTone(t: string | null): string {
-  const v = (t ?? "").toLowerCase();
-  if (v.startsWith("red")) return "bg-[hsl(0_55%_28%/0.25)] text-[hsl(0_70%_75%)] border-[hsl(0_55%_40%/0.4)]";
-  if (v.startsWith("white")) return "bg-[hsl(48_60%_30%/0.18)] text-[hsl(48_70%_75%)] border-[hsl(48_60%_45%/0.35)]";
-  if (v.startsWith("ros")) return "bg-[hsl(340_50%_35%/0.22)] text-[hsl(340_70%_80%)] border-[hsl(340_50%_50%/0.4)]";
-  if (v.startsWith("spark")) return "bg-[hsl(200_50%_30%/0.22)] text-[hsl(200_70%_80%)] border-[hsl(200_50%_50%/0.4)]";
-  return "bg-muted text-muted-foreground border-border";
-}
+// (badge styling lives in <WineTypeBadge />)
 
 const TYPE_OPTIONS: { id: TypeFilter; label: string }[] = [
   { id: "all", label: "All" },
@@ -324,7 +318,6 @@ function Rate() {
       <ul className="mt-2 divide-y divide-border">
         {list.map((b) => {
           const v = ratingMap.get(b.id) ?? null;
-          const tLabel = typeLabel(b.type);
           return (
             <li key={b.id} className="py-3 flex items-center justify-between gap-3">
               <div className="min-w-0">
@@ -332,11 +325,7 @@ function Rate() {
                 <p className="text-xs text-muted-foreground truncate">
                   {[b.producer, b.region, b.grape, b.vintage].filter(Boolean).join(" · ")}
                 </p>
-                {tLabel && (
-                  <span className={`mt-1 inline-block rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider ${typeTone(b.type)}`}>
-                    {tLabel}
-                  </span>
-                )}
+                <div className="mt-1"><WineTypeBadge type={b.type} /></div>
               </div>
               <StarTap
                 value={v}
@@ -359,7 +348,6 @@ function Rate() {
             </li>
             {(fuzzy ?? []).map((b) => {
               const v = ratingMap.get(b.id) ?? null;
-              const tLabel = typeLabel(b.type);
               return (
                 <li key={b.id} className="py-3 flex items-center justify-between gap-3">
                   <div className="min-w-0">
@@ -367,11 +355,7 @@ function Rate() {
                     <p className="text-xs text-muted-foreground truncate">
                       {[b.producer, b.region, b.grape, b.vintage].filter(Boolean).join(" · ")}
                     </p>
-                    {tLabel && (
-                      <span className={`mt-1 inline-block rounded-full border px-2 py-0.5 text-[10px] uppercase tracking-wider ${typeTone(b.type)}`}>
-                        {tLabel}
-                      </span>
-                    )}
+                    <div className="mt-1"><WineTypeBadge type={b.type} /></div>
                   </div>
                   <StarTap
                     value={v}

@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "./use-session";
-import type { AxisKey } from "@/lib/palate";
+import type { PaletteType } from "@/lib/palate";
 import type { FpKey, WineType } from "@/lib/recommender";
 
 export type BottleRow = {
@@ -26,11 +26,22 @@ export function bottleType(b: BottleRow): WineType {
   if (t === "white" || t === "sparkling" || t === "rose" || t === "dessert") return t;
   return "red";
 }
-export function bottleToAx(b: BottleRow): Record<AxisKey, number> {
+/** Build the per-axis value map for a bottle, using the requested palate type's
+ *  axis set. White's Oak axis reads fp_oak (the fingerprint signal). */
+export function bottleToValues(b: BottleRow, type: PaletteType): Record<string, number> {
+  if (type === "red") {
+    return {
+      body: b.ax_body,
+      fruit_char: b.ax_fruit_char,
+      tannin: b.ax_tannin,
+      acidity: b.ax_acidity,
+      sweet: b.ax_sweet,
+    };
+  }
   return {
     body: b.ax_body,
     fruit_char: b.ax_fruit_char,
-    tannin: b.ax_tannin,
+    oak: b.fp_oak,
     acidity: b.ax_acidity,
     sweet: b.ax_sweet,
   };
@@ -122,17 +133,22 @@ export function useRate() {
   });
 }
 
-export function usePersistCode(code: string, nRated: number) {
+export function usePersistCode(red: string, white: string, nRated: number) {
   const session = useSession();
-  const qc = useQueryClient();
-  // Fire-and-forget: persist palate_code cache when it changes.
-  useQueryEffect(session?.user.id, code, nRated, qc);
+  useCodeUpsert(session?.user.id, red, white, nRated);
 }
 
 import { useEffect } from "react";
-function useQueryEffect(uid: string | undefined, code: string, n: number, _qc: unknown) {
+function useCodeUpsert(uid: string | undefined, red: string, white: string, n: number) {
   useEffect(() => {
     if (!uid) return;
-    supabase.from("profiles").upsert({ id: uid, palate_code: code, n_rated: n });
-  }, [uid, code, n]);
+    supabase.from("profiles").upsert({
+      id: uid,
+      palate_code: red,           // legacy column — keep populated with the red code
+      palate_code_red: red,
+      palate_code_white: white,
+      n_rated: n,
+    });
+  }, [uid, red, white, n]);
 }
+
