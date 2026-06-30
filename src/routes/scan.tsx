@@ -42,10 +42,11 @@ function Scan() {
   const scan = useServerFn(scanWineList);
   const cameraRef = useRef<HTMLInputElement>(null);
   const libraryRef = useRef<HTMLInputElement>(null);
-  const [previews, setPreviews] = useState<string[]>([]);
+  const [staged, setStaged] = useState<{ file: File; url: string }[]>([]);
 
   const mutation = useMutation({
     mutationFn: async (files: File[]) => {
+      if (files.length === 0) throw new Error("Add at least one photo first.");
       const images = await Promise.all(
         files.map(async (file) => {
           const { base64, mediaType } = await fileToBase64(file);
