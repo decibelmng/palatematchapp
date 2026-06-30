@@ -6,6 +6,7 @@ import { AuthGate } from "@/components/AuthGate";
 import { useRatings, useBottlesByIds, bottleToFp, bottleType } from "@/hooks/use-palate-data";
 import { recommend, type BottleFp, type RatedFp, type Recommendation, type WineType } from "@/lib/recommender";
 import { scanWineList, type ResolvedWine } from "@/lib/scan.functions";
+import { aggregateRated } from "@/lib/cuvee";
 
 export const Route = createFileRoute("/scan")({
   ssr: false,
