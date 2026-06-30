@@ -115,13 +115,14 @@ function Rate() {
   const [q, setQ] = useState("");
   const [debounced, setDebounced] = useState("");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
+  const [letter, setLetter] = useState<string | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(q), 250);
     return () => clearTimeout(t);
   }, [q]);
 
-  const { data: results, isFetching } = useBottleSearch(debounced, typeFilter);
+  const { data: results, isFetching } = useBottleSearch(debounced, typeFilter, letter);
 
   const ratingMap = useMemo(() => {
     const m = new Map<string, number>();
@@ -129,17 +130,14 @@ function Rate() {
     return m;
   }, [ratings]);
 
-  // When idle (no query, no filter), show the user's most-recently-rated bottles
-  // so they can quickly re-find and adjust them.
   const recentRatedIds = useMemo(() => {
     if (!ratings) return [];
-    // Show most recent ratings first; ratings come back ordered by created_at desc.
     return ratings.slice(0, 25).map((r) => r.bottle_id);
   }, [ratings]);
 
   const { data: recentRated } = useBottlesByIds(recentRatedIds);
 
-  const idle = debounced.trim().length === 0 && typeFilter === "all";
+  const idle = debounced.trim().length === 0 && typeFilter === "all" && letter === null;
   const list = idle ? (recentRated ?? []) : (results ?? []);
 
   const ratedCount = ratings?.length ?? 0;
