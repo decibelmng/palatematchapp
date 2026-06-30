@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "./use-session";
 import type { AxisKey } from "@/lib/palate";
-import type { FpKey } from "@/lib/recommender";
+import type { FpKey, WineType } from "@/lib/recommender";
 
 export type BottleRow = {
   id: string;
@@ -11,14 +11,20 @@ export type BottleRow = {
   region: string | null;
   grape: string | null;
   vintage: number | null;
+  type: string | null;
   fp_fresh: number; fp_acid: number; fp_tannin: number; fp_fruit_dark: number;
   fp_ripe: number; fp_oak: number; fp_body: number; fp_savory: number;
   ax_body: number; ax_fruit_char: number; ax_tannin: number; ax_acidity: number; ax_sweet: number;
 };
 
 const BOTTLE_COLS =
-  "id,name,producer,region,grape,vintage,fp_fresh,fp_acid,fp_tannin,fp_fruit_dark,fp_ripe,fp_oak,fp_body,fp_savory,ax_body,ax_fruit_char,ax_tannin,ax_acidity,ax_sweet";
+  "id,name,producer,region,grape,vintage,type,fp_fresh,fp_acid,fp_tannin,fp_fruit_dark,fp_ripe,fp_oak,fp_body,fp_savory,ax_body,ax_fruit_char,ax_tannin,ax_acidity,ax_sweet";
 
+export function bottleType(b: BottleRow): WineType {
+  const t = (b.type ?? "red").toLowerCase();
+  if (t === "white" || t === "sparkling" || t === "rose") return t;
+  return "red";
+}
 export function bottleToAx(b: BottleRow): Record<AxisKey, number> {
   return {
     body: b.ax_body,

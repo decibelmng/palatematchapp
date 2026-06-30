@@ -14,6 +14,7 @@ const WineSchema = z.object({
   region: z.string().nullable().optional(),
   grape: z.string().nullable().optional(),
   price: z.string().nullable().optional(),
+  type: z.enum(["red", "white", "sparkling", "rose"]).nullable().optional(),
   fp: FpSchema.nullable().optional(),
   confidence: z.enum(["high", "medium", "low"]).nullable().optional(),
 });
@@ -24,6 +25,7 @@ const PROMPT = `You are reading a photo of a restaurant wine list. Return ONLY v
 
 For each wine, output an object with:
   producer, wine_name, vintage (int or null), region, grape, price (string or null)
+  type: "red" | "white" | "sparkling" | "rose" — classify each wine. Champagne / Prosecco / Cava / Crémant / Franciacorta / Sekt / Lambrusco => sparkling. Rosé / rosado / rosato => rose. Otherwise red or white based on grape.
   fp: eight style values, each a float 0..1, INFERRED from your knowledge of that producer/grape/region/vintage:
     fresh      0 = flat/heavy/tiring   1 = racy, high-lift, vibrant
     acid       0 = soft/round/low      1 = piercing/high (Chablis, Nebbiolo)
@@ -37,6 +39,7 @@ For each wine, output an object with:
 
 Rules:
 - Include every wine, even if you must guess. If a line is illegible or the wine is unknown to you, set unknown fields to null, give your best fp guess, confidence "low".
+- For non-reds, tannin and fruit_dark should be ~0 (they will be ignored anyway).
 - Do NOT invent wines that aren't on the list.
 - Output shape: { "wines": [ { ... }, ... ] }`;
 

@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { AuthGate } from "@/components/AuthGate";
-import { useAllBottlesPaged, useBottlesByIds, useRatings, bottleToFp } from "@/hooks/use-palate-data";
+import { useAllBottlesPaged, useBottlesByIds, useRatings, bottleToFp, bottleType } from "@/hooks/use-palate-data";
 import { recommend, type BottleFp, type RatedFp } from "@/lib/recommender";
 
 export const Route = createFileRoute("/pour")({
@@ -26,6 +26,7 @@ function Pour() {
     const ratedIdSet = new Set(ratedIds);
     const ratedRows: RatedFp[] = ratedBottles.map((b) => ({
       id: b.id, name: b.name, producer: b.producer, region: b.region,
+      type: bottleType(b),
       fp: bottleToFp(b),
       stars: ratings.find((r) => r.bottle_id === b.id)!.stars,
     }));
@@ -33,6 +34,7 @@ function Pour() {
       .filter((b) => !ratedIdSet.has(b.id))
       .map((b) => ({
         id: b.id, name: b.name, producer: b.producer, region: b.region,
+        type: bottleType(b),
         fp: bottleToFp(b),
       }));
     return recommend(ratedRows, unratedRows).slice(0, 25);
