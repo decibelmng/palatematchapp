@@ -4,6 +4,9 @@ import { AuthGate } from "@/components/AuthGate";
 import { useBottlesByIds, useRatings, useRate, bottleToFp, bottleType } from "@/hooks/use-palate-data";
 import { StarTap } from "@/components/StarTap";
 import { aggregateRated } from "@/lib/cuvee";
+import { useSession } from "@/hooks/use-session";
+import { supabase } from "@/integrations/supabase/client";
+import { useQueryClient } from "@tanstack/react-query";
 
 export const Route = createFileRoute("/my-ratings")({
   ssr: false,
