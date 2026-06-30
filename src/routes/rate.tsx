@@ -6,6 +6,7 @@ import { useRatings, useRate, useBottlesByIds, type BottleRow } from "@/hooks/us
 import { StarTap } from "@/components/StarTap";
 import { WineTypeBadge } from "@/components/WineTypeBadge";
 import { supabase } from "@/integrations/supabase/client";
+import { AddBottleDialog } from "@/components/AddBottleDialog";
 
 export const Route = createFileRoute("/rate")({
   ssr: false,
