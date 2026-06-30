@@ -35,15 +35,43 @@ export function bottleToFp(b: BottleRow): Record<FpKey, number> {
   };
 }
 
-export function useBottles() {
+export function useBottlesByIds(ids: string[]) {
+  const key = [...ids].sort().join(",");
   return useQuery({
-    queryKey: ["bottles"],
+    queryKey: ["bottles", "byIds", key],
+    enabled: ids.length > 0,
     queryFn: async (): Promise<BottleRow[]> => {
-      const { data, error } = await supabase.from("bottles").select(BOTTLE_COLS).order("name");
-      if (error) throw error;
-      return (data ?? []) as BottleRow[];
+      const out: BottleRow[] = [];
+      // chunk to keep URL length sane
+      for (let i = 0; i < ids.length; i += 200) {
+        const chunk = ids.slice(i, i + 200);
+        const { data, error } = await supabase.from("bottles").select(BOTTLE_COLS).in("id", chunk);
+        if (error) throw error;
+        out.push(...((data ?? []) as BottleRow[]));
+      }
+      return out;
     },
     staleTime: 5 * 60_000,
+  });
+}
+
+export function useAllBottlesPaged(pageSize = 1000, maxRows = 20000) {
+  return useQuery({
+    queryKey: ["bottles", "all", pageSize, maxRows],
+    queryFn: async (): Promise<BottleRow[]> => {
+      const out: BottleRow[] = [];
+      for (let from = 0; from < maxRows; from += pageSize) {
+        const to = Math.min(from + pageSize, maxRows) - 1;
+        const { data, error } = await supabase
+          .from("bottles").select(BOTTLE_COLS).order("id").range(from, to);
+        if (error) throw error;
+        const rows = (data ?? []) as BottleRow[];
+        out.push(...rows);
+        if (rows.length < pageSize) break;
+      }
+      return out;
+    },
+    staleTime: 10 * 60_000,
   });
 }
 

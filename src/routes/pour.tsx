@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { AuthGate } from "@/components/AuthGate";
-import { useBottles, useRatings, bottleToFp } from "@/hooks/use-palate-data";
+import { useAllBottlesPaged, useBottlesByIds, useRatings, bottleToFp } from "@/hooks/use-palate-data";
 import { recommend, type BottleFp, type RatedFp } from "@/lib/recommender";
 
 export const Route = createFileRoute("/pour")({
@@ -16,27 +16,28 @@ export const Route = createFileRoute("/pour")({
 });
 
 function Pour() {
-  const { data: bottles } = useBottles();
   const { data: ratings } = useRatings();
+  const ratedIds = useMemo(() => (ratings ?? []).map((r) => r.bottle_id), [ratings]);
+  const { data: ratedBottles } = useBottlesByIds(ratedIds);
+  const { data: pool } = useAllBottlesPaged();
 
   const recs = useMemo(() => {
-    if (!bottles || !ratings || ratings.length === 0) return [];
-    const ratedIds = new Set(ratings.map((r) => r.bottle_id));
-    const ratedRows: RatedFp[] = bottles
-      .filter((b) => ratedIds.has(b.id))
-      .map((b) => ({
-        id: b.id, name: b.name, producer: b.producer, region: b.region,
-        fp: bottleToFp(b),
-        stars: ratings.find((r) => r.bottle_id === b.id)!.stars,
-      }));
-    const unratedRows: BottleFp[] = bottles
-      .filter((b) => !ratedIds.has(b.id))
+    if (!ratedBottles || !ratings || !pool || ratings.length === 0) return [];
+    const ratedIdSet = new Set(ratedIds);
+    const ratedRows: RatedFp[] = ratedBottles.map((b) => ({
+      id: b.id, name: b.name, producer: b.producer, region: b.region,
+      fp: bottleToFp(b),
+      stars: ratings.find((r) => r.bottle_id === b.id)!.stars,
+    }));
+    const unratedRows: BottleFp[] = pool
+      .filter((b) => !ratedIdSet.has(b.id))
       .map((b) => ({
         id: b.id, name: b.name, producer: b.producer, region: b.region,
         fp: bottleToFp(b),
       }));
     return recommend(ratedRows, unratedRows).slice(0, 25);
-  }, [bottles, ratings]);
+  }, [ratedBottles, ratings, ratedIds, pool]);
+
 
   const nRated = ratings?.length ?? 0;
   const fewLow = (ratings ?? []).filter((r) => r.stars <= 2).length === 0;

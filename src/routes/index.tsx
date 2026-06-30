@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { AuthGate } from "@/components/AuthGate";
-import { useBottles, useRatings, bottleToAx, usePersistCode } from "@/hooks/use-palate-data";
+import { useBottlesByIds, useRatings, bottleToAx, usePersistCode } from "@/hooks/use-palate-data";
 import { computeCode, describeCode } from "@/lib/palate";
 
 export const Route = createFileRoute("/")({
@@ -16,8 +16,10 @@ export const Route = createFileRoute("/")({
 });
 
 function Home() {
-  const { data: bottles } = useBottles();
   const { data: ratings } = useRatings();
+  const ratedIds = useMemo(() => (ratings ?? []).map((r) => r.bottle_id), [ratings]);
+  const { data: bottles } = useBottlesByIds(ratedIds);
+
 
   const { rated, code, letters, description, resolved } = useMemo(() => {
     const byId = new Map((bottles ?? []).map((b) => [b.id, b]));
