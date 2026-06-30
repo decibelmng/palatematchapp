@@ -214,7 +214,7 @@ export const scanWineList = createServerFn({ method: "POST" })
         if (q.length >= 3) {
           const { data: candidates } = await supabase.rpc("search_bottles_fuzzy", {
             q,
-            type_variants: w.type ? [w.type] : null,
+            type_variants: w.type ? [w.type as string] : undefined,
             lim: 8,
             threshold: 0.25,
           });
