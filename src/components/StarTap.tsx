@@ -15,7 +15,11 @@ export function StarTap({ value, onChange, size = "md" }: Props) {
             key={n}
             type="button"
             aria-label={`${n} star${n > 1 ? "s" : ""}`}
-            onClick={(e) => { e.stopPropagation(); onChange(value === n ? null : n); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              // Always set to n; never toggle off on repeat tap.
+              if (value !== n) onChange(n);
+            }}
             className={`${px} leading-none transition-colors ${
               filled ? "text-primary" : "text-muted-foreground/40 hover:text-muted-foreground"
             }`}
@@ -24,6 +28,16 @@ export function StarTap({ value, onChange, size = "md" }: Props) {
           </button>
         );
       })}
+      {value !== null && (
+        <button
+          type="button"
+          aria-label="Clear rating"
+          onClick={(e) => { e.stopPropagation(); onChange(null); }}
+          className="ml-2 text-xs text-muted-foreground/60 hover:text-muted-foreground underline-offset-2 hover:underline"
+        >
+          clear
+        </button>
+      )}
     </div>
   );
 }
