@@ -1,10 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AuthGate } from "@/components/AuthGate";
 import { useRatings, useRate, type BottleRow } from "@/hooks/use-palate-data";
 import { StarTap } from "@/components/StarTap";
 import { supabase } from "@/integrations/supabase/client";
+
 
 export const Route = createFileRoute("/rate")({
   ssr: false,
