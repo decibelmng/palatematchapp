@@ -26,6 +26,7 @@ export type Recommendation = {
   bottle: BottleFp;
   predicted: number;
   nearest: RatedFp | null;
+  maxSimilarity: number;
 };
 
 function corr(xs: number[], ys: number[]): number {
@@ -64,8 +65,9 @@ export function recommend(
   const twoBwSq = 2 * bw * bw;
 
   const results: Recommendation[] = unrated.map((b) => {
-    let num = 0, den = 0, best = -1;
+    let num = 0, den = 0, best = -1, bestAny = -1;
     let nearest: RatedFp | null = null;
+    let nearestAny: RatedFp | null = null;
     for (const r of rated) {
       let d2 = 0;
       for (const k of RAX) {
@@ -75,26 +77,12 @@ export function recommend(
       const sim = Math.exp(-d2 / twoBwSq);
       num += sim * r.stars;
       den += sim;
-      if (sim > best && r.stars >= 4) {
-        best = sim;
-        nearest = r;
-      }
+      if (sim > bestAny) { bestAny = sim; nearestAny = r; }
+      if (sim > best && r.stars >= 4) { best = sim; nearest = r; }
     }
-    // fallback: nearest overall if no 4+★ neighbour
-    if (!nearest) {
-      let bestAny = -1;
-      for (const r of rated) {
-        let d2 = 0;
-        for (const k of RAX) {
-          const diff = b.fp[k] - r.fp[k];
-          d2 += W[k] * diff * diff;
-        }
-        const sim = Math.exp(-d2 / twoBwSq);
-        if (sim > bestAny) { bestAny = sim; nearest = r; }
-      }
-    }
+    if (!nearest) nearest = nearestAny;
     const predicted = den === 0 ? 3 : num / den;
-    return { bottle: b, predicted, nearest };
+    return { bottle: b, predicted, nearest, maxSimilarity: bestAny };
   });
 
   return results.sort((a, b) => b.predicted - a.predicted);

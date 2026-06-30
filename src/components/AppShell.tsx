@@ -8,6 +8,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     { to: "/", label: "Code" },
     { to: "/pour", label: "Pour next" },
     { to: "/rate", label: "Rate" },
+    { to: "/scan", label: "Scan list" },
   ] as const;
 
   return (
