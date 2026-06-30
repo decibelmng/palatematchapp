@@ -91,36 +91,42 @@ export function recommend(
   const ratedTypes = new Set(rated.map((r) => r.type));
   const candidates = restrict ? unrated.filter((b) => ratedTypes.has(b.type)) : unrated;
 
-  // (c) Score each candidate using only axes valid for BOTH the candidate and the rated wine.
-  const results: Recommendation[] = candidates.map((b) => {
-    let num = 0, den = 0, best = -1, bestAny = -1;
-    let nearest: RatedFp | null = null;
-    let nearestAny: RatedFp | null = null;
-    for (const r of rated) {
-      const used = active.filter((k) => axisApplies(k, b.type) && axisApplies(k, r.type));
-      if (used.length === 0) continue;
-      let wsum = 0;
-      let d2 = 0;
-      for (const k of used) {
-        const w = W[k];
-        wsum += w;
-        const diff = b.fp[k] - r.fp[k];
-        d2 += w * diff * diff;
+  // (c) Score each candidate ONLY against rated wines of the same type.
+  // A red rated 5★ tells us nothing about a Chardonnay; cross-type pairings
+  // (even on "shared" axes like body/acid) leak noise and mislabel nearest.
+  const results: Recommendation[] = candidates
+    .map((b) => {
+      const sameType = rated.filter((r) => r.type === b.type);
+      if (sameType.length === 0) return null;
+
+      let num = 0, den = 0, best = -1, bestAny = -1;
+      let nearest: RatedFp | null = null;
+      let nearestAny: RatedFp | null = null;
+      for (const r of sameType) {
+        const used = active.filter((k) => axisApplies(k, b.type));
+        if (used.length === 0) continue;
+        let wsum = 0;
+        let d2 = 0;
+        for (const k of used) {
+          const w = W[k];
+          wsum += w;
+          const diff = b.fp[k] - r.fp[k];
+          d2 += w * diff * diff;
+        }
+        if (wsum === 0) continue;
+        d2 = d2 / wsum;
+        const sim = Math.exp(-d2 / twoBwSq);
+        num += sim * r.stars;
+        den += sim;
+        if (sim > bestAny) { bestAny = sim; nearestAny = r; }
+        if (sim > best && r.stars >= 4) { best = sim; nearest = r; }
       }
-      if (wsum === 0) continue;
-      d2 = d2 / wsum; // 0..1
-      const sim = Math.exp(-d2 / twoBwSq);
-      num += sim * r.stars;
-      den += sim;
-      if (sim > bestAny) { bestAny = sim; nearestAny = r; }
-      if (sim > best && r.stars >= 4) { best = sim; nearest = r; }
-    }
-    if (!nearest) nearest = nearestAny;
-    // Shrinkage pulls weak-evidence predictions back toward the neutral prior,
-    // so users with all-5-star ratings still see spread (closer matches → higher score).
-    const predicted = (num + alpha * prior) / (den + alpha);
-    return { bottle: b, predicted, nearest, maxSimilarity: Math.max(bestAny, 0) };
-  });
+      if (!nearest) nearest = nearestAny;
+      const predicted = (num + alpha * prior) / (den + alpha);
+      return { bottle: b, predicted, nearest, maxSimilarity: Math.max(bestAny, 0) };
+    })
+    .filter((r): r is Recommendation => r !== null);
+
 
   return results.sort((a, b) => b.predicted - a.predicted);
 }
