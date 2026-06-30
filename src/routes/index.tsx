@@ -1,8 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { AuthGate } from "@/components/AuthGate";
+import { PalateStar } from "@/components/PalateStar";
 import { useBottlesByIds, useRatings, bottleToAx, bottleType, usePersistCode } from "@/hooks/use-palate-data";
 import { computeCode, describeCode, type RatedBottle } from "@/lib/palate";
+import type { WineType } from "@/lib/recommender";
+
 
 export const Route = createFileRoute("/")({
   ssr: false,
