@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ScanRouteImport } from './routes/scan'
 import { Route as RateRouteImport } from './routes/rate'
 import { Route as PourRouteImport } from './routes/pour'
+import { Route as MyRatingsRouteImport } from './routes/my-ratings'
 import { Route as IndexRouteImport } from './routes/index'
 
 const ScanRoute = ScanRouteImport.update({
@@ -29,6 +30,11 @@ const PourRoute = PourRouteImport.update({
   path: '/pour',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MyRatingsRoute = MyRatingsRouteImport.update({
+  id: '/my-ratings',
+  path: '/my-ratings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -37,12 +43,14 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/my-ratings': typeof MyRatingsRoute
   '/pour': typeof PourRoute
   '/rate': typeof RateRoute
   '/scan': typeof ScanRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/my-ratings': typeof MyRatingsRoute
   '/pour': typeof PourRoute
   '/rate': typeof RateRoute
   '/scan': typeof ScanRoute
@@ -50,20 +58,22 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/my-ratings': typeof MyRatingsRoute
   '/pour': typeof PourRoute
   '/rate': typeof RateRoute
   '/scan': typeof ScanRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/pour' | '/rate' | '/scan'
+  fullPaths: '/' | '/my-ratings' | '/pour' | '/rate' | '/scan'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/pour' | '/rate' | '/scan'
-  id: '__root__' | '/' | '/pour' | '/rate' | '/scan'
+  to: '/' | '/my-ratings' | '/pour' | '/rate' | '/scan'
+  id: '__root__' | '/' | '/my-ratings' | '/pour' | '/rate' | '/scan'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  MyRatingsRoute: typeof MyRatingsRoute
   PourRoute: typeof PourRoute
   RateRoute: typeof RateRoute
   ScanRoute: typeof ScanRoute
@@ -92,6 +102,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PourRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/my-ratings': {
+      id: '/my-ratings'
+      path: '/my-ratings'
+      fullPath: '/my-ratings'
+      preLoaderRoute: typeof MyRatingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -104,6 +121,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  MyRatingsRoute: MyRatingsRoute,
   PourRoute: PourRoute,
   RateRoute: RateRoute,
   ScanRoute: ScanRoute,
