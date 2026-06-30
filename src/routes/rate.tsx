@@ -169,6 +169,7 @@ function Rate() {
   const [debounced, setDebounced] = useState("");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [letter, setLetter] = useState<string | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(q), 250);
