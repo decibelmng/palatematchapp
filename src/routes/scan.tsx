@@ -43,6 +43,7 @@ function Scan() {
   const cameraRef = useRef<HTMLInputElement>(null);
   const libraryRef = useRef<HTMLInputElement>(null);
   const [staged, setStaged] = useState<{ file: File; url: string }[]>([]);
+  const [elapsed, setElapsed] = useState(0);
 
   const mutation = useMutation({
     mutationFn: async (files: File[]) => {
