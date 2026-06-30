@@ -16,11 +16,13 @@ export type Database = {
     Tables: {
       bottles: {
         Row: {
+          added_by: string | null
           ax_acidity: number
           ax_body: number
           ax_fruit_char: number
           ax_sweet: number
           ax_tannin: number
+          country: string | null
           created_at: string
           critic_score: number | null
           fp_acid: number
@@ -38,15 +40,18 @@ export type Database = {
           producer: string | null
           region: string | null
           source: string | null
+          tasting_note: string | null
           type: string
           vintage: number | null
         }
         Insert: {
+          added_by?: string | null
           ax_acidity?: number
           ax_body?: number
           ax_fruit_char?: number
           ax_sweet?: number
           ax_tannin?: number
+          country?: string | null
           created_at?: string
           critic_score?: number | null
           fp_acid?: number
@@ -64,15 +69,18 @@ export type Database = {
           producer?: string | null
           region?: string | null
           source?: string | null
+          tasting_note?: string | null
           type?: string
           vintage?: number | null
         }
         Update: {
+          added_by?: string | null
           ax_acidity?: number
           ax_body?: number
           ax_fruit_char?: number
           ax_sweet?: number
           ax_tannin?: number
+          country?: string | null
           created_at?: string
           critic_score?: number | null
           fp_acid?: number
@@ -90,6 +98,7 @@ export type Database = {
           producer?: string | null
           region?: string | null
           source?: string | null
+          tasting_note?: string | null
           type?: string
           vintage?: number | null
         }
@@ -215,11 +224,13 @@ export type Database = {
           type_variants?: string[]
         }
         Returns: {
+          added_by: string | null
           ax_acidity: number
           ax_body: number
           ax_fruit_char: number
           ax_sweet: number
           ax_tannin: number
+          country: string | null
           created_at: string
           critic_score: number | null
           fp_acid: number
@@ -237,6 +248,7 @@ export type Database = {
           producer: string | null
           region: string | null
           source: string | null
+          tasting_note: string | null
           type: string
           vintage: number | null
         }[]

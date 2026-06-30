@@ -6,6 +6,7 @@ import { useRatings, useRate, useBottlesByIds, type BottleRow } from "@/hooks/us
 import { StarTap } from "@/components/StarTap";
 import { WineTypeBadge } from "@/components/WineTypeBadge";
 import { supabase } from "@/integrations/supabase/client";
+import { AddBottleDialog } from "@/components/AddBottleDialog";
 
 export const Route = createFileRoute("/rate")({
   ssr: false,
@@ -19,7 +20,7 @@ export const Route = createFileRoute("/rate")({
 });
 
 const BOTTLE_COLS =
-  "id,name,producer,region,grape,vintage,type,fp_fresh,fp_acid,fp_tannin,fp_fruit_dark,fp_ripe,fp_oak,fp_body,fp_savory,ax_body,ax_fruit_char,ax_tannin,ax_acidity,ax_sweet";
+  "id,name,producer,region,grape,vintage,type,fp_fresh,fp_acid,fp_tannin,fp_fruit_dark,fp_ripe,fp_oak,fp_body,fp_savory,ax_body,ax_fruit_char,ax_tannin,ax_acidity,ax_sweet,tasting_note,source,added_by,critic_score";
 
 type TypeFilter = "all" | "red" | "white" | "rose" | "sparkling";
 
@@ -168,6 +169,7 @@ function Rate() {
   const [debounced, setDebounced] = useState("");
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [letter, setLetter] = useState<string | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(q), 250);
@@ -201,8 +203,18 @@ function Rate() {
 
   return (
     <div className="pt-2">
-      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Rate</p>
-      <h1 className="font-serif text-3xl mt-2">Tap stars on bottles you've tried</h1>
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Rate</p>
+          <h1 className="font-serif text-3xl mt-2">Tap stars on bottles you've tried</h1>
+        </div>
+        <button
+          onClick={() => setAddOpen(true)}
+          className="mt-1 shrink-0 rounded-md border border-primary text-primary px-3 py-1.5 text-xs font-medium hover:bg-primary/10"
+        >
+          + Add a bottle
+        </button>
+      </div>
 
       {ratedCount > 0 && (
         <div className="mt-5 rounded-lg border border-border bg-card p-3 flex items-center justify-between gap-3">
@@ -338,7 +350,18 @@ function Rate() {
           <li className="py-6 text-sm text-muted-foreground">
             {fuzzyFetching
               ? "No exact matches — looking for close spellings…"
-              : "No matches, even with typo-tolerant search. Try fewer words or remove the type filter."}
+              : (
+                <>
+                  No matches in the catalog.{" "}
+                  <button
+                    type="button"
+                    onClick={() => setAddOpen(true)}
+                    className="text-primary underline font-medium"
+                  >
+                    Add this bottle manually →
+                  </button>
+                </>
+              )}
           </li>
         )}
         {showFuzzy && (
@@ -372,6 +395,12 @@ function Rate() {
           </li>
         )}
       </ul>
+
+      <AddBottleDialog
+        open={addOpen}
+        onClose={() => setAddOpen(false)}
+        initialQuery={debounced.trim() || undefined}
+      />
     </div>
   );
 }
