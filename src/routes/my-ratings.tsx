@@ -40,7 +40,7 @@ function MyRatings() {
   const [draftNote, setDraftNote] = useState("");
 
   const bottleById = useMemo(() => {
-    const m = new Map<string, (typeof bottles extends (infer T)[] | undefined ? T : never)>();
+    const m = new Map<string, BottleRow>();
     for (const b of bottles ?? []) m.set(b.id, b);
     return m;
   }, [bottles]);
