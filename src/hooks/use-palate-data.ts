@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "./use-session";
-import type { AxisKey } from "@/lib/palate";
+import type { PaletteType } from "@/lib/palate";
 import type { FpKey, WineType } from "@/lib/recommender";
 
 export type BottleRow = {
