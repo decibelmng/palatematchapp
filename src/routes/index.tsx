@@ -18,37 +18,85 @@ export const Route = createFileRoute("/")({
   component: () => <AuthGate><Home /></AuthGate>,
 });
 
+type Scope = "all" | "red" | "white";
+
 function Home() {
   const { data: ratings } = useRatings();
   const ratedIds = useMemo(() => (ratings ?? []).map((r) => r.bottle_id), [ratings]);
   const { data: bottles } = useBottlesByIds(ratedIds);
+  const [scope, setScope] = useState<Scope>("all");
 
-
-  const { rated, code, letters, description, resolved } = useMemo(() => {
+  const allRated = useMemo<RatedBottle[]>(() => {
     const byId = new Map((bottles ?? []).map((b) => [b.id, b]));
-    const rated: RatedBottle[] = (ratings ?? [])
+    return ((ratings ?? [])
       .map((r) => {
         const b = byId.get(r.bottle_id);
         return b ? { stars: r.stars, type: bottleType(b), ax: bottleToAx(b) } : null;
       })
-      .filter(Boolean) as RatedBottle[];
-    const { code, letters } = computeCode(rated);
+      .filter(Boolean) as RatedBottle[]);
+  }, [bottles, ratings]);
+
+  const scopedRated = useMemo(() => {
+    if (scope === "all") return allRated;
+    const t: WineType = scope;
+    return allRated.filter((r) => r.type === t);
+  }, [allRated, scope]);
+
+  const { code, letters, description, resolved } = useMemo(() => {
+    const { code, letters } = computeCode(scopedRated);
     return {
-      rated,
       code,
       letters,
       description: describeCode(letters),
       resolved: letters.filter((l) => l.resolved).length,
     };
-  }, [bottles, ratings]);
+  }, [scopedRated]);
 
-  usePersistCode(code, rated.length);
+  // Persist the canonical (all-bottles) code, not the scoped view.
+  const { code: canonicalCode } = useMemo(() => computeCode(allRated), [allRated]);
+  usePersistCode(canonicalCode, allRated.length);
+
+  const rated = scopedRated;
+  const nReds = allRated.filter((r) => r.type === "red").length;
+  const nWhites = allRated.filter((r) => r.type === "white").length;
 
   return (
     <div className="pt-2">
-      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Your palate code</p>
+      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Your palate</p>
 
-      <div className="mt-4 flex justify-between gap-2 sm:gap-3">
+      {/* Star visualization */}
+      <div className="mt-3">
+        <PalateStar letters={letters} />
+      </div>
+
+      {/* Scope toggle */}
+      <div className="mt-2 flex justify-center gap-1 text-xs">
+        {([
+          { id: "all", label: `All (${allRated.length})` },
+          { id: "red", label: `Reds (${nReds})` },
+          { id: "white", label: `Whites (${nWhites})` },
+        ] as { id: Scope; label: string }[]).map((opt) => {
+          const active = scope === opt.id;
+          const disabled = opt.id !== "all" && (opt.id === "red" ? nReds === 0 : nWhites === 0);
+          return (
+            <button
+              key={opt.id}
+              type="button"
+              disabled={disabled}
+              onClick={() => setScope(opt.id)}
+              className={`rounded-full px-3 py-1 border transition ${
+                active
+                  ? "border-primary text-primary bg-primary/10"
+                  : "border-border text-muted-foreground hover:bg-accent"
+              } ${disabled ? "opacity-40 cursor-not-allowed" : ""}`}
+            >
+              {opt.label}
+            </button>
+          );
+        })}
+      </div>
+
+      <div className="mt-6 flex justify-between gap-2 sm:gap-3">
         {letters.map((l) => (
           <div key={l.axis} className="flex flex-col items-center gap-2">
             <div className={`code-slot ${!l.resolved ? "code-slot-empty" : ""}`}>{l.letter}</div>
@@ -59,8 +107,11 @@ function Home() {
 
       <p className="mt-6 text-sm text-foreground/90 leading-relaxed">{description}</p>
       <p className="mt-1 text-xs text-muted-foreground">
-        {resolved}/5 axes resolved · {rated.length} bottle{rated.length === 1 ? "" : "s"} rated
+        {resolved}/5 axes resolved · {rated.length} bottle{rated.length === 1 ? "" : "s"} in view
+        {scope !== "all" && allRated.length !== rated.length ? ` · code ${code}` : ""}
       </p>
+
+
 
       {rated.length === 0 && (
         <div className="mt-10 rounded-xl border border-border bg-card/60 p-5">
