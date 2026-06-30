@@ -117,14 +117,8 @@ function Rate() {
   // so they can quickly re-find and adjust them.
   const recentRatedIds = useMemo(() => {
     if (!ratings) return [];
-    return [...ratings]
-      .sort((a, b) => {
-        const at = a.created_at ? new Date(a.created_at).getTime() : 0;
-        const bt = b.created_at ? new Date(b.created_at).getTime() : 0;
-        return bt - at;
-      })
-      .slice(0, 25)
-      .map((r) => r.bottle_id);
+    // Show most recent ratings first; ratings come back ordered by created_at desc.
+    return ratings.slice(0, 25).map((r) => r.bottle_id);
   }, [ratings]);
 
   const { data: recentRated } = useBottlesByIds(recentRatedIds);
