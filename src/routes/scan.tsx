@@ -3,8 +3,8 @@ import { useMemo, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { AuthGate } from "@/components/AuthGate";
-import { useRatings, useBottlesByIds, bottleToFp } from "@/hooks/use-palate-data";
-import { recommend, type BottleFp, type RatedFp, type Recommendation } from "@/lib/recommender";
+import { useRatings, useBottlesByIds, bottleToFp, bottleType } from "@/hooks/use-palate-data";
+import { recommend, type BottleFp, type RatedFp, type Recommendation, type WineType } from "@/lib/recommender";
 import { scanWineList, type ScannedWine } from "@/lib/scan.functions";
 
 export const Route = createFileRoute("/scan")({
@@ -58,6 +58,7 @@ function Scan() {
     if (!ratedBottles || !ratings) return [];
     return ratedBottles.map((b) => ({
       id: b.id, name: b.name, producer: b.producer, region: b.region,
+      type: bottleType(b),
       fp: bottleToFp(b),
       stars: ratings.find((r) => r.bottle_id === b.id)!.stars,
     }));
@@ -70,6 +71,7 @@ function Scan() {
       name: [w.producer, w.wine_name, w.vintage].filter(Boolean).join(" ") || "Unknown wine",
       producer: w.producer ?? null,
       region: w.region ?? null,
+      type: (w.type ?? "red") as WineType,
       fp: w.fp!,
     }));
     if (ratedRows.length === 0) {

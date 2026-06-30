@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { AuthGate } from "@/components/AuthGate";
-import { useBottlesByIds, useRatings, bottleToAx, usePersistCode } from "@/hooks/use-palate-data";
-import { computeCode, describeCode } from "@/lib/palate";
+import { useBottlesByIds, useRatings, bottleToAx, bottleType, usePersistCode } from "@/hooks/use-palate-data";
+import { computeCode, describeCode, type RatedBottle } from "@/lib/palate";
 
 export const Route = createFileRoute("/")({
   ssr: false,
@@ -23,12 +23,12 @@ function Home() {
 
   const { rated, code, letters, description, resolved } = useMemo(() => {
     const byId = new Map((bottles ?? []).map((b) => [b.id, b]));
-    const rated = (ratings ?? [])
+    const rated: RatedBottle[] = (ratings ?? [])
       .map((r) => {
         const b = byId.get(r.bottle_id);
-        return b ? { stars: r.stars, ax: bottleToAx(b) } : null;
+        return b ? { stars: r.stars, type: bottleType(b), ax: bottleToAx(b) } : null;
       })
-      .filter(Boolean) as { stars: number; ax: ReturnType<typeof bottleToAx> }[];
+      .filter(Boolean) as RatedBottle[];
     const { code, letters } = computeCode(rated);
     return {
       rated,

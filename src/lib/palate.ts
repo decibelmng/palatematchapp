@@ -1,4 +1,7 @@
-// Engine 1 — Palate Code (projection from stars + bottle axes)
+// Engine 1 — Palate Code (projection from stars + bottle axes).
+// Type-aware: the Tannin letter resolves only from rated reds.
+
+import type { WineType } from "./recommender";
 
 export type AxisKey = "body" | "fruit_char" | "tannin" | "acidity" | "sweet";
 
@@ -12,13 +15,14 @@ export const AXES: { key: AxisKey; label: string; low: string; high: string; low
 
 export type RatedBottle = {
   stars: number;
+  type: WineType;
   ax: Record<AxisKey, number>; // 0..1 each
 };
 
 export type LetterResult = {
   axis: AxisKey;
   label: string;
-  letter: string;        // 'L'|'B'|'N'|'·' etc.
+  letter: string;        // 'L'|'B'|'N'|'·'|'—'
   descriptor: string;    // human readable
   resolved: boolean;
 };
@@ -31,10 +35,29 @@ const NEUTRAL_DESCRIPTORS: Record<AxisKey, string> = {
   sweet: "dry",
 };
 
+function axisPool(axis: AxisKey, rated: RatedBottle[]): RatedBottle[] {
+  // Tannin is meaningful only on reds — whites/sparkling/rosé are silent on it.
+  if (axis === "tannin") return rated.filter((r) => r.type === "red");
+  return rated;
+}
+
 export function computeCode(rated: RatedBottle[]): { code: string; letters: LetterResult[] } {
   const letters: LetterResult[] = AXES.map((axisDef) => {
     const axis = axisDef.key;
-    const pts: { x: number; w: number; stars: number }[] = rated.map((r) => ({
+    const pool = axisPool(axis, rated);
+
+    // Distinguish "nothing rated yet" ("·") from "not applicable until you've rated reds" ("—").
+    if (axis === "tannin" && pool.length === 0 && rated.length > 0) {
+      return {
+        axis,
+        label: axisDef.label,
+        letter: "—",
+        descriptor: "rate reds to reveal",
+        resolved: false,
+      };
+    }
+
+    const pts = pool.map((r) => ({
       x: r.ax[axis],
       w: Math.max(0, r.stars - 2), // 1-2★ contribute ~0
       stars: r.stars,
@@ -55,7 +78,7 @@ export function computeCode(rated: RatedBottle[]): { code: string; letters: Lett
     const loved = pts.filter((p) => p.stars >= 4).map((p) => p.x);
 
     // sweet axis: if every rated bottle is dry (ax_sweet very low), force D
-    if (axis === "sweet" && rated.every((r) => r.ax.sweet <= 0.1)) {
+    if (axis === "sweet" && pool.every((r) => r.ax.sweet <= 0.1)) {
       return {
         axis,
         label: axisDef.label,

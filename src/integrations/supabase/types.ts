@@ -38,6 +38,7 @@ export type Database = {
           producer: string | null
           region: string | null
           source: string | null
+          type: string
           vintage: number | null
         }
         Insert: {
@@ -63,6 +64,7 @@ export type Database = {
           producer?: string | null
           region?: string | null
           source?: string | null
+          type?: string
           vintage?: number | null
         }
         Update: {
@@ -88,6 +90,7 @@ export type Database = {
           producer?: string | null
           region?: string | null
           source?: string | null
+          type?: string
           vintage?: number | null
         }
         Relationships: []
