@@ -133,17 +133,22 @@ export function useRate() {
   });
 }
 
-export function usePersistCode(code: string, nRated: number) {
+export function usePersistCode(red: string, white: string, nRated: number) {
   const session = useSession();
-  const qc = useQueryClient();
-  // Fire-and-forget: persist palate_code cache when it changes.
-  useQueryEffect(session?.user.id, code, nRated, qc);
+  useCodeUpsert(session?.user.id, red, white, nRated);
 }
 
 import { useEffect } from "react";
-function useQueryEffect(uid: string | undefined, code: string, n: number, _qc: unknown) {
+function useCodeUpsert(uid: string | undefined, red: string, white: string, n: number) {
   useEffect(() => {
     if (!uid) return;
-    supabase.from("profiles").upsert({ id: uid, palate_code: code, n_rated: n });
-  }, [uid, code, n]);
+    supabase.from("profiles").upsert({
+      id: uid,
+      palate_code: red,           // legacy column — keep populated with the red code
+      palate_code_red: red,
+      palate_code_white: white,
+      n_rated: n,
+    });
+  }, [uid, red, white, n]);
 }
+
