@@ -58,17 +58,20 @@ function corr(xs: number[], ys: number[]): number {
 export function recommend(
   rated: RatedFp[],
   unrated: BottleFp[],
-  opts: { bandwidth?: number } = {},
+  opts: { bandwidth?: number; shrinkAlpha?: number; shrinkPrior?: number; restrictToRatedTypes?: boolean } = {},
 ): Recommendation[] {
   if (rated.length === 0) return [];
   const bw = opts.bandwidth ?? 0.2;
+  const alpha = opts.shrinkAlpha ?? 1.5;   // Laplace-style shrinkage toward prior
+  const prior = opts.shrinkPrior ?? 3.0;   // neutral baseline when similarity is low
+  const restrict = opts.restrictToRatedTypes ?? true;
 
   // (a) Learn importance per axis using ONLY rated bottles where the axis applies.
   const importance: Record<FpKey, number> = {} as Record<FpKey, number>;
   for (const k of RAX) {
     const pool = rated.filter((r) => axisApplies(k, r.type));
     if (pool.length < 2) {
-      importance[k] = 0; // not enough data -> axis inactive
+      importance[k] = 0;
     } else {
       const xs = pool.map((r) => r.fp[k]);
       const ys = pool.map((r) => r.stars);
@@ -82,8 +85,14 @@ export function recommend(
 
   const twoBwSq = 2 * bw * bw;
 
-  // (b) Score each candidate using only axes valid for BOTH the candidate and the rated wine.
-  const results: Recommendation[] = unrated.map((b) => {
+  // (b) Type scoping — don't surface candidates of a type the user has never rated.
+  // Reds and dessert reds (e.g. Port) are different palate decisions; keep them
+  // separate unless the user has rated both.
+  const ratedTypes = new Set(rated.map((r) => r.type));
+  const candidates = restrict ? unrated.filter((b) => ratedTypes.has(b.type)) : unrated;
+
+  // (c) Score each candidate using only axes valid for BOTH the candidate and the rated wine.
+  const results: Recommendation[] = candidates.map((b) => {
     let num = 0, den = 0, best = -1, bestAny = -1;
     let nearest: RatedFp | null = null;
     let nearestAny: RatedFp | null = null;
@@ -99,7 +108,7 @@ export function recommend(
         d2 += w * diff * diff;
       }
       if (wsum === 0) continue;
-      d2 = d2 / wsum; // normalized 0..~1 over the axes that were actually used
+      d2 = d2 / wsum; // 0..1
       const sim = Math.exp(-d2 / twoBwSq);
       num += sim * r.stars;
       den += sim;
@@ -107,7 +116,9 @@ export function recommend(
       if (sim > best && r.stars >= 4) { best = sim; nearest = r; }
     }
     if (!nearest) nearest = nearestAny;
-    const predicted = den === 0 ? 3 : num / den;
+    // Shrinkage pulls weak-evidence predictions back toward the neutral prior,
+    // so users with all-5-star ratings still see spread (closer matches → higher score).
+    const predicted = (num + alpha * prior) / (den + alpha);
     return { bottle: b, predicted, nearest, maxSimilarity: Math.max(bestAny, 0) };
   });
 
