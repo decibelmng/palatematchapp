@@ -41,6 +41,7 @@
   --color-axis-body: var(--axis-body);
   --color-axis-fruit: var(--axis-fruit);
   --color-axis-tannin: var(--axis-tannin);
+  --color-axis-oak: var(--axis-oak);
   --color-axis-acidity: var(--axis-acidity);
   --color-axis-sweet: var(--axis-sweet);
   --font-serif: var(--font-serif);
@@ -67,6 +68,7 @@
   --axis-body: #b07e22;
   --axis-fruit: #b1485d;
   --axis-tannin: #2f8a78;
+  --axis-oak: #c08a3e;
   --axis-acidity: #3f6aa0;
   --axis-sweet: #8a5aa8;
 
@@ -116,6 +118,7 @@
   --axis-body: #cda552;
   --axis-fruit: #cf7d8e;
   --axis-tannin: #5fb0a0;
+  --axis-oak: #d9a85f;
   --axis-acidity: #6f93c4;
   --axis-sweet: #b58fce;
 
