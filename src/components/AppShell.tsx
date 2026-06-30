@@ -5,11 +5,12 @@ import { supabase } from "@/integrations/supabase/client";
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const tabs = [
-    { to: "/", label: "Code" },
-    { to: "/pour", label: "Pour next" },
-    { to: "/rate", label: "Rate" },
-    { to: "/scan", label: "Scan list" },
+    { to: "/", label: "Code", icon: "✦" },
+    { to: "/pour", label: "Pour next", icon: "◐" },
+    { to: "/rate", label: "Rate", icon: "★" },
+    { to: "/scan", label: "Scan list", icon: "⌬" },
   ] as const;
+
 
   return (
     <div className="cellar-bg min-h-screen flex flex-col">
@@ -35,12 +36,16 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Link
                 key={t.to}
                 to={t.to}
-                className={`flex-1 text-center py-3.5 text-sm transition-colors ${
-                  active ? "text-primary" : "text-muted-foreground hover:text-foreground"
+                className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[11px] transition-colors border-t-2 ${
+                  active
+                    ? "text-primary border-primary"
+                    : "text-muted-foreground hover:text-foreground border-transparent"
                 }`}
               >
+                <span className="text-base leading-none">{t.icon}</span>
                 {t.label}
               </Link>
+
             );
           })}
         </div>

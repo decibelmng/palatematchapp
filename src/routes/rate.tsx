@@ -1,10 +1,11 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { AuthGate } from "@/components/AuthGate";
 import { useRatings, useRate, type BottleRow } from "@/hooks/use-palate-data";
 import { StarTap } from "@/components/StarTap";
 import { supabase } from "@/integrations/supabase/client";
+
 
 export const Route = createFileRoute("/rate")({
   ssr: false,
@@ -64,10 +65,34 @@ function Rate() {
 
   const list = results ?? [];
 
+  const ratedCount = ratings?.length ?? 0;
+
   return (
     <div className="pt-2">
       <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Rate</p>
       <h1 className="font-serif text-3xl mt-2">Tap stars on bottles you've tried</h1>
+
+      {ratedCount > 0 && (
+        <div className="mt-5 rounded-lg border border-border bg-card p-3 flex items-center justify-between gap-3">
+          <p className="text-xs text-muted-foreground">
+            {ratedCount} rated · ready for what's next?
+          </p>
+          <div className="flex gap-2">
+            <Link
+              to="/"
+              className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-accent"
+            >
+              Your code
+            </Link>
+            <Link
+              to="/pour"
+              className="rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-xs font-medium hover:opacity-90"
+            >
+              Pour next →
+            </Link>
+          </div>
+        </div>
+      )}
 
       <input
         type="search"
@@ -76,6 +101,7 @@ function Rate() {
         placeholder="Search by name or producer…"
         className="mt-5 w-full rounded-md bg-input border border-border px-3 py-2.5 text-sm outline-none focus:border-primary"
       />
+
 
       <ul className="mt-4 divide-y divide-border">
         {list.map((b) => {
