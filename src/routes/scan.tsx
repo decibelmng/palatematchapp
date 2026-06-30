@@ -42,12 +42,20 @@ function Scan() {
   const scan = useServerFn(scanWineList);
   const cameraRef = useRef<HTMLInputElement>(null);
   const libraryRef = useRef<HTMLInputElement>(null);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [previews, setPreviews] = useState<string[]>([]);
 
   const mutation = useMutation({
-    mutationFn: async (file: File) => {
-      const { base64, mediaType } = await fileToBase64(file);
-      return await scan({ data: { image_base64: base64, media_type: mediaType as "image/jpeg" | "image/png" | "image/webp" | "image/heic" } });
+    mutationFn: async (files: File[]) => {
+      const images = await Promise.all(
+        files.map(async (file) => {
+          const { base64, mediaType } = await fileToBase64(file);
+          return {
+            image_base64: base64,
+            media_type: mediaType as "image/jpeg" | "image/png" | "image/webp" | "image/heic",
+          };
+        }),
+      );
+      return await scan({ data: { images } });
     },
   });
 
@@ -76,7 +84,6 @@ function Scan() {
       fp: w.fp!,
     }));
     if (ratedRows.length === 0) {
-      // No ratings yet: present in original order, no scoring.
       return candidates.map((b, i) => ({
         bottle: b, predicted: 0, nearest: null, maxSimilarity: 0, scanned: readable[i],
       }));
@@ -87,7 +94,7 @@ function Scan() {
   }, [readable, ratedRows]);
 
   const enoughRatings = ratedRows.length >= 3;
-  const displayList = ranked.slice(0, 40);
+  const displayList = ranked.slice(0, 80);
 
   function flagFor(r: Ranked): { label: string; tone: "good" | "bad" | "warn" } | null {
     if (!enoughRatings) return null;
@@ -98,12 +105,14 @@ function Scan() {
     return null;
   }
 
-  function onPick(file: File | undefined | null) {
-    if (!file) return;
-    setPreview(URL.createObjectURL(file));
+  function onPick(fileList: FileList | null) {
+    if (!fileList || fileList.length === 0) return;
+    const files = Array.from(fileList).slice(0, 8);
+    setPreviews(files.map((f) => URL.createObjectURL(f)));
     mutation.reset();
-    mutation.mutate(file);
+    mutation.mutate(files);
   }
+
 
   return (
     <div className="pt-2">
