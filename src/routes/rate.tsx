@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { AuthGate } from "@/components/AuthGate";
 import { useRatings, useRate, useBottlesByIds, type BottleRow } from "@/hooks/use-palate-data";
 import { StarTap } from "@/components/StarTap";
+import { WineTypeBadge } from "@/components/WineTypeBadge";
 import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/rate")({
