@@ -43,6 +43,10 @@ function Pour() {
 
   const nRated = ratings?.length ?? 0;
   const fewLow = (ratings ?? []).filter((r) => r.stars <= 2).length === 0;
+  const distinctStars = new Set((ratings ?? []).map((r) => r.stars)).size;
+  const noVariance = nRated >= 2 && distinctStars === 1;
+  const loading = !ratings || (ratedIds.length > 0 && !ratedBottles) || !pool;
+  const onlyStar = noVariance ? [...new Set((ratings ?? []).map((r) => r.stars))][0] : null;
 
   return (
     <div className="pt-2">
@@ -58,9 +62,22 @@ function Pour() {
             Go rate
           </Link>
         </div>
+      ) : loading ? (
+        <p className="mt-8 text-sm text-muted-foreground">Loading recommendations…</p>
       ) : (
         <>
-          {(nRated < 6 || fewLow) && (
+          {noVariance && (
+            <div className="mt-4 rounded-xl border border-border bg-card/60 p-4">
+              <p className="text-sm">
+                Every wine you've rated is <span className="text-primary">{onlyStar}★</span>.
+                The engine needs contrast to learn your palate — try rating a wine you only liked OK (3★) or one you didn't enjoy (1–2★).
+              </p>
+              <Link to="/rate" className="mt-3 inline-block text-xs uppercase tracking-wider text-primary">
+                Rate more →
+              </Link>
+            </div>
+          )}
+          {!noVariance && (nRated < 6 || fewLow) && (
             <p className="mt-3 text-xs text-muted-foreground italic">
               {fewLow
                 ? "Tip: rate some wines you disliked too — it sharpens predictions for unusual styles."
