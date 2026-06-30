@@ -43,19 +43,30 @@ Rules:
 - Do NOT invent wines that aren't on the list.
 - Output shape: { "wines": [ { ... }, ... ] }`;
 
+const ImageSchema = z.object({
+  image_base64: z.string().min(100),
+  media_type: z.enum(["image/jpeg", "image/png", "image/webp", "image/heic"]),
+});
+
 export const scanWineList = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) =>
     z.object({
-      image_base64: z.string().min(100),
-      media_type: z.enum(["image/jpeg", "image/png", "image/webp", "image/heic"]),
+      images: z.array(ImageSchema).min(1).max(8),
     }).parse(input),
   )
   .handler(async ({ data }) => {
     const key = process.env.LOVABLE_API_KEY;
     if (!key) throw new Error("Missing LOVABLE_API_KEY");
 
-    const dataUrl = `data:${data.media_type};base64,${data.image_base64}`;
+    const imageBlocks = data.images.map((img) => ({
+      type: "image_url" as const,
+      image_url: { url: `data:${img.media_type};base64,${img.image_base64}` },
+    }));
+
+    const intro = data.images.length > 1
+      ? `${PROMPT}\n\nNOTE: ${data.images.length} photos of the SAME wine list (multiple pages). Combine all wines into ONE output array. Deduplicate any wine that appears on more than one page.`
+      : PROMPT;
 
     const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -69,8 +80,8 @@ export const scanWineList = createServerFn({ method: "POST" })
           {
             role: "user",
             content: [
-              { type: "text", text: PROMPT },
-              { type: "image_url", image_url: { url: dataUrl } },
+              { type: "text", text: intro },
+              ...imageBlocks,
             ],
           },
         ],
