@@ -76,8 +76,8 @@ export type CuveeCandidate = {
 type RatedInput = {
   id: string;
   name: string;
-  producer: string | null;
-  region: string | null;
+  producer?: string | null;
+  region?: string | null;
   type: WineType;
   vintage?: number | null;
   fp: Record<FpKey, number>;
@@ -86,8 +86,8 @@ type RatedInput = {
 type CandidateInput = {
   id: string;
   name: string;
-  producer: string | null;
-  region: string | null;
+  producer?: string | null;
+  region?: string | null;
   type: WineType;
   vintage?: number | null;
   fp: Record<FpKey, number>;
