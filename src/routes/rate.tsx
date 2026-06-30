@@ -92,6 +92,38 @@ function typeLabel(t: string | null): string | null {
   return t;
 }
 
+const ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
+function useLetterCounts(typeFilter: TypeFilter) {
+  return useQuery({
+    queryKey: ["bottles", "letterCounts", typeFilter],
+    staleTime: 5 * 60_000,
+    queryFn: async (): Promise<Record<string, number>> => {
+      const variants =
+        typeFilter === "all" ? null
+        : typeFilter === "red" ? ["Red"]
+        : typeFilter === "white" ? ["White"]
+        : typeFilter === "rose" ? ["Rosé", "Rose"]
+        : ["Sparkling"];
+
+      const letters = [...ALPHABET, "#"];
+      const results = await Promise.all(letters.map(async (L) => {
+        let req = supabase.from("bottles").select("id", { count: "exact", head: true });
+        if (variants) req = req.in("type", variants);
+        if (L === "#") {
+          for (const A of ALPHABET) req = req.not("name", "ilike", `${A}%`);
+        } else {
+          req = req.ilike("name", `${L}%`);
+        }
+        const { count, error } = await req;
+        if (error) throw error;
+        return [L, count ?? 0] as const;
+      }));
+      return Object.fromEntries(results);
+    },
+  });
+}
+
 function typeTone(t: string | null): string {
   const v = (t ?? "").toLowerCase();
   if (v.startsWith("red")) return "bg-[hsl(0_55%_28%/0.25)] text-[hsl(0_70%_75%)] border-[hsl(0_55%_40%/0.4)]";
@@ -123,6 +155,7 @@ function Rate() {
   }, [q]);
 
   const { data: results, isFetching } = useBottleSearch(debounced, typeFilter, letter);
+  const { data: letterCounts } = useLetterCounts(typeFilter);
 
   const ratingMap = useMemo(() => {
     const m = new Map<string, number>();
@@ -210,34 +243,43 @@ function Rate() {
       </div>
 
       <div className="mt-3 -mx-1 overflow-x-auto">
-        <div className="flex gap-0.5 px-1 min-w-max">
-          {(["#", ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("")] as string[]).map((L) => {
+        <div className="flex gap-0.5 px-1 min-w-max items-stretch">
+          {(["#", ...ALPHABET] as string[]).map((L) => {
             const active = letter === L;
+            const count = letterCounts?.[L];
+            const isZero = count === 0;
             return (
               <button
                 key={L}
                 onClick={() => setLetter(active ? null : L)}
-                aria-label={`Filter names starting with ${L}`}
-                className={`min-w-[22px] h-7 px-1 rounded text-[11px] font-medium transition ${
+                disabled={isZero}
+                aria-label={`Filter names starting with ${L}${count != null ? ` (${count})` : ""}`}
+                className={`min-w-[26px] py-1 px-1 rounded flex flex-col items-center justify-center leading-none transition ${
                   active
                     ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                    : isZero
+                      ? "text-muted-foreground/30 cursor-not-allowed"
+                      : "text-muted-foreground hover:text-foreground hover:bg-accent"
                 }`}
               >
-                {L}
+                <span className="text-[11px] font-medium">{L}</span>
+                <span className={`text-[8px] mt-0.5 tabular-nums ${active ? "opacity-80" : "opacity-60"}`}>
+                  {count == null ? "·" : count > 999 ? `${Math.floor(count / 1000)}k` : count}
+                </span>
               </button>
             );
           })}
           {letter && (
             <button
               onClick={() => setLetter(null)}
-              className="ml-1 h-7 px-2 rounded text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent"
+              className="ml-1 h-7 px-2 rounded text-[11px] text-muted-foreground hover:text-foreground hover:bg-accent self-center"
             >
               clear
             </button>
           )}
         </div>
       </div>
+
 
       <p className="mt-3 text-[11px] text-muted-foreground">
         {idle
