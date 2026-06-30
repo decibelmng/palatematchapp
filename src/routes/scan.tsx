@@ -61,6 +61,15 @@ function Scan() {
     },
   });
 
+  useEffect(() => {
+    if (!mutation.isPending) return;
+    setElapsed(0);
+    const start = Date.now();
+    const id = setInterval(() => setElapsed(Math.floor((Date.now() - start) / 1000)), 250);
+    return () => clearInterval(id);
+  }, [mutation.isPending]);
+
+
   const wines = mutation.data?.wines ?? [];
   const readable = wines.filter((w) => w.fp);
   const unreadable = wines.filter((w) => !w.fp);
