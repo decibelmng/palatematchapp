@@ -58,6 +58,9 @@ export function computeCode(rated: RatedBottle[]): { code: string; letters: Lett
         letter: "—",
         descriptor: "rate reds to reveal",
         resolved: false,
+        value: null,
+        bimodal: false,
+        na: true,
       };
     }
 
@@ -75,13 +78,15 @@ export function computeCode(rated: RatedBottle[]): { code: string; letters: Lett
         letter: "·",
         descriptor: "—",
         resolved: false,
+        value: null,
+        bimodal: false,
+        na: false,
       };
     }
 
     const mean = pts.reduce((s, p) => s + p.x * p.w, 0) / W;
     const loved = pts.filter((p) => p.stars >= 4).map((p) => p.x);
 
-    // sweet axis: if every rated bottle is dry (ax_sweet very low), force D
     if (axis === "sweet" && pool.every((r) => r.ax.sweet <= 0.1)) {
       return {
         axis,
@@ -89,6 +94,9 @@ export function computeCode(rated: RatedBottle[]): { code: string; letters: Lett
         letter: axisDef.low,
         descriptor: axisDef.lowName,
         resolved: true,
+        value: 0,
+        bimodal: false,
+        na: false,
       };
     }
 
@@ -114,8 +122,18 @@ export function computeCode(rated: RatedBottle[]): { code: string; letters: Lett
       descriptor = NEUTRAL_DESCRIPTORS[axis];
     }
 
-    return { axis, label: axisDef.label, letter, descriptor, resolved: true };
+    return {
+      axis,
+      label: axisDef.label,
+      letter,
+      descriptor,
+      resolved: true,
+      value: mean,
+      bimodal,
+      na: false,
+    };
   });
+
 
   return { code: letters.map((l) => l.letter).join(""), letters };
 }
