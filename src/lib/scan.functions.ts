@@ -131,13 +131,12 @@ function scoreMatch(
   if (!haveProd && (sName.length + prodOverlap) < 2) return 0;
   if (sName.length > 0 && nameOverlap < needNameMatch) return 0;
 
-  // Score: producer weight + name overlap ratio + vintage bonus
+  // Score: producer weight + name overlap ratio. Vintage is intentionally
+  // NOT a match factor — cuvée-level style matching is what we want.
   const prodScore = haveProd ? Math.min(1, prodOverlap / Math.max(1, sProd.length)) : 0.5;
   const nameScore = sName.length > 0 ? nameOverlap / sName.length : 0.5;
-  const vintageBonus =
-    scanned.vintage && bottle.vintage && scanned.vintage === bottle.vintage ? 0.1 : 0;
 
-  return Math.min(1, 0.55 + 0.25 * prodScore + 0.2 * nameScore + vintageBonus);
+  return Math.min(1, 0.6 + 0.25 * prodScore + 0.15 * nameScore);
 }
 
 // ---------- Server fn ----------
