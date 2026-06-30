@@ -1,8 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { AuthGate } from "@/components/AuthGate";
-import { useAllBottlesPaged, useBottlesByIds, useRatings, bottleToFp, bottleType } from "@/hooks/use-palate-data";
-import { recommend, type BottleFp, type RatedFp } from "@/lib/recommender";
+import { useAllBottlesPaged, useBottlesByIds, useRatings, bottleToFp, bottleType, type BottleRow } from "@/hooks/use-palate-data";
+import { recommend, type BottleFp, type RatedFp, type Recommendation, type WineType } from "@/lib/recommender";
 
 export const Route = createFileRoute("/pour")({
   ssr: false,
@@ -15,81 +15,147 @@ export const Route = createFileRoute("/pour")({
   component: () => <AuthGate><Pour /></AuthGate>,
 });
 
+const TYPE_ORDER: WineType[] = ["red", "white", "sparkling", "rose", "dessert"];
+const TYPE_LABEL: Record<WineType, string> = {
+  red: "Reds for you",
+  white: "Whites for you",
+  sparkling: "Sparkling for you",
+  rose: "Rosés for you",
+  dessert: "Dessert wines for you",
+};
+const TYPE_BADGE: Record<WineType, string> = {
+  red: "Red",
+  white: "White",
+  sparkling: "Sparkling",
+  rose: "Rosé",
+  dessert: "Dessert",
+};
+
+type Section =
+  | { type: WineType; mode: "personalized"; nSameType: number; items: Recommendation[] }
+  | { type: WineType; mode: "fallback"; nSameType: 0; items: { bottle: BottleFp; critic: number | null }[] };
+
 function Pour() {
   const { data: ratings } = useRatings();
   const ratedIds = useMemo(() => (ratings ?? []).map((r) => r.bottle_id), [ratings]);
   const { data: ratedBottles } = useBottlesByIds(ratedIds);
   const { data: pool } = useAllBottlesPaged();
 
-  const recs = useMemo(() => {
-    if (!ratedBottles || !ratings || !pool || ratings.length === 0) return [];
+  const sections: Section[] = useMemo(() => {
+    if (!ratings || !pool) return [];
     const ratedIdSet = new Set(ratedIds);
-    const ratedRows: RatedFp[] = ratedBottles.map((b) => ({
+    const ratedRows: RatedFp[] = (ratedBottles ?? []).map((b) => ({
       id: b.id, name: b.name, producer: b.producer, region: b.region,
       type: bottleType(b),
       fp: bottleToFp(b),
       stars: ratings.find((r) => r.bottle_id === b.id)!.stars,
     }));
-    const unratedRows: BottleFp[] = pool
-      .filter((b) => !ratedIdSet.has(b.id))
-      .map((b) => ({
+
+    // Group catalog candidates by type.
+    const byType = new Map<WineType, BottleRow[]>();
+    for (const b of pool) {
+      if (ratedIdSet.has(b.id)) continue;
+      const t = bottleType(b);
+      if (!byType.has(t)) byType.set(t, []);
+      byType.get(t)!.push(b);
+    }
+
+    const out: Section[] = [];
+    for (const type of TYPE_ORDER) {
+      const cands = byType.get(type);
+      if (!cands || cands.length === 0) continue;
+      const sameTypeRated = ratedRows.filter((r) => r.type === type);
+      const candFp: BottleFp[] = cands.map((b) => ({
         id: b.id, name: b.name, producer: b.producer, region: b.region,
-        type: bottleType(b),
-        fp: bottleToFp(b),
+        type, fp: bottleToFp(b),
       }));
-    return recommend(ratedRows, unratedRows).slice(0, 25);
+
+      if (sameTypeRated.length === 0) {
+        // Neutral fallback: rank by critic_score.
+        const ranked = cands
+          .map((b, i) => ({
+            bottle: candFp[i],
+            critic: typeof b.critic_score === "number" ? b.critic_score : null,
+          }))
+          .filter((x) => x.critic !== null)
+          .sort((a, b) => (b.critic ?? 0) - (a.critic ?? 0))
+          .slice(0, 10);
+        if (ranked.length > 0) {
+          out.push({ type, mode: "fallback", nSameType: 0, items: ranked });
+        }
+      } else {
+        // Personalized: feed engine only the same-type ratings.
+        // Engine already enforces same-type scoring; passing same-type rated
+        // keeps importance learning focused on this type's signal.
+        const recs = recommend(sameTypeRated, candFp).slice(0, 10);
+        if (recs.length > 0) {
+          out.push({ type, mode: "personalized", nSameType: sameTypeRated.length, items: recs });
+        }
+      }
+    }
+    return out;
   }, [ratedBottles, ratings, ratedIds, pool]);
 
-
   const nRated = ratings?.length ?? 0;
-  const fewLow = (ratings ?? []).filter((r) => r.stars <= 2).length === 0;
-  const distinctStars = new Set((ratings ?? []).map((r) => r.stars)).size;
-  const noVariance = nRated >= 2 && distinctStars === 1;
   const loading = !ratings || (ratedIds.length > 0 && !ratedBottles) || !pool;
-  const onlyStar = noVariance ? [...new Set((ratings ?? []).map((r) => r.stars))][0] : null;
 
   return (
     <div className="pt-2">
       <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Pour these next</p>
       <h1 className="font-serif text-3xl mt-2">Bottles you'd likely love</h1>
 
-      {nRated === 0 ? (
+      {loading ? (
+        <p className="mt-8 text-sm text-muted-foreground">Loading recommendations…</p>
+      ) : nRated === 0 ? (
         <div className="mt-8 rounded-xl border border-border bg-card/60 p-5">
           <p className="text-sm text-muted-foreground">
-            Rate a few bottles first — we'll predict from there.
+            Rate a few bottles to personalize — we'll start with critic favorites below.
           </p>
           <Link to="/rate" className="mt-4 inline-block rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium">
             Go rate
           </Link>
+          <div className="mt-8 space-y-10">
+            {sections.map((s) => <SectionView key={s.type} section={s} />)}
+          </div>
         </div>
-      ) : loading ? (
-        <p className="mt-8 text-sm text-muted-foreground">Loading recommendations…</p>
       ) : (
-        <>
-          {noVariance && (
-            <div className="mt-4 rounded-xl border border-border bg-card/60 p-4">
-              <p className="text-sm">
-                Every wine you've rated is <span className="text-primary">{onlyStar}★</span>.
-                The engine needs contrast to learn your palate — try rating a wine you only liked OK (3★) or one you didn't enjoy (1–2★).
-              </p>
-              <Link to="/rate" className="mt-3 inline-block text-xs uppercase tracking-wider text-primary">
-                Rate more →
-              </Link>
-            </div>
+        <div className="mt-6 space-y-10">
+          {sections.length === 0 && (
+            <p className="text-sm text-muted-foreground">No unrated bottles in the catalogue yet.</p>
           )}
-          {!noVariance && (nRated < 6 || fewLow) && (
-            <p className="mt-3 text-xs text-muted-foreground italic">
-              {fewLow
-                ? "Tip: rate some wines you disliked too — it sharpens predictions for unusual styles."
-                : "Predictions get sharper with more ratings."}
-            </p>
-          )}
-          <ul className="mt-6 divide-y divide-border">
-            {recs.map((r) => (
+          {sections.map((s) => <SectionView key={s.type} section={s} />)}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function SectionView({ section }: { section: Section }) {
+  const tag =
+    section.mode === "fallback"
+      ? "Popular picks — rate some to personalize"
+      : section.nSameType < 3
+      ? `Still learning — based on ${section.nSameType} rating${section.nSameType === 1 ? "" : "s"}`
+      : null;
+
+  return (
+    <section>
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="font-serif text-xl">{TYPE_LABEL[section.type]}</h2>
+      </div>
+      {tag && <p className="mt-1 text-[11px] uppercase tracking-wider text-muted-foreground">{tag}</p>}
+      <ul className="mt-3 divide-y divide-border">
+        {section.mode === "personalized"
+          ? section.items.map((r) => (
               <li key={r.bottle.id} className="py-4 flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <p className="font-medium leading-tight truncate">{r.bottle.name}</p>
-                  <p className="text-xs text-muted-foreground truncate">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded border border-border text-muted-foreground">
+                      {TYPE_BADGE[section.type]}
+                    </span>
+                    <p className="font-medium leading-tight truncate">{r.bottle.name}</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground truncate mt-0.5">
                     {[r.bottle.producer, r.bottle.region].filter(Boolean).join(" · ")}
                   </p>
                   {r.nearest && (
@@ -103,13 +169,29 @@ function Pour() {
                   <span className="text-primary text-sm">★</span>
                 </div>
               </li>
+            ))
+          : section.items.map((r) => (
+              <li key={r.bottle.id} className="py-4 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[10px] uppercase tracking-wider px-1.5 py-0.5 rounded border border-border text-muted-foreground">
+                      {TYPE_BADGE[section.type]}
+                    </span>
+                    <p className="font-medium leading-tight truncate">{r.bottle.name}</p>
+                  </div>
+                  <p className="text-xs text-muted-foreground truncate mt-0.5">
+                    {[r.bottle.producer, r.bottle.region].filter(Boolean).join(" · ")}
+                  </p>
+                </div>
+                {r.critic !== null && (
+                  <div className="shrink-0 text-right">
+                    <span className="font-serif text-muted-foreground text-base">{r.critic.toFixed(0)}</span>
+                    <span className="text-muted-foreground text-xs"> critic</span>
+                  </div>
+                )}
+              </li>
             ))}
-            {recs.length === 0 && (
-              <li className="py-6 text-sm text-muted-foreground">No unrated bottles in the catalogue yet.</li>
-            )}
-          </ul>
-        </>
-      )}
-    </div>
+      </ul>
+    </section>
   );
 }
