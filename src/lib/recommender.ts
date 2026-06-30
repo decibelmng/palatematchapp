@@ -12,7 +12,7 @@ export const RAX = [
 ] as const;
 export type FpKey = (typeof RAX)[number];
 
-export type WineType = "red" | "white" | "sparkling" | "rose";
+export type WineType = "red" | "white" | "sparkling" | "rose" | "dessert";
 
 export type BottleFp = {
   id: string;
