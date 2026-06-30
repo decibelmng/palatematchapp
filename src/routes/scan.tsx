@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { AuthGate } from "@/components/AuthGate";
@@ -43,6 +43,7 @@ function Scan() {
   const cameraRef = useRef<HTMLInputElement>(null);
   const libraryRef = useRef<HTMLInputElement>(null);
   const [staged, setStaged] = useState<{ file: File; url: string }[]>([]);
+  const [elapsed, setElapsed] = useState(0);
 
   const mutation = useMutation({
     mutationFn: async (files: File[]) => {
@@ -59,6 +60,15 @@ function Scan() {
       return await scan({ data: { images } });
     },
   });
+
+  useEffect(() => {
+    if (!mutation.isPending) return;
+    setElapsed(0);
+    const start = Date.now();
+    const id = setInterval(() => setElapsed(Math.floor((Date.now() - start) / 1000)), 250);
+    return () => clearInterval(id);
+  }, [mutation.isPending]);
+
 
   const wines = mutation.data?.wines ?? [];
   const readable = wines.filter((w) => w.fp);
@@ -216,6 +226,23 @@ function Scan() {
               )}
             </div>
           ))}
+        </div>
+      )}
+
+      {mutation.isPending && (
+        <div className="mt-4 rounded-md border border-primary/40 bg-primary/5 p-3 flex items-center gap-3">
+          <span
+            aria-hidden
+            className="inline-block h-4 w-4 rounded-full border-2 border-primary border-r-transparent animate-spin"
+          />
+          <div className="text-sm">
+            <p className="font-medium">
+              Reading {staged.length} photo{staged.length > 1 ? "s" : ""}…
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {elapsed}s elapsed · usually 10–40 seconds. Keep this screen open.
+            </p>
+          </div>
         </div>
       )}
 
