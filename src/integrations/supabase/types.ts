@@ -14,13 +14,150 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      bottles: {
+        Row: {
+          ax_acidity: number
+          ax_body: number
+          ax_fruit_char: number
+          ax_sweet: number
+          ax_tannin: number
+          created_at: string
+          critic_score: number | null
+          fp_acid: number
+          fp_body: number
+          fp_fresh: number
+          fp_fruit_dark: number
+          fp_oak: number
+          fp_ripe: number
+          fp_savory: number
+          fp_tannin: number
+          grape: string | null
+          id: string
+          name: string
+          price_band: string | null
+          producer: string | null
+          region: string | null
+          source: string | null
+          vintage: number | null
+        }
+        Insert: {
+          ax_acidity?: number
+          ax_body?: number
+          ax_fruit_char?: number
+          ax_sweet?: number
+          ax_tannin?: number
+          created_at?: string
+          critic_score?: number | null
+          fp_acid?: number
+          fp_body?: number
+          fp_fresh?: number
+          fp_fruit_dark?: number
+          fp_oak?: number
+          fp_ripe?: number
+          fp_savory?: number
+          fp_tannin?: number
+          grape?: string | null
+          id?: string
+          name: string
+          price_band?: string | null
+          producer?: string | null
+          region?: string | null
+          source?: string | null
+          vintage?: number | null
+        }
+        Update: {
+          ax_acidity?: number
+          ax_body?: number
+          ax_fruit_char?: number
+          ax_sweet?: number
+          ax_tannin?: number
+          created_at?: string
+          critic_score?: number | null
+          fp_acid?: number
+          fp_body?: number
+          fp_fresh?: number
+          fp_fruit_dark?: number
+          fp_oak?: number
+          fp_ripe?: number
+          fp_savory?: number
+          fp_tannin?: number
+          grape?: string | null
+          id?: string
+          name?: string
+          price_band?: string | null
+          producer?: string | null
+          region?: string | null
+          source?: string | null
+          vintage?: number | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          id: string
+          n_rated: number
+          palate_code: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id: string
+          n_rated?: number
+          palate_code?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          n_rated?: number
+          palate_code?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ratings: {
+        Row: {
+          bottle_id: string
+          created_at: string
+          id: string
+          stars: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bottle_id: string
+          created_at?: string
+          id?: string
+          stars: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bottle_id?: string
+          created_at?: string
+          id?: string
+          stars?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ratings_bottle_id_fkey"
+            columns: ["bottle_id"]
+            isOneToOne: false
+            referencedRelation: "bottles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
       [_ in never]: never
