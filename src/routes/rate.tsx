@@ -254,20 +254,20 @@ function Rate() {
       </div>
 
       {ratedCount > 0 && (
-        <div className="mt-5 rounded-lg border border-border bg-card p-3 flex items-center justify-between gap-3">
+        <div className="mt-5 flex items-center justify-between gap-3 px-1">
           <p className="text-xs text-muted-foreground">
-            {ratedCount} rated · ready for what's next?
+            <span className="font-semibold text-foreground">{ratedCount}</span> rated · ready for what's next?
           </p>
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             <Link
               to="/"
-              className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-accent"
+              className="text-xs font-medium text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
             >
               Your palate
             </Link>
             <Link
               to="/pour"
-              className="rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-xs font-medium hover:opacity-90"
+              className="text-xs font-semibold text-primary hover:opacity-80"
             >
               Pour next →
             </Link>
@@ -288,8 +288,8 @@ function Rate() {
           <div className="relative flex-1 min-w-0">
             <Search
               aria-hidden
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
-              size={16}
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+              size={18}
             />
             <input
               type="search"
@@ -297,14 +297,14 @@ function Rate() {
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search wines already in the catalog…"
               aria-label="Search the wine catalog"
-              className="w-full rounded-full bg-muted/50 border border-transparent pl-10 pr-9 py-2 text-sm outline-none placeholder:text-muted-foreground/70 focus:bg-background focus:border-border transition"
+              className="w-full rounded-xl bg-background border-2 border-border pl-11 pr-10 py-3.5 text-base text-foreground outline-none placeholder:text-muted-foreground/70 shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
             />
             {q && (
               <button
                 type="button"
                 onClick={() => setQ("")}
                 aria-label="Clear search"
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full px-2 py-0.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent"
               >
                 ×
               </button>
@@ -313,10 +313,10 @@ function Rate() {
           <button
             type="button"
             onClick={() => jumpToAddForm()}
-            className="shrink-0 inline-flex items-center gap-1.5 rounded-full border-2 border-primary text-primary bg-background px-3.5 py-2 text-xs font-semibold hover:bg-primary hover:text-primary-foreground transition whitespace-nowrap"
+            className="shrink-0 inline-flex items-center gap-1.5 rounded-xl border-2 border-primary text-primary bg-background px-4 py-3.5 text-sm font-semibold hover:bg-primary hover:text-primary-foreground transition whitespace-nowrap shadow-sm"
             aria-label="Add a bottle that isn't in the catalog"
           >
-            <Plus size={14} strokeWidth={2.5} /> Add a bottle
+            <Plus size={16} strokeWidth={2.5} /> Add a bottle
           </button>
         </div>
 
