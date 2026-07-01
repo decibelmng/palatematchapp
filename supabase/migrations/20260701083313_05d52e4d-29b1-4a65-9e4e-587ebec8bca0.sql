@@ -1,0 +1,1 @@
+ALTER TABLE public.bottles_llm_staging ALTER COLUMN vintage TYPE text; ALTER TABLE public.bottles_llm_staging ALTER COLUMN critic_score TYPE text;

@@ -111,7 +111,7 @@ export type Database = {
           ax_fruit_char: number | null
           ax_sweet: number | null
           ax_tannin: number | null
-          critic_score: number | null
+          critic_score: string | null
           fp_acid: number | null
           fp_body: number | null
           fp_fresh: number | null
@@ -127,7 +127,7 @@ export type Database = {
           region: string | null
           source: string | null
           type: string | null
-          vintage: number | null
+          vintage: string | null
         }
         Insert: {
           ax_acidity?: number | null
@@ -135,7 +135,7 @@ export type Database = {
           ax_fruit_char?: number | null
           ax_sweet?: number | null
           ax_tannin?: number | null
-          critic_score?: number | null
+          critic_score?: string | null
           fp_acid?: number | null
           fp_body?: number | null
           fp_fresh?: number | null
@@ -151,7 +151,7 @@ export type Database = {
           region?: string | null
           source?: string | null
           type?: string | null
-          vintage?: number | null
+          vintage?: string | null
         }
         Update: {
           ax_acidity?: number | null
@@ -159,7 +159,7 @@ export type Database = {
           ax_fruit_char?: number | null
           ax_sweet?: number | null
           ax_tannin?: number | null
-          critic_score?: number | null
+          critic_score?: string | null
           fp_acid?: number | null
           fp_body?: number | null
           fp_fresh?: number | null
@@ -175,7 +175,7 @@ export type Database = {
           region?: string | null
           source?: string | null
           type?: string | null
-          vintage?: number | null
+          vintage?: string | null
         }
         Relationships: []
       }
