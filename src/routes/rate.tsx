@@ -450,7 +450,7 @@ function Rate() {
       <section
         aria-labelledby="add-heading"
         className="mt-10 rounded-2xl border-2 border-border bg-card p-5 shadow-sm"
-        ref={(el) => { addFormRef.current = el; }}
+        ref={(el) => { addFormRef.current = el as HTMLDivElement | null; }}
       >
         <div className="flex items-start justify-between gap-3">
           <div>
