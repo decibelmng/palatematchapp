@@ -1,12 +1,14 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Search, Plus, ArrowRight } from "lucide-react";
 import { AuthGate } from "@/components/AuthGate";
 import { useRatings, useRate, useBottlesByIds, type BottleRow } from "@/hooks/use-palate-data";
 import { StarTap } from "@/components/StarTap";
 import { WineTypeBadge } from "@/components/WineTypeBadge";
 import { supabase } from "@/integrations/supabase/client";
 import { AddBottleDialog } from "@/components/AddBottleDialog";
+
 
 export const Route = createFileRoute("/rate")({
   ssr: false,
