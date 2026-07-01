@@ -28,23 +28,26 @@ const EMPTY: Form = {
 type Phase = "form" | "researching" | "duplicate" | "review" | "rate" | "saving";
 
 export function AddBottleDialog({
-  open, onClose, initialQuery,
+  open, onClose, initialQuery, initialForm, autoStart,
 }: {
   open: boolean;
   onClose: () => void;
   initialQuery?: string;
+  initialForm?: Partial<Form>;
+  autoStart?: boolean;
 }) {
   const session = useSession();
   const qc = useQueryClient();
   const research = useServerFn(researchBottle);
 
-  const [form, setForm] = useState<Form>({ ...EMPTY, name: initialQuery ?? "" });
+  const [form, setForm] = useState<Form>({ ...EMPTY, name: initialQuery ?? "", ...(initialForm ?? {}) });
   const [phase, setPhase] = useState<Phase>("form");
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ResearchResult | null>(null);
   const [savedBottleId, setSavedBottleId] = useState<string | null>(null);
   const [stars, setStars] = useState<number | null>(null);
   const [userNote, setUserNote] = useState("");
+
 
   function reset() {
     setForm({ ...EMPTY });
