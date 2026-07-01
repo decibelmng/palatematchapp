@@ -216,7 +216,10 @@ function Rate() {
   const { data: recentRated } = useBottlesByIds(recentRatedIds);
 
   const idle = debounced.trim().length === 0 && typeFilter === "all" && letter === null;
-  const list = idle ? (recentRated ?? []) : (results ?? []);
+  const [showAllRecent, setShowAllRecent] = useState(false);
+  const fullList = idle ? (recentRated ?? []) : (results ?? []);
+  const list = idle && !showAllRecent ? fullList.slice(0, 5) : fullList;
+  const hiddenCount = idle && !showAllRecent ? Math.max(0, fullList.length - 5) : 0;
   const showFuzzy = exactEmpty && (fuzzy?.length ?? 0) > 0;
 
   const ratedCount = ratings?.length ?? 0;
