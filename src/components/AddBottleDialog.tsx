@@ -65,11 +65,11 @@ export function AddBottleDialog({
     qc.invalidateQueries({ queryKey: ["ratings"] });
   }
 
-  async function onResearch(e: React.FormEvent) {
-    e.preventDefault();
+  async function runResearch() {
     setError(null);
     if (!form.producer.trim() || !form.name.trim()) {
       setError("Producer and name are required.");
+      setPhase("form");
       return;
     }
     setPhase("researching");
@@ -97,6 +97,22 @@ export function AddBottleDialog({
       setPhase("form");
     }
   }
+
+  function onResearch(e: React.FormEvent) {
+    e.preventDefault();
+    void runResearch();
+  }
+
+  const autoStartedRef = useRef(false);
+  useEffect(() => {
+    if (!open) { autoStartedRef.current = false; return; }
+    if (autoStart && !autoStartedRef.current && phase === "form") {
+      autoStartedRef.current = true;
+      void runResearch();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, autoStart]);
+
 
   async function rateExisting(d: DuplicateMatch) {
     if (!session) return;
