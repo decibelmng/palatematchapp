@@ -284,30 +284,40 @@ function Rate() {
           <span className="text-[10px] text-muted-foreground/70">Search 118k+ bottles already in the catalog</span>
         </div>
 
-        <div className="mt-2 relative">
-          <Search
-            aria-hidden
-            className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
-            size={16}
-          />
-          <input
-            type="search"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            placeholder="Search wines already in the catalog…"
-            aria-label="Search the wine catalog"
-            className="w-full rounded-full bg-muted/50 border border-transparent pl-10 pr-9 py-2 text-sm outline-none placeholder:text-muted-foreground/70 focus:bg-background focus:border-border transition"
-          />
-          {q && (
-            <button
-              type="button"
-              onClick={() => setQ("")}
-              aria-label="Clear search"
-              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent"
-            >
-              ×
-            </button>
-          )}
+        <div className="mt-2 flex gap-2">
+          <div className="relative flex-1 min-w-0">
+            <Search
+              aria-hidden
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+              size={16}
+            />
+            <input
+              type="search"
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search wines already in the catalog…"
+              aria-label="Search the wine catalog"
+              className="w-full rounded-full bg-muted/50 border border-transparent pl-10 pr-9 py-2 text-sm outline-none placeholder:text-muted-foreground/70 focus:bg-background focus:border-border transition"
+            />
+            {q && (
+              <button
+                type="button"
+                onClick={() => setQ("")}
+                aria-label="Clear search"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent"
+              >
+                ×
+              </button>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={() => jumpToAddForm()}
+            className="shrink-0 inline-flex items-center gap-1.5 rounded-full border-2 border-primary text-primary bg-background px-3.5 py-2 text-xs font-semibold hover:bg-primary hover:text-primary-foreground transition whitespace-nowrap"
+            aria-label="Add a bottle that isn't in the catalog"
+          >
+            <Plus size={14} strokeWidth={2.5} /> Add a bottle
+          </button>
         </div>
 
         <div className="mt-3 flex flex-wrap gap-1.5">
