@@ -142,6 +142,8 @@
   --destructive-foreground: #ffffff;
   --border: var(--border-color);
   --input: var(--surface-2);
+  --input-strong: #0e0509;
+  --input-strong-border: #f4e9e3;
   --ring: var(--accent-color);
 
   --gold-soft: color-mix(in oklab, var(--accent-color) 55%, transparent);
