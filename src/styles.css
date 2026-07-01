@@ -34,6 +34,8 @@
   --color-destructive-foreground: var(--destructive-foreground);
   --color-border: var(--border);
   --color-input: var(--input);
+  --color-input-strong: var(--input-strong);
+  --color-input-strong-border: var(--input-strong-border);
   --color-ring: var(--ring);
   --color-gold: var(--accent-color);
   --color-gold-soft: var(--gold-soft);
