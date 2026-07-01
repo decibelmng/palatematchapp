@@ -288,8 +288,8 @@ function Rate() {
           <div className="relative flex-1 min-w-0">
             <Search
               aria-hidden
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
-              size={16}
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+              size={18}
             />
             <input
               type="search"
@@ -297,14 +297,14 @@ function Rate() {
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search wines already in the catalog…"
               aria-label="Search the wine catalog"
-              className="w-full rounded-full bg-muted/50 border border-transparent pl-10 pr-9 py-2 text-sm outline-none placeholder:text-muted-foreground/70 focus:bg-background focus:border-border transition"
+              className="w-full rounded-xl bg-background border-2 border-border pl-11 pr-10 py-3.5 text-base text-foreground outline-none placeholder:text-muted-foreground/70 shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
             />
             {q && (
               <button
                 type="button"
                 onClick={() => setQ("")}
                 aria-label="Clear search"
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full px-2 py-0.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent"
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full px-2 py-0.5 text-sm text-muted-foreground hover:text-foreground hover:bg-accent"
               >
                 ×
               </button>
@@ -313,10 +313,10 @@ function Rate() {
           <button
             type="button"
             onClick={() => jumpToAddForm()}
-            className="shrink-0 inline-flex items-center gap-1.5 rounded-full border-2 border-primary text-primary bg-background px-3.5 py-2 text-xs font-semibold hover:bg-primary hover:text-primary-foreground transition whitespace-nowrap"
+            className="shrink-0 inline-flex items-center gap-1.5 rounded-xl border-2 border-primary text-primary bg-background px-4 py-3.5 text-sm font-semibold hover:bg-primary hover:text-primary-foreground transition whitespace-nowrap shadow-sm"
             aria-label="Add a bottle that isn't in the catalog"
           >
-            <Plus size={14} strokeWidth={2.5} /> Add a bottle
+            <Plus size={16} strokeWidth={2.5} /> Add a bottle
           </button>
         </div>
 
