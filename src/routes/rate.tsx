@@ -297,7 +297,7 @@ function Rate() {
               onChange={(e) => setQ(e.target.value)}
               placeholder="Search wines already in the catalog…"
               aria-label="Search the wine catalog"
-              className="w-full rounded-xl bg-background border-2 border-border pl-11 pr-10 py-3.5 text-base text-foreground outline-none placeholder:text-muted-foreground/70 shadow-sm focus:border-primary focus:ring-2 focus:ring-primary/20 transition"
+              className="w-full rounded-xl bg-input-strong text-input-strong-border border-2 border-input-strong-border pl-11 pr-10 py-3.5 text-base outline-none placeholder:text-input-strong-border/50 shadow-md focus:ring-4 focus:ring-primary/30 transition"
             />
             {q && (
               <button
