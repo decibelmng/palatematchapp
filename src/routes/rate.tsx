@@ -254,20 +254,20 @@ function Rate() {
       </div>
 
       {ratedCount > 0 && (
-        <div className="mt-5 rounded-lg border border-border bg-card p-3 flex items-center justify-between gap-3">
+        <div className="mt-5 flex items-center justify-between gap-3 px-1">
           <p className="text-xs text-muted-foreground">
-            {ratedCount} rated · ready for what's next?
+            <span className="font-semibold text-foreground">{ratedCount}</span> rated · ready for what's next?
           </p>
-          <div className="flex gap-2">
+          <div className="flex gap-3">
             <Link
               to="/"
-              className="rounded-md border border-border px-3 py-1.5 text-xs font-medium hover:bg-accent"
+              className="text-xs font-medium text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
             >
               Your palate
             </Link>
             <Link
               to="/pour"
-              className="rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-xs font-medium hover:opacity-90"
+              className="text-xs font-semibold text-primary hover:opacity-80"
             >
               Pour next →
             </Link>
