@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { researchBottle, type ResearchResult, type DuplicateMatch } from "@/lib/add-bottle.functions";
@@ -28,23 +28,26 @@ const EMPTY: Form = {
 type Phase = "form" | "researching" | "duplicate" | "review" | "rate" | "saving";
 
 export function AddBottleDialog({
-  open, onClose, initialQuery,
+  open, onClose, initialQuery, initialForm, autoStart,
 }: {
   open: boolean;
   onClose: () => void;
   initialQuery?: string;
+  initialForm?: Partial<Form>;
+  autoStart?: boolean;
 }) {
   const session = useSession();
   const qc = useQueryClient();
   const research = useServerFn(researchBottle);
 
-  const [form, setForm] = useState<Form>({ ...EMPTY, name: initialQuery ?? "" });
+  const [form, setForm] = useState<Form>({ ...EMPTY, name: initialQuery ?? "", ...(initialForm ?? {}) });
   const [phase, setPhase] = useState<Phase>("form");
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<ResearchResult | null>(null);
   const [savedBottleId, setSavedBottleId] = useState<string | null>(null);
   const [stars, setStars] = useState<number | null>(null);
   const [userNote, setUserNote] = useState("");
+
 
   function reset() {
     setForm({ ...EMPTY });
@@ -62,11 +65,11 @@ export function AddBottleDialog({
     qc.invalidateQueries({ queryKey: ["ratings"] });
   }
 
-  async function onResearch(e: React.FormEvent) {
-    e.preventDefault();
+  async function runResearch() {
     setError(null);
     if (!form.producer.trim() || !form.name.trim()) {
       setError("Producer and name are required.");
+      setPhase("form");
       return;
     }
     setPhase("researching");
@@ -94,6 +97,22 @@ export function AddBottleDialog({
       setPhase("form");
     }
   }
+
+  function onResearch(e: React.FormEvent) {
+    e.preventDefault();
+    void runResearch();
+  }
+
+  const autoStartedRef = useRef(false);
+  useEffect(() => {
+    if (!open) { autoStartedRef.current = false; return; }
+    if (autoStart && !autoStartedRef.current && phase === "form") {
+      autoStartedRef.current = true;
+      void runResearch();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, autoStart]);
+
 
   async function rateExisting(d: DuplicateMatch) {
     if (!session) return;
