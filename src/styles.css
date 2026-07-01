@@ -90,6 +90,8 @@
   --destructive-foreground: #ffffff;
   --border: var(--border-color);
   --input: var(--surface-2);
+  --input-strong: #ffffff;
+  --input-strong-border: #33252b;
   --ring: var(--accent-color);
 
   --gold-soft: color-mix(in oklab, var(--accent-color) 60%, transparent);
