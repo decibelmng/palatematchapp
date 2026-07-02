@@ -62,6 +62,7 @@ const TYPE_LABEL: Record<WineType, string> = {
 };
 
 function Scan() {
+  const session = useSession();
   const { data: ratings } = useRatings();
   const ratedIds = useMemo(() => (ratings ?? []).map((r) => r.bottle_id), [ratings]);
   const { data: ratedBottles } = useBottlesByIds(ratedIds);
@@ -74,18 +75,34 @@ function Scan() {
   const mutation = useMutation({
     mutationFn: async (files: File[]) => {
       if (files.length === 0) throw new Error("Add at least one photo first.");
-      const images = await Promise.all(
-        files.map(async (file) => {
+      const uid = session?.user.id;
+      const scanUuid = crypto.randomUUID();
+      // Upload originals to private storage AND encode base64 for vision, in parallel.
+      const prepared = await Promise.all(
+        files.map(async (file, i) => {
           const { base64, mediaType } = await fileToBase64(file);
+          let storagePath: string | null = null;
+          if (uid) {
+            const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+            const path = `${uid}/${scanUuid}/page-${i + 1}.${ext}`;
+            const { error } = await supabase.storage
+              .from("scan-images")
+              .upload(path, file, { contentType: mediaType, upsert: true });
+            if (!error) storagePath = path;
+          }
           return {
             image_base64: base64,
             media_type: mediaType as "image/jpeg" | "image/png" | "image/webp" | "image/heic",
+            storagePath,
           };
         }),
       );
-      return await scan({ data: { images } });
+      const image_paths = prepared.map((p) => p.storagePath).filter((p): p is string => !!p);
+      const images = prepared.map(({ image_base64, media_type }) => ({ image_base64, media_type }));
+      return await scan({ data: { images, image_paths } });
     },
   });
+
 
   useEffect(() => {
     if (!mutation.isPending) return;
