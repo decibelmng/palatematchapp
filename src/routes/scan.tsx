@@ -152,7 +152,7 @@ function Scan() {
       if (!buckets.has(t)) buckets.set(t, []);
       buckets.get(t)!.push(row);
     });
-    const order: WineType[] = ["red", "white", "rose", "sparkling", "dessert", "fortified"];
+    const order: WineType[] = ["red", "white", "rose", "sparkling", "dessert"];
     return order
       .filter((t) => buckets.has(t))
       .map((t) => ({ type: t, rows: buckets.get(t)! }));
