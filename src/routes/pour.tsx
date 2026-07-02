@@ -67,12 +67,13 @@ function Pour() {
     const candidatesRaw = pool.map((b) => ({
       id: b.id, name: b.name, producer: b.producer, region: b.region,
       type: bottleType(b), vintage: b.vintage, fp: bottleToFp(b),
-      critic_score: b.critic_score,
+      critic_score: b.critic_score, price_band: b.price_band,
     }));
     const allCuvees = aggregateCandidates(candidatesRaw)
       .filter((c) => !ratedCuveeKeys.has(c.cuvee));
 
-    // 3. Per-type sections.
+    // 3. Per-type sections. Keep a wider pool per section (up to 60) so
+    // filters/sort have something to work with; the view caps to 10.
     const out: Section[] = [];
     for (const type of TYPE_ORDER) {
       const cands = allCuvees.filter((c) => c.type === type);
@@ -83,7 +84,7 @@ function Pour() {
         const ranked = [...cands]
           .filter((c) => c.critic_score !== null)
           .sort((a, b) => (b.critic_score ?? 0) - (a.critic_score ?? 0))
-          .slice(0, 10);
+          .slice(0, 60);
         if (ranked.length > 0) out.push({ type, mode: "fallback", nSameType: 0, items: ranked });
       } else {
         // Feed the recommender cuvée-aggregated rated rows and candidate cuvées.
@@ -95,7 +96,7 @@ function Pour() {
           id: c.id, name: c.name, producer: c.producer, region: c.region,
           type: c.type, fp: c.fp,
         }));
-        const recs = recommend(ratedFp, candFp).slice(0, 10);
+        const recs = recommend(ratedFp, candFp).slice(0, 60);
         const candByRepId = new Map(cands.map((c) => [c.id, c]));
         const ratedByRepId = new Map(sameTypeRated.map((r) => [r.id, r]));
         const items: RankedCuvee[] = recs
