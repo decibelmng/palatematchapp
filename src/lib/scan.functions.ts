@@ -146,6 +146,7 @@ export const scanWineList = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z.object({
       images: z.array(ImageSchema).min(1).max(8),
+      image_paths: z.array(z.string()).max(8).optional(),
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
@@ -254,8 +255,9 @@ export const scanWineList = createServerFn({ method: "POST" })
     const estimated = resolved.filter((r) => r.fp_source === "estimated").length;
     const unreadable = resolved.filter((r) => r.fp_source === "unreadable").length;
 
+    let scanId: string | null = null;
     try {
-      await supabase.from("scan_logs").insert({
+      const { data: inserted } = await supabase.from("scan_logs").insert({
         user_id: userId,
         n_photos: data.images.length,
         total_wines: resolved.length,
@@ -264,12 +266,16 @@ export const scanWineList = createServerFn({ method: "POST" })
         unreadable_count: unreadable,
         wines: resolved as any,
         raw_vision: { wines: rawWines } as any,
-      });
+        image_paths: data.image_paths ?? [],
+        status: "parsed",
+      }).select("id").single();
+      scanId = inserted?.id ?? null;
     } catch {
       // logging failure must not break the user-facing scan
     }
 
     return {
+      scan_id: scanId,
       wines: resolved,
       stats: {
         total: resolved.length,
