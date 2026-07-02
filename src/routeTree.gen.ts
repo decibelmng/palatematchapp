@@ -17,6 +17,7 @@ import { Route as MyRatingsRouteImport } from './routes/my-ratings'
 import { Route as FriendsRouteImport } from './routes/friends'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as RestaurantsIndexRouteImport } from './routes/restaurants.index'
+import { Route as ScanListRouteImport } from './routes/scan.list'
 import { Route as RestaurantsIdRouteImport } from './routes/restaurants.$id'
 import { Route as AddFriendUsernameRouteImport } from './routes/add-friend.$username'
 
@@ -60,6 +61,11 @@ const RestaurantsIndexRoute = RestaurantsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => RestaurantsRoute,
 } as any)
+const ScanListRoute = ScanListRouteImport.update({
+  id: '/list',
+  path: '/list',
+  getParentRoute: () => ScanRoute,
+} as any)
 const RestaurantsIdRoute = RestaurantsIdRouteImport.update({
   id: '/$id',
   path: '/$id',
@@ -78,9 +84,10 @@ export interface FileRoutesByFullPath {
   '/pour': typeof PourRoute
   '/rate': typeof RateRoute
   '/restaurants': typeof RestaurantsRouteWithChildren
-  '/scan': typeof ScanRoute
+  '/scan': typeof ScanRouteWithChildren
   '/add-friend/$username': typeof AddFriendUsernameRoute
   '/restaurants/$id': typeof RestaurantsIdRoute
+  '/scan/list': typeof ScanListRoute
   '/restaurants/': typeof RestaurantsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -89,9 +96,10 @@ export interface FileRoutesByTo {
   '/my-ratings': typeof MyRatingsRoute
   '/pour': typeof PourRoute
   '/rate': typeof RateRoute
-  '/scan': typeof ScanRoute
+  '/scan': typeof ScanRouteWithChildren
   '/add-friend/$username': typeof AddFriendUsernameRoute
   '/restaurants/$id': typeof RestaurantsIdRoute
+  '/scan/list': typeof ScanListRoute
   '/restaurants': typeof RestaurantsIndexRoute
 }
 export interface FileRoutesById {
@@ -102,9 +110,10 @@ export interface FileRoutesById {
   '/pour': typeof PourRoute
   '/rate': typeof RateRoute
   '/restaurants': typeof RestaurantsRouteWithChildren
-  '/scan': typeof ScanRoute
+  '/scan': typeof ScanRouteWithChildren
   '/add-friend/$username': typeof AddFriendUsernameRoute
   '/restaurants/$id': typeof RestaurantsIdRoute
+  '/scan/list': typeof ScanListRoute
   '/restaurants/': typeof RestaurantsIndexRoute
 }
 export interface FileRouteTypes {
@@ -119,6 +128,7 @@ export interface FileRouteTypes {
     | '/scan'
     | '/add-friend/$username'
     | '/restaurants/$id'
+    | '/scan/list'
     | '/restaurants/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -130,6 +140,7 @@ export interface FileRouteTypes {
     | '/scan'
     | '/add-friend/$username'
     | '/restaurants/$id'
+    | '/scan/list'
     | '/restaurants'
   id:
     | '__root__'
@@ -142,6 +153,7 @@ export interface FileRouteTypes {
     | '/scan'
     | '/add-friend/$username'
     | '/restaurants/$id'
+    | '/scan/list'
     | '/restaurants/'
   fileRoutesById: FileRoutesById
 }
@@ -152,7 +164,7 @@ export interface RootRouteChildren {
   PourRoute: typeof PourRoute
   RateRoute: typeof RateRoute
   RestaurantsRoute: typeof RestaurantsRouteWithChildren
-  ScanRoute: typeof ScanRoute
+  ScanRoute: typeof ScanRouteWithChildren
   AddFriendUsernameRoute: typeof AddFriendUsernameRoute
 }
 
@@ -214,6 +226,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RestaurantsIndexRouteImport
       parentRoute: typeof RestaurantsRoute
     }
+    '/scan/list': {
+      id: '/scan/list'
+      path: '/list'
+      fullPath: '/scan/list'
+      preLoaderRoute: typeof ScanListRouteImport
+      parentRoute: typeof ScanRoute
+    }
     '/restaurants/$id': {
       id: '/restaurants/$id'
       path: '/$id'
@@ -245,6 +264,16 @@ const RestaurantsRouteWithChildren = RestaurantsRoute._addFileChildren(
   RestaurantsRouteChildren,
 )
 
+interface ScanRouteChildren {
+  ScanListRoute: typeof ScanListRoute
+}
+
+const ScanRouteChildren: ScanRouteChildren = {
+  ScanListRoute: ScanListRoute,
+}
+
+const ScanRouteWithChildren = ScanRoute._addFileChildren(ScanRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   FriendsRoute: FriendsRoute,
@@ -252,7 +281,7 @@ const rootRouteChildren: RootRouteChildren = {
   PourRoute: PourRoute,
   RateRoute: RateRoute,
   RestaurantsRoute: RestaurantsRouteWithChildren,
-  ScanRoute: ScanRoute,
+  ScanRoute: ScanRouteWithChildren,
   AddFriendUsernameRoute: AddFriendUsernameRoute,
 }
 export const routeTree = rootRouteImport
