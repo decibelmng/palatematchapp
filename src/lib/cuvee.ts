@@ -70,6 +70,7 @@ export type CuveeCandidate = {
   type: WineType;
   fp: Record<FpKey, number>;
   critic_score: number | null;
+  price_band: string | null;
   vintages: number[];    // sorted desc
 };
 
@@ -92,6 +93,7 @@ type CandidateInput = {
   vintage?: number | null;
   fp: Record<FpKey, number>;
   critic_score?: number | null;
+  price_band?: string | null;
 };
 
 function meanFp(rows: { fp: Record<FpKey, number> }[]): Record<FpKey, number> {
