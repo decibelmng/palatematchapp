@@ -374,15 +374,18 @@ function Scan() {
         </div>
       )}
 
-      {stats && stats.total > 0 && (
-        <div className="mt-5 rounded-md border border-border bg-card/60 p-3 text-xs text-muted-foreground">
-          Read {stats.total} wine{stats.total > 1 ? "s" : ""} ·{" "}
-          <span className="text-foreground">{stats.matched} matched the catalog</span> ·{" "}
-          {stats.estimated} estimated
-          {stats.unreadable > 0 ? ` · ${stats.unreadable} unreadable` : ""}.
-          Catalog matches use calibrated fingerprints; estimated wines use a calibrated LLM inference on the same scale.
+
+      {stats && stats.total === 1 && (
+        <div className="mt-3 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+          Only one wine read — was this a <span className="font-medium">single bottle</span>?
+          <div className="mt-2">
+            <Link to="/scan/bottle" className="rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-xs font-medium">
+              Switch to bottle scan →
+            </Link>
+          </div>
         </div>
       )}
+
 
       {mutation.data?.scan_id && stats && stats.total > 0 && (
         <RestaurantAttribution scanId={mutation.data.scan_id} />
