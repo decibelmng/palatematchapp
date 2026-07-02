@@ -7,8 +7,10 @@ import {
   respondToFriendship,
   updateMyProfile,
   getMyProfile,
+  saveRecentGroupFn,
   type FriendshipRow,
   type SearchUserHit,
+  type RecentGroup,
 } from "@/lib/friends.functions";
 import { groupPredict, type GroupScored } from "@/lib/group.functions";
 import type { BottleFp, WineType, FpKey } from "@/lib/recommender";
