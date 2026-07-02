@@ -265,34 +265,34 @@ function BottleScan() {
 
           {result.match_quality === "ambiguous" && (
             <div>
-              <p className="text-sm font-medium">Is it one of these?</p>
-              <ul className="mt-2 space-y-2">
-                {result.candidates.map((c) => (
-                  <li key={c.id} className="rounded-md border border-border p-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium truncate">{c.name}</p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {[c.producer, c.region, c.vintage].filter(Boolean).join(" · ")}
-                        </p>
-                      </div>
-                      <button
-                        onClick={() => rateCandidate(c, 5)}
-                        className="shrink-0 text-xs rounded-md bg-primary text-primary-foreground px-3 py-1.5 font-medium"
-                      >
-                        That's it · 5★
-                      </button>
-                    </div>
-                    <ConfidenceMeter score={c.score} reasons={c.reasons} />
-                  </li>
+              <div className="flex items-baseline justify-between gap-3">
+                <p className="text-sm font-medium">Is it one of these?</p>
+                <p className="text-[11px] text-muted-foreground">Top {Math.min(3, result.candidates.length)} matches — compare & pick</p>
+              </div>
+              <ul className="mt-3 space-y-3">
+                {result.candidates.slice(0, 3).map((c, idx) => (
+                  <CompareCard
+                    key={c.id}
+                    c={c}
+                    rank={idx + 1}
+                    extracted={extracted}
+                    predicted={predictedForCandidate(c)}
+                    onRate={(s) => rateCandidate(c, s)}
+                  />
                 ))}
               </ul>
-              <button
-                onClick={() => setShowAdd(true)}
-                className="mt-3 rounded-md border border-primary text-primary px-3 py-2 text-sm font-medium"
-              >
-                None of these — add as new
-              </button>
+              <div className="mt-4 rounded-md border-2 border-dashed border-primary/50 bg-primary/5 p-3">
+                <p className="text-sm font-medium">None of these match?</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Add it as a new community bottle — we'll pre-fill everything from the label.
+                </p>
+                <button
+                  onClick={() => setShowAdd(true)}
+                  className="mt-2 w-full rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm font-medium"
+                >
+                  Add as new bottle →
+                </button>
+              </div>
             </div>
           )}
 
