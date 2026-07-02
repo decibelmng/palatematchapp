@@ -95,12 +95,13 @@ function MyProfileCard({ username, display_name, inviteURL }: { username: string
   const dirty = u !== username || d !== display_name;
 
   const share = async () => {
-    if (typeof navigator === "undefined") return;
+    if (typeof window === "undefined") return;
+    const nav: any = window.navigator;
     try {
-      if ("share" in navigator) {
-        await (navigator as any).share({ title: "Add me on Palate Match", url: inviteURL });
-      } else {
-        await navigator.clipboard.writeText(inviteURL);
+      if (nav && typeof nav.share === "function") {
+        await nav.share({ title: "Add me on Palate Match", url: inviteURL });
+      } else if (nav?.clipboard) {
+        await nav.clipboard.writeText(inviteURL);
         alert("Invite link copied.");
       }
     } catch {/* user cancelled */}
