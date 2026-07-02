@@ -27,6 +27,7 @@ export type BottleCandidate = {
   vintage: number | null;
   type: string | null;
   score: number;
+  reasons: string[];
   fp: {
     fresh: number; acid: number; tannin: number; fruit_dark: number;
     ripe: number; oak: number; body: number; savory: number;
@@ -40,9 +41,11 @@ export type BottleScanResult = {
   candidates: BottleCandidate[];
   best_score: number;
   match_quality: "confident" | "ambiguous" | "none";
+  match_summary: string;
   image_paths: string[];
   looks_like_menu: boolean;
 };
+
 
 const PROMPT = `You are reading photo(s) of a wine bottle LABEL (front, sometimes back). Return ONLY strict JSON — no prose, no markdown.
 
