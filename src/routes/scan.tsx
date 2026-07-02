@@ -4,11 +4,14 @@ import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { AuthGate } from "@/components/AuthGate";
 import { ListControls } from "@/components/ListControls";
+import { DrinkingGroupSelector } from "@/components/DrinkingGroupSelector";
 import { useRatings, useBottlesByIds, bottleToFp, bottleType } from "@/hooks/use-palate-data";
+import { useGroupSelection, useGroupPredict, type GroupCandidateInput } from "@/hooks/use-friends";
 import { recommend, type BottleFp, type RatedFp, type Recommendation, type WineType } from "@/lib/recommender";
 import { scanWineList, type ResolvedWine } from "@/lib/scan.functions";
 import { aggregateRated } from "@/lib/cuvee";
 import { applyControls, normalizePrice, isGreatValue, DEFAULT_CONTROLS, type Controls, type Priced } from "@/lib/list-controls";
+import type { GroupScored } from "@/lib/group.functions";
 
 export const Route = createFileRoute("/scan")({
   ssr: false,
