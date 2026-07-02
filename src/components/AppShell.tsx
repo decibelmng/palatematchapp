@@ -9,6 +9,7 @@ const TABS = [
   { to: "/rate", label: "Rate", icon: "★" },
   { to: "/my-ratings", label: "My ratings", icon: "✎" },
   { to: "/scan", label: "Scan list", icon: "⌬" },
+  { to: "/friends", label: "Friends", icon: "◑" },
 ] as const;
 
 export function AppShell({ children }: { children: ReactNode }) {
