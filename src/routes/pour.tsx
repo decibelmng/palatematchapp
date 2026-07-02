@@ -121,6 +121,25 @@ function Pour() {
   const nRated = ratings?.length ?? 0;
   const loading = !ratings || (ratedIds.length > 0 && !ratedBottles) || !pool;
 
+  // --- Group mode ---
+  const group = useGroupSelection();
+  const groupCandidates: GroupCandidateInput[] = useMemo(() => {
+    if (group.friendIds.length === 0) return [];
+    const seen = new Set<string>();
+    const out: GroupCandidateInput[] = [];
+    for (const s of sections) {
+      const cs = s.mode === "personalized" ? s.items.map((r) => r.cuvee) : s.items;
+      for (const c of cs) {
+        if (seen.has(c.id)) continue;
+        seen.add(c.id);
+        out.push({ id: c.id, name: c.name, producer: c.producer, region: c.region, type: c.type, fp: c.fp });
+      }
+    }
+    return out;
+  }, [sections, group.friendIds]);
+  const groupPred = useGroupPredict(group.friendIds, groupCandidates);
+  const groupScores = groupPred.data ?? null;
+
   return (
     <div className="pt-2">
       <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Pour these next</p>
@@ -128,6 +147,15 @@ function Pour() {
       <p className="mt-2 text-sm text-muted-foreground">
         Vintages of the same wine are grouped — we match on style, not year.
       </p>
+
+      <div className="mt-4">
+        <DrinkingGroupSelector
+          selectedIds={group.friendIds}
+          onToggle={group.toggle}
+          onClear={group.clear}
+          onSet={group.set}
+        />
+      </div>
 
       {loading ? (
         <p className="mt-8 text-sm text-muted-foreground">Loading recommendations…</p>
@@ -140,7 +168,7 @@ function Pour() {
             Go rate
           </Link>
           <div className="mt-8 space-y-10">
-            {sections.map((s) => <SectionView key={s.type} section={s} />)}
+            {sections.map((s) => <SectionView key={s.type} section={s} groupScores={groupScores} groupActive={group.friendIds.length > 0} groupLoading={groupPred.isFetching} />)}
           </div>
         </div>
       ) : (
@@ -148,7 +176,7 @@ function Pour() {
           {sections.length === 0 && (
             <p className="text-sm text-muted-foreground">No unrated bottles in the catalogue yet.</p>
           )}
-          {sections.map((s) => <SectionView key={s.type} section={s} />)}
+          {sections.map((s) => <SectionView key={s.type} section={s} groupScores={groupScores} groupActive={group.friendIds.length > 0} groupLoading={groupPred.isFetching} />)}
         </div>
       )}
     </div>
