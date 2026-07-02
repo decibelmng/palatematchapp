@@ -431,8 +431,140 @@ function Scan() {
       )}
 
       <p className="mt-10 text-[11px] text-muted-foreground">
-        Each scan makes one paid vision call. Your photo is processed and discarded — never stored by the app.
+        Each scan makes one paid vision call. Your photos are stored privately to your account so scans can improve as parsing gets better.
       </p>
+    </div>
+  );
+}
+
+function RestaurantAttribution({ scanId }: { scanId: string }) {
+  const searchFn = useServerFn(searchRestaurantsFn);
+  const createFn = useServerFn(createRestaurantFn);
+  const attributeFn = useServerFn(attributeScanFn);
+  const [q, setQ] = useState("");
+  const [debounced, setDebounced] = useState("");
+  const [city, setCity] = useState("");
+  const [attributed, setAttributed] = useState<{ name: string; id: string } | null>(null);
+  const [dismissed, setDismissed] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(q.trim()), 250);
+    return () => clearTimeout(t);
+  }, [q]);
+
+  const results = useQuery({
+    queryKey: ["restaurants", "search", debounced],
+    enabled: debounced.length >= 2 && !attributed,
+    queryFn: () => searchFn({ data: { q: debounced } }),
+    staleTime: 30_000,
+  });
+
+  const attribute = useMutation({
+    mutationFn: async ({ id, name }: { id: string; name: string }) => {
+      const res = await attributeFn({ data: { scan_id: scanId, restaurant_id: id } });
+      return { ...res, name };
+    },
+    onSuccess: (res) => {
+      setAttributed({ id: res.restaurant_id, name: res.restaurant_name });
+      toast.success(`Saved ${res.upserted} wine${res.upserted === 1 ? "" : "s"} to ${res.restaurant_name}`);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Couldn't save"),
+  });
+
+  const createAndAttribute = useMutation({
+    mutationFn: async (name: string) => {
+      const created = await createFn({ data: { name, city: city.trim() || null } });
+      const res = await attributeFn({ data: { scan_id: scanId, restaurant_id: created.id } });
+      return { ...res, name: created.name };
+    },
+    onSuccess: (res) => {
+      setAttributed({ id: res.restaurant_id, name: res.restaurant_name });
+      toast.success(`Created ${res.restaurant_name} and saved ${res.upserted} wines`);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Couldn't create restaurant"),
+  });
+
+  const busy = attribute.isPending || createAndAttribute.isPending;
+
+  if (dismissed) return null;
+  if (attributed) {
+    return (
+      <div className="mt-4 rounded-md border border-primary/40 bg-primary/5 p-3 text-xs">
+        <p className="text-foreground">Saved to <span className="font-medium">{attributed.name}</span>.</p>
+        <Link
+          to="/restaurants/$id"
+          params={{ id: attributed.id }}
+          className="mt-1 inline-block text-primary underline underline-offset-2"
+        >
+          View restaurant page →
+        </Link>
+      </div>
+    );
+  }
+
+  const showCreate = debounced.length >= 2 && results.data && results.data.length === 0;
+
+  return (
+    <div className="mt-4 rounded-md border border-border bg-card/70 p-3">
+      <div className="flex items-baseline justify-between gap-2">
+        <div>
+          <p className="text-sm font-medium">Where are you?</p>
+          <p className="text-[11px] text-muted-foreground">Optional — attribute this list to a restaurant.</p>
+        </div>
+        <button
+          onClick={() => setDismissed(true)}
+          className="text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-2"
+        >
+          Skip
+        </button>
+      </div>
+      <input
+        type="text"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="Restaurant name…"
+        disabled={busy}
+        className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring"
+      />
+      {results.data && results.data.length > 0 && (
+        <ul className="mt-2 divide-y divide-border rounded-md border border-border overflow-hidden">
+          {results.data.map((r) => (
+            <li key={r.id}>
+              <button
+                disabled={busy}
+                onClick={() => attribute.mutate({ id: r.id, name: r.name })}
+                className="w-full text-left px-3 py-2 text-sm hover:bg-accent/60 disabled:opacity-60"
+              >
+                <span className="font-medium">{r.name}</span>
+                {r.city && <span className="text-muted-foreground"> · {r.city}</span>}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {showCreate && (
+        <div className="mt-2 space-y-2">
+          <p className="text-xs text-muted-foreground">No match — create it:</p>
+          <input
+            type="text"
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            placeholder="City (optional)"
+            disabled={busy}
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          />
+          <button
+            disabled={busy || !debounced}
+            onClick={() => createAndAttribute.mutate(debounced)}
+            className="rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-sm font-medium disabled:opacity-60"
+          >
+            {createAndAttribute.isPending ? "Creating…" : `Create "${debounced}"`}
+          </button>
+        </div>
+      )}
+      {busy && !createAndAttribute.isPending && (
+        <p className="mt-2 text-[11px] text-muted-foreground">Saving…</p>
+      )}
     </div>
   );
 }
