@@ -38,6 +38,22 @@ async function fileToBase64(file: File): Promise<{ base64: string; mediaType: st
 
 type Ranked = Recommendation & { scanned: ResolvedWine };
 
+type ScanRow = Priced & {
+  key: string;
+  ranked: Ranked;
+  type: WineType;
+  isCatalog: boolean;
+  greatValue: boolean;
+};
+
+const TYPE_LABEL: Record<WineType, string> = {
+  red: "Reds for you",
+  white: "Whites for you",
+  rose: "Rosés for you",
+  sparkling: "Sparkling for you",
+  dessert: "Dessert wines for you",
+};
+
 function Scan() {
   const { data: ratings } = useRatings();
   const ratedIds = useMemo(() => (ratings ?? []).map((r) => r.bottle_id), [ratings]);
