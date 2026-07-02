@@ -334,62 +334,20 @@ function Scan() {
         </div>
       )}
 
-      {displayList.length > 0 && (
-        <ul className="mt-6 divide-y divide-border">
-          {displayList.map((r) => {
-            const flag = flagFor(r);
-            const isCatalog = r.scanned.fp_source === "catalog";
-            return (
-              <li key={r.bottle.id} className="py-4 flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-medium leading-tight truncate">{r.bottle.name}</p>
-                    <span
-                      className={`shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border ${
-                        isCatalog
-                          ? "border-primary/40 bg-primary/10 text-primary"
-                          : "border-border bg-muted text-muted-foreground"
-                      }`}
-                      title={isCatalog ? `Matched: ${r.scanned.matched_bottle_name}` : "No catalog match — calibrated LLM estimate"}
-                    >
-                      {isCatalog ? "catalog" : "estimated"}
-                    </span>
-                  </div>
-                  <p className="text-xs text-muted-foreground truncate">
-                    {[r.bottle.region, r.scanned.grape, r.scanned.price].filter(Boolean).join(" · ")}
-                  </p>
-                  {enoughRatings && r.nearest && (
-                    <p className="mt-1 text-[11px] text-muted-foreground">
-                      like your {r.nearest.stars}★ <span className="text-foreground/80">{r.nearest.name}</span>
-                    </p>
-                  )}
-                  {flag && (
-                    <p className={`mt-1 text-[11px] ${
-                      flag.tone === "good" ? "text-primary" :
-                      flag.tone === "bad" ? "text-destructive" :
-                      "text-muted-foreground italic"
-                    }`}>
-                      {flag.label}
-                    </p>
-                  )}
-                </div>
-                {enoughRatings && (
-                  <div className="shrink-0 text-right">
-                    <span className="font-serif text-primary text-xl">{r.predicted.toFixed(1)}</span>
-                    <span className="text-primary text-sm">★</span>
-                  </div>
-                )}
-              </li>
-            );
-          })}
-        </ul>
+      {grouped.length > 0 && (
+        <div className="mt-6 space-y-8">
+          {grouped.map((g) => (
+            <ScanSection
+              key={g.type}
+              type={g.type}
+              rows={g.rows}
+              enoughRatings={enoughRatings}
+              flagFor={flagFor}
+            />
+          ))}
+        </div>
       )}
 
-      {ranked.length > 40 && (
-        <p className="mt-3 text-xs text-muted-foreground">
-          Showing top 40 of {ranked.length} readable wines.
-        </p>
-      )}
 
       {unreadable.length > 0 && (
         <div className="mt-8">
