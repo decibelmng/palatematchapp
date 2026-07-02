@@ -223,11 +223,11 @@ export const scanBottleLabel = createServerFn({ method: "POST" })
           threshold: 0.22,
         });
         const scored = ((rows ?? []) as any[])
-          .map((r) => ({ r, s: score(extracted, r) }))
-          .filter((x) => x.s > 0)
-          .sort((a, b) => b.s - a.s)
+          .map((r) => ({ r, ...scoreWithReasons(extracted, r) }))
+          .filter((x) => x.score > 0)
+          .sort((a, b) => b.score - a.score)
           .slice(0, 3);
-        candidates = scored.map(({ r, s }) => ({
+        candidates = scored.map(({ r, score: s, reasons }) => ({
           id: r.id,
           name: r.name,
           producer: r.producer,
@@ -235,6 +235,7 @@ export const scanBottleLabel = createServerFn({ method: "POST" })
           vintage: r.vintage,
           type: r.type,
           score: s,
+          reasons,
           fp: {
             fresh: r.fp_fresh, acid: r.fp_acid, tannin: r.fp_tannin,
             fruit_dark: r.fp_fruit_dark, ripe: r.fp_ripe, oak: r.fp_oak,
@@ -248,6 +249,16 @@ export const scanBottleLabel = createServerFn({ method: "POST" })
 
     const match_quality: BottleScanResult["match_quality"] =
       bestScore >= 0.85 ? "confident" : bestScore >= 0.6 ? "ambiguous" : "none";
+
+    const match_summary =
+      match_quality === "confident"
+        ? "Strong match — producer and label words line up with a catalog wine."
+        : match_quality === "ambiguous"
+        ? "Close, but not sure — a few label words match more than one wine in the catalog."
+        : candidates.length === 0
+        ? "No catalog wine overlapped enough with what's on the label."
+        : "Best candidate is below the confidence threshold.";
+
 
     // ---------- Persist scan log ----------
     let scanId: string | null = null;
