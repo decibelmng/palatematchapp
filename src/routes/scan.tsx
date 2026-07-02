@@ -170,6 +170,24 @@ function Scan() {
       .map((t) => ({ type: t, rows: buckets.get(t)! }));
   }, [ranked]);
 
+  // --- Group mode: score the scanned wines for the selected friend set ---
+  const group = useGroupSelection();
+  const groupCandidates: GroupCandidateInput[] = useMemo(() => {
+    if (group.friendIds.length === 0) return [];
+    return ranked.map((r) => ({
+      id: r.bottle.id,
+      name: r.bottle.name,
+      producer: r.bottle.producer ?? null,
+      region: r.bottle.region ?? null,
+      type: r.bottle.type,
+      fp: r.bottle.fp,
+    }));
+  }, [ranked, group.friendIds]);
+  const groupPred = useGroupPredict(group.friendIds, groupCandidates);
+  const groupScores = groupPred.data ?? null;
+  const groupActive = group.friendIds.length > 0;
+
+
 
   function flagFor(r: Ranked): { label: string; tone: "good" | "bad" | "warn" } | null {
     if (!enoughRatings) return null;
