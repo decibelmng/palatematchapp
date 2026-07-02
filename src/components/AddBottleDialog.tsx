@@ -406,12 +406,12 @@ export function AddBottleDialog({
   );
 }
 
-function Field({ label, value, onChange, placeholder }: {
-  label: string; value: string; onChange: (v: string) => void; placeholder?: string;
+function Field({ label, value, onChange, placeholder, hint }: {
+  label: string; value: string; onChange: (v: string) => void; placeholder?: string; hint?: string;
 }) {
   return (
     <label className="block text-xs text-muted-foreground">
-      {label}
+      <span>{label}</span>
       <input
         type="text"
         value={value}
@@ -419,6 +419,7 @@ function Field({ label, value, onChange, placeholder }: {
         placeholder={placeholder}
         className="mt-1 w-full bg-input border border-border rounded-md px-3 py-2 text-sm text-foreground"
       />
+      {hint && <span className="mt-1 block text-[10px] leading-snug text-muted-foreground/80">{hint}</span>}
     </label>
   );
 }
