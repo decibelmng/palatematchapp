@@ -206,11 +206,33 @@ export function AddBottleDialog({
 
         {phase === "form" && (
           <form onSubmit={onResearch} className="space-y-3">
-            <Field label="Producer *" value={form.producer} onChange={(v) => setForm({ ...form, producer: v })} placeholder="e.g. Le Macchiole" />
-            <Field label="Wine / cuvée *" value={form.name} onChange={(v) => setForm({ ...form, name: v })} placeholder="e.g. Le Colonne Bolgheri" />
+            <p className="text-[11px] text-muted-foreground -mb-1">
+              Copy what's on the label. Only the winery is required — leave anything else blank if you're not sure.
+            </p>
+            <Field
+              label="Who makes it? *"
+              hint="The winery — usually the biggest name on the label."
+              value={form.producer}
+              onChange={(v) => setForm({ ...form, producer: v })}
+              placeholder="e.g. Silver Oak, Château Margaux, Le Macchiole"
+            />
+            <Field
+              label="What's it called?"
+              hint="The wine's specific name on the label. Leave blank if the label is just the winery + region — many classic wines have no separate name."
+              value={form.name}
+              onChange={(v) => setForm({ ...form, name: v })}
+              placeholder="e.g. Hillside Select, Le Colonne  (or leave blank)"
+            />
+            <Field
+              label="Where's it from?"
+              hint="The region or appellation on the label."
+              value={form.region}
+              onChange={(v) => setForm({ ...form, region: v })}
+              placeholder="e.g. Napa Valley, Barolo, Rioja, Bolgheri"
+            />
             <div className="grid grid-cols-2 gap-3">
               <label className="block text-xs text-muted-foreground">
-                Type
+                Red / white / …
                 <select
                   value={form.type}
                   onChange={(e) => setForm({ ...form, type: e.target.value as WineType })}
@@ -223,25 +245,46 @@ export function AddBottleDialog({
                   <option value="dessert">Dessert</option>
                 </select>
               </label>
-              <Field label="Vintage" value={form.vintage} onChange={(v) => setForm({ ...form, vintage: v.replace(/[^0-9]/g, "").slice(0, 4) })} placeholder="2022" />
+              <Field
+                label="Vintage"
+                value={form.vintage}
+                onChange={(v) => setForm({ ...form, vintage: v.replace(/[^0-9]/g, "").slice(0, 4) })}
+                placeholder="e.g. 2020"
+              />
             </div>
-            <Field label="Region" value={form.region} onChange={(v) => setForm({ ...form, region: v })} placeholder="Toscana, Bolgheri" />
-            <Field label="Country" value={form.country} onChange={(v) => setForm({ ...form, country: v })} placeholder="Italy" />
-            <Field label="Grape(s)" value={form.grape} onChange={(v) => setForm({ ...form, grape: v })} placeholder="Merlot, Petit Verdot, Cab Franc" />
-            <Field label="Price band (optional)" value={form.price_band} onChange={(v) => setForm({ ...form, price_band: v })} placeholder="$$, $$$" />
+            <Field
+              label="Country"
+              value={form.country}
+              onChange={(v) => setForm({ ...form, country: v })}
+              placeholder="e.g. Italy, France, USA"
+            />
+            <Field
+              label="Grape(s)"
+              hint="If the label doesn't say, leave blank — we'll infer from the region."
+              value={form.grape}
+              onChange={(v) => setForm({ ...form, grape: v })}
+              placeholder="e.g. Cabernet Sauvignon, Nebbiolo"
+            />
+            <Field
+              label="Rough price band"
+              value={form.price_band}
+              onChange={(v) => setForm({ ...form, price_band: v })}
+              placeholder="$, $$, $$$"
+            />
 
             {error && <p className="text-xs text-destructive">{error}</p>}
             <p className="text-[11px] text-muted-foreground">
-              The app will research the wine's style and produce an estimated fingerprint on the same calibrated scale as the catalog.
+              We'll research the wine's style and estimate a fingerprint on the same scale as the catalog.
             </p>
             <div className="flex gap-2 pt-1">
               <button type="button" onClick={close} className="flex-1 rounded-md border border-border px-3 py-2 text-sm">Cancel</button>
               <button type="submit" className="flex-1 rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm font-medium">
-                Research & continue
+                Research &amp; continue
               </button>
             </div>
           </form>
         )}
+
 
         {phase === "researching" && (
           <div className="py-10 text-center text-sm text-muted-foreground">
