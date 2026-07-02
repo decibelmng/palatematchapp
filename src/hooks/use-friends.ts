@@ -90,29 +90,27 @@ export function useUpdateProfile() {
 }
 
 // ---------- "Who's drinking?" group selection ----------
-// Session-state only (per user, per tab). Recent groups persist in localStorage.
+// Session-state only (per user, per tab). Recent groups persist on the profile.
 
-const RECENT_KEY = (uid: string) => `pm.recentGroups.${uid}`;
+export type { RecentGroup };
 
-export type RecentGroup = { ids: string[]; label: string; usedAt: number };
-
-export function loadRecentGroups(uid: string | undefined): RecentGroup[] {
-  if (!uid || typeof window === "undefined") return [];
-  try {
-    const raw = window.localStorage.getItem(RECENT_KEY(uid));
-    if (!raw) return [];
-    const arr = JSON.parse(raw) as RecentGroup[];
-    return arr.sort((a, b) => b.usedAt - a.usedAt).slice(0, 5);
-  } catch { return []; }
+export function useRecentGroups() {
+  const { data: profile } = useMyProfile();
+  const raw = (profile as { recent_groups?: unknown } | undefined)?.recent_groups;
+  const list: RecentGroup[] = Array.isArray(raw)
+    ? (raw as RecentGroup[]).filter(
+        (g) => g && Array.isArray(g.ids) && typeof g.label === "string" && typeof g.usedAt === "number",
+      )
+    : [];
+  return [...list].sort((a, b) => b.usedAt - a.usedAt).slice(0, 5);
 }
 
-export function saveRecentGroup(uid: string | undefined, ids: string[], label: string) {
-  if (!uid || typeof window === "undefined" || ids.length === 0) return;
-  const existing = loadRecentGroups(uid);
-  const key = [...ids].sort().join(",");
-  const dedup = existing.filter((g) => [...g.ids].sort().join(",") !== key);
-  const next = [{ ids, label, usedAt: Date.now() }, ...dedup].slice(0, 5);
-  window.localStorage.setItem(RECENT_KEY(uid), JSON.stringify(next));
+export function useSaveRecentGroup() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (v: { ids: string[]; label: string }) => saveRecentGroupFn({ data: v }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["my-profile"] }),
+  });
 }
 
 export function useGroupSelection() {
