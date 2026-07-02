@@ -350,6 +350,130 @@ export type Database = {
         }
         Relationships: []
       }
+      scan_wines: {
+        Row: {
+          batch_index: number
+          created_at: string
+          cuvee: string | null
+          fp: Json | null
+          fp_source: string | null
+          grape: string | null
+          id: string
+          match_reasons: Json | null
+          match_score: number | null
+          matched_bottle_id: string | null
+          predicted_stars: number | null
+          price: string | null
+          producer: string | null
+          raw_json: Json | null
+          region: string | null
+          scan_id: string
+          user_id: string
+          vintage: number | null
+          wine_type: string | null
+        }
+        Insert: {
+          batch_index?: number
+          created_at?: string
+          cuvee?: string | null
+          fp?: Json | null
+          fp_source?: string | null
+          grape?: string | null
+          id?: string
+          match_reasons?: Json | null
+          match_score?: number | null
+          matched_bottle_id?: string | null
+          predicted_stars?: number | null
+          price?: string | null
+          producer?: string | null
+          raw_json?: Json | null
+          region?: string | null
+          scan_id: string
+          user_id: string
+          vintage?: number | null
+          wine_type?: string | null
+        }
+        Update: {
+          batch_index?: number
+          created_at?: string
+          cuvee?: string | null
+          fp?: Json | null
+          fp_source?: string | null
+          grape?: string | null
+          id?: string
+          match_reasons?: Json | null
+          match_score?: number | null
+          matched_bottle_id?: string | null
+          predicted_stars?: number | null
+          price?: string | null
+          producer?: string | null
+          raw_json?: Json | null
+          region?: string | null
+          scan_id?: string
+          user_id?: string
+          vintage?: number | null
+          wine_type?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scan_wines_scan_id_fkey"
+            columns: ["scan_id"]
+            isOneToOne: false
+            referencedRelation: "scans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      scans: {
+        Row: {
+          batch_count: number
+          batches_done: number
+          batches_failed: Json
+          created_at: string
+          id: string
+          image_paths: Json
+          page_count: number
+          restaurant_id: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          batch_count?: number
+          batches_done?: number
+          batches_failed?: Json
+          created_at?: string
+          id?: string
+          image_paths?: Json
+          page_count?: number
+          restaurant_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          batch_count?: number
+          batches_done?: number
+          batches_failed?: Json
+          created_at?: string
+          id?: string
+          image_paths?: Json
+          page_count?: number
+          restaurant_id?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scans_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
