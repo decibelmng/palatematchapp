@@ -83,7 +83,7 @@ function RestaurantDetail() {
       }));
       let predByBottle = new Map<string, number>();
       if (enoughRatings) {
-        const recs = recommend(candFps, rated, { k: 12, minWeight: 0.05 });
+        const recs = recommend(rated, candFps, { k: 12, minWeight: 0.05 });
         for (const r of recs) predByBottle.set(r.bottle.id, r.predicted);
       }
 
