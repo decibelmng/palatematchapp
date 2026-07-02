@@ -1,17 +1,21 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { AuthGate } from "@/components/AuthGate";
 import { ListControls } from "@/components/ListControls";
 import { DrinkingGroupSelector } from "@/components/DrinkingGroupSelector";
 import { useRatings, useBottlesByIds, bottleToFp, bottleType } from "@/hooks/use-palate-data";
+import { useSession } from "@/hooks/use-session";
 import { useGroupSelection, useGroupPredict, type GroupCandidateInput } from "@/hooks/use-friends";
 import { recommend, type BottleFp, type RatedFp, type Recommendation, type WineType } from "@/lib/recommender";
 import { scanWineList, type ResolvedWine } from "@/lib/scan.functions";
+import { searchRestaurantsFn, createRestaurantFn, attributeScanFn } from "@/lib/restaurants.functions";
 import { aggregateRated } from "@/lib/cuvee";
 import { applyControls, normalizePrice, isGreatValue, DEFAULT_CONTROLS, type Controls, type Priced } from "@/lib/list-controls";
 import type { GroupScored } from "@/lib/group.functions";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/scan")({
   ssr: false,
