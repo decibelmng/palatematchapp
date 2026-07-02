@@ -251,6 +251,10 @@ function BottleScan() {
             {extracted.type && <div className="mt-1"><WineTypeBadge type={extracted.type} /></div>}
           </div>
 
+          {(result.match_quality === "confident" || result.match_quality === "ambiguous") && (
+            <p className="text-xs text-muted-foreground -mb-2">{result.match_summary}</p>
+          )}
+
           {result.match_quality === "confident" && result.candidates[0] && (
             <ConfidentCard
               c={result.candidates[0]}
@@ -262,22 +266,24 @@ function BottleScan() {
           {result.match_quality === "ambiguous" && (
             <div>
               <p className="text-sm font-medium">Is it one of these?</p>
-              <ul className="mt-2 divide-y divide-border rounded-md border border-border">
+              <ul className="mt-2 space-y-2">
                 {result.candidates.map((c) => (
-                  <li key={c.id} className="p-3 flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{c.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {[c.producer, c.region, c.vintage].filter(Boolean).join(" · ")}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">match {(c.score * 100).toFixed(0)}%</p>
+                  <li key={c.id} className="rounded-md border border-border p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{c.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {[c.producer, c.region, c.vintage].filter(Boolean).join(" · ")}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => rateCandidate(c, 5)}
+                        className="shrink-0 text-xs rounded-md bg-primary text-primary-foreground px-3 py-1.5 font-medium"
+                      >
+                        That's it · 5★
+                      </button>
                     </div>
-                    <button
-                      onClick={() => rateCandidate(c, 5)}
-                      className="shrink-0 text-xs rounded-md bg-primary text-primary-foreground px-3 py-1.5 font-medium"
-                    >
-                      That's it · 5★
-                    </button>
+                    <ConfidenceMeter score={c.score} reasons={c.reasons} />
                   </li>
                 ))}
               </ul>
@@ -289,6 +295,7 @@ function BottleScan() {
               </button>
             </div>
           )}
+
 
           {result.match_quality === "none" && (
             <div className="rounded-md border border-dashed border-border bg-card/40 p-4">
