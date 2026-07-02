@@ -27,6 +27,7 @@ export type BottleCandidate = {
   vintage: number | null;
   type: string | null;
   score: number;
+  reasons: string[];
   fp: {
     fresh: number; acid: number; tannin: number; fruit_dark: number;
     ripe: number; oak: number; body: number; savory: number;
@@ -40,9 +41,11 @@ export type BottleScanResult = {
   candidates: BottleCandidate[];
   best_score: number;
   match_quality: "confident" | "ambiguous" | "none";
+  match_summary: string;
   image_paths: string[];
   looks_like_menu: boolean;
 };
+
 
 const PROMPT = `You are reading photo(s) of a wine bottle LABEL (front, sometimes back). Return ONLY strict JSON — no prose, no markdown.
 
@@ -91,11 +94,14 @@ function tok(s: string | null | undefined): string[] {
   return norm(s).split(" ").filter((t) => t.length >= 3 && !STOPWORDS.has(t));
 }
 
-function score(
+function scoreWithReasons(
   e: BottleExtract,
-  b: { name: string; producer: string | null; type: string | null; region: string | null },
-): number {
-  if (e.type && b.type && e.type !== b.type) return 0;
+  b: { name: string; producer: string | null; type: string | null; region: string | null; vintage: number | null },
+): { score: number; reasons: string[] } {
+  const reasons: string[] = [];
+  if (e.type && b.type && e.type !== b.type) {
+    return { score: 0, reasons: [`Type mismatch (label ${e.type} vs catalog ${b.type})`] };
+  }
   const sProd = tok(e.producer);
   const sName = tok(e.wine_name);
   const sReg  = tok(e.region);
@@ -103,21 +109,56 @@ function score(
   const bName = tok(b.name);
   const bReg  = tok(b.region);
 
-  const prodOv = sProd.filter((t) => bProd.includes(t) || bName.includes(t)).length;
-  const nameOv = sName.filter((t) => bName.includes(t) || bProd.includes(t)).length;
-  const regOv  = sReg.filter((t) => bReg.includes(t) || bName.includes(t)).length;
+  const prodMatched = sProd.filter((t) => bProd.includes(t) || bName.includes(t));
+  const nameMatched = sName.filter((t) => bName.includes(t) || bProd.includes(t));
+  const regMatched  = sReg.filter((t) => bReg.includes(t) || bName.includes(t));
+
+  const prodOv = prodMatched.length;
+  const nameOv = nameMatched.length;
+  const regOv  = regMatched.length;
 
   const haveProd = sProd.length > 0;
   const needName = Math.max(1, Math.ceil(sName.length / 2));
-  if (haveProd && prodOv < 1) return 0;
-  if (!haveProd && (sName.length + prodOv) < 2) return 0;
-  if (sName.length > 0 && nameOv < needName) return 0;
+  if (haveProd && prodOv < 1) {
+    return { score: 0, reasons: [`Producer "${e.producer}" doesn't overlap with "${b.producer ?? b.name}"`] };
+  }
+  if (!haveProd && (sName.length + prodOv) < 2) {
+    return { score: 0, reasons: ["Not enough label words to match confidently"] };
+  }
+  if (sName.length > 0 && nameOv < needName) {
+    return { score: 0, reasons: [`Cuvée name "${e.wine_name}" only partially overlaps`] };
+  }
 
   const prodScore = haveProd ? Math.min(1, prodOv / Math.max(1, sProd.length)) : 0.5;
   const nameScore = sName.length > 0 ? nameOv / sName.length : 0.5;
   const regBonus  = sReg.length > 0 && regOv > 0 ? 0.05 : 0;
-  return Math.min(1, 0.6 + 0.25 * prodScore + 0.15 * nameScore + regBonus);
+  const score = Math.min(1, 0.6 + 0.25 * prodScore + 0.15 * nameScore + regBonus);
+
+  if (e.type && b.type && e.type === b.type) reasons.push(`Same type (${e.type})`);
+  if (prodMatched.length) {
+    const pct = Math.round((prodOv / Math.max(1, sProd.length)) * 100);
+    reasons.push(`Producer overlap ${pct}% — matched "${prodMatched.join(", ")}"`);
+  }
+  if (nameMatched.length) {
+    reasons.push(`Cuvée words matched: "${nameMatched.join(", ")}"`);
+  } else if (sName.length === 0) {
+    reasons.push("Label had no cuvée name — matched on producer + region");
+  }
+  if (regMatched.length) {
+    reasons.push(`Region overlap on "${regMatched.join(", ")}"`);
+  } else if (sReg.length > 0 && b.region) {
+    reasons.push(`Region on label ("${e.region}") didn't align with catalog region ("${b.region}")`);
+  }
+  if (e.vintage && b.vintage) {
+    reasons.push(
+      e.vintage === b.vintage
+        ? `Same vintage ${e.vintage}`
+        : `Different vintage (label ${e.vintage}, catalog ${b.vintage}) — same cuvée`,
+    );
+  }
+  return { score, reasons };
 }
+
 
 export const scanBottleLabel = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -182,11 +223,11 @@ export const scanBottleLabel = createServerFn({ method: "POST" })
           threshold: 0.22,
         });
         const scored = ((rows ?? []) as any[])
-          .map((r) => ({ r, s: score(extracted, r) }))
-          .filter((x) => x.s > 0)
-          .sort((a, b) => b.s - a.s)
+          .map((r) => ({ r, ...scoreWithReasons(extracted, r) }))
+          .filter((x) => x.score > 0)
+          .sort((a, b) => b.score - a.score)
           .slice(0, 3);
-        candidates = scored.map(({ r, s }) => ({
+        candidates = scored.map(({ r, score: s, reasons }) => ({
           id: r.id,
           name: r.name,
           producer: r.producer,
@@ -194,6 +235,7 @@ export const scanBottleLabel = createServerFn({ method: "POST" })
           vintage: r.vintage,
           type: r.type,
           score: s,
+          reasons,
           fp: {
             fresh: r.fp_fresh, acid: r.fp_acid, tannin: r.fp_tannin,
             fruit_dark: r.fp_fruit_dark, ripe: r.fp_ripe, oak: r.fp_oak,
@@ -207,6 +249,16 @@ export const scanBottleLabel = createServerFn({ method: "POST" })
 
     const match_quality: BottleScanResult["match_quality"] =
       bestScore >= 0.85 ? "confident" : bestScore >= 0.6 ? "ambiguous" : "none";
+
+    const match_summary =
+      match_quality === "confident"
+        ? "Strong match — producer and label words line up with a catalog wine."
+        : match_quality === "ambiguous"
+        ? "Close, but not sure — a few label words match more than one wine in the catalog."
+        : candidates.length === 0
+        ? "No catalog wine overlapped enough with what's on the label."
+        : "Best candidate is below the confidence threshold.";
+
 
     // ---------- Persist scan log ----------
     let scanId: string | null = null;
@@ -232,6 +284,7 @@ export const scanBottleLabel = createServerFn({ method: "POST" })
       candidates,
       best_score: bestScore,
       match_quality,
+      match_summary,
       image_paths: data.image_paths ?? [],
       looks_like_menu,
     };

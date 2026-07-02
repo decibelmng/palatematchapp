@@ -251,6 +251,10 @@ function BottleScan() {
             {extracted.type && <div className="mt-1"><WineTypeBadge type={extracted.type} /></div>}
           </div>
 
+          {(result.match_quality === "confident" || result.match_quality === "ambiguous") && (
+            <p className="text-xs text-muted-foreground -mb-2">{result.match_summary}</p>
+          )}
+
           {result.match_quality === "confident" && result.candidates[0] && (
             <ConfidentCard
               c={result.candidates[0]}
@@ -262,22 +266,24 @@ function BottleScan() {
           {result.match_quality === "ambiguous" && (
             <div>
               <p className="text-sm font-medium">Is it one of these?</p>
-              <ul className="mt-2 divide-y divide-border rounded-md border border-border">
+              <ul className="mt-2 space-y-2">
                 {result.candidates.map((c) => (
-                  <li key={c.id} className="p-3 flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium truncate">{c.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {[c.producer, c.region, c.vintage].filter(Boolean).join(" · ")}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground mt-0.5">match {(c.score * 100).toFixed(0)}%</p>
+                  <li key={c.id} className="rounded-md border border-border p-3">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{c.name}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {[c.producer, c.region, c.vintage].filter(Boolean).join(" · ")}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => rateCandidate(c, 5)}
+                        className="shrink-0 text-xs rounded-md bg-primary text-primary-foreground px-3 py-1.5 font-medium"
+                      >
+                        That's it · 5★
+                      </button>
                     </div>
-                    <button
-                      onClick={() => rateCandidate(c, 5)}
-                      className="shrink-0 text-xs rounded-md bg-primary text-primary-foreground px-3 py-1.5 font-medium"
-                    >
-                      That's it · 5★
-                    </button>
+                    <ConfidenceMeter score={c.score} reasons={c.reasons} />
                   </li>
                 ))}
               </ul>
@@ -289,6 +295,7 @@ function BottleScan() {
               </button>
             </div>
           )}
+
 
           {result.match_quality === "none" && (
             <div className="rounded-md border border-dashed border-border bg-card/40 p-4">
@@ -392,6 +399,7 @@ function ConfidentCard({
           <span className="text-primary">★</span>
         </p>
       )}
+      <ConfidenceMeter score={c.score} reasons={c.reasons} />
       <div className="mt-3">
         <p className="text-xs text-muted-foreground mb-1">Rate it (one tap)</p>
         <StarTap value={stars} onChange={(s) => { if (s != null) { setStars(s); onRate(s); } }} />
@@ -400,3 +408,41 @@ function ConfidentCard({
     </div>
   );
 }
+
+function ConfidenceMeter({ score, reasons }: { score: number; reasons: string[] }) {
+  const pct = Math.round(score * 100);
+  const label = score >= 0.85 ? "High confidence" : score >= 0.6 ? "Possible match" : "Low confidence";
+  const tone =
+    score >= 0.85
+      ? "bg-primary text-primary-foreground"
+      : score >= 0.6
+      ? "bg-amber-500/20 text-amber-700 dark:text-amber-300"
+      : "bg-muted text-muted-foreground";
+  const bar =
+    score >= 0.85 ? "bg-primary" : score >= 0.6 ? "bg-amber-500" : "bg-muted-foreground/60";
+  return (
+    <div className="mt-3">
+      <div className="flex items-center gap-2">
+        <span className={`text-[10px] uppercase tracking-wider rounded-full px-2 py-0.5 ${tone}`}>
+          {label} · {pct}%
+        </span>
+      </div>
+      <div className="mt-1.5 h-1.5 w-full rounded-full bg-border overflow-hidden">
+        <div className={`h-full ${bar}`} style={{ width: `${pct}%` }} />
+      </div>
+      {reasons.length > 0 && (
+        <details className="mt-2 text-[11px] text-muted-foreground">
+          <summary className="cursor-pointer select-none hover:text-foreground">
+            Why this match?
+          </summary>
+          <ul className="mt-1.5 space-y-0.5 pl-4 list-disc">
+            {reasons.map((r, i) => (
+              <li key={i}>{r}</li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </div>
+  );
+}
+
