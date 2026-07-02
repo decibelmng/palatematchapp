@@ -13,7 +13,9 @@ import { Route as ScanRouteImport } from './routes/scan'
 import { Route as RateRouteImport } from './routes/rate'
 import { Route as PourRouteImport } from './routes/pour'
 import { Route as MyRatingsRouteImport } from './routes/my-ratings'
+import { Route as FriendsRouteImport } from './routes/friends'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AddFriendUsernameRouteImport } from './routes/add-friend.$username'
 
 const ScanRoute = ScanRouteImport.update({
   id: '/scan',
@@ -35,48 +37,88 @@ const MyRatingsRoute = MyRatingsRouteImport.update({
   path: '/my-ratings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const FriendsRoute = FriendsRouteImport.update({
+  id: '/friends',
+  path: '/friends',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AddFriendUsernameRoute = AddFriendUsernameRouteImport.update({
+  id: '/add-friend/$username',
+  path: '/add-friend/$username',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/friends': typeof FriendsRoute
   '/my-ratings': typeof MyRatingsRoute
   '/pour': typeof PourRoute
   '/rate': typeof RateRoute
   '/scan': typeof ScanRoute
+  '/add-friend/$username': typeof AddFriendUsernameRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/friends': typeof FriendsRoute
   '/my-ratings': typeof MyRatingsRoute
   '/pour': typeof PourRoute
   '/rate': typeof RateRoute
   '/scan': typeof ScanRoute
+  '/add-friend/$username': typeof AddFriendUsernameRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/friends': typeof FriendsRoute
   '/my-ratings': typeof MyRatingsRoute
   '/pour': typeof PourRoute
   '/rate': typeof RateRoute
   '/scan': typeof ScanRoute
+  '/add-friend/$username': typeof AddFriendUsernameRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/my-ratings' | '/pour' | '/rate' | '/scan'
+  fullPaths:
+    | '/'
+    | '/friends'
+    | '/my-ratings'
+    | '/pour'
+    | '/rate'
+    | '/scan'
+    | '/add-friend/$username'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/my-ratings' | '/pour' | '/rate' | '/scan'
-  id: '__root__' | '/' | '/my-ratings' | '/pour' | '/rate' | '/scan'
+  to:
+    | '/'
+    | '/friends'
+    | '/my-ratings'
+    | '/pour'
+    | '/rate'
+    | '/scan'
+    | '/add-friend/$username'
+  id:
+    | '__root__'
+    | '/'
+    | '/friends'
+    | '/my-ratings'
+    | '/pour'
+    | '/rate'
+    | '/scan'
+    | '/add-friend/$username'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  FriendsRoute: typeof FriendsRoute
   MyRatingsRoute: typeof MyRatingsRoute
   PourRoute: typeof PourRoute
   RateRoute: typeof RateRoute
   ScanRoute: typeof ScanRoute
+  AddFriendUsernameRoute: typeof AddFriendUsernameRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -109,6 +151,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MyRatingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/friends': {
+      id: '/friends'
+      path: '/friends'
+      fullPath: '/friends'
+      preLoaderRoute: typeof FriendsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -116,15 +165,24 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/add-friend/$username': {
+      id: '/add-friend/$username'
+      path: '/add-friend/$username'
+      fullPath: '/add-friend/$username'
+      preLoaderRoute: typeof AddFriendUsernameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  FriendsRoute: FriendsRoute,
   MyRatingsRoute: MyRatingsRoute,
   PourRoute: PourRoute,
   RateRoute: RateRoute,
   ScanRoute: ScanRoute,
+  AddFriendUsernameRoute: AddFriendUsernameRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

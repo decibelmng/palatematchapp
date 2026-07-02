@@ -3,10 +3,13 @@ import { useMemo, useState } from "react";
 import { AuthGate } from "@/components/AuthGate";
 import { WineTypeBadge } from "@/components/WineTypeBadge";
 import { ListControls } from "@/components/ListControls";
+import { DrinkingGroupSelector } from "@/components/DrinkingGroupSelector";
 import { useAllBottlesPaged, useBottlesByIds, useRatings, bottleToFp, bottleType } from "@/hooks/use-palate-data";
+import { useGroupSelection, useGroupPredict, type GroupCandidateInput } from "@/hooks/use-friends";
 import { recommend, type BottleFp, type RatedFp, type Recommendation, type WineType } from "@/lib/recommender";
 import { aggregateRated, aggregateCandidates, cuveeKey, type CuveeCandidate, type CuveeRated } from "@/lib/cuvee";
 import { applyControls, normalizePrice, isGreatValue, DEFAULT_CONTROLS, type Controls, type Priced } from "@/lib/list-controls";
+import type { GroupScored } from "@/lib/group.functions";
 
 export const Route = createFileRoute("/pour")({
   ssr: false,
@@ -118,6 +121,25 @@ function Pour() {
   const nRated = ratings?.length ?? 0;
   const loading = !ratings || (ratedIds.length > 0 && !ratedBottles) || !pool;
 
+  // --- Group mode ---
+  const group = useGroupSelection();
+  const groupCandidates: GroupCandidateInput[] = useMemo(() => {
+    if (group.friendIds.length === 0) return [];
+    const seen = new Set<string>();
+    const out: GroupCandidateInput[] = [];
+    for (const s of sections) {
+      const cs = s.mode === "personalized" ? s.items.map((r) => r.cuvee) : s.items;
+      for (const c of cs) {
+        if (seen.has(c.id)) continue;
+        seen.add(c.id);
+        out.push({ id: c.id, name: c.name, producer: c.producer, region: c.region, type: c.type, fp: c.fp });
+      }
+    }
+    return out;
+  }, [sections, group.friendIds]);
+  const groupPred = useGroupPredict(group.friendIds, groupCandidates);
+  const groupScores = groupPred.data ?? null;
+
   return (
     <div className="pt-2">
       <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Pour these next</p>
@@ -125,6 +147,15 @@ function Pour() {
       <p className="mt-2 text-sm text-muted-foreground">
         Vintages of the same wine are grouped — we match on style, not year.
       </p>
+
+      <div className="mt-4">
+        <DrinkingGroupSelector
+          selectedIds={group.friendIds}
+          onToggle={group.toggle}
+          onClear={group.clear}
+          onSet={group.set}
+        />
+      </div>
 
       {loading ? (
         <p className="mt-8 text-sm text-muted-foreground">Loading recommendations…</p>
@@ -137,7 +168,7 @@ function Pour() {
             Go rate
           </Link>
           <div className="mt-8 space-y-10">
-            {sections.map((s) => <SectionView key={s.type} section={s} />)}
+            {sections.map((s) => <SectionView key={s.type} section={s} groupScores={groupScores} groupActive={group.friendIds.length > 0} groupLoading={groupPred.isFetching} />)}
           </div>
         </div>
       ) : (
@@ -145,7 +176,7 @@ function Pour() {
           {sections.length === 0 && (
             <p className="text-sm text-muted-foreground">No unrated bottles in the catalogue yet.</p>
           )}
-          {sections.map((s) => <SectionView key={s.type} section={s} />)}
+          {sections.map((s) => <SectionView key={s.type} section={s} groupScores={groupScores} groupActive={group.friendIds.length > 0} groupLoading={groupPred.isFetching} />)}
         </div>
       )}
     </div>
@@ -164,6 +195,7 @@ function CuveeMeta({ producer, region, vintages }: { producer: string | null; re
 
 type Row = Priced & {
   key: string;
+  id: string;              // representative bottle id (used to look up group scores)
   name: string;
   producer: string | null;
   region: string | null;
@@ -179,6 +211,7 @@ function toRows(section: Section): Row[] {
       const p = normalizePrice(r.cuvee.price_band);
       const row: Row = {
         key: r.cuvee.cuvee,
+        id: r.cuvee.id,
         name: r.cuvee.name,
         producer: r.cuvee.producer,
         region: r.cuvee.region,
@@ -200,6 +233,7 @@ function toRows(section: Section): Row[] {
     const p = normalizePrice(c.price_band);
     return {
       key: c.cuvee,
+      id: c.id,
       name: c.name,
       producer: c.producer,
       region: c.region,
@@ -216,7 +250,14 @@ function toRows(section: Section): Row[] {
   });
 }
 
-function SectionView({ section }: { section: Section }) {
+type SectionViewProps = {
+  section: Section;
+  groupScores: Map<string, GroupScored> | null;
+  groupActive: boolean;
+  groupLoading: boolean;
+};
+
+function SectionView({ section, groupScores, groupActive, groupLoading }: SectionViewProps) {
   const [controls, setControls] = useState<Controls>(DEFAULT_CONTROLS);
   const isFallback = section.mode === "fallback";
   const tag = isFallback
@@ -225,21 +266,35 @@ function SectionView({ section }: { section: Section }) {
     ? `Still learning — based on ${section.nSameType} cuvée${section.nSameType === 1 ? "" : "s"} you've rated`
     : null;
 
-  const rows = useMemo(() => toRows(section), [section]);
+  const baseRows = useMemo(() => toRows(section), [section]);
+  // In group mode, replace `predicted` with the server-computed group_min so
+  // the standard "best" / "value" sort and greatValue tag work unchanged.
+  const rows: Row[] = useMemo(() => {
+    if (!groupActive || !groupScores) return baseRows;
+    return baseRows.map((r) => {
+      const g = groupScores.get(r.id);
+      if (!g) return r;
+      const withGroup: Row = { ...r, predicted: g.group_min };
+      withGroup.greatValue = isGreatValue(withGroup);
+      return withGroup;
+    });
+  }, [baseRows, groupActive, groupScores]);
+
   // In fallback mode "best match" / "best value" / "confident" all mean nothing
   // (no predicted stars, everything is catalog). Force best-of-critic ordering
   // when the user picks those, but honour price sorts and price filter.
-  const effective: Controls = isFallback && (controls.sort === "best" || controls.sort === "value" || controls.sort === "confident")
+  // In group mode we always have a predicted score, so treat like personalized.
+  const treatAsFallback = isFallback && !groupActive;
+  const effective: Controls = treatAsFallback && (controls.sort === "best" || controls.sort === "value" || controls.sort === "confident")
     ? { ...controls, sort: "best" }
     : controls;
   const filtered = useMemo(() => {
     const out = applyControls(rows, effective);
-    // For fallback, keep the critic-score order when sort is "best".
-    if (isFallback && effective.sort === "best") {
+    if (treatAsFallback && effective.sort === "best") {
       return [...out].sort((a, b) => (b.criticScore ?? 0) - (a.criticScore ?? 0));
     }
     return out;
-  }, [rows, effective, isFallback]);
+  }, [rows, effective, treatAsFallback]);
   const visible = filtered.slice(0, 10);
   const hidden = Math.max(0, filtered.length - visible.length);
 
@@ -248,7 +303,14 @@ function SectionView({ section }: { section: Section }) {
       <div className="flex items-baseline justify-between gap-3">
         <h2 className="font-serif text-xl">{TYPE_LABEL[section.type]}</h2>
       </div>
-      {tag && <p className="mt-1 text-[11px] uppercase tracking-wider text-muted-foreground">{tag}</p>}
+      {tag && !groupActive && (
+        <p className="mt-1 text-[11px] uppercase tracking-wider text-muted-foreground">{tag}</p>
+      )}
+      {groupActive && (
+        <p className="mt-1 text-[11px] uppercase tracking-wider text-primary">
+          Group picks · ranked by worst-case ★{groupLoading ? " · scoring…" : ""}
+        </p>
+      )}
       <ListControls value={controls} onChange={setControls} idPrefix={`pour-${section.type}`} />
       {visible.length === 0 ? (
         <p className="mt-4 text-sm text-muted-foreground">
@@ -256,53 +318,79 @@ function SectionView({ section }: { section: Section }) {
         </p>
       ) : (
         <ul className="mt-3 divide-y divide-border">
-          {visible.map((r) => (
-            <li key={r.key} className="py-4 flex items-start justify-between gap-3">
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <WineTypeBadge type={section.type} />
-                  <p className="font-medium leading-tight truncate">{r.name}</p>
-                  <span className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-primary/40 bg-primary/10 text-primary">
-                    catalog
-                  </span>
-                  {r.greatValue && (
-                    <span className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
-                      great value
+          {visible.map((r) => {
+            const g = groupActive && groupScores ? groupScores.get(r.id) ?? null : null;
+            const showFallbackScore = treatAsFallback && !g;
+            return (
+              <li key={r.key} className="py-4 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <WineTypeBadge type={section.type} />
+                    <p className="font-medium leading-tight truncate">{r.name}</p>
+                    <span className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-primary/40 bg-primary/10 text-primary">
+                      catalog
                     </span>
+                    {r.greatValue && (
+                      <span className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
+                        great value
+                      </span>
+                    )}
+                  </div>
+                  <CuveeMeta producer={r.producer} region={r.region} vintages={r.vintages} />
+                  {r.price_display && (
+                    <p className="mt-0.5 text-[11px] text-muted-foreground">Price: {r.price_display}</p>
+                  )}
+                  {g && <GroupBreakdown g={g} />}
+                  {!g && r.nearestCuvee && (
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      like your {r.nearestCuvee.stars.toFixed(1)}★ <span className="text-foreground/80">{r.nearestCuvee.name}</span>
+                    </p>
                   )}
                 </div>
-                <CuveeMeta producer={r.producer} region={r.region} vintages={r.vintages} />
-                {r.price_display && (
-                  <p className="mt-0.5 text-[11px] text-muted-foreground">Price: {r.price_display}</p>
-                )}
-                {r.nearestCuvee && (
-                  <p className="mt-1 text-[11px] text-muted-foreground">
-                    like your {r.nearestCuvee.stars.toFixed(1)}★ <span className="text-foreground/80">{r.nearestCuvee.name}</span>
-                  </p>
-                )}
-              </div>
-              <div className="shrink-0 text-right">
-                {isFallback ? (
-                  r.criticScore !== null && (
+                <div className="shrink-0 text-right">
+                  {g ? (
                     <>
-                      <span className="font-serif text-muted-foreground text-base">{r.criticScore.toFixed(0)}</span>
-                      <span className="text-muted-foreground text-xs"> critic</span>
+                      <span className="font-serif text-primary text-xl">{g.group_min.toFixed(1)}</span>
+                      <span className="text-primary text-sm">★</span>
+                      <p className="text-[10px] text-muted-foreground">avg {g.group_avg.toFixed(1)}</p>
                     </>
-                  )
-                ) : (
-                  <>
-                    <span className="font-serif text-primary text-xl">{r.predicted.toFixed(1)}</span>
-                    <span className="text-primary text-sm">★</span>
-                  </>
-                )}
-              </div>
-            </li>
-          ))}
+                  ) : showFallbackScore ? (
+                    r.criticScore !== null && (
+                      <>
+                        <span className="font-serif text-muted-foreground text-base">{r.criticScore.toFixed(0)}</span>
+                        <span className="text-muted-foreground text-xs"> critic</span>
+                      </>
+                    )
+                  ) : (
+                    <>
+                      <span className="font-serif text-primary text-xl">{r.predicted.toFixed(1)}</span>
+                      <span className="text-primary text-sm">★</span>
+                    </>
+                  )}
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
       {hidden > 0 && (
         <p className="mt-2 text-[11px] text-muted-foreground">+{hidden} more match these filters.</p>
       )}
     </section>
+  );
+}
+
+function GroupBreakdown({ g }: { g: GroupScored }) {
+  return (
+    <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
+      {g.per_person.map((p, i) => (
+        <span key={p.user_id}>
+          {i > 0 && <span className="opacity-50"> · </span>}
+          <span className="text-foreground/80">{p.display_name}</span>{" "}
+          {p.predicted.toFixed(1)}
+          {p.still_learning && <span className="ml-0.5 opacity-70">(still learning)</span>}
+        </span>
+      ))}
+    </p>
   );
 }

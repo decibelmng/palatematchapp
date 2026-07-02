@@ -4,11 +4,14 @@ import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { AuthGate } from "@/components/AuthGate";
 import { ListControls } from "@/components/ListControls";
+import { DrinkingGroupSelector } from "@/components/DrinkingGroupSelector";
 import { useRatings, useBottlesByIds, bottleToFp, bottleType } from "@/hooks/use-palate-data";
+import { useGroupSelection, useGroupPredict, type GroupCandidateInput } from "@/hooks/use-friends";
 import { recommend, type BottleFp, type RatedFp, type Recommendation, type WineType } from "@/lib/recommender";
 import { scanWineList, type ResolvedWine } from "@/lib/scan.functions";
 import { aggregateRated } from "@/lib/cuvee";
 import { applyControls, normalizePrice, isGreatValue, DEFAULT_CONTROLS, type Controls, type Priced } from "@/lib/list-controls";
+import type { GroupScored } from "@/lib/group.functions";
 
 export const Route = createFileRoute("/scan")({
   ssr: false,
@@ -166,6 +169,24 @@ function Scan() {
       .filter((t) => buckets.has(t))
       .map((t) => ({ type: t, rows: buckets.get(t)! }));
   }, [ranked]);
+
+  // --- Group mode: score the scanned wines for the selected friend set ---
+  const group = useGroupSelection();
+  const groupCandidates: GroupCandidateInput[] = useMemo(() => {
+    if (group.friendIds.length === 0) return [];
+    return ranked.map((r) => ({
+      id: r.bottle.id,
+      name: r.bottle.name,
+      producer: r.bottle.producer ?? null,
+      region: r.bottle.region ?? null,
+      type: r.bottle.type,
+      fp: r.bottle.fp,
+    }));
+  }, [ranked, group.friendIds]);
+  const groupPred = useGroupPredict(group.friendIds, groupCandidates);
+  const groupScores = groupPred.data ?? null;
+  const groupActive = group.friendIds.length > 0;
+
 
 
   function flagFor(r: Ranked): { label: string; tone: "good" | "bad" | "warn" } | null {
@@ -344,6 +365,17 @@ function Scan() {
       )}
 
       {grouped.length > 0 && (
+        <div className="mt-6">
+          <DrinkingGroupSelector
+            selectedIds={group.friendIds}
+            onToggle={group.toggle}
+            onClear={group.clear}
+            onSet={group.set}
+          />
+        </div>
+      )}
+
+      {grouped.length > 0 && (
         <div className="mt-6 space-y-8">
           {grouped.map((g) => (
             <ScanSection
@@ -352,6 +384,9 @@ function Scan() {
               rows={g.rows}
               enoughRatings={enoughRatings}
               flagFor={flagFor}
+              groupScores={groupScores}
+              groupActive={groupActive}
+              groupLoading={groupPred.isFetching}
             />
           ))}
         </div>
@@ -381,33 +416,57 @@ function ScanSection({
   rows,
   enoughRatings,
   flagFor,
+  groupScores,
+  groupActive,
+  groupLoading,
 }: {
   type: WineType;
   rows: ScanRow[];
   enoughRatings: boolean;
   flagFor: (r: Ranked) => { label: string; tone: "good" | "bad" | "warn" } | null;
+  groupScores: Map<string, GroupScored> | null;
+  groupActive: boolean;
+  groupLoading: boolean;
 }) {
   const [controls, setControls] = useState<Controls>(DEFAULT_CONTROLS);
-  // When user hasn't rated enough, "best match" / "value" / "confident" have no
+
+  // Overlay group_min onto the row's predicted score so filters/sort work unchanged.
+  const overlaidRows: ScanRow[] = useMemo(() => {
+    if (!groupActive || !groupScores) return rows;
+    return rows.map((r) => {
+      const g = groupScores.get(r.ranked.bottle.id);
+      if (!g) return r;
+      const next: ScanRow = { ...r, predicted: g.group_min };
+      next.greatValue = isGreatValue(next);
+      return next;
+    });
+  }, [rows, groupActive, groupScores]);
+
+  const scoreAvailable = enoughRatings || groupActive;
+  // When user hasn't rated enough (and no group), "best match" / "value" / "confident" have no
   // signal — fall back to keeping the scan's read order.
-  const effective: Controls = !enoughRatings && (controls.sort === "best" || controls.sort === "value" || controls.sort === "confident")
+  const effective: Controls = !scoreAvailable && (controls.sort === "best" || controls.sort === "value" || controls.sort === "confident")
     ? { ...controls, sort: "best" }
     : controls;
   const filtered = useMemo(() => {
-    const out = applyControls(rows, effective);
-    if (!enoughRatings && effective.sort === "best") {
-      // preserve original scan order
-      const idx = new Map(rows.map((r, i) => [r.key, i]));
+    const out = applyControls(overlaidRows, effective);
+    if (!scoreAvailable && effective.sort === "best") {
+      const idx = new Map(overlaidRows.map((r, i) => [r.key, i]));
       return [...out].sort((a, b) => (idx.get(a.key) ?? 0) - (idx.get(b.key) ?? 0));
     }
     return out;
-  }, [rows, effective, enoughRatings]);
+  }, [overlaidRows, effective, scoreAvailable]);
   const visible = filtered.slice(0, 40);
   const hidden = Math.max(0, filtered.length - visible.length);
 
   return (
     <section>
       <h2 className="font-serif text-xl">{TYPE_LABEL[type]}</h2>
+      {groupActive && (
+        <p className="mt-1 text-[11px] uppercase tracking-wider text-primary">
+          Group picks · ranked by worst-case ★{groupLoading ? " · scoring…" : ""}
+        </p>
+      )}
       <ListControls value={controls} onChange={setControls} idPrefix={`scan-${type}`} />
       {visible.length === 0 ? (
         <p className="mt-4 text-sm text-muted-foreground">
@@ -416,7 +475,8 @@ function ScanSection({
       ) : (
         <ul className="mt-3 divide-y divide-border">
           {visible.map(({ ranked: r, isCatalog, greatValue, price_display }) => {
-            const flag = flagFor(r);
+            const flag = groupActive ? null : flagFor(r);
+            const g = groupActive && groupScores ? groupScores.get(r.bottle.id) ?? null : null;
             return (
               <li key={r.bottle.id} className="py-4 flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -441,7 +501,19 @@ function ScanSection({
                   <p className="text-xs text-muted-foreground truncate">
                     {[r.bottle.region, r.scanned.grape, price_display].filter(Boolean).join(" · ")}
                   </p>
-                  {enoughRatings && r.nearest && (
+                  {g && (
+                    <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
+                      {g.per_person.map((p, i) => (
+                        <span key={p.user_id}>
+                          {i > 0 && <span className="opacity-50"> · </span>}
+                          <span className="text-foreground/80">{p.display_name}</span>{" "}
+                          {p.predicted.toFixed(1)}
+                          {p.still_learning && <span className="ml-0.5 opacity-70">(still learning)</span>}
+                        </span>
+                      ))}
+                    </p>
+                  )}
+                  {!g && enoughRatings && r.nearest && (
                     <p className="mt-1 text-[11px] text-muted-foreground">
                       like your {r.nearest.stars}★ <span className="text-foreground/80">{r.nearest.name}</span>
                     </p>
@@ -456,12 +528,18 @@ function ScanSection({
                     </p>
                   )}
                 </div>
-                {enoughRatings && (
+                {g ? (
+                  <div className="shrink-0 text-right">
+                    <span className="font-serif text-primary text-xl">{g.group_min.toFixed(1)}</span>
+                    <span className="text-primary text-sm">★</span>
+                    <p className="text-[10px] text-muted-foreground">avg {g.group_avg.toFixed(1)}</p>
+                  </div>
+                ) : enoughRatings ? (
                   <div className="shrink-0 text-right">
                     <span className="font-serif text-primary text-xl">{r.predicted.toFixed(1)}</span>
                     <span className="text-primary text-sm">★</span>
                   </div>
-                )}
+                ) : null}
               </li>
             );
           })}

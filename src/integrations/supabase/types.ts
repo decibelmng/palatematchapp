@@ -104,9 +104,37 @@ export type Database = {
         }
         Relationships: []
       }
+      friendships: {
+        Row: {
+          addressee_id: string
+          created_at: string
+          id: string
+          requester_id: string
+          responded_at: string | null
+          status: string
+        }
+        Insert: {
+          addressee_id: string
+          created_at?: string
+          id?: string
+          requester_id: string
+          responded_at?: string | null
+          status?: string
+        }
+        Update: {
+          addressee_id?: string
+          created_at?: string
+          id?: string
+          requester_id?: string
+          responded_at?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
+          display_name: string | null
           id: string
           n_rated: number
           palate_code: string
@@ -114,9 +142,11 @@ export type Database = {
           palate_code_white: string
           theme: string | null
           updated_at: string
+          username: string
         }
         Insert: {
           created_at?: string
+          display_name?: string | null
           id: string
           n_rated?: number
           palate_code?: string
@@ -124,9 +154,11 @@ export type Database = {
           palate_code_white?: string
           theme?: string | null
           updated_at?: string
+          username: string
         }
         Update: {
           created_at?: string
+          display_name?: string | null
           id?: string
           n_rated?: number
           palate_code?: string
@@ -134,6 +166,7 @@ export type Database = {
           palate_code_white?: string
           theme?: string | null
           updated_at?: string
+          username?: string
         }
         Relationships: []
       }
@@ -216,6 +249,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      are_friends: { Args: { _a: string; _b: string }; Returns: boolean }
       search_bottles_fuzzy: {
         Args: {
           lim?: number
@@ -258,6 +292,14 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      search_users: {
+        Args: { lim?: number; q: string }
+        Returns: {
+          display_name: string
+          user_id: string
+          username: string
+        }[]
       }
     }
     Enums: {

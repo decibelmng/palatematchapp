@@ -146,13 +146,12 @@ import { useEffect } from "react";
 function useCodeUpsert(uid: string | undefined, red: string, white: string, n: number) {
   useEffect(() => {
     if (!uid) return;
-    supabase.from("profiles").upsert({
-      id: uid,
+    supabase.from("profiles").update({
       palate_code: red,           // legacy column — keep populated with the red code
       palate_code_red: red,
       palate_code_white: white,
       n_rated: n,
-    });
+    }).eq("id", uid);
   }, [uid, red, white, n]);
 }
 
