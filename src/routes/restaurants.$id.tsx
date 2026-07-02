@@ -68,7 +68,6 @@ function RestaurantDetail() {
       return !acc || d > acc ? d : acc;
     }, null);
 
-    // Group bottles by type.
     const byType = new Map<WineType, typeof data.wines>();
     for (const w of data.wines) {
       const t = (w.bottle.type as WineType) || "red";
@@ -76,16 +75,11 @@ function RestaurantDetail() {
       byType.get(t)!.push(w);
     }
 
-    // For each type, run recommender to get predicted stars.
     const sections = TYPE_ORDER.filter((t) => byType.has(t)).map((type) => {
       const wines = byType.get(type)!;
       const candFps: BottleFp[] = wines.map((w) => ({
-        id: w.bottle.id,
-        name: w.bottle.name,
-        producer: w.bottle.producer,
-        region: w.bottle.region,
-        type,
-        fp: bottleToFp(w.bottle),
+        id: w.bottle.id, name: w.bottle.name, producer: w.bottle.producer,
+        region: w.bottle.region, type, fp: bottleToFp(w.bottle),
       }));
       let predByBottle = new Map<string, number>();
       if (enoughRatings) {
@@ -94,30 +88,35 @@ function RestaurantDetail() {
       }
 
       const rows = wines.map((w) => {
-        const price = normalizePrice(w.menu_price_amount ?? w.menu_price);
+        const priceRaw = w.menu_price ?? (w.menu_price_amount != null ? String(w.menu_price_amount) : null);
+        const price = normalizePrice(priceRaw);
         const days = daysAgo(w.last_seen_at);
         const isStale = mostRecent
           ? new Date(w.last_seen_at).getTime() < mostRecent.getTime() - 24 * 3600 * 1000
           : false;
+        const predicted = predByBottle.get(w.bottle.id) ?? null;
+        const isCatalog = !(w.bottle.source ?? "").includes("unverified");
+        const priced = {
+          price_amount: price.amount,
+          price_band: price.band,
+          price_display: price.display,
+          isCatalog,
+          predicted: predicted ?? 0,
+        };
         return {
           rw: w,
           bottle: w.bottle,
-          predicted: predByBottle.get(w.bottle.id) ?? null,
-          price_display: w.menu_price ?? (price ? `$${price}` : null),
-          price_amount: price,
+          predicted,
+          price_display: price.display,
           days,
           isStale,
-          isCatalog: !w.bottle.source?.includes("unverified"),
+          isCatalog,
+          priced,
+          greatValue: predicted != null && isGreatValue(priced),
         };
       });
-      // Attach great-value flag
-      const withValue = rows.map((r) => ({
-        ...r,
-        greatValue: r.predicted != null
-          ? isGreatValue({ price: r.price_amount, predicted: r.predicted }, rows.map((x) => ({ price: x.price_amount, predicted: x.predicted ?? 0 })))
-          : false,
-      }));
-      return { type, rows: withValue, enoughRatings };
+
+      return { type, rows, enoughRatings };
     });
 
     return sections;
@@ -138,12 +137,8 @@ function RestaurantDetail() {
 
   const groupPred = useGroupPredict(group.friendIds, candidatesForGroup);
   const groupActive = group.friendIds.length > 0;
-  const groupScores = useMemo(() => {
-    if (!groupPred.data) return null;
-    const m = new Map<string, GroupScored>();
-    for (const s of groupPred.data.scored) m.set(s.bottle_id, s);
-    return m;
-  }, [groupPred.data]);
+  const groupScores = groupPred.data ?? null;
+
 
   if (isLoading || !data) {
     return <p className="pt-6 text-sm text-muted-foreground">Loading…</p>;
