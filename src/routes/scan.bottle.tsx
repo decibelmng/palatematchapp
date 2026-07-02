@@ -326,19 +326,21 @@ function BottleScan() {
         </div>
       )}
 
-      <AddBottleDialog
-        open={showAdd}
-        onClose={() => setShowAdd(false)}
-        initialForm={{
-          producer: extracted?.producer ?? "",
-          name: extracted?.wine_name ?? "",
-          type: (extracted?.type ?? "red") as any,
-          region: extracted?.region ?? "",
-          country: extracted?.country ?? "",
-          grape: extracted?.grape ?? "",
-          vintage: extracted?.vintage != null ? String(extracted.vintage) : "",
-        }}
-      />
+      {showAdd && (
+        <AddBottleDialog
+          open={showAdd}
+          onClose={() => setShowAdd(false)}
+          initialForm={{
+            producer: extracted?.producer ?? "",
+            name: extracted?.wine_name ?? extracted?.region ?? "",
+            type: (extracted?.type ?? "red") as any,
+            region: extracted?.region ?? "",
+            country: extracted?.country ?? "",
+            grape: extracted?.grape ?? "",
+            vintage: extracted?.vintage != null ? String(extracted.vintage) : "",
+          }}
+        />
+      )}
 
       <p className="mt-10 text-[11px] text-muted-foreground">
         Each scan makes one paid vision call. Your label photo is stored privately to your account.
