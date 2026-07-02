@@ -214,7 +214,7 @@ export const updateMyProfile = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const patch: Record<string, string> = {};
+    const patch: { username?: string; display_name?: string } = {};
     if (data.username !== undefined) patch.username = data.username.toLowerCase();
     if (data.display_name !== undefined) patch.display_name = data.display_name;
     if (Object.keys(patch).length === 0) return { ok: true };
