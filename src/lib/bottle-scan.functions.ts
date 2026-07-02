@@ -284,6 +284,7 @@ export const scanBottleLabel = createServerFn({ method: "POST" })
       candidates,
       best_score: bestScore,
       match_quality,
+      match_summary,
       image_paths: data.image_paths ?? [],
       looks_like_menu,
     };
