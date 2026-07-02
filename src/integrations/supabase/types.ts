@@ -140,6 +140,7 @@ export type Database = {
           palate_code: string
           palate_code_red: string
           palate_code_white: string
+          recent_groups: Json
           theme: string | null
           updated_at: string
           username: string
@@ -152,6 +153,7 @@ export type Database = {
           palate_code?: string
           palate_code_red?: string
           palate_code_white?: string
+          recent_groups?: Json
           theme?: string | null
           updated_at?: string
           username: string
@@ -164,6 +166,7 @@ export type Database = {
           palate_code?: string
           palate_code_red?: string
           palate_code_white?: string
+          recent_groups?: Json
           theme?: string | null
           updated_at?: string
           username?: string
