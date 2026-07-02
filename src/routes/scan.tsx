@@ -385,6 +385,11 @@ function Scan() {
         </div>
       )}
 
+      {mutation.data?.scan_id && stats && stats.total > 0 && (
+        <RestaurantAttribution scanId={mutation.data.scan_id} />
+      )}
+
+
       {grouped.length > 0 && (
         <div className="mt-6">
           <DrinkingGroupSelector
