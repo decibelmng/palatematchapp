@@ -42,6 +42,7 @@ export type Database = {
           source: string | null
           tasting_note: string | null
           type: string
+          unverified: boolean
           vintage: number | null
         }
         Insert: {
@@ -71,6 +72,7 @@ export type Database = {
           source?: string | null
           tasting_note?: string | null
           type?: string
+          unverified?: boolean
           vintage?: number | null
         }
         Update: {
@@ -100,6 +102,7 @@ export type Database = {
           source?: string | null
           tasting_note?: string | null
           type?: string
+          unverified?: boolean
           vintage?: number | null
         }
         Relationships: []
@@ -208,14 +211,108 @@ export type Database = {
           },
         ]
       }
+      restaurant_wines: {
+        Row: {
+          added_by: string | null
+          bottle_id: string
+          first_seen_at: string
+          id: string
+          last_seen_at: string
+          menu_price: string | null
+          menu_price_amount: number | null
+          restaurant_id: string
+          seen_count: number
+          source_scan_id: string | null
+        }
+        Insert: {
+          added_by?: string | null
+          bottle_id: string
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          menu_price?: string | null
+          menu_price_amount?: number | null
+          restaurant_id: string
+          seen_count?: number
+          source_scan_id?: string | null
+        }
+        Update: {
+          added_by?: string | null
+          bottle_id?: string
+          first_seen_at?: string
+          id?: string
+          last_seen_at?: string
+          menu_price?: string | null
+          menu_price_amount?: number | null
+          restaurant_id?: string
+          seen_count?: number
+          source_scan_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurant_wines_bottle_id_fkey"
+            columns: ["bottle_id"]
+            isOneToOne: false
+            referencedRelation: "bottles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "restaurant_wines_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "restaurant_wines_source_scan_id_fkey"
+            columns: ["source_scan_id"]
+            isOneToOne: false
+            referencedRelation: "scan_logs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      restaurants: {
+        Row: {
+          city: string | null
+          created_at: string
+          created_by: string | null
+          google_place_id: string | null
+          id: string
+          locale: string | null
+          name: string
+        }
+        Insert: {
+          city?: string | null
+          created_at?: string
+          created_by?: string | null
+          google_place_id?: string | null
+          id?: string
+          locale?: string | null
+          name: string
+        }
+        Update: {
+          city?: string | null
+          created_at?: string
+          created_by?: string | null
+          google_place_id?: string | null
+          id?: string
+          locale?: string | null
+          name?: string
+        }
+        Relationships: []
+      }
       scan_logs: {
         Row: {
           created_at: string
           estimated_count: number
           id: string
+          image_paths: string[]
           matched_count: number
           n_photos: number
           raw_vision: Json | null
+          restaurant_id: string | null
+          status: string
           total_wines: number
           unreadable_count: number
           user_id: string
@@ -225,9 +322,12 @@ export type Database = {
           created_at?: string
           estimated_count?: number
           id?: string
+          image_paths?: string[]
           matched_count?: number
           n_photos?: number
           raw_vision?: Json | null
+          restaurant_id?: string | null
+          status?: string
           total_wines?: number
           unreadable_count?: number
           user_id: string
@@ -237,9 +337,12 @@ export type Database = {
           created_at?: string
           estimated_count?: number
           id?: string
+          image_paths?: string[]
           matched_count?: number
           n_photos?: number
           raw_vision?: Json | null
+          restaurant_id?: string | null
+          status?: string
           total_wines?: number
           unreadable_count?: number
           user_id?: string
@@ -287,6 +390,7 @@ export type Database = {
           source: string | null
           tasting_note: string | null
           type: string
+          unverified: boolean
           vintage: number | null
         }[]
         SetofOptions: {
@@ -295,6 +399,15 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      search_restaurants: {
+        Args: { lim?: number; q: string }
+        Returns: {
+          city: string
+          id: string
+          locale: string
+          name: string
+        }[]
       }
       search_users: {
         Args: { lim?: number; q: string }
