@@ -146,6 +146,7 @@ export const scanWineList = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) =>
     z.object({
       images: z.array(ImageSchema).min(1).max(8),
+      image_paths: z.array(z.string()).max(8).optional(),
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
