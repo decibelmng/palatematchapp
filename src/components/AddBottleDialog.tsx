@@ -143,7 +143,7 @@ export function AddBottleDialog({
       const { fp, ax_sweet, tasting_note } = result;
       const insert = {
         producer: form.producer.trim(),
-        name: form.name.trim(),
+        name: form.name.trim() || form.region.trim() || `${form.producer.trim()} bottling`,
         type: form.type,
         region: form.region.trim() || null,
         country: form.country.trim() || null,
