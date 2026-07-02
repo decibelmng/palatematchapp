@@ -7,7 +7,7 @@ import { useSession } from "@/hooks/use-session";
 import { useRatings, useBottlesByIds, bottleToFp, bottleType } from "@/hooks/use-palate-data";
 import { recommend, type BottleFp, type RatedFp } from "@/lib/recommender";
 import { aggregateRated } from "@/lib/cuvee";
-import { scanBottleLabel, type BottleCandidate, type BottleScanResult } from "@/lib/bottle-scan.functions";
+import { scanBottleLabel, type BottleCandidate, type BottleScanResult, type BottleExtract } from "@/lib/bottle-scan.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { StarTap } from "@/components/StarTap";
 import { WineTypeBadge } from "@/components/WineTypeBadge";
