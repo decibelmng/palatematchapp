@@ -19,10 +19,11 @@ export type BottleRow = {
   tasting_note: string | null;
   source: string | null;
   added_by: string | null;
+  price_band: string | null;
 };
 
 const BOTTLE_COLS =
-  "id,name,producer,region,grape,vintage,type,critic_score,fp_fresh,fp_acid,fp_tannin,fp_fruit_dark,fp_ripe,fp_oak,fp_body,fp_savory,ax_body,ax_fruit_char,ax_tannin,ax_acidity,ax_sweet,tasting_note,source,added_by";
+  "id,name,producer,region,grape,vintage,type,critic_score,price_band,fp_fresh,fp_acid,fp_tannin,fp_fruit_dark,fp_ripe,fp_oak,fp_body,fp_savory,ax_body,ax_fruit_char,ax_tannin,ax_acidity,ax_sweet,tasting_note,source,added_by";
 
 export function bottleType(b: BottleRow): WineType {
   const t = (b.type ?? "red").toLowerCase();
