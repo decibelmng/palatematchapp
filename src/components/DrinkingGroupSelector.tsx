@@ -1,7 +1,6 @@
 import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
-import { useAcceptedFriends, useMyProfile, loadRecentGroups, saveRecentGroup } from "@/hooks/use-friends";
-import { useSession } from "@/hooks/use-session";
+import { useAcceptedFriends, useMyProfile, useRecentGroups, useSaveRecentGroup } from "@/hooks/use-friends";
 
 type Props = {
   selectedIds: string[];
@@ -16,12 +15,10 @@ type Props = {
  *  - Cap of 6 friends enforced by the parent hook.
  */
 export function DrinkingGroupSelector({ selectedIds, onToggle, onClear, onSet }: Props) {
-  const session = useSession();
-  const uid = session?.user.id;
   const { data: friends = [], isLoading } = useAcceptedFriends();
   const { data: me } = useMyProfile();
-
-  const recent = useMemo(() => loadRecentGroups(uid), [uid, selectedIds.length]);
+  const recent = useRecentGroups();
+  const saveRecent = useSaveRecentGroup();
 
   const friendById = useMemo(() => {
     const m = new Map<string, typeof friends[number]>();
@@ -38,7 +35,7 @@ export function DrinkingGroupSelector({ selectedIds, onToggle, onClear, onSet }:
   }, [selectedIds, friendById]);
 
   const persistRecent = () => {
-    if (selectedIds.length > 0) saveRecentGroup(uid, selectedIds, groupLabel);
+    if (selectedIds.length > 0) saveRecent.mutate({ ids: selectedIds, label: groupLabel });
   };
 
   return (
