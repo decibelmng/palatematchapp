@@ -94,11 +94,14 @@ function tok(s: string | null | undefined): string[] {
   return norm(s).split(" ").filter((t) => t.length >= 3 && !STOPWORDS.has(t));
 }
 
-function score(
+function scoreWithReasons(
   e: BottleExtract,
-  b: { name: string; producer: string | null; type: string | null; region: string | null },
-): number {
-  if (e.type && b.type && e.type !== b.type) return 0;
+  b: { name: string; producer: string | null; type: string | null; region: string | null; vintage: number | null },
+): { score: number; reasons: string[] } {
+  const reasons: string[] = [];
+  if (e.type && b.type && e.type !== b.type) {
+    return { score: 0, reasons: [`Type mismatch (label ${e.type} vs catalog ${b.type})`] };
+  }
   const sProd = tok(e.producer);
   const sName = tok(e.wine_name);
   const sReg  = tok(e.region);
@@ -106,21 +109,56 @@ function score(
   const bName = tok(b.name);
   const bReg  = tok(b.region);
 
-  const prodOv = sProd.filter((t) => bProd.includes(t) || bName.includes(t)).length;
-  const nameOv = sName.filter((t) => bName.includes(t) || bProd.includes(t)).length;
-  const regOv  = sReg.filter((t) => bReg.includes(t) || bName.includes(t)).length;
+  const prodMatched = sProd.filter((t) => bProd.includes(t) || bName.includes(t));
+  const nameMatched = sName.filter((t) => bName.includes(t) || bProd.includes(t));
+  const regMatched  = sReg.filter((t) => bReg.includes(t) || bName.includes(t));
+
+  const prodOv = prodMatched.length;
+  const nameOv = nameMatched.length;
+  const regOv  = regMatched.length;
 
   const haveProd = sProd.length > 0;
   const needName = Math.max(1, Math.ceil(sName.length / 2));
-  if (haveProd && prodOv < 1) return 0;
-  if (!haveProd && (sName.length + prodOv) < 2) return 0;
-  if (sName.length > 0 && nameOv < needName) return 0;
+  if (haveProd && prodOv < 1) {
+    return { score: 0, reasons: [`Producer "${e.producer}" doesn't overlap with "${b.producer ?? b.name}"`] };
+  }
+  if (!haveProd && (sName.length + prodOv) < 2) {
+    return { score: 0, reasons: ["Not enough label words to match confidently"] };
+  }
+  if (sName.length > 0 && nameOv < needName) {
+    return { score: 0, reasons: [`Cuvée name "${e.wine_name}" only partially overlaps`] };
+  }
 
   const prodScore = haveProd ? Math.min(1, prodOv / Math.max(1, sProd.length)) : 0.5;
   const nameScore = sName.length > 0 ? nameOv / sName.length : 0.5;
   const regBonus  = sReg.length > 0 && regOv > 0 ? 0.05 : 0;
-  return Math.min(1, 0.6 + 0.25 * prodScore + 0.15 * nameScore + regBonus);
+  const score = Math.min(1, 0.6 + 0.25 * prodScore + 0.15 * nameScore + regBonus);
+
+  if (e.type && b.type && e.type === b.type) reasons.push(`Same type (${e.type})`);
+  if (prodMatched.length) {
+    const pct = Math.round((prodOv / Math.max(1, sProd.length)) * 100);
+    reasons.push(`Producer overlap ${pct}% — matched "${prodMatched.join(", ")}"`);
+  }
+  if (nameMatched.length) {
+    reasons.push(`Cuvée words matched: "${nameMatched.join(", ")}"`);
+  } else if (sName.length === 0) {
+    reasons.push("Label had no cuvée name — matched on producer + region");
+  }
+  if (regMatched.length) {
+    reasons.push(`Region overlap on "${regMatched.join(", ")}"`);
+  } else if (sReg.length > 0 && b.region) {
+    reasons.push(`Region on label ("${e.region}") didn't align with catalog region ("${b.region}")`);
+  }
+  if (e.vintage && b.vintage) {
+    reasons.push(
+      e.vintage === b.vintage
+        ? `Same vintage ${e.vintage}`
+        : `Different vintage (label ${e.vintage}, catalog ${b.vintage}) — same cuvée`,
+    );
+  }
+  return { score, reasons };
 }
+
 
 export const scanBottleLabel = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
