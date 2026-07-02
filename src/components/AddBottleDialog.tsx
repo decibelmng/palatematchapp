@@ -67,17 +67,23 @@ export function AddBottleDialog({
 
   async function runResearch() {
     setError(null);
-    if (!form.producer.trim() || !form.name.trim()) {
-      setError("Producer and name are required.");
+    if (!form.producer.trim()) {
+      setError("Producer (the winery) is required.");
       setPhase("form");
       return;
     }
     setPhase("researching");
     try {
+      // If the user left the cuvée blank, fall back to region (or "Estate") so the
+      // research LLM has something to identify. Many classic wines have no cuvée
+      // name — the label is just producer + appellation.
+      const effectiveName = form.name.trim()
+        || form.region.trim()
+        || "Estate bottling";
       const r = await research({
         data: {
           producer: form.producer.trim(),
-          name: form.name.trim(),
+          name: effectiveName,
           type: form.type,
           region: form.region.trim() || null,
           country: form.country.trim() || null,
