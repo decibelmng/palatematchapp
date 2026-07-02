@@ -399,6 +399,7 @@ function ConfidentCard({
           <span className="text-primary">★</span>
         </p>
       )}
+      <ConfidenceMeter score={c.score} reasons={c.reasons} />
       <div className="mt-3">
         <p className="text-xs text-muted-foreground mb-1">Rate it (one tap)</p>
         <StarTap value={stars} onChange={(s) => { if (s != null) { setStars(s); onRate(s); } }} />
@@ -407,3 +408,41 @@ function ConfidentCard({
     </div>
   );
 }
+
+function ConfidenceMeter({ score, reasons }: { score: number; reasons: string[] }) {
+  const pct = Math.round(score * 100);
+  const label = score >= 0.85 ? "High confidence" : score >= 0.6 ? "Possible match" : "Low confidence";
+  const tone =
+    score >= 0.85
+      ? "bg-primary text-primary-foreground"
+      : score >= 0.6
+      ? "bg-amber-500/20 text-amber-700 dark:text-amber-300"
+      : "bg-muted text-muted-foreground";
+  const bar =
+    score >= 0.85 ? "bg-primary" : score >= 0.6 ? "bg-amber-500" : "bg-muted-foreground/60";
+  return (
+    <div className="mt-3">
+      <div className="flex items-center gap-2">
+        <span className={`text-[10px] uppercase tracking-wider rounded-full px-2 py-0.5 ${tone}`}>
+          {label} · {pct}%
+        </span>
+      </div>
+      <div className="mt-1.5 h-1.5 w-full rounded-full bg-border overflow-hidden">
+        <div className={`h-full ${bar}`} style={{ width: `${pct}%` }} />
+      </div>
+      {reasons.length > 0 && (
+        <details className="mt-2 text-[11px] text-muted-foreground">
+          <summary className="cursor-pointer select-none hover:text-foreground">
+            Why this match?
+          </summary>
+          <ul className="mt-1.5 space-y-0.5 pl-4 list-disc">
+            {reasons.map((r, i) => (
+              <li key={i}>{r}</li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </div>
+  );
+}
+
