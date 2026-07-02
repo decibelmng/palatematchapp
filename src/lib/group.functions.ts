@@ -130,10 +130,12 @@ export const groupPredict = createServerFn({ method: "POST" })
       (profs ?? []).map((p) => [p.id, p.display_name || p.username || "friend"]),
     );
 
-    // 3. Load each member's rated wines (via service-role supabase in the middleware).
+    // 3. Load each member's rated wines using the SERVICE-ROLE client
+    //    (bypasses RLS — required to read friends' ratings after friendship verification).
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const memberRatings = new Map<string, RatedFp[]>();
     for (const uid of groupIds) {
-      memberRatings.set(uid, await loadMemberRatings(supabase, uid));
+      memberRatings.set(uid, await loadMemberRatings(supabaseAdmin, uid));
     }
 
     // 4. Score each candidate for every member.
