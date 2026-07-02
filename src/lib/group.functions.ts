@@ -41,8 +41,8 @@ export type GroupScored = {
   group_avg: number;   // simple mean of raw predicted
 };
 
-async function loadMemberRatings(supabase: any, userId: string): Promise<RatedFp[]> {
-  const { data: ratings, error: rErr } = await supabase
+async function loadMemberRatings(admin: any, userId: string): Promise<RatedFp[]> {
+  const { data: ratings, error: rErr } = await admin
     .from("ratings")
     .select("bottle_id, stars")
     .eq("user_id", userId);
@@ -52,7 +52,7 @@ async function loadMemberRatings(supabase: any, userId: string): Promise<RatedFp
   const bottles: any[] = [];
   for (let i = 0; i < ids.length; i += 200) {
     const chunk = ids.slice(i, i + 200);
-    const { data, error } = await supabase
+    const { data, error } = await admin
       .from("bottles")
       .select("id,name,producer,region,type,vintage,fp_fresh,fp_acid,fp_tannin,fp_fruit_dark,fp_ripe,fp_oak,fp_body,fp_savory")
       .in("id", chunk);
@@ -62,7 +62,7 @@ async function loadMemberRatings(supabase: any, userId: string): Promise<RatedFp
   const byId = new Map(bottles.map((b) => [b.id, b]));
   const starsById = new Map(ratings.map((r: any) => [r.bottle_id, r.stars]));
 
-  const raw: RatedFp[] = [];
+  const raw: (RatedFp & { vintage: number | null })[] = [];
   for (const [id, b] of byId) {
     const stars = starsById.get(id);
     if (typeof stars !== "number") continue;
@@ -74,14 +74,14 @@ async function loadMemberRatings(supabase: any, userId: string): Promise<RatedFp
       region: b.region,
       type: t,
       stars,
+      vintage: b.vintage ?? null,
       fp: {
         fresh: b.fp_fresh, acid: b.fp_acid, tannin: b.fp_tannin, fruit_dark: b.fp_fruit_dark,
         ripe: b.fp_ripe, oak: b.fp_oak, body: b.fp_body, savory: b.fp_savory,
       },
     });
   }
-  // Cuvée-collapse so multiple vintages of the same wine don't triple-count.
-  const agg = aggregateRated(raw.map((r) => ({ ...r, vintage: (byId.get(r.id) as any)?.vintage ?? null })));
+  const agg = aggregateRated(raw);
   return agg.map((c) => ({
     id: c.id, name: c.name, producer: c.producer, region: c.region,
     type: c.type, fp: c.fp, stars: c.stars,
