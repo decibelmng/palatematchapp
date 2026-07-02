@@ -138,13 +138,6 @@ function Scan() {
 
   const enoughRatings = ratedRows.length >= 3;
 
-  type ScanRow = Priced & {
-    key: string;
-    ranked: Ranked;
-    type: WineType;
-    isCatalog: boolean;
-    greatValue: boolean;
-  };
 
   const grouped: { type: WineType; rows: ScanRow[] }[] = useMemo(() => {
     const buckets = new Map<WineType, ScanRow[]>();
