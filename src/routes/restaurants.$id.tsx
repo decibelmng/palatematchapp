@@ -169,25 +169,21 @@ function RestaurantDetail() {
           </div>
 
           <div className="mt-4">
-            <ListControls value={controls} onChange={setControls} />
+            <ListControls value={controls} onChange={setControls} idPrefix="restaurant" />
           </div>
 
           <div className="mt-5 space-y-8">
             {(enrichedByType ?? []).map((section) => {
-              const priced = section.rows.map((r) => ({
-                key: r.rw.id,
-                row: r,
-                priceable: { price: r.price_amount, predicted: r.predicted ?? 0 },
-                controlMatch: r.isCatalog,
+              // Apply price/confidence controls to each section's rows.
+              const pricedItems = section.rows.map((r) => ({
+                ...r.priced,
+                __key: r.rw.id,
               }));
-              // Apply controls (price sort/filter, confidence)
-              const filtered = applyControls(priced.map((p) => ({
-                priced: p.priceable,
-                catalog: p.controlMatch,
-                key: p.key,
-              })), controls);
-              const visibleKeys = new Set(filtered.map((f) => f.key));
-              const rows = section.rows.filter((r) => visibleKeys.has(r.rw.id));
+              const filtered = applyControls(pricedItems, controls);
+              const orderedKeys = filtered.map((f) => (f as any).__key as string);
+              const byKey = new Map(section.rows.map((r) => [r.rw.id, r]));
+              const rows = orderedKeys.map((k) => byKey.get(k)!).filter(Boolean);
+
 
               return (
                 <section key={section.type}>
