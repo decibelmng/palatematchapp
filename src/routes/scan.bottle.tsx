@@ -446,3 +446,100 @@ function ConfidenceMeter({ score, reasons }: { score: number; reasons: string[] 
   );
 }
 
+function normalize(s: string | null | undefined): string {
+  return (s ?? "").toLowerCase().replace(/[^a-z0-9\s]/g, " ").replace(/\s+/g, " ").trim();
+}
+function fieldMatch(a: string | null | undefined, b: string | null | undefined): "match" | "diff" | "unknown" {
+  const na = normalize(a); const nb = normalize(b);
+  if (!na || !nb) return "unknown";
+  if (na === nb) return "match";
+  const aw = new Set(na.split(" ").filter((w) => w.length > 2));
+  const bw = nb.split(" ").filter((w) => w.length > 2);
+  if (bw.some((w) => aw.has(w))) return "match";
+  return "diff";
+}
+
+function CompareRow({
+  label, value, status,
+}: { label: string; value: string; status: "match" | "diff" | "unknown" }) {
+  const tone =
+    status === "match" ? "text-primary" :
+    status === "diff" ? "text-amber-600 dark:text-amber-400" :
+    "text-muted-foreground";
+  const icon = status === "match" ? "✓" : status === "diff" ? "≠" : "·";
+  return (
+    <div className="flex items-baseline gap-2 text-xs">
+      <span className="w-16 shrink-0 text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
+      <span className={`shrink-0 font-mono ${tone}`}>{icon}</span>
+      <span className="min-w-0 truncate">{value || <span className="text-muted-foreground italic">—</span>}</span>
+    </div>
+  );
+}
+
+function CompareCard({
+  c, rank, extracted, predicted, onRate,
+}: {
+  c: BottleCandidate;
+  rank: number;
+  extracted: BottleExtract;
+  predicted: number | null;
+  onRate: (stars: number) => void;
+}) {
+  const [stars, setStars] = useState<number | null>(null);
+  const producerStatus = fieldMatch(extracted.producer, c.producer);
+  const nameStatus = fieldMatch(extracted.wine_name, c.name);
+  const regionStatus = fieldMatch(extracted.region ?? extracted.country, c.region);
+  const vintageStatus: "match" | "diff" | "unknown" =
+    extracted.vintage == null || c.vintage == null
+      ? "unknown"
+      : extracted.vintage === c.vintage ? "match" : "diff";
+
+  return (
+    <li className="rounded-md border border-border bg-card/60 p-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-mono text-muted-foreground">#{rank}</span>
+            <p className="text-sm font-medium truncate">{c.name}</p>
+          </div>
+          {c.tasting_note && (
+            <p className="mt-1 text-[11px] italic text-muted-foreground line-clamp-2">"{c.tasting_note}"</p>
+          )}
+        </div>
+        {predicted != null && (
+          <div className="shrink-0 text-right">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">For you</p>
+            <p className="font-serif text-primary text-base leading-none">{predicted.toFixed(1)}<span className="text-xs">★</span></p>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-2.5 space-y-1 rounded border border-border/60 bg-background/40 p-2">
+        <CompareRow label="Producer" value={c.producer ?? ""} status={producerStatus} />
+        <CompareRow label="Cuvée"    value={c.name}            status={nameStatus} />
+        <CompareRow label="Region"   value={c.region ?? ""}    status={regionStatus} />
+        <CompareRow label="Vintage"  value={c.vintage != null ? String(c.vintage) : ""} status={vintageStatus} />
+      </div>
+
+      <ConfidenceMeter score={c.score} reasons={c.reasons} />
+
+      <div className="mt-3 border-t border-border/60 pt-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <p className="text-xs text-muted-foreground">Pick & rate</p>
+          <button
+            onClick={() => { setStars(5); onRate(5); }}
+            className="text-[11px] rounded-md bg-primary text-primary-foreground px-2.5 py-1 font-medium"
+          >
+            That's it · 5★
+          </button>
+        </div>
+        <div className="mt-1.5">
+          <StarTap value={stars} onChange={(s: number | null) => { if (s != null) { setStars(s); onRate(s); } }} />
+          {stars != null && <p className="mt-1 text-[11px] text-primary">Saved {stars}★</p>}
+        </div>
+      </div>
+    </li>
+  );
+}
+
+
