@@ -226,7 +226,7 @@ export const updateMyProfile = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-// -------- Get my own profile (username, display_name) --------
+// -------- Get my own profile (username, display_name, recent_groups) --------
 
 export const getMyProfile = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -234,9 +234,51 @@ export const getMyProfile = createServerFn({ method: "GET" })
     const { supabase, userId } = context;
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, username, display_name, palate_code_red, palate_code_white, n_rated")
+      .select("id, username, display_name, palate_code_red, palate_code_white, n_rated, recent_groups")
       .eq("id", userId)
       .maybeSingle();
     if (error) throw new Error(error.message);
     return data;
   });
+
+// -------- Recent drinking groups (persisted on the profile) --------
+
+export type RecentGroup = { ids: string[]; label: string; usedAt: number };
+
+const RecentGroupSchema = z.object({
+  ids: z.array(z.string().uuid()).min(1).max(6),
+  label: z.string().min(1).max(120),
+  usedAt: z.number().int().positive(),
+});
+
+export const saveRecentGroupFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ ids: z.array(z.string().uuid()).min(1).max(6), label: z.string().min(1).max(120) }).parse(input),
+  )
+  .handler(async ({ data, context }): Promise<RecentGroup[]> => {
+    const { supabase, userId } = context;
+    const { data: prof, error: rErr } = await supabase
+      .from("profiles").select("recent_groups").eq("id", userId).maybeSingle();
+    if (rErr) throw new Error(rErr.message);
+
+    const existing: RecentGroup[] = Array.isArray(prof?.recent_groups)
+      ? (prof!.recent_groups as unknown[]).flatMap((g) => {
+          const parsed = RecentGroupSchema.safeParse(g);
+          return parsed.success ? [parsed.data] : [];
+        })
+      : [];
+
+    const key = [...data.ids].sort().join(",");
+    const dedup = existing.filter((g) => [...g.ids].sort().join(",") !== key);
+    const next: RecentGroup[] = [
+      { ids: data.ids, label: data.label, usedAt: Date.now() },
+      ...dedup,
+    ].slice(0, 5);
+
+    const { error: uErr } = await supabase
+      .from("profiles").update({ recent_groups: next }).eq("id", userId);
+    if (uErr) throw new Error(uErr.message);
+    return next;
+  });
+
