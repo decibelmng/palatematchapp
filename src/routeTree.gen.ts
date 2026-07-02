@@ -16,6 +16,7 @@ import { Route as PourRouteImport } from './routes/pour'
 import { Route as MyRatingsRouteImport } from './routes/my-ratings'
 import { Route as FriendsRouteImport } from './routes/friends'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ScanIndexRouteImport } from './routes/scan.index'
 import { Route as RestaurantsIndexRouteImport } from './routes/restaurants.index'
 import { Route as ScanListRouteImport } from './routes/scan.list'
 import { Route as RestaurantsIdRouteImport } from './routes/restaurants.$id'
@@ -56,6 +57,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ScanIndexRoute = ScanIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ScanRoute,
+} as any)
 const RestaurantsIndexRoute = RestaurantsIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -89,6 +95,7 @@ export interface FileRoutesByFullPath {
   '/restaurants/$id': typeof RestaurantsIdRoute
   '/scan/list': typeof ScanListRoute
   '/restaurants/': typeof RestaurantsIndexRoute
+  '/scan/': typeof ScanIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -96,11 +103,11 @@ export interface FileRoutesByTo {
   '/my-ratings': typeof MyRatingsRoute
   '/pour': typeof PourRoute
   '/rate': typeof RateRoute
-  '/scan': typeof ScanRouteWithChildren
   '/add-friend/$username': typeof AddFriendUsernameRoute
   '/restaurants/$id': typeof RestaurantsIdRoute
   '/scan/list': typeof ScanListRoute
   '/restaurants': typeof RestaurantsIndexRoute
+  '/scan': typeof ScanIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -115,6 +122,7 @@ export interface FileRoutesById {
   '/restaurants/$id': typeof RestaurantsIdRoute
   '/scan/list': typeof ScanListRoute
   '/restaurants/': typeof RestaurantsIndexRoute
+  '/scan/': typeof ScanIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -130,6 +138,7 @@ export interface FileRouteTypes {
     | '/restaurants/$id'
     | '/scan/list'
     | '/restaurants/'
+    | '/scan/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -137,11 +146,11 @@ export interface FileRouteTypes {
     | '/my-ratings'
     | '/pour'
     | '/rate'
-    | '/scan'
     | '/add-friend/$username'
     | '/restaurants/$id'
     | '/scan/list'
     | '/restaurants'
+    | '/scan'
   id:
     | '__root__'
     | '/'
@@ -155,6 +164,7 @@ export interface FileRouteTypes {
     | '/restaurants/$id'
     | '/scan/list'
     | '/restaurants/'
+    | '/scan/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -219,6 +229,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/scan/': {
+      id: '/scan/'
+      path: '/'
+      fullPath: '/scan/'
+      preLoaderRoute: typeof ScanIndexRouteImport
+      parentRoute: typeof ScanRoute
+    }
     '/restaurants/': {
       id: '/restaurants/'
       path: '/'
@@ -266,10 +283,12 @@ const RestaurantsRouteWithChildren = RestaurantsRoute._addFileChildren(
 
 interface ScanRouteChildren {
   ScanListRoute: typeof ScanListRoute
+  ScanIndexRoute: typeof ScanIndexRoute
 }
 
 const ScanRouteChildren: ScanRouteChildren = {
   ScanListRoute: ScanListRoute,
+  ScanIndexRoute: ScanIndexRoute,
 }
 
 const ScanRouteWithChildren = ScanRoute._addFileChildren(ScanRouteChildren)
