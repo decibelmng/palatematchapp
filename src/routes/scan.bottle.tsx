@@ -556,4 +556,90 @@ function CompareCard({
   );
 }
 
+// ---------- Extracted "read from label" card with confirmed/inferred chips ----------
+
+function ExtractedCard({ extracted }: { extracted: BottleExtract }) {
+  // Producer + wine_name are usually printed on the label → confirmed.
+  // Grape/region/type are frequently inferred from producer typicity when the
+  // label is sparse. Chip them as "verify" when overall confidence is not high.
+  const inferHint = extracted.confidence !== "high";
+  const chip = (
+    <span className="ml-1 rounded-full border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 text-[9px] uppercase tracking-wider">
+      verify
+    </span>
+  );
+  return (
+    <div className="rounded-md border border-border bg-card/60 p-3">
+      <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Read from label</p>
+      <p className="mt-1 font-medium">
+        {[extracted.producer, extracted.wine_name].filter(Boolean).join(" — ") || "(couldn't read producer)"}
+      </p>
+      <p className="text-xs text-muted-foreground">
+        {extracted.vintage != null && <span>{extracted.vintage}</span>}
+        {(extracted.region ?? extracted.country) && (
+          <>
+            {extracted.vintage != null && <span> · </span>}
+            <span>{extracted.region ?? extracted.country}</span>
+            {inferHint && chip}
+          </>
+        )}
+        {extracted.grape && (
+          <>
+            <span> · </span>
+            <span>{extracted.grape}</span>
+            {inferHint && chip}
+          </>
+        )}
+      </p>
+      {extracted.type && (
+        <div className="mt-1 flex items-center gap-1">
+          <WineTypeBadge type={extracted.type} />
+          {inferHint && chip}
+        </div>
+      )}
+      <p className="mt-2 text-[11px] text-muted-foreground">
+        Chips marked <span className="text-amber-700 dark:text-amber-300">verify</span> may have been inferred — tap to correct in the form.
+      </p>
+    </div>
+  );
+}
+
+// ---------- Duplicate rating detection (producer + cuvée, vintage-collapsed) ----------
+
+function tokenize(s: string | null | undefined): Set<string> {
+  return new Set(
+    (s ?? "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((t) => t.length >= 3),
+  );
+}
+function overlaps(a: Set<string>, b: Set<string>): number {
+  let n = 0; a.forEach((t) => { if (b.has(t)) n++; });
+  return n;
+}
+function findExistingRating(
+  extracted: BottleExtract,
+  ratedBottles: Array<{ id: string; name: string; producer: string | null; vintage: number | null }>,
+  ratings: Array<{ bottle_id: string; stars: number }>,
+) {
+  const eProd = tokenize(extracted.producer);
+  const eName = tokenize(extracted.wine_name);
+  if (eProd.size === 0 && eName.size === 0) return null;
+  let best: { bottle: any; stars: number; score: number } | null = null;
+  for (const b of ratedBottles) {
+    const bProd = tokenize(b.producer);
+    const bName = tokenize(b.name);
+    const prodO = overlaps(eProd, bProd);
+    const nameO = overlaps(eName, bName) + overlaps(eName, bProd);
+    if (eProd.size > 0 && prodO === 0) continue;
+    if (eName.size > 0 && nameO === 0) continue;
+    const score = prodO + nameO;
+    if (score < 2) continue;
+    const r = ratings.find((x) => x.bottle_id === b.id);
+    if (!r) continue;
+    if (!best || score > best.score) best = { bottle: b, stars: r.stars, score };
+  }
+  return best;
+}
+
+
 
