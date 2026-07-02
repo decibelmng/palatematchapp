@@ -3,10 +3,12 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { AuthGate } from "@/components/AuthGate";
+import { ListControls } from "@/components/ListControls";
 import { useRatings, useBottlesByIds, bottleToFp, bottleType } from "@/hooks/use-palate-data";
 import { recommend, type BottleFp, type RatedFp, type Recommendation, type WineType } from "@/lib/recommender";
 import { scanWineList, type ResolvedWine } from "@/lib/scan.functions";
 import { aggregateRated } from "@/lib/cuvee";
+import { applyControls, normalizePrice, isGreatValue, DEFAULT_CONTROLS, type Controls, type Priced } from "@/lib/list-controls";
 
 export const Route = createFileRoute("/scan")({
   ssr: false,
@@ -35,6 +37,22 @@ async function fileToBase64(file: File): Promise<{ base64: string; mediaType: st
 }
 
 type Ranked = Recommendation & { scanned: ResolvedWine };
+
+type ScanRow = Priced & {
+  key: string;
+  ranked: Ranked;
+  type: WineType;
+  isCatalog: boolean;
+  greatValue: boolean;
+};
+
+const TYPE_LABEL: Record<WineType, string> = {
+  red: "Reds for you",
+  white: "Whites for you",
+  rose: "Rosés for you",
+  sparkling: "Sparkling for you",
+  dessert: "Dessert wines for you",
+};
 
 function Scan() {
   const { data: ratings } = useRatings();
@@ -119,7 +137,36 @@ function Scan() {
   }, [readable, ratedRows]);
 
   const enoughRatings = ratedRows.length >= 3;
-  const displayList = ranked.slice(0, 80);
+
+
+  const grouped: { type: WineType; rows: ScanRow[] }[] = useMemo(() => {
+    const buckets = new Map<WineType, ScanRow[]>();
+    ranked.forEach((r, i) => {
+      const t = (r.scanned.type ?? "red") as WineType;
+      // Menu price captured from the photo (a raw string). Parse and normalize.
+      const p = normalizePrice(r.scanned.price ?? null);
+      const isCatalog = r.scanned.fp_source === "catalog";
+      const row: ScanRow = {
+        key: r.bottle.id + "-" + i,
+        ranked: r,
+        type: t,
+        isCatalog,
+        price_amount: p.amount,
+        price_band: p.band,
+        price_display: p.display,
+        predicted: r.predicted,
+        greatValue: false,
+      };
+      row.greatValue = isGreatValue(row);
+      if (!buckets.has(t)) buckets.set(t, []);
+      buckets.get(t)!.push(row);
+    });
+    const order: WineType[] = ["red", "white", "rose", "sparkling", "dessert"];
+    return order
+      .filter((t) => buckets.has(t))
+      .map((t) => ({ type: t, rows: buckets.get(t)! }));
+  }, [ranked]);
+
 
   function flagFor(r: Ranked): { label: string; tone: "good" | "bad" | "warn" } | null {
     if (!enoughRatings) return null;
@@ -296,11 +343,80 @@ function Scan() {
         </div>
       )}
 
-      {displayList.length > 0 && (
-        <ul className="mt-6 divide-y divide-border">
-          {displayList.map((r) => {
+      {grouped.length > 0 && (
+        <div className="mt-6 space-y-8">
+          {grouped.map((g) => (
+            <ScanSection
+              key={g.type}
+              type={g.type}
+              rows={g.rows}
+              enoughRatings={enoughRatings}
+              flagFor={flagFor}
+            />
+          ))}
+        </div>
+      )}
+
+
+      {unreadable.length > 0 && (
+        <div className="mt-8">
+          <h2 className="font-serif text-base">Couldn't read these</h2>
+          <ul className="mt-2 text-xs text-muted-foreground space-y-1">
+            {unreadable.map((w, i) => (
+              <li key={i}>{[w.producer, w.wine_name, w.vintage].filter(Boolean).join(" ") || "(illegible)"}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <p className="mt-10 text-[11px] text-muted-foreground">
+        Each scan makes one paid vision call. Your photo is processed and discarded — never stored by the app.
+      </p>
+    </div>
+  );
+}
+
+function ScanSection({
+  type,
+  rows,
+  enoughRatings,
+  flagFor,
+}: {
+  type: WineType;
+  rows: ScanRow[];
+  enoughRatings: boolean;
+  flagFor: (r: Ranked) => { label: string; tone: "good" | "bad" | "warn" } | null;
+}) {
+  const [controls, setControls] = useState<Controls>(DEFAULT_CONTROLS);
+  // When user hasn't rated enough, "best match" / "value" / "confident" have no
+  // signal — fall back to keeping the scan's read order.
+  const effective: Controls = !enoughRatings && (controls.sort === "best" || controls.sort === "value" || controls.sort === "confident")
+    ? { ...controls, sort: "best" }
+    : controls;
+  const filtered = useMemo(() => {
+    const out = applyControls(rows, effective);
+    if (!enoughRatings && effective.sort === "best") {
+      // preserve original scan order
+      const idx = new Map(rows.map((r, i) => [r.key, i]));
+      return [...out].sort((a, b) => (idx.get(a.key) ?? 0) - (idx.get(b.key) ?? 0));
+    }
+    return out;
+  }, [rows, effective, enoughRatings]);
+  const visible = filtered.slice(0, 40);
+  const hidden = Math.max(0, filtered.length - visible.length);
+
+  return (
+    <section>
+      <h2 className="font-serif text-xl">{TYPE_LABEL[type]}</h2>
+      <ListControls value={controls} onChange={setControls} idPrefix={`scan-${type}`} />
+      {visible.length === 0 ? (
+        <p className="mt-4 text-sm text-muted-foreground">
+          No wines in this section match those filters.
+        </p>
+      ) : (
+        <ul className="mt-3 divide-y divide-border">
+          {visible.map(({ ranked: r, isCatalog, greatValue, price_display }) => {
             const flag = flagFor(r);
-            const isCatalog = r.scanned.fp_source === "catalog";
             return (
               <li key={r.bottle.id} className="py-4 flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -316,9 +432,14 @@ function Scan() {
                     >
                       {isCatalog ? "catalog" : "estimated"}
                     </span>
+                    {greatValue && (
+                      <span className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
+                        great value
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-muted-foreground truncate">
-                    {[r.bottle.region, r.scanned.grape, r.scanned.price].filter(Boolean).join(" · ")}
+                    {[r.bottle.region, r.scanned.grape, price_display].filter(Boolean).join(" · ")}
                   </p>
                   {enoughRatings && r.nearest && (
                     <p className="mt-1 text-[11px] text-muted-foreground">
@@ -346,27 +467,9 @@ function Scan() {
           })}
         </ul>
       )}
-
-      {ranked.length > 40 && (
-        <p className="mt-3 text-xs text-muted-foreground">
-          Showing top 40 of {ranked.length} readable wines.
-        </p>
+      {hidden > 0 && (
+        <p className="mt-2 text-[11px] text-muted-foreground">+{hidden} more match these filters.</p>
       )}
-
-      {unreadable.length > 0 && (
-        <div className="mt-8">
-          <h2 className="font-serif text-base">Couldn't read these</h2>
-          <ul className="mt-2 text-xs text-muted-foreground space-y-1">
-            {unreadable.map((w, i) => (
-              <li key={i}>{[w.producer, w.wine_name, w.vintage].filter(Boolean).join(" ") || "(illegible)"}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      <p className="mt-10 text-[11px] text-muted-foreground">
-        Each scan makes one paid vision call. Your photo is processed and discarded — never stored by the app.
-      </p>
-    </div>
+    </section>
   );
 }

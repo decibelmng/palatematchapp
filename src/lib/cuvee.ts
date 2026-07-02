@@ -70,6 +70,7 @@ export type CuveeCandidate = {
   type: WineType;
   fp: Record<FpKey, number>;
   critic_score: number | null;
+  price_band: string | null;
   vintages: number[];    // sorted desc
 };
 
@@ -92,6 +93,7 @@ type CandidateInput = {
   vintage?: number | null;
   fp: Record<FpKey, number>;
   critic_score?: number | null;
+  price_band?: string | null;
 };
 
 function meanFp(rows: { fp: Record<FpKey, number> }[]): Record<FpKey, number> {
@@ -157,6 +159,7 @@ export function aggregateCandidates(rows: CandidateInput[]): CuveeCandidate[] {
       type: rep.type,
       fp: meanFp(grp),
       critic_score: critics.length ? Math.max(...critics) : null,
+      price_band: rep.price_band ?? grp.find((g) => g.price_band)?.price_band ?? null,
       vintages,
     });
   }
