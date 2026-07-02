@@ -365,6 +365,17 @@ function Scan() {
       )}
 
       {grouped.length > 0 && (
+        <div className="mt-6">
+          <DrinkingGroupSelector
+            selectedIds={group.friendIds}
+            onToggle={group.toggle}
+            onClear={group.clear}
+            onSet={group.set}
+          />
+        </div>
+      )}
+
+      {grouped.length > 0 && (
         <div className="mt-6 space-y-8">
           {grouped.map((g) => (
             <ScanSection
@@ -373,6 +384,9 @@ function Scan() {
               rows={g.rows}
               enoughRatings={enoughRatings}
               flagFor={flagFor}
+              groupScores={groupScores}
+              groupActive={groupActive}
+              groupLoading={groupPred.isFetching}
             />
           ))}
         </div>
