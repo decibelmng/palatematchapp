@@ -375,3 +375,101 @@ function Scan() {
     </div>
   );
 }
+
+function ScanSection({
+  type,
+  rows,
+  enoughRatings,
+  flagFor,
+}: {
+  type: WineType;
+  rows: ScanRow[];
+  enoughRatings: boolean;
+  flagFor: (r: Ranked) => { label: string; tone: "good" | "bad" | "warn" } | null;
+}) {
+  const [controls, setControls] = useState<Controls>(DEFAULT_CONTROLS);
+  // When user hasn't rated enough, "best match" / "value" / "confident" have no
+  // signal — fall back to keeping the scan's read order.
+  const effective: Controls = !enoughRatings && (controls.sort === "best" || controls.sort === "value" || controls.sort === "confident")
+    ? { ...controls, sort: "best" }
+    : controls;
+  const filtered = useMemo(() => {
+    const out = applyControls(rows, effective);
+    if (!enoughRatings && effective.sort === "best") {
+      // preserve original scan order
+      const idx = new Map(rows.map((r, i) => [r.key, i]));
+      return [...out].sort((a, b) => (idx.get(a.key) ?? 0) - (idx.get(b.key) ?? 0));
+    }
+    return out;
+  }, [rows, effective, enoughRatings]);
+  const visible = filtered.slice(0, 40);
+  const hidden = Math.max(0, filtered.length - visible.length);
+
+  return (
+    <section>
+      <h2 className="font-serif text-xl">{TYPE_LABEL[type]}</h2>
+      <ListControls value={controls} onChange={setControls} idPrefix={`scan-${type}`} />
+      {visible.length === 0 ? (
+        <p className="mt-4 text-sm text-muted-foreground">
+          No wines in this section match those filters.
+        </p>
+      ) : (
+        <ul className="mt-3 divide-y divide-border">
+          {visible.map(({ ranked: r, isCatalog, greatValue, price_display }) => {
+            const flag = flagFor(r);
+            return (
+              <li key={r.bottle.id} className="py-4 flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-medium leading-tight truncate">{r.bottle.name}</p>
+                    <span
+                      className={`shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border ${
+                        isCatalog
+                          ? "border-primary/40 bg-primary/10 text-primary"
+                          : "border-border bg-muted text-muted-foreground"
+                      }`}
+                      title={isCatalog ? `Matched: ${r.scanned.matched_bottle_name}` : "No catalog match — calibrated LLM estimate"}
+                    >
+                      {isCatalog ? "catalog" : "estimated"}
+                    </span>
+                    {greatValue && (
+                      <span className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
+                        great value
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground truncate">
+                    {[r.bottle.region, r.scanned.grape, price_display].filter(Boolean).join(" · ")}
+                  </p>
+                  {enoughRatings && r.nearest && (
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      like your {r.nearest.stars}★ <span className="text-foreground/80">{r.nearest.name}</span>
+                    </p>
+                  )}
+                  {flag && (
+                    <p className={`mt-1 text-[11px] ${
+                      flag.tone === "good" ? "text-primary" :
+                      flag.tone === "bad" ? "text-destructive" :
+                      "text-muted-foreground italic"
+                    }`}>
+                      {flag.label}
+                    </p>
+                  )}
+                </div>
+                {enoughRatings && (
+                  <div className="shrink-0 text-right">
+                    <span className="font-serif text-primary text-xl">{r.predicted.toFixed(1)}</span>
+                    <span className="text-primary text-sm">★</span>
+                  </div>
+                )}
+              </li>
+            );
+          })}
+        </ul>
+      )}
+      {hidden > 0 && (
+        <p className="mt-2 text-[11px] text-muted-foreground">+{hidden} more match these filters.</p>
+      )}
+    </section>
+  );
+}
