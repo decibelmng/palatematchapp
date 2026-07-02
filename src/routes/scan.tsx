@@ -121,7 +121,43 @@ function Scan() {
   }, [readable, ratedRows]);
 
   const enoughRatings = ratedRows.length >= 3;
-  const displayList = ranked.slice(0, 80);
+
+  type ScanRow = Priced & {
+    key: string;
+    ranked: Ranked;
+    type: WineType;
+    isCatalog: boolean;
+    greatValue: boolean;
+  };
+
+  const grouped: { type: WineType; rows: ScanRow[] }[] = useMemo(() => {
+    const buckets = new Map<WineType, ScanRow[]>();
+    ranked.forEach((r, i) => {
+      const t = (r.scanned.type ?? "red") as WineType;
+      // Menu price captured from the photo (a raw string). Parse and normalize.
+      const p = normalizePrice(r.scanned.price ?? null);
+      const isCatalog = r.scanned.fp_source === "catalog";
+      const row: ScanRow = {
+        key: r.bottle.id + "-" + i,
+        ranked: r,
+        type: t,
+        isCatalog,
+        price_amount: p.amount,
+        price_band: p.band,
+        price_display: p.display,
+        predicted: r.predicted,
+        greatValue: false,
+      };
+      row.greatValue = isGreatValue(row);
+      if (!buckets.has(t)) buckets.set(t, []);
+      buckets.get(t)!.push(row);
+    });
+    const order: WineType[] = ["red", "white", "rose", "sparkling", "dessert", "fortified"];
+    return order
+      .filter((t) => buckets.has(t))
+      .map((t) => ({ type: t, rows: buckets.get(t)! }));
+  }, [ranked]);
+
 
   function flagFor(r: Ranked): { label: string; tone: "good" | "bad" | "warn" } | null {
     if (!enoughRatings) return null;
