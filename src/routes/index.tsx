@@ -2,7 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState, useEffect } from "react";
 import { AuthGate } from "@/components/AuthGate";
 import { PalateStar } from "@/components/PalateStar";
+import { PourMatchRow } from "@/components/PourMatchRow";
 import { useBottlesByIds, useRatings, bottleToValues, bottleType, usePersistCode } from "@/hooks/use-palate-data";
+import { useTopMatches } from "@/lib/top-matches";
 import { computeCode, describeCode, axesFor, type RatedBottle, type PaletteType } from "@/lib/palate";
 
 export const Route = createFileRoute("/")({
@@ -94,7 +96,7 @@ function Home() {
 
       {totalRated > 0 && (
         <div className="mt-6 flex flex-wrap gap-2">
-          <Link to="/my-ratings" className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent">
+          <Link to="/rate" className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent">
             Edit your ratings ({totalRated})
           </Link>
           <Link to="/rate" className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent">
@@ -105,6 +107,8 @@ function Home() {
           </Link>
         </div>
       )}
+
+      {totalRated > 0 && <TopMatchesSection />}
 
       <div className="mt-10">
         <h3 className="font-serif text-base">What the letters mean</h3>
@@ -165,3 +169,23 @@ function CodeChipRow({
     </button>
   );
 }
+
+function TopMatchesSection() {
+  const { data: matches, loading } = useTopMatches(5);
+  if (loading && matches.length === 0) return null;
+  if (matches.length === 0) return null;
+  return (
+    <section className="mt-10">
+      <div className="flex items-baseline justify-between gap-3">
+        <h2 className="font-serif text-xl">Top matches for you</h2>
+        <Link to="/pour" className="text-xs font-semibold text-primary hover:opacity-80">
+          See all matches →
+        </Link>
+      </div>
+      <ul className="mt-2 divide-y divide-border">
+        {matches.map((m) => <PourMatchRow key={m.cuvee.cuvee} match={m} />)}
+      </ul>
+    </section>
+  );
+}
+

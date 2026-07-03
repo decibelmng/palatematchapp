@@ -1,27 +1,45 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Star, Pencil, ScanLine, MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useMyProfile } from "@/hooks/use-friends";
 import { ThemeToggle } from "./ThemeToggle";
 
 const TABS = [
-  { to: "/", label: "Palate", icon: "✦" },
-  { to: "/pour", label: "Pour next", icon: "◐" },
-  { to: "/rate", label: "Rate", icon: "★" },
-  { to: "/my-ratings", label: "My ratings", icon: "✎" },
-  { to: "/scan", label: "Scan", icon: "⌬" },
-  { to: "/restaurants", label: "Restaurants", icon: "◈" },
-  { to: "/friends", label: "Friends", icon: "◑" },
+  { to: "/", label: "Palate", Icon: Star },
+  { to: "/rate", label: "Rate", Icon: Pencil },
+  { to: "/scan", label: "Scan", Icon: ScanLine },
+  { to: "/restaurants", label: "Restaurants", Icon: MapPin },
 ] as const;
+
+type TabTo = (typeof TABS)[number]["to"];
+
+function initialsFor(name: string | null | undefined): string {
+  if (!name) return "•";
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "•";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function isActive(pathname: string, to: TabTo): boolean {
+  if (to === "/") return pathname === "/";
+  return pathname === to || pathname.startsWith(to + "/");
+}
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const { data: profile } = useMyProfile();
+  const initials = initialsFor(
+    (profile as { display_name?: string | null; username?: string | null } | undefined)?.display_name
+      ?? (profile as { username?: string | null } | undefined)?.username
+      ?? null,
+  );
 
-  // Close menu on route change
   useEffect(() => { setMenuOpen(false); }, [pathname]);
 
-  // Click outside to close
   useEffect(() => {
     if (!menuOpen) return;
     function onClick(e: MouseEvent) {
@@ -32,8 +50,6 @@ export function AppShell({ children }: { children: ReactNode }) {
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
   }, [menuOpen]);
-
-  const current = TABS.find((t) => t.to === pathname) ?? TABS[0];
 
   return (
     <div className="cellar-bg min-h-screen flex flex-col">
@@ -49,41 +65,26 @@ export function AppShell({ children }: { children: ReactNode }) {
               onClick={() => setMenuOpen((v) => !v)}
               aria-haspopup="menu"
               aria-expanded={menuOpen}
-              className="flex items-center gap-2 rounded-full border border-border bg-card/80 pl-3 pr-2 py-1.5 text-xs font-medium hover:bg-accent transition-colors"
+              aria-label="Account menu"
+              className="h-9 w-9 rounded-full border border-border bg-card/80 text-xs font-semibold text-foreground hover:bg-accent transition-colors flex items-center justify-center"
             >
-              <span className="text-primary text-sm leading-none">{current.icon}</span>
-              <span>{current.label}</span>
-              <span className="flex flex-col gap-[3px] ml-1">
-                <span className="block w-3.5 h-px bg-current" />
-                <span className="block w-3.5 h-px bg-current" />
-                <span className="block w-3.5 h-px bg-current" />
-              </span>
+              {initials}
             </button>
 
             {menuOpen && (
               <div
                 role="menu"
-                className="absolute right-0 mt-2 w-52 rounded-lg border border-border bg-card shadow-xl overflow-hidden z-40"
+                className="absolute right-0 mt-2 w-44 rounded-lg border border-border bg-card shadow-xl overflow-hidden z-40"
               >
-                {TABS.map((t) => {
-                  const active = pathname === t.to;
-                  return (
-                    <Link
-                      key={t.to}
-                      to={t.to}
-                      role="menuitem"
-                      className={`flex items-center gap-3 px-3 py-2.5 text-sm transition-colors ${
-                        active
-                          ? "bg-accent text-primary"
-                          : "text-foreground hover:bg-accent/60"
-                      }`}
-                    >
-                      <span className="text-base w-5 text-center">{t.icon}</span>
-                      <span>{t.label}</span>
-                    </Link>
-                  );
-                })}
+                <Link
+                  to="/friends"
+                  role="menuitem"
+                  className="block px-3 py-2.5 text-sm text-foreground hover:bg-accent/60"
+                >
+                  Friends
+                </Link>
                 <button
+                  role="menuitem"
                   onClick={async () => { await supabase.auth.signOut(); }}
                   className="w-full text-left px-3 py-2.5 text-xs text-muted-foreground hover:bg-accent/60 border-t border-border"
                 >
@@ -99,20 +100,20 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <nav className="fixed bottom-0 inset-x-0 border-t border-border bg-background/95 backdrop-blur">
         <div className="max-w-xl mx-auto flex">
-          {TABS.map((t) => {
-            const active = pathname === t.to;
+          {TABS.map(({ to, label, Icon }) => {
+            const active = isActive(pathname, to);
             return (
               <Link
-                key={t.to}
-                to={t.to}
-                className={`flex-1 flex flex-col items-center gap-0.5 py-2.5 text-[11px] transition-colors border-t-2 ${
+                key={to}
+                to={to}
+                className={`flex-1 flex flex-col items-center gap-1 py-2.5 text-[11px] transition-colors border-t-2 ${
                   active
                     ? "text-primary border-primary"
                     : "text-muted-foreground hover:text-foreground border-transparent"
                 }`}
               >
-                <span className="text-base leading-none">{t.icon}</span>
-                {t.label}
+                <Icon size={18} strokeWidth={active ? 2.2 : 1.8} />
+                {label}
               </Link>
             );
           })}
