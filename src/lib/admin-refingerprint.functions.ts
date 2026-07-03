@@ -1,11 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { callFingerprintGateway } from "@/lib/fingerprint-prompt";
+import { refingerprintCuveeByBottleId, stripYear } from "@/lib/fingerprint-worker";
 
 // NOTE: ADMIN_USER_ID must be set in Lovable Cloud env to the owner's auth user id.
 // Any signed-in user whose auth uid does NOT match will get "Not authorized".
 
 const BATCH_SIZE = 15;
+
 
 
 export const refingerprintBatch = createServerFn({ method: "POST" })
@@ -25,7 +26,6 @@ export const refingerprintBatch = createServerFn({ method: "POST" })
     // ORDER BY, the slice is arbitrary and can miss the (few) rated / menu ids
     // entirely — which is why the first run returned remaining=0.
 
-    const stripYear = (s: string) => s.replace(/\b(19|20)\d{2}\b/g, "").replace(/\s+/g, " ").trim();
     const isDef = (v: number | null) => v != null && Math.abs(v - 0.5) < 0.02;
 
     // 1. Priority bottle ids: rated + menu (catalog-wide reads → service role).
@@ -136,50 +136,19 @@ export const refingerprintBatch = createServerFn({ method: "POST" })
     const errors: string[] = [];
 
     for (const { g } of batch) {
-      const rep = g.representative;
+      // Use the shared worker (seed = first row in group). It re-fetches the
+      // group internally, but its "already stamped" and size guards make it
+      // safe and idempotent alongside our ranked queue.
       try {
-        const { fp, ax_sweet } = await callFingerprintGateway(
-          {
-            producer: rep.producer ?? "",
-            name: stripYear(rep.name ?? ""),
-            type: rep.type ?? "red",
-            region: rep.region,
-            country: rep.country,
-            grape: rep.grape,
-            vintage: null,
-          },
-          key,
-        );
-        // Write to every row in the group.
-        const { error: uErr } = await supabaseAdmin
-          .from("bottles")
-          .update({
-            fp_fresh: fp.fresh,
-            fp_acid: fp.acid,
-            fp_tannin: fp.tannin,
-            fp_fruit_dark: fp.fruit_dark,
-            fp_ripe: fp.ripe,
-            fp_oak: fp.oak,
-            fp_body: fp.body,
-            fp_savory: fp.savory,
-            ax_body: fp.body,
-            ax_fruit_char: fp.savory,
-            ax_tannin: fp.tannin,
-            ax_acidity: fp.acid,
-            ax_sweet,
-            source: (rep.source ? `${rep.source}; refingerprinted (cuvée-level)` : "refingerprinted (cuvée-level)"),
-            refingerprinted_at: new Date().toISOString(),
-          })
-          .in("id", g.ids);
-        if (uErr) {
+        const result = await refingerprintCuveeByBottleId(g.ids[0], supabaseAdmin);
+        if ("ok" in result) {
+          processed += 1;
+        } else {
           skipped += 1;
-          errors.push(uErr.message);
-          continue;
+          errors.push(result.reason);
         }
-        processed += 1;
       } catch (e: any) {
         const msg = e?.message ?? String(e);
-        // Bubble up fatal auth/credit errors so the UI can stop the loop.
         if (/AI credits exhausted/i.test(msg) || /Rate limited/i.test(msg)) {
           throw new Error(msg);
         }
