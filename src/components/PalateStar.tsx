@@ -103,7 +103,7 @@ export function PalateStar({ axes, letters, size = 320, highlightAxis, onAxisTap
                     stroke="var(--color-background)" strokeWidth={2} />
                   {d.letter && (
                     <text x={lxo} y={lyo} textAnchor={letterAnchor} dominantBaseline="central"
-                      fontFamily="var(--font-serif)" fontSize="14" fill="var(--color-primary)">
+                      fontFamily="var(--font-serif)" fontSize="17" fontWeight={500} fill="var(--color-primary)">
                       {d.letter}
                     </text>
                   )}
@@ -111,14 +111,14 @@ export function PalateStar({ axes, letters, size = 320, highlightAxis, onAxisTap
               );
             })}
 
-            {/* Rim labels */}
+            {/* Rim labels — both muted, never emphasized */}
             <text x={lx} y={ly - 6} textAnchor={anchor} dominantBaseline="central"
-              fontSize="12" fontWeight={500} fill="var(--color-foreground)">
-              {axisDef.highName} · {axisDef.high}
-            </text>
-            <text x={lx} y={ly + 8} textAnchor={anchor} dominantBaseline="central"
               fontSize="11" fill="var(--color-muted-foreground)">
               {axisDef.label.toLowerCase()}
+            </text>
+            <text x={lx} y={ly + 7} textAnchor={anchor} dominantBaseline="central"
+              fontSize="11" fill="var(--color-muted-foreground)">
+              {axisDef.low} → {axisDef.high}
             </text>
           </g>
         );
