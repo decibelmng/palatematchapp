@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AuthGate } from "@/components/AuthGate";
 import { useServerFn } from "@tanstack/react-start";
 import { useState, useRef } from "react";
-import { refingerprintBatch } from "@/lib/admin-refingerprint.functions";
+import { refingerprintBatch, refingerprintMyMatchesBatch } from "@/lib/admin-refingerprint.functions";
 
 export const Route = createFileRoute("/admin/data")({
   ssr: false,
