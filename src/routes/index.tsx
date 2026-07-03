@@ -198,7 +198,7 @@ function OnboardingBlock({ scope, n }: { scope: PaletteType; n: number }) {
         {[
           "Rate wines you know you love — or don't",
           "You appear on the map with a palate code",
-          "Scan any wine list — we rank it for you",
+          "Scan any wine list — we show your matches",
         ].map((text, i) => (
           <li key={i} className={`flex items-center gap-3 text-[13px] ${i === 0 ? "" : "opacity-60"}`}>
             <span className="w-5 h-5 rounded-full border border-border flex items-center justify-center text-[11px]">
