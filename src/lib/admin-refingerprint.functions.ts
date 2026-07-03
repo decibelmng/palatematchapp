@@ -202,12 +202,14 @@ export const refingerprintMyMatchesBatch = createServerFn({ method: "POST" })
     }
 
     // 1. Pull the caller's candidate bottle ids from the pour pipeline.
+    // Call the shared helper directly with supabaseAdmin — invoking the
+    // getPourCandidates server fn from within another handler would trigger
+    // a self-HTTP RPC in the Worker (TypeError: fetch failed).
     let candidates: any[] = [];
     try {
-      const res = await getPourCandidates();
-      candidates = res.bottles ?? [];
+      candidates = await computePourCandidatesFor(supabaseAdmin, context.userId);
     } catch (e: any) {
-      console.warn("[matches-refp] getPourCandidates threw", {
+      console.warn("[matches-refp] computePourCandidatesFor threw", {
         name: e?.name, message: e?.message, cause: e?.cause?.message ?? e?.cause,
       });
       throw new Error(`Failed to load matches: ${e?.message ?? e}`);
