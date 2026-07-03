@@ -139,7 +139,7 @@ function Home() {
       ) : (
         <>
           <p className="mt-3 text-xs text-muted-foreground text-center">
-            Small dots are wines you love · each ring is one of your taste modes — you can have more than one
+            Small dots are wines you love · rings are your taste modes · the map is your Body and Fruit sliders, crossed
           </p>
           <p className="mt-3 text-sm text-foreground/90 leading-relaxed text-center">
             {describeCode(active.letters)}
