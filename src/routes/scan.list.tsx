@@ -444,6 +444,8 @@ function Scan() {
     setStatus("idle");
     setResumedAt(null);
     setDismissedResume(true);
+    setPrescanRestaurant(null);
+    setAutoAttributedTo(null);
     mutation.reset();
   }
 
