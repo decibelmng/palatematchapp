@@ -274,6 +274,16 @@ function Scan() {
       setStatus(fin.status as any);
       if (fin.status === "partial") toast.warning("Some pages didn't parse — retry them below.");
       else if (fin.status === "failed") toast.error("Scan failed — try again.");
+      // Auto-attribute when the user picked a restaurant before scanning.
+      if (fin.scan_log_id && prescanRestaurant) {
+        try {
+          const res = await attributeFn({ data: { scan_id: fin.scan_log_id, restaurant_id: prescanRestaurant.id } });
+          setAutoAttributedTo(res.restaurant_name);
+          toast.success(`Added to ${res.restaurant_name}`);
+        } catch (e: any) {
+          toast.error(e?.message ?? "Couldn't attribute to restaurant");
+        }
+      }
     } finally {
       finalizingRef.current = false;
     }
