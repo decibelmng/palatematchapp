@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
 import { AuthGate } from "@/components/AuthGate";
+import { PalateStar, lettersFromCode } from "@/components/PalateStar";
+import { axesFor } from "@/lib/palate";
 import {
   useFriendships,
   useUserSearch,
