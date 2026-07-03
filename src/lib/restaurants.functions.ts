@@ -252,12 +252,7 @@ export const getRestaurantWinesFn = createServerFn({ method: "POST" })
     z.object({ restaurant_id: z.string().uuid() }).parse(input),
   )
   .handler(async ({ data }) => {
-    const { createClient } = await import("@supabase/supabase-js");
-    const supabase = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_PUBLISHABLE_KEY!,
-      { auth: { storage: undefined, persistSession: false, autoRefreshToken: false } },
-    );
+    const supabase = await createPublicSupabase();
     const { data: rest, error: rErr } = await supabase
       .from("restaurants")
       .select("id,name,city,locale")
