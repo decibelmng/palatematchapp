@@ -7,7 +7,7 @@ export type LovedPoint = {
   bottleId?: string;
   axBody: number;
   axFruit: number;
-  stars: number;      // 4 or 5
+  stars: number;      // 1..5
   name: string;
   producer: string | null;
   region: string | null;
@@ -16,7 +16,8 @@ export type LovedPoint = {
 type Props = {
   type: PaletteType;
   landmarks: ResolvedLandmark[];
-  loved: LovedPoint[];
+  loved: LovedPoint[];             // 4–5★, drives clusters + glow
+  others?: LovedPoint[];           // 1–3★, display only (× or hollow dot)
   showOverlay?: boolean;
   overlayText?: string;
 };
@@ -128,7 +129,7 @@ type Selected =
   | { kind: "landmark"; l: ResolvedLandmark }
   | null;
 
-export function TasteMap({ type, landmarks, loved, showOverlay, overlayText }: Props) {
+export function TasteMap({ type, landmarks, loved, others = [], showOverlay, overlayText }: Props) {
   const corners = type === "red"
     ? {
         tl: "Light & earthy",   tr: "Bold & earthy",
@@ -142,15 +143,29 @@ export function TasteMap({ type, landmarks, loved, showOverlay, overlayText }: P
       };
 
   const [selected, setSelected] = useState<Selected>(null);
+  // Tier toggles: 5,4,2,1 on; 3 off by default.
+  const [tierOn, setTierOn] = useState<Record<1|2|3|4|5, boolean>>({ 5: true, 4: true, 3: false, 2: true, 1: true });
 
   const lovedData = useMemo(
     () => loved.map((p) => ({ p, x: clamp01(p.axBody), y: clamp01(p.axFruit) })),
     [loved]
   );
+  const othersData = useMemo(
+    () => others.map((p) => ({ p, x: clamp01(p.axBody), y: clamp01(p.axFruit) })),
+    [others]
+  );
   const landmarkData = useMemo(
     () => landmarks.map((l) => ({ l, x: clamp01(l.axBody), y: clamp01(l.axFruit) })),
     [landmarks]
   );
+
+  // Counts per tier for chip enable/disable.
+  const tierCounts = useMemo(() => {
+    const c = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } as Record<1|2|3|4|5, number>;
+    for (const p of loved) if (p.stars >= 1 && p.stars <= 5) c[p.stars as 1|2|3|4|5]++;
+    for (const p of others) if (p.stars >= 1 && p.stars <= 5) c[p.stars as 1|2|3|4|5]++;
+    return c;
+  }, [loved, others]);
 
   // Cluster the RAW 0..1 (x, y) values, not screen coords.
   const clusters = useMemo(
@@ -166,11 +181,12 @@ export function TasteMap({ type, landmarks, loved, showOverlay, overlayText }: P
     () => computeDomain(
       [
         ...lovedData.map((d) => ({ x: d.x, y: d.y })),
+        ...othersData.map((d) => ({ x: d.x, y: d.y })),
         ...landmarkData.map((d) => ({ x: d.x, y: d.y })),
       ],
       clusters,
     ),
-    [lovedData, landmarkData, clusters]
+    [lovedData, othersData, landmarkData, clusters]
   );
   const dx = domain.x1 - domain.x0;
   const dy = domain.y1 - domain.y0;
@@ -323,6 +339,8 @@ export function TasteMap({ type, landmarks, loved, showOverlay, overlayText }: P
 
         {/* Loved wines (tier a) — solid primary; 8px for 5★, 6px for 4★ */}
         {lovedData.map(({ p, x, y }, i) => {
+          const tier = p.stars as 1|2|3|4|5;
+          if (!tierOn[tier]) return null;
           const px = toPx({ x, y });
           const r = p.stars >= 5 ? 8 : 6;
           const isSelected = selected?.kind === "loved" && selected.p.key === p.key;
@@ -340,6 +358,40 @@ export function TasteMap({ type, landmarks, loved, showOverlay, overlayText }: P
                   strokeWidth={isSelected ? 1.5 : 0}
                   className={isSelected ? "pm-pulse" : ""} />
               </g>
+            </g>
+          );
+        })}
+
+        {/* Other rated wines (1–3★) — never rings, never glow */}
+        {othersData.map(({ p, x, y }, i) => {
+          const tier = p.stars as 1|2|3|4|5;
+          if (!tierOn[tier]) return null;
+          const px = toPx({ x, y });
+          const isSelected = selected?.kind === "loved" && selected.p.key === p.key;
+          const onClick = (e: React.MouseEvent) => { e.stopPropagation(); setSelected({ kind: "loved", p }); };
+          if (p.stars === 3) {
+            return (
+              <g key={`o-${p.key}-${i}`} onClick={onClick} style={{ cursor: "pointer" }}>
+                <circle cx={px.px} cy={px.py} r={12} fill="transparent" />
+                <circle cx={px.px} cy={px.py} r={4}
+                  fill="none"
+                  stroke="var(--color-muted-foreground)"
+                  strokeOpacity={isSelected ? 0.9 : 0.55}
+                  strokeWidth={1.25} />
+              </g>
+            );
+          }
+          // × mark for 1–2★
+          const s = 4.5; // half-length ~9px total
+          return (
+            <g key={`o-${p.key}-${i}`} onClick={onClick} style={{ cursor: "pointer" }}
+               stroke="var(--color-muted-foreground)"
+               strokeOpacity={isSelected ? 0.9 : 0.55}
+               strokeWidth={1.5}
+               strokeLinecap="round">
+              <circle cx={px.px} cy={px.py} r={12} fill="transparent" stroke="none" />
+              <line x1={px.px - s} y1={px.py - s} x2={px.px + s} y2={px.py + s} />
+              <line x1={px.px - s} y1={px.py + s} x2={px.px + s} y2={px.py - s} />
             </g>
           );
         })}
@@ -368,11 +420,45 @@ export function TasteMap({ type, landmarks, loved, showOverlay, overlayText }: P
         )}
       </div>
 
+      {/* Rating-tier toggles */}
+      <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5">
+        {([5, 4, 3, 2, 1] as const).map((s) => {
+          const on = tierOn[s];
+          const disabled = tierCounts[s] === 0;
+          return (
+            <button
+              key={s}
+              type="button"
+              disabled={disabled}
+              onClick={() => setTierOn((prev) => ({ ...prev, [s]: !prev[s] }))}
+              aria-pressed={on}
+              className={`rounded-full border-[0.5px] px-2 py-0.5 text-[10px] uppercase transition ${
+                disabled
+                  ? "border-border/50 text-muted-foreground/40 cursor-not-allowed"
+                  : on
+                  ? "border-primary bg-primary/10 text-foreground"
+                  : "border-border text-muted-foreground hover:bg-accent"
+              }`}
+              style={{ letterSpacing: "0.14em" }}
+            >
+              {s}★
+            </button>
+          );
+        })}
+      </div>
+
       {/* Legend */}
       <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
         <span className="inline-flex items-center gap-1.5">
           <span className="inline-block w-2.5 h-2.5 rounded-full bg-primary" />
           Wines you love
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+            <line x1="2.5" y1="2.5" x2="9.5" y2="9.5" stroke="var(--color-muted-foreground)" strokeOpacity={0.55} strokeWidth={1.5} strokeLinecap="round" />
+            <line x1="2.5" y1="9.5" x2="9.5" y2="2.5" stroke="var(--color-muted-foreground)" strokeOpacity={0.55} strokeWidth={1.5} strokeLinecap="round" />
+          </svg>
+          Wines you avoid
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span className="inline-block w-2.5 h-2.5 rounded-full border-[1.25px] border-muted-foreground bg-background" />

@@ -3,7 +3,7 @@ import { useMemo, useState, useEffect } from "react";
 import { AuthGate } from "@/components/AuthGate";
 import { TasteMap, type LovedPoint } from "@/components/TasteMap";
 import { PalateBars } from "@/components/PalateBars";
-import { PourMatchRow } from "@/components/PourMatchRow";
+
 import { ShareCardDialog } from "@/components/ShareCardDialog";
 import { useMyProfile } from "@/hooks/use-friends";
 import {
@@ -14,7 +14,6 @@ import {
   usePersistCode,
 } from "@/hooks/use-palate-data";
 import { useLandmarks } from "@/hooks/use-landmarks";
-import { useTopMatches } from "@/lib/top-matches";
 import { cuveeKey } from "@/lib/cuvee";
 import { computeCode, describeCode, axesFor, type RatedBottle, type PaletteType } from "@/lib/palate";
 
@@ -98,6 +97,33 @@ function Home() {
     return Array.from(seen.values());
   }, [bottles, ratings, scope]);
 
+  // Non-loved rated cuvées (1–3★) of the active type — for × marks and neutral dots.
+  // Dedupe by cuvée keeping the LOWEST star (worst impression drives the mark).
+  const otherPoints: LovedPoint[] = useMemo(() => {
+    const byId = new Map((bottles ?? []).map((b) => [b.id, b]));
+    const lovedKeys = new Set(lovedPoints.map((p) => p.key));
+    const seen = new Map<string, LovedPoint>();
+    for (const r of ratings ?? []) {
+      const b = byId.get(r.bottle_id);
+      if (!b) continue;
+      if (bottleType(b) !== scope) continue;
+      if (r.stars >= 4) continue;
+      const key = cuveeKey(b);
+      if (lovedKeys.has(key)) continue;
+      const existing = seen.get(key);
+      if (existing) {
+        if (r.stars < existing.stars) existing.stars = r.stars;
+        continue;
+      }
+      seen.set(key, {
+        key, bottleId: b.id,
+        axBody: b.ax_body, axFruit: b.ax_fruit_char,
+        stars: r.stars, name: b.name, producer: b.producer, region: b.region,
+      });
+    }
+    return Array.from(seen.values());
+  }, [bottles, ratings, scope, lovedPoints]);
+
   const { data: landmarks } = useLandmarks(scope);
   const resolvedLandmarks = landmarks ?? [];
 
@@ -137,7 +163,17 @@ function Home() {
         displayName={myProfile?.display_name || myProfile?.username || ""}
       />
 
-      {totalRated > 0 && <TopMatchesSection />}
+      {canShare && (
+        <div className="mt-2 text-center">
+          <Link
+            to="/matches"
+            className="text-[11px] uppercase text-muted-foreground hover:text-primary"
+            style={{ letterSpacing: "0.18em" }}
+          >
+            See your matches →
+          </Link>
+        </div>
+      )}
 
       {/* Taste map */}
       <div className="mt-10">
@@ -145,6 +181,7 @@ function Home() {
           type={scope}
           landmarks={resolvedLandmarks}
           loved={onboarding ? [] : lovedPoints}
+          others={onboarding ? [] : otherPoints}
           showOverlay={onboarding}
           overlayText="Where do you land?"
         />
@@ -251,25 +288,5 @@ function CodeChipRow({
         ))}
       </div>
     </button>
-  );
-}
-
-
-function TopMatchesSection() {
-  const { data: matches, loading } = useTopMatches(3);
-  if (loading && matches.length === 0) return null;
-  if (matches.length === 0) return null;
-  return (
-    <section className="mt-6">
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 className="font-serif text-xl">Your top matches</h2>
-        <Link to="/matches" className="text-xs font-semibold text-primary hover:opacity-80">
-          See all matches →
-        </Link>
-      </div>
-      <ul className="mt-2 divide-y divide-border">
-        {matches.map((m) => <PourMatchRow key={m.cuvee.cuvee} match={m} />)}
-      </ul>
-    </section>
   );
 }
