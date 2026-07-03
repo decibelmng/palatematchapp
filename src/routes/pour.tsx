@@ -107,6 +107,13 @@ function Pour() {
           console.log(`[pour:diag] type=${type} candidates=${candFp.length} distinctCandFp=${candSigs.size} rated=${ratedFp.length} distinctRatedFp=${ratedSigs.size}`, "firstCandFp=", candFp[0]?.fp);
         }
         const recs = recommend(ratedFp, candFp).slice(0, 60);
+        // TEMP DIAGNOSTIC: predicted value spread
+        {
+          const preds = recs.map((r) => r.predicted);
+          const uniq = new Set(preds.map((p) => p.toFixed(6)));
+          // eslint-disable-next-line no-console
+          console.log(`[pour:diag2] type=${type} n=${preds.length} distinctPredicted=${uniq.size} min=${Math.min(...preds).toFixed(4)} max=${Math.max(...preds).toFixed(4)} first5=`, preds.slice(0, 5).map((p) => p.toFixed(4)));
+        }
         const candByRepId = new Map(cands.map((c) => [c.id, c]));
         const ratedByRepId = new Map(sameTypeRated.map((r) => [r.id, r]));
         const items: RankedCuvee[] = recs
