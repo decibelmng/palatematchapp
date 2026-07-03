@@ -222,13 +222,15 @@ export function TasteMap({ type, landmarks, loved, showOverlay, overlayText }: P
           textAnchor="middle" fontSize="12"
           fill="var(--color-muted-foreground)">{corners.yCap}</text>
 
-        {/* Rings (tier b) — dashed primary 20%, no labels */}
+        {/* Rings (tier b) — dashed primary 20%, no labels. Data-space radius
+            mapped through the auto-fit transform per axis, drawn as an ellipse
+            so it truly encloses members even when dx ≠ dy. */}
         {clusters.map((cl, i) => {
           const p = toPx(cl.center);
-          const rNorm = Math.max(0.08, Math.min(0.2, 0.08 + cl.spread * 0.9));
-          const r = rNorm * PLOT_W; // ring size doesn't need to track domain rescaling closely
+          const rx = (cl.radius / dx) * PLOT_W;
+          const ry = (cl.radius / dy) * PLOT_H;
           return (
-            <circle key={i} cx={p.px} cy={p.py} r={r}
+            <ellipse key={i} cx={p.px} cy={p.py} rx={rx} ry={ry}
               fill="none"
               stroke="var(--color-primary)"
               strokeOpacity={0.2}
