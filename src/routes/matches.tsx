@@ -71,6 +71,7 @@ function Matches() {
       id: b.id, name: b.name, producer: b.producer, region: b.region,
       type: bottleType(b), vintage: b.vintage, fp: bottleToFp(b),
       critic_score: b.critic_score, price_band: b.price_band,
+      raw: b.raw ?? false,
     }));
     const allCuvees = aggregateCandidates(candidatesRaw)
       .filter((c) => !ratedCuveeKeys.has(c.cuvee));
@@ -107,9 +108,13 @@ function Matches() {
             const cuvee = candByRepId.get(r.bottle.id);
             if (!cuvee) return null;
             const nearestCuvee = r.nearest ? ratedByRepId.get(r.nearest.id) ?? null : null;
-            return { ...r, cuvee, nearestCuvee };
+            // Down-weight uncalibrated (raw import default) cuvées so a
+            // template bottle can't outrank a calibrated real match.
+            const predicted = cuvee.raw ? r.predicted * 0.9 : r.predicted;
+            return { ...r, predicted, cuvee, nearestCuvee };
           })
-          .filter((x): x is RankedCuvee => x !== null);
+          .filter((x): x is RankedCuvee => x !== null)
+          .sort((a, b) => b.predicted - a.predicted);
         if (items.length > 0) out.push({ type, mode: "personalized", nSameType: sameTypeRated.length, items });
       }
     }
@@ -205,6 +210,7 @@ type Row = Priced & {
   nearestCuvee: CuveeRated | null;
   greatValue: boolean;
   confidence: number | null;
+  raw: boolean;            // uncalibrated (import-defaults) cuvée — hide from top 10
 };
 
 function toRows(section: Section): Row[] {
@@ -227,6 +233,7 @@ function toRows(section: Section): Row[] {
         predicted: r.predicted,
         greatValue: false,
         confidence: r.confidence,
+        raw: r.cuvee.raw,
       };
       row.greatValue = isGreatValue(row);
       return row;
@@ -250,6 +257,7 @@ function toRows(section: Section): Row[] {
       predicted: 0,
       greatValue: false,
       confidence: null,
+      raw: c.raw,
     };
   });
 }
@@ -299,7 +307,10 @@ function SectionView({ section, groupScores, groupActive, groupLoading }: Sectio
     }
     return out;
   }, [rows, effective, treatAsFallback]);
-  const visible = filtered.slice(0, 10);
+  // Uncalibrated (raw import defaults) cuvées are held out of the visible top-10
+  // so a template bottle can't outrank calibrated real matches. They stay in the
+  // pool and reappear once re-fingerprinted.
+  const visible = filtered.filter((r) => !r.raw).slice(0, 10);
   const hidden = Math.max(0, filtered.length - visible.length);
 
   return (
