@@ -124,7 +124,8 @@ export function recommend(
       }
       if (!nearest) nearest = nearestAny;
       const predicted = (num + alpha * prior) / (den + alpha);
-      return { bottle: b, predicted, nearest, maxSimilarity: Math.max(bestAny, 0) };
+      const confidence = den / (den + alpha);
+      return { bottle: b, predicted, nearest, maxSimilarity: Math.max(bestAny, 0), confidence };
     })
     .filter((r): r is Recommendation => r !== null);
 
