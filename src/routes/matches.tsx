@@ -233,6 +233,7 @@ function toRows(section: Section): Row[] {
         predicted: r.predicted,
         greatValue: false,
         confidence: r.confidence,
+        raw: r.cuvee.raw,
       };
       row.greatValue = isGreatValue(row);
       return row;
