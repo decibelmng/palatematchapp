@@ -40,7 +40,7 @@ For each wine, output an object with:
 
 Rules:
 - Include every wine, even if you must guess. If a line is illegible, omit it.
-- For non-reds, tannin and fruit_dark must be ~0.
+- For white, rosé, and sparkling wines, tannin and fruit_dark MUST be 0. For dessert wines: white dessert (Sauternes, Tokaji, ice wine) tannin 0; fortified reds (Port, Banyuls, Maury) use real tannin values (typically 0.5–0.8).
 - Do NOT invent wines that aren't on the list.
 - Keep each object COMPACT — short strings only, no extra keys.
 - Output shape: { "wines": [ { ... }, ... ] }`;
