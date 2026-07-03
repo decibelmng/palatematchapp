@@ -101,10 +101,14 @@ export function useLandmarks(type: PaletteType) {
             return null;
           }
           const fp = bottleToFp(row);
+          const axBody = row.ax_body;
+          const axFruit = row.ax_fruit_char;
           return {
             label: d.label,
             sub: d.sub,
             fp,
+            axBody,
+            axFruit,
             bottleId: row.id,
             cuveeKey: cuveeKey(row),
             debug: {
@@ -112,6 +116,8 @@ export function useLandmarks(type: PaletteType) {
               matchedName: row.name,
               matchedProducer: row.producer,
               fp,
+              axBody,
+              axFruit,
             },
           } as ResolvedLandmark;
         })
