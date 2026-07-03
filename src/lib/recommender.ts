@@ -130,7 +130,7 @@ function scoreCandidate(
   return { predicted, nearest, maxSimilarity: Math.max(bestAny, 0), confidence };
 }
 
-const BW_GRID = [0.05, 0.08, 0.12, 0.18] as const;
+const BW_GRID = [0.08, 0.12, 0.18, 0.25] as const;
 const ALPHA_GRID = [0.2, 0.4, 0.8] as const;
 const SMALL_SAMPLE_THRESHOLD = 8;
 const DEFAULT_BW = 0.12;
