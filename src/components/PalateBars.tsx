@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import type { AxisDef, LetterResult } from "@/lib/palate";
 
 type Props = {
@@ -7,16 +8,22 @@ type Props = {
 
 export function PalateBars({ axes, letters }: Props) {
   const byAxis = new Map(letters.map((l) => [l.axis, l]));
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => {
+    const id = requestAnimationFrame(() => setMounted(true));
+    return () => cancelAnimationFrame(id);
+  }, []);
 
   return (
-    <ul className="space-y-4">
-      {axes.map((axisDef) => {
+    <ul className="space-y-5">
+      {axes.map((axisDef, rowIdx) => {
         const r = byAxis.get(axisDef.key);
         const resolved = r?.resolved ?? false;
         const isHigh = resolved && r!.letter === axisDef.high && !r!.bimodal;
         const isLow = resolved && r!.letter === axisDef.low && !r!.bimodal;
         const isN = resolved && r!.letter === "N";
         const rowOpacity = !resolved ? 0.5 : 1;
+        const delay = `${rowIdx * 60}ms`;
 
         const leftClass = isLow ? "text-primary font-medium" : "text-muted-foreground";
         const rightClass = isHigh ? "text-primary font-medium" : "text-muted-foreground";
@@ -29,7 +36,7 @@ export function PalateBars({ axes, letters }: Props) {
                 <span className="font-serif text-[14px] mr-1">{axisDef.low}</span>
                 {axisDef.lowName}
               </span>
-              <span className={`${centerClass} text-[11px] uppercase tracking-[0.15em]`}>
+              <span className={`${centerClass} text-[10px] uppercase`} style={{ letterSpacing: "0.22em" }}>
                 {axisDef.label}
                 {isN && <span className="font-serif normal-case tracking-normal"> · N</span>}
               </span>
@@ -42,17 +49,23 @@ export function PalateBars({ axes, letters }: Props) {
               <div className="absolute inset-x-0 h-1 rounded-full bg-muted" />
               {resolved && r!.value !== null && !r!.bimodal && (
                 <div
-                  className="absolute w-3 h-3 rounded-full bg-primary"
+                  className="absolute w-3 h-3 rounded-full bg-primary transition-[left] duration-[450ms] ease-out motion-reduce:transition-none"
                   style={{
-                    left: `calc(${(r!.value * 100).toFixed(2)}% - 6px)`,
+                    left: mounted ? `calc(${(r!.value * 100).toFixed(2)}% - 6px)` : "-6px",
+                    transitionDelay: delay,
                     boxShadow: "0 0 0 2px var(--color-background)",
                   }}
                 />
               )}
               {resolved && r!.bimodal && (
                 <div
-                  className="absolute h-2 rounded-full bg-primary"
-                  style={{ left: "25%", width: "50%", opacity: 0.18 }}
+                  className="absolute h-2 rounded-full bg-primary transition-[left,width] duration-[450ms] ease-out motion-reduce:transition-none"
+                  style={{
+                    left: mounted ? "25%" : "50%",
+                    width: mounted ? "50%" : "0%",
+                    opacity: 0.18,
+                    transitionDelay: delay,
+                  }}
                 />
               )}
             </div>
