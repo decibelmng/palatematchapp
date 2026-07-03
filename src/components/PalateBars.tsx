@@ -3,47 +3,37 @@ import type { AxisDef, LetterResult } from "@/lib/palate";
 type Props = {
   axes: AxisDef[];
   letters: LetterResult[];
-  highlightAxis?: string | null;
-  onAxisTap?: (axisKey: string) => void;
 };
 
-export function PalateBars({ axes, letters, highlightAxis, onAxisTap }: Props) {
+export function PalateBars({ axes, letters }: Props) {
   const byAxis = new Map(letters.map((l) => [l.axis, l]));
 
   return (
-    <ul className="mt-2 space-y-4">
+    <ul className="space-y-4">
       {axes.map((axisDef) => {
         const r = byAxis.get(axisDef.key);
         const resolved = r?.resolved ?? false;
         const isHigh = resolved && r!.letter === axisDef.high && !r!.bimodal;
         const isLow = resolved && r!.letter === axisDef.low && !r!.bimodal;
         const isN = resolved && r!.letter === "N";
-        const highlighted = highlightAxis === axisDef.key;
         const rowOpacity = !resolved ? 0.5 : 1;
 
-        const leftColor = isLow ? "text-primary" : "text-muted-foreground";
-        const leftWeight = isLow ? "font-medium" : "";
-        const rightColor = isHigh ? "text-primary" : "text-muted-foreground";
-        const rightWeight = isHigh ? "font-medium" : "";
-        const centerColor = isN ? "text-primary" : "text-muted-foreground";
+        const leftClass = isLow ? "text-primary font-medium" : "text-muted-foreground";
+        const rightClass = isHigh ? "text-primary font-medium" : "text-muted-foreground";
+        const centerClass = isN ? "text-primary" : "text-muted-foreground";
 
         return (
-          <li
-            key={axisDef.key}
-            onClick={onAxisTap ? () => onAxisTap(axisDef.key) : undefined}
-            className={`${onAxisTap ? "cursor-pointer" : ""} ${highlighted ? "" : ""}`}
-            style={{ opacity: rowOpacity }}
-          >
-            <div className="flex items-baseline justify-between text-[12px]">
-              <span className={`${leftColor} ${leftWeight}`}>
+          <li key={axisDef.key} style={{ opacity: rowOpacity }}>
+            <div className="flex items-baseline justify-between gap-2 text-[12px]">
+              <span className={leftClass}>
                 <span className="font-serif text-[14px] mr-1">{axisDef.low}</span>
                 {axisDef.lowName}
               </span>
-              <span className={`${centerColor} text-[11px] uppercase tracking-[0.15em]`}>
+              <span className={`${centerClass} text-[11px] uppercase tracking-[0.15em]`}>
                 {axisDef.label}
                 {isN && <span className="font-serif normal-case tracking-normal"> · N</span>}
               </span>
-              <span className={`${rightColor} ${rightWeight}`}>
+              <span className={rightClass}>
                 {axisDef.highName}
                 <span className="font-serif text-[14px] ml-1">{axisDef.high}</span>
               </span>
