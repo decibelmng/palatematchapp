@@ -10,7 +10,7 @@ import {
   useBottlesByIds,
   useRatings,
   bottleToValues,
-  bottleToFp,
+  bottleType,
   bottleType,
   usePersistCode,
 } from "@/hooks/use-palate-data";
