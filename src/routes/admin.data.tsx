@@ -13,16 +13,18 @@ type LogEntry = { at: string; processed: number; skipped: number; remaining: num
 
 function AdminData() {
   const run = useServerFn(refingerprintBatch);
+  const runMatches = useServerFn(refingerprintMyMatchesBatch);
   const [log, setLog] = useState<LogEntry[]>([]);
   const [busy, setBusy] = useState(false);
   const [loop, setLoop] = useState(false);
   const [fatal, setFatal] = useState<string | null>(null);
   const loopRef = useRef(false);
+  const [mode, setMode] = useState<"all" | "matches">("all");
 
-  async function once() {
+  async function once(which: "all" | "matches" = mode) {
     setBusy(true);
     try {
-      const res = await run();
+      const res = which === "matches" ? await runMatches() : await run();
       const entry: LogEntry = {
         at: new Date().toLocaleTimeString(),
         processed: res.processed,
@@ -42,12 +44,13 @@ function AdminData() {
     }
   }
 
-  async function runUntilDone() {
+  async function runUntilDone(which: "all" | "matches") {
+    setMode(which);
     loopRef.current = true;
     setLoop(true);
     setFatal(null);
     while (loopRef.current) {
-      const res = await once();
+      const res = await once(which);
       if (!res) break;
       if (res.remaining <= 0) break;
       await new Promise((r) => setTimeout(r, 2000));
