@@ -263,14 +263,21 @@ function RequestRow({ row, kind }: { row: import("@/lib/friends.functions").Frie
 function FriendRow({ row }: { row: import("@/lib/friends.functions").FriendshipRow }) {
   const respond = useRespondFriendship();
   const [confirm, setConfirm] = useState(false);
+  const redCode = row.other.palate_code_red ?? "·····";
+  const redLetters = lettersFromCode(redCode, axesFor("red"));
   return (
     <li className="py-3 flex items-center justify-between gap-3">
-      <div className="min-w-0">
-        <p className="text-sm font-medium truncate">{row.other.display_name || row.other.username}</p>
-        <p className="text-[11px] text-muted-foreground truncate">@{row.other.username}</p>
-        <p className="mt-1 text-[11px] text-muted-foreground font-mono tracking-wider">
-          🍷 {row.other.palate_code_red} <span className="opacity-40">·</span> 🥂 {row.other.palate_code_white}
-        </p>
+      <div className="flex items-center gap-3 min-w-0">
+        <div className="shrink-0 w-9 h-9">
+          <PalateStar axes={axesFor("red")} letters={redLetters} size={36} />
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-medium truncate">{row.other.display_name || row.other.username}</p>
+          <p className="text-[11px] text-muted-foreground truncate">@{row.other.username}</p>
+          <p className="mt-1 text-[11px] text-muted-foreground font-mono tracking-wider">
+            🍷 {row.other.palate_code_red} <span className="opacity-40">·</span> 🥂 {row.other.palate_code_white}
+          </p>
+        </div>
       </div>
       <div className="flex gap-2">
         {confirm ? (
