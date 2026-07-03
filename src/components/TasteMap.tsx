@@ -29,7 +29,9 @@ const PAD_B = 40;
 const PLOT_W = VB - PAD_L - PAD_R;
 const PLOT_H = VB - PAD_T - PAD_B;
 
-const CLUSTER_THRESHOLD_DATA = 0.22; // in normalized 0..1 data space
+const CLUSTER_MAX_DIAMETER = 0.35; // data-space stopping criterion
+const RING_PAD = 0.04;              // data-space padding around max radius
+const RING_MIN_R = 0.06;            // data-space minimum radius
 const MAX_RINGS = 4;
 
 function clamp01(v: number) { return Math.max(0, Math.min(1, v)); }
@@ -37,32 +39,59 @@ function dist(a: { x: number; y: number }, b: { x: number; y: number }) {
   return Math.hypot(a.x - b.x, a.y - b.y);
 }
 
-function singleLinkage(pts: { x: number; y: number }[], thr: number) {
+/**
+ * Complete-linkage clustering in raw data space.
+ * Merges the pair of clusters whose combined diameter (max pairwise distance
+ * across all members) is smallest, stopping when that minimum exceeds `maxDiameter`.
+ */
+function completeLinkage(pts: { x: number; y: number }[], maxDiameter: number) {
   const n = pts.length;
-  const parent = Array.from({ length: n }, (_, i) => i);
-  const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i])));
-  const union = (a: number, b: number) => {
-    const ra = find(a), rb = find(b);
-    if (ra !== rb) parent[ra] = rb;
-  };
+  if (n === 0) return [];
+
+  // Pairwise distance matrix (data space)
+  const D: number[][] = Array.from({ length: n }, () => new Array(n).fill(0));
   for (let i = 0; i < n; i++) {
     for (let j = i + 1; j < n; j++) {
-      if (dist(pts[i], pts[j]) <= thr) union(i, j);
+      D[i][j] = D[j][i] = dist(pts[i], pts[j]);
     }
   }
-  const groups = new Map<number, number[]>();
-  for (let i = 0; i < n; i++) {
-    const r = find(i);
-    if (!groups.has(r)) groups.set(r, []);
-    groups.get(r)!.push(i);
+
+  // Each cluster tracks its member indices and its current diameter
+  let clusters: { members: number[]; diameter: number }[] =
+    pts.map((_, i) => ({ members: [i], diameter: 0 }));
+
+  const mergedDiameter = (a: number[], b: number[]) => {
+    let d = 0;
+    for (const i of a) for (const j of b) if (D[i][j] > d) d = D[i][j];
+    return d;
+  };
+
+  while (clusters.length > 1) {
+    let bestI = -1, bestJ = -1, bestDiam = Infinity;
+    for (let i = 0; i < clusters.length; i++) {
+      for (let j = i + 1; j < clusters.length; j++) {
+        const cross = mergedDiameter(clusters[i].members, clusters[j].members);
+        const merged = Math.max(clusters[i].diameter, clusters[j].diameter, cross);
+        if (merged < bestDiam) { bestDiam = merged; bestI = i; bestJ = j; }
+      }
+    }
+    if (bestDiam > maxDiameter) break;
+    const merged = {
+      members: [...clusters[bestI].members, ...clusters[bestJ].members],
+      diameter: bestDiam,
+    };
+    clusters = clusters.filter((_, k) => k !== bestI && k !== bestJ);
+    clusters.push(merged);
   }
-  return Array.from(groups.values()).map((idxs) => {
-    const gp = idxs.map((i) => pts[i]);
+
+  return clusters.map((c) => {
+    const gp = c.members.map((i) => pts[i]);
     const cx = gp.reduce((s, p) => s + p.x, 0) / gp.length;
     const cy = gp.reduce((s, p) => s + p.y, 0) / gp.length;
     const center = { x: cx, y: cy };
-    const spread = gp.length === 1 ? 0 : gp.reduce((s, p) => s + dist(p, center), 0) / gp.length;
-    return { center, spread, size: gp.length };
+    const maxR = gp.reduce((m, p) => Math.max(m, dist(p, center)), 0);
+    const radius = Math.max(RING_MIN_R, maxR + RING_PAD); // data-space radius
+    return { center, radius, size: gp.length };
   });
 }
 
