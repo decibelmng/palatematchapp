@@ -99,6 +99,13 @@ function Pour() {
           id: c.id, name: c.name, producer: c.producer, region: c.region,
           type: c.type, fp: c.fp,
         }));
+        // TEMP DIAGNOSTIC: fingerprint diversity going into recommend()
+        {
+          const candSigs = new Set(candFp.map((c) => JSON.stringify(c.fp)));
+          const ratedSigs = new Set(ratedFp.map((r) => JSON.stringify(r.fp)));
+          // eslint-disable-next-line no-console
+          console.log(`[pour:diag] type=${type} candidates=${candFp.length} distinctCandFp=${candSigs.size} rated=${ratedFp.length} distinctRatedFp=${ratedSigs.size}`, "firstCandFp=", candFp[0]?.fp);
+        }
         const recs = recommend(ratedFp, candFp).slice(0, 60);
         const candByRepId = new Map(cands.map((c) => [c.id, c]));
         const ratedByRepId = new Map(sameTypeRated.map((r) => [r.id, r]));
