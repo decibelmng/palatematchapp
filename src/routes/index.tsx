@@ -68,7 +68,8 @@ function Home() {
   const totalRated = ratings?.length ?? 0;
   const onboarding = activeRated.length < MIN_RATINGS;
 
-  // Loved bottles (≥4★) of the active type, deduped by cuvée for the map
+  // Loved bottles (≥4★) of the active type, deduped by cuvée for the map.
+  // Keep the highest star rating seen across the cuvée.
   const lovedPoints: LovedPoint[] = useMemo(() => {
     const byId = new Map((bottles ?? []).map((b) => [b.id, b]));
     const seen = new Map<string, LovedPoint>();
@@ -78,8 +79,21 @@ function Home() {
       if (bottleType(b) !== scope) continue;
       if (r.stars < 4) continue;
       const key = cuveeKey(b);
-      if (seen.has(key)) continue;
-      seen.set(key, { key, bottleId: b.id, axBody: b.ax_body, axFruit: b.ax_fruit_char });
+      const existing = seen.get(key);
+      if (existing) {
+        if (r.stars > existing.stars) existing.stars = r.stars;
+        continue;
+      }
+      seen.set(key, {
+        key,
+        bottleId: b.id,
+        axBody: b.ax_body,
+        axFruit: b.ax_fruit_char,
+        stars: r.stars,
+        name: b.name,
+        producer: b.producer,
+        region: b.region,
+      });
     }
     return Array.from(seen.values());
   }, [bottles, ratings, scope]);
@@ -138,9 +152,6 @@ function Home() {
         <OnboardingBlock scope={scope} n={activeRated.length} />
       ) : (
         <>
-          <p className="mt-3 text-xs text-muted-foreground text-center">
-            Small dots are wines you love · rings are your taste modes · the map is your Body and Fruit sliders, crossed
-          </p>
           <p className="mt-3 text-sm text-foreground/90 leading-relaxed text-center">
             {describeCode(active.letters)}
           </p>
