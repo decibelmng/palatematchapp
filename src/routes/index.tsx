@@ -4,6 +4,8 @@ import { AuthGate } from "@/components/AuthGate";
 import { TasteMap, type LovedPoint } from "@/components/TasteMap";
 import { PalateBars } from "@/components/PalateBars";
 import { PourMatchRow } from "@/components/PourMatchRow";
+import { ShareCardDialog } from "@/components/ShareCardDialog";
+import { useMyProfile } from "@/hooks/use-friends";
 import {
   useBottlesByIds,
   useRatings,
