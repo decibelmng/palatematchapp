@@ -1,36 +1,56 @@
+import { useEffect, useState } from "react";
 import type { AxisDef, LetterResult } from "@/lib/palate";
 
 type Props = {
   axes: AxisDef[];
   letters: LetterResult[];
   size?: number;
-  highlightAxis?: string | null;
-  onAxisTap?: (axisKey: string) => void;
+  animate?: boolean;
 };
 
 const SPOKE_ANGLES_DEG = [-90, -18, 54, 126, 198];
-
-const VB = 380;
+const VB = 240;
 const CX = VB / 2;
 const CY = VB / 2;
-const RIM = 110;
-const LABEL_R = RIM + 18;
+const RIM = 100;
 
 function toRad(d: number) { return (d * Math.PI) / 180; }
 function pt(angleDeg: number, r: number) {
   return [CX + r * Math.cos(toRad(angleDeg)), CY + r * Math.sin(toRad(angleDeg))] as const;
 }
 
-function anchorFor(angleDeg: number): "start" | "middle" | "end" {
-  const c = Math.cos(toRad(angleDeg));
-  if (c > 0.2) return "start";
-  if (c < -0.2) return "end";
-  return "middle";
+/** Approximate LetterResult array from a code string like "LNSND" using the
+ *  axis set. Used for mini glyphs / example glyphs where exact values aren't
+ *  available. */
+export function lettersFromCode(code: string, axes: AxisDef[]): LetterResult[] {
+  return axes.map((a, i) => {
+    const ch = code[i] ?? "·";
+    const base = { axis: a.key, label: a.label, low: a.low, high: a.high };
+    if (ch === a.low)  return { ...base, letter: ch, descriptor: a.lowName,  resolved: true, value: 0.2, bimodal: false };
+    if (ch === a.high) return { ...base, letter: ch, descriptor: a.highName, resolved: true, value: 0.8, bimodal: false };
+    if (ch === "N")    return { ...base, letter: "N", descriptor: a.neutralName, resolved: true, value: 0.5, bimodal: false };
+    return { ...base, letter: "·", descriptor: "—", resolved: false, value: null, bimodal: false };
+  });
 }
 
-export function PalateStar({ axes, letters, size = 320, highlightAxis, onAxisTap }: Props) {
+export function PalateStar({ axes, letters, size = 240, animate = false }: Props) {
   const byAxis = new Map(letters.map((l) => [l.axis, l]));
-  const hasHighlight = !!highlightAxis;
+  const [t, setT] = useState(animate ? 0 : 1);
+
+  useEffect(() => {
+    if (!animate) { setT(1); return; }
+    let raf = 0;
+    const start = performance.now();
+    const DUR = 900;
+    const step = (now: number) => {
+      const p = Math.min(1, (now - start) / DUR);
+      // easeOutCubic
+      setT(1 - Math.pow(1 - p, 3));
+      if (p < 1) raf = requestAnimationFrame(step);
+    };
+    raf = requestAnimationFrame(step);
+    return () => cancelAnimationFrame(raf);
+  }, [animate]);
 
   return (
     <svg
@@ -38,88 +58,45 @@ export function PalateStar({ axes, letters, size = 320, highlightAxis, onAxisTap
       width={size}
       height={size}
       role="img"
-      aria-label="Palate star"
+      aria-label="Palate glyph"
       className="block mx-auto max-w-full h-auto"
     >
-      {/* Guide rings */}
-      <circle cx={CX} cy={CY} r={RIM} fill="none" stroke="var(--color-border)" strokeOpacity="0.6" strokeDasharray="2 4" />
-      <circle cx={CX} cy={CY} r={RIM / 2} fill="none" stroke="var(--color-border)" strokeOpacity="0.3" strokeDasharray="2 4" />
+      <circle cx={CX} cy={CY} r={RIM} fill="none"
+        stroke="var(--color-border)" strokeOpacity="0.6" strokeDasharray="2 4" />
+      <circle cx={CX} cy={CY} r={RIM / 2} fill="none"
+        stroke="var(--color-border)" strokeOpacity="0.3" strokeDasharray="2 4" />
       <circle cx={CX} cy={CY} r={2.5} fill="var(--color-muted-foreground)" opacity="0.5" />
 
       {axes.map((axisDef, i) => {
         const angle = SPOKE_ANGLES_DEG[i];
         const result = byAxis.get(axisDef.key);
         const resolved = result?.resolved ?? false;
-        const highlighted = highlightAxis === axisDef.key;
-        const groupOpacity = hasHighlight ? (highlighted ? 1 : 0.45) : 1;
-        const spokeOpacity = resolved ? 1 : 0.4;
-
         const [ex, ey] = pt(angle, RIM);
-        const [lx, ly] = pt(angle, LABEL_R);
-        const anchor = anchorFor(angle);
+        // Stagger animation slightly per spoke
+        const localT = Math.max(0, Math.min(1, (t - i * 0.06) / (1 - i * 0.03)));
 
-        // dot positions
-        let dots: { x: number; y: number; r: number; letter?: string }[] = [];
+        let dots: { x: number; y: number; r: number }[] = [];
         if (result && resolved) {
           if (result.bimodal) {
-            const [x1, y1] = pt(angle, 0.25 * RIM);
-            const [x2, y2] = pt(angle, 0.75 * RIM);
-            dots = [
-              { x: x1, y: y1, r: 4 },
-              { x: x2, y: y2, r: 4, letter: "N" },
-            ];
+            const [x1, y1] = pt(angle, 0.25 * RIM * localT);
+            const [x2, y2] = pt(angle, 0.75 * RIM * localT);
+            dots = [{ x: x1, y: y1, r: 4 }, { x: x2, y: y2, r: 4 }];
           } else if (result.value !== null) {
-            const [x, y] = pt(angle, result.value * RIM);
-            dots = [{ x, y, r: 5.5, letter: result.letter }];
+            const [x, y] = pt(angle, result.value * RIM * localT);
+            dots = [{ x, y, r: 5.5 }];
           }
         }
 
         return (
-          <g
-            key={axisDef.key}
-            style={{ cursor: onAxisTap ? "pointer" : undefined, opacity: groupOpacity }}
-            onClick={onAxisTap ? () => onAxisTap(axisDef.key) : undefined}
-          >
-            {/* Spoke */}
-            <line
-              x1={CX} y1={CY} x2={ex} y2={ey}
+          <g key={axisDef.key}>
+            <line x1={CX} y1={CY} x2={ex} y2={ey}
               stroke="var(--color-border)" strokeWidth={1}
-              opacity={spokeOpacity}
-            />
-
-            {/* Dots + letters */}
-            {dots.map((d, idx) => {
-              const letterAngle = angle;
-              const cos = Math.cos(toRad(letterAngle));
-              const sin = Math.sin(toRad(letterAngle));
-              // letter offset perpendicular-ish so it sits outward/sideways
-              const off = 12;
-              const lxo = d.x + cos * 2 + (Math.abs(cos) < 0.2 ? off : 0) * Math.sign(cos || 1);
-              const lyo = d.y + sin * 2 - 6;
-              const letterAnchor = anchor;
-              return (
-                <g key={idx}>
-                  <circle cx={d.x} cy={d.y} r={d.r} fill="var(--color-primary)"
-                    stroke="var(--color-background)" strokeWidth={2} />
-                  {d.letter && (
-                    <text x={lxo} y={lyo} textAnchor={letterAnchor} dominantBaseline="central"
-                      fontFamily="var(--font-serif)" fontSize="17" fontWeight={500} fill="var(--color-primary)">
-                      {d.letter}
-                    </text>
-                  )}
-                </g>
-              );
-            })}
-
-            {/* Rim labels — both muted, never emphasized */}
-            <text x={lx} y={ly - 6} textAnchor={anchor} dominantBaseline="central"
-              fontSize="11" fill="var(--color-muted-foreground)">
-              {axisDef.label.toLowerCase()}
-            </text>
-            <text x={lx} y={ly + 7} textAnchor={anchor} dominantBaseline="central"
-              fontSize="11" fill="var(--color-muted-foreground)">
-              {axisDef.low} → {axisDef.high}
-            </text>
+              opacity={resolved ? 1 : 0.4} />
+            {dots.map((d, idx) => (
+              <circle key={idx} cx={d.x} cy={d.y} r={d.r}
+                fill="var(--color-primary)"
+                stroke="var(--color-background)" strokeWidth={2} />
+            ))}
           </g>
         );
       })}
