@@ -136,13 +136,36 @@ function Matches() {
         predicted: i.predicted,
         nearest: i.nearestCuvee ? { name: i.nearestCuvee.name, stars: i.nearestCuvee.stars } : null,
       })) : [];
+      // Score specific reds against the red rated cuvées
+      const redRatedFp: RatedFp[] = redRated.map((r) => ({
+        id: r.id, name: r.name, producer: r.producer, region: r.region,
+        type: r.type, fp: r.fp, stars: r.stars,
+      }));
+      const targets = [
+        { label: "García Figuero 15 Reserva", producerMatch: "García Figuero", nameMatch: "15 Reserva" },
+        { label: "Alpha Omega ERA Red (Napa)", producerMatch: "Alpha Omega", nameMatch: "ERA" },
+        { label: "Alpha Omega Beckstoffer Las Piedras Cab", producerMatch: "Alpha Omega", nameMatch: "Las Piedras" },
+        { label: "Joseph Phelps Insignia", producerMatch: "Joseph Phelps", nameMatch: "Insignia" },
+      ];
+      const scored: any[] = [];
+      for (const t of targets) {
+        const cand = allCuvees.find((c) =>
+          (c.producer ?? "").includes(t.producerMatch) && c.name.includes(t.nameMatch) && c.type === "red",
+        );
+        if (!cand) { scored.push({ label: t.label, missing: true }); continue; }
+        const bfp: BottleFp = { id: cand.id, name: cand.name, producer: cand.producer, region: cand.region, type: cand.type, fp: cand.fp };
+        const s = debugScore(redRatedFp, bfp);
+        scored.push({ label: t.label, cuveeName: cand.name, fp: cand.fp, predicted: s?.predicted, den: s?.den, num: s?.num, nearest: s?.nearest ? { name: s.nearest.name, stars: s.nearest.stars } : null });
+      }
       (window as any).__DIAG_MATCHES_RED = {
-        v: 4,
+        v: 5,
         looTable: table,
         winner: params,
         redPrior: priors.red,
         top60: { count: preds.length, min: preds.length ? Math.min(...preds) : null, max: preds.length ? Math.max(...preds) : null },
         top3,
+        silverOakNapaFp: redRatedFp.find((r) => (r.producer ?? "").includes("Silver Oak") && (r.region ?? "").includes("Napa"))?.fp ?? null,
+        scored,
       };
     }
 
