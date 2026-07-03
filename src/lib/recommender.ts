@@ -63,7 +63,7 @@ export function recommend(
 ): Recommendation[] {
   if (rated.length === 0) return [];
   const bw = opts.bandwidth ?? 0.2;
-  const alpha = opts.shrinkAlpha ?? 1.5;   // Laplace-style shrinkage toward prior
+  const alpha = opts.shrinkAlpha ?? 0.4;   // Laplace-style shrinkage toward prior
   const prior = opts.shrinkPrior ?? 3.0;   // neutral baseline when similarity is low
   const restrict = opts.restrictToRatedTypes ?? true;
 
