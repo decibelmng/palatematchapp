@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useAllBottlesPaged, useBottlesByIds, useRatings, bottleToFp, bottleType } from "@/hooks/use-palate-data";
+import { usePourCandidates, useBottlesByIds, useRatings, bottleToFp, bottleType } from "@/hooks/use-palate-data";
 import { recommend, type BottleFp, type RatedFp, type Recommendation } from "@/lib/recommender";
 import { aggregateRated, aggregateCandidates, type CuveeCandidate, type CuveeRated } from "@/lib/cuvee";
 
