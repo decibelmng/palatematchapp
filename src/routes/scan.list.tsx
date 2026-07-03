@@ -619,7 +619,13 @@ function Scan() {
         </div>
       )}
 
-      {scanLogId && totalWines > 0 && (
+      {autoAttributedTo && (
+        <div className="mt-4 rounded-md border border-primary/40 bg-primary/5 p-3 text-sm">
+          Added to <span className="font-medium">{autoAttributedTo}</span>.
+        </div>
+      )}
+
+      {scanLogId && totalWines > 0 && !autoAttributedTo && (
         <RestaurantAttribution scanId={scanLogId} />
       )}
 
