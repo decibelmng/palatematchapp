@@ -144,10 +144,10 @@ function Rate() {
               Your palate
             </Link>
             <Link
-              to="/pour"
+              to="/matches"
               className="text-xs font-semibold text-primary hover:opacity-80"
             >
-              Pour next →
+              Matches →
             </Link>
           </div>
         </div>
