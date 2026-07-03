@@ -100,17 +100,6 @@ function Matches() {
           type: c.type, fp: c.fp,
         }));
         const recs = recommend(ratedFp, candFp).slice(0, 60);
-        if (type === "red" && typeof window !== "undefined") {
-          import("@/lib/recommender").then((m) => {
-            const kp = m.selectKernelParams(ratedFp);
-            const priors = m.computeTypePriors(ratedFp);
-            const preds = recs.map((r) => r.predicted);
-            const min = Math.min(...preds), max = Math.max(...preds);
-            const top = recs[0];
-            // eslint-disable-next-line no-console
-            console.log("[matches:diag]", { kp, redPrior: priors.red, min, max, top: top && { name: top.bottle.name, predicted: top.predicted, nearest: top.nearest?.name } });
-          });
-        }
         const candByRepId = new Map(cands.map((c) => [c.id, c]));
         const ratedByRepId = new Map(sameTypeRated.map((r) => [r.id, r]));
         const items: RankedCuvee[] = recs
