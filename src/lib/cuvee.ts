@@ -163,6 +163,7 @@ export function aggregateCandidates(rows: CandidateInput[]): CuveeCandidate[] {
       critic_score: critics.length ? Math.max(...critics) : null,
       price_band: rep.price_band ?? grp.find((g) => g.price_band)?.price_band ?? null,
       vintages,
+      raw: grp.every((g) => g.raw !== false),
     });
   }
   return out;
