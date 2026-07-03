@@ -225,6 +225,7 @@ function toRows(section: Section): Row[] {
         isCatalog: true, // /pour candidates are all catalog wines
         predicted: r.predicted,
         greatValue: false,
+        confidence: r.confidence,
       };
       row.greatValue = isGreatValue(row);
       return row;
