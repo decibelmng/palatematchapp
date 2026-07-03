@@ -29,6 +29,7 @@ export type Database = {
           fp_body: number
           fp_fresh: number
           fp_fruit_dark: number
+          fp_harmonized_at: string | null
           fp_oak: number
           fp_ripe: number
           fp_savory: number
@@ -38,6 +39,7 @@ export type Database = {
           name: string
           price_band: string | null
           producer: string | null
+          refingerprinted_at: string | null
           region: string | null
           source: string | null
           tasting_note: string | null
@@ -59,6 +61,7 @@ export type Database = {
           fp_body?: number
           fp_fresh?: number
           fp_fruit_dark?: number
+          fp_harmonized_at?: string | null
           fp_oak?: number
           fp_ripe?: number
           fp_savory?: number
@@ -68,6 +71,7 @@ export type Database = {
           name: string
           price_band?: string | null
           producer?: string | null
+          refingerprinted_at?: string | null
           region?: string | null
           source?: string | null
           tasting_note?: string | null
@@ -89,6 +93,7 @@ export type Database = {
           fp_body?: number
           fp_fresh?: number
           fp_fruit_dark?: number
+          fp_harmonized_at?: string | null
           fp_oak?: number
           fp_ripe?: number
           fp_savory?: number
@@ -98,6 +103,7 @@ export type Database = {
           name?: string
           price_band?: string | null
           producer?: string | null
+          refingerprinted_at?: string | null
           region?: string | null
           source?: string | null
           tasting_note?: string | null
@@ -509,6 +515,7 @@ export type Database = {
           fp_body: number
           fp_fresh: number
           fp_fruit_dark: number
+          fp_harmonized_at: string | null
           fp_oak: number
           fp_ripe: number
           fp_savory: number
@@ -518,6 +525,7 @@ export type Database = {
           name: string
           price_band: string | null
           producer: string | null
+          refingerprinted_at: string | null
           region: string | null
           source: string | null
           tasting_note: string | null
