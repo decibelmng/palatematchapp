@@ -108,20 +108,21 @@ function Home() {
 
   return (
     <div className="pt-2">
-      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Your palates</p>
+      <p className="text-[10px] uppercase text-muted-foreground" style={{ letterSpacing: "0.22em" }}>Your palates</p>
 
       {/* Two-code header */}
-      <div className="mt-3 grid gap-2 sm:grid-cols-2">
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <CodeChipRow type="red" code={red.code} n={redRated.length} active={scope === "red"} onClick={() => setScope("red")} />
         <CodeChipRow type="white" code={white.code} n={whiteRated.length} active={scope === "white"} onClick={() => setScope("white")} />
       </div>
 
       {canShare && (
-        <div className="mt-2 text-center">
+        <div className="mt-3 text-center">
           <button
             type="button"
             onClick={() => setShareOpen(true)}
-            className="text-xs text-muted-foreground hover:text-primary"
+            className="text-[11px] uppercase text-muted-foreground hover:text-primary"
+            style={{ letterSpacing: "0.18em" }}
           >
             Share your palate →
           </button>
@@ -138,7 +139,7 @@ function Home() {
 
 
       {/* Taste map */}
-      <div className="mt-6">
+      <div className="mt-10">
         <TasteMap
           type={scope}
           landmarks={resolvedLandmarks}
@@ -152,27 +153,29 @@ function Home() {
         <OnboardingBlock scope={scope} n={activeRated.length} />
       ) : (
         <>
-          <p className="mt-3 text-sm text-foreground/90 leading-relaxed text-center">
+          <p className="mt-10 font-serif italic text-[15px] text-foreground/90 text-center mx-auto"
+             style={{ maxWidth: "34ch", lineHeight: 1.6 }}>
             {describeCode(active.letters)}
           </p>
 
-          <div className="mt-6">
+          <div className="mt-10">
             <PalateBars axes={activeAxes} letters={active.letters} />
           </div>
 
-          <div className="mt-6 flex flex-wrap gap-2">
-            <Link to="/rate" className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent">
+          <div className="mt-10 flex flex-wrap gap-2">
+            <Link to="/rate" className="rounded-[14px] border-[0.5px] border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent shadow-[var(--pm-card-shadow)]">
               Edit your ratings ({totalRated})
             </Link>
-            <Link to="/rate" className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent">
+            <Link to="/rate" className="rounded-[14px] border-[0.5px] border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent shadow-[var(--pm-card-shadow)]">
               Rate more
             </Link>
-            <Link to="/pour" className="rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-xs font-medium hover:opacity-90">
+            <Link to="/pour" className="rounded-[14px] bg-primary text-primary-foreground px-3 py-1.5 text-xs font-medium hover:opacity-90 shadow-[var(--pm-card-shadow)]">
               Pour next →
             </Link>
           </div>
         </>
       )}
+
 
       {totalRated > 0 && <TopMatchesSection />}
     </div>
@@ -228,27 +231,34 @@ function CodeChipRow({
     <button
       type="button"
       onClick={onClick}
-      className={`text-left rounded-xl border p-3 transition ${
-        active ? "border-primary bg-primary/5" : "border-border bg-card/60 hover:bg-accent"
+      className={`text-left rounded-[14px] border-[0.5px] p-4 transition shadow-[var(--pm-card-shadow)] ${
+        active ? "border-primary bg-[color-mix(in_oklab,var(--color-primary)_3%,var(--color-card))]" : "border-border bg-card/60 hover:bg-accent"
       }`}
     >
       <div className="flex items-center justify-between">
-        <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">{label}</span>
+        <span className="text-[10px] uppercase text-muted-foreground" style={{ letterSpacing: "0.22em" }}>{label}</span>
         <span className="text-[10px] text-muted-foreground">
           {n === 0 ? "no ratings yet" : n < 3 ? `still learning · ${n}` : `${n} rated`}
         </span>
       </div>
       <div
-        className="mt-2 font-serif text-2xl text-primary"
+        className="mt-3 mb-1 font-serif text-[30px] text-primary leading-none"
         style={{ letterSpacing: "0.3em" }}
       >
         {code.split("").map((ch, i) => (
-          <span key={i} className={ch === "·" ? "text-muted-foreground/60" : ""}>{ch}</span>
+          <span
+            key={`${type}-${i}-${ch}`}
+            className={`pm-letter ${ch === "·" ? "text-muted-foreground/60" : ""}`}
+            style={{ ["--pm-delay" as string]: `${i * 50}ms` }}
+          >
+            {ch}
+          </span>
         ))}
       </div>
     </button>
   );
 }
+
 
 function TopMatchesSection() {
   const { data: matches, loading } = useTopMatches(5);

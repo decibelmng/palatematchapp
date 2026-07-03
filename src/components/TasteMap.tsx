@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import type { PaletteType } from "@/lib/palate";
 import type { ResolvedLandmark } from "@/hooks/use-landmarks";
 
@@ -182,10 +182,30 @@ export function TasteMap({ type, landmarks, loved, showOverlay, overlayText }: P
   const showCrosshair = 0.5 >= domain.x0 && 0.5 <= domain.x1
     && 0.5 >= domain.y0 && 0.5 <= domain.y1;
 
-
-  const gridOpacity = 0.6;
-
   const clearOnBg = () => setSelected(null);
+
+
+  const uid = useId().replace(/[:]/g, "");
+  const clipId = `pm-clip-${uid}`;
+  const blurId = `pm-blur-${uid}`;
+
+  // Glow layer — cap at 40 for perf (most recent by insertion, ties by stars).
+  const glowPoints = useMemo(() => lovedData.slice(0, 40), [lovedData]);
+
+  // Motion timeline (ms)
+  const T_GLOW = 0;
+  const T_DOTS = 400;
+  const T_DOT_STAGGER = 30;
+  const dotsEnd = T_DOTS + Math.max(0, lovedData.length - 1) * T_DOT_STAGGER + 350;
+  const T_RINGS = Math.max(dotsEnd, 900);
+  const ringsEnd = T_RINGS + Math.max(0, clusters.length - 1) * 80 + 600;
+  const T_LANDMARKS = Math.max(ringsEnd, 1300);
+
+  // Pulse-on-select: bumping key restarts the CSS animation on the selected dot.
+  const [pulseTick, setPulseTick] = useState(0);
+  useEffect(() => {
+    if (selected?.kind === "loved") setPulseTick((t) => t + 1);
+  }, [selected]);
 
   return (
     <div className="w-full max-w-[480px] mx-auto">
@@ -196,74 +216,107 @@ export function TasteMap({ type, landmarks, loved, showOverlay, overlayText }: P
         className="block w-full h-auto touch-manipulation"
         onClick={clearOnBg}
       >
-        {/* Plot background — captures background taps to clear selection */}
-        <rect x={PAD_L} y={PAD_T} width={PLOT_W} height={PLOT_H} rx={10}
-          fill="var(--color-card)" stroke="var(--color-border)" strokeWidth={1}
-          fillOpacity={0.4} opacity={gridOpacity} />
+        <defs>
+          <clipPath id={clipId}>
+            <rect x={PAD_L} y={PAD_T} width={PLOT_W} height={PLOT_H} rx={10} />
+          </clipPath>
+          <filter id={blurId} x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur stdDeviation="18" />
+          </filter>
+        </defs>
 
-        {/* Crosshair + quadrant corner labels only when 0.5 is inside the visible domain */}
+        {/* Plot background */}
+        <rect x={PAD_L} y={PAD_T} width={PLOT_W} height={PLOT_H} rx={10}
+          fill="var(--color-card)" stroke="var(--color-border)" strokeWidth={0.5}
+          fillOpacity={0.4} opacity={0.85} />
+
+        {/* Gaussian taste field — soft primary glow, one blob per loved wine */}
+        {glowPoints.length > 0 && (
+          <g clipPath={`url(#${clipId})`} style={{ opacity: "var(--pm-glow-opacity)" }}>
+            <g filter={`url(#${blurId})`} className="pm-fade-in" style={{ ["--pm-delay" as string]: `${T_GLOW}ms` }}>
+              {glowPoints.map(({ p, x, y }, i) => {
+                const c = toPx({ x, y });
+                const r = p.stars >= 5 ? PLOT_W * 0.14 : PLOT_W * 0.10;
+                return (
+                  <circle key={`glow-${p.key}-${i}`} cx={c.px} cy={c.py} r={r}
+                    fill="var(--color-primary)" />
+                );
+              })}
+            </g>
+          </g>
+        )}
+
+        {/* Crosshair + quadrant corner labels — italic serif, 55% opacity */}
         {showCrosshair && (
-          <g opacity={gridOpacity}>
+          <g>
             {(() => {
               const mid = toPx({ x: 0.5, y: 0.5 });
               return (
                 <>
                   <line x1={mid.px} y1={PAD_T} x2={mid.px} y2={PAD_T + PLOT_H}
-                    stroke="var(--color-border)" strokeDasharray="3 5" strokeOpacity={0.5} />
+                    stroke="var(--color-border)" strokeDasharray="3 5" strokeOpacity={0.4} />
                   <line x1={PAD_L} y1={mid.py} x2={PAD_L + PLOT_W} y2={mid.py}
-                    stroke="var(--color-border)" strokeDasharray="3 5" strokeOpacity={0.5} />
+                    stroke="var(--color-border)" strokeDasharray="3 5" strokeOpacity={0.4} />
                 </>
               );
             })()}
-            <text x={PAD_L + 8} y={PAD_T + 14} fontSize="11" fontStyle="italic"
-              fill="var(--color-muted-foreground)">{corners.tl}</text>
-            <text x={PAD_L + PLOT_W - 8} y={PAD_T + 14} fontSize="11" fontStyle="italic"
-              textAnchor="end" fill="var(--color-muted-foreground)">{corners.tr}</text>
-            <text x={PAD_L + 8} y={PAD_T + PLOT_H - 8} fontSize="11" fontStyle="italic"
-              fill="var(--color-muted-foreground)">{corners.bl}</text>
-            <text x={PAD_L + PLOT_W - 8} y={PAD_T + PLOT_H - 8} fontSize="11" fontStyle="italic"
-              textAnchor="end" fill="var(--color-muted-foreground)">{corners.br}</text>
+            <g fontFamily="var(--font-serif)" fontStyle="italic" fontSize="11"
+               fill="var(--color-muted-foreground)" opacity={0.55}>
+              <text x={PAD_L + 8} y={PAD_T + 14}>{corners.tl}</text>
+              <text x={PAD_L + PLOT_W - 8} y={PAD_T + 14} textAnchor="end">{corners.tr}</text>
+              <text x={PAD_L + 8} y={PAD_T + PLOT_H - 8}>{corners.bl}</text>
+              <text x={PAD_L + PLOT_W - 8} y={PAD_T + PLOT_H - 8} textAnchor="end">{corners.br}</text>
+            </g>
           </g>
         )}
 
         {/* Axis captions — always visible */}
-        <text x={PAD_L + PLOT_W / 2} y={VB - 12} textAnchor="middle" fontSize="12"
-          fill="var(--color-muted-foreground)">{corners.xCap}</text>
+        <text x={PAD_L + PLOT_W / 2} y={VB - 12} textAnchor="middle"
+          fontSize="10" letterSpacing="2.2"
+          fill="var(--color-muted-foreground)">{corners.xCap.toUpperCase()}</text>
         <text x={0} y={0}
           transform={`translate(14 ${PAD_T + PLOT_H / 2}) rotate(-90)`}
-          textAnchor="middle" fontSize="12"
-          fill="var(--color-muted-foreground)">{corners.yCap}</text>
+          textAnchor="middle" fontSize="10" letterSpacing="2.2"
+          fill="var(--color-muted-foreground)">{corners.yCap.toUpperCase()}</text>
 
-        {/* Rings (tier b) — dashed primary 20%, no labels. Data-space radius
-            mapped through the auto-fit transform per axis, drawn as an ellipse
-            so it truly encloses members even when dx ≠ dy. */}
+        {/* Rings (tier b) — dashed primary 15%, draw-in via stroke-dashoffset */}
         {clusters.map((cl, i) => {
           const p = toPx(cl.center);
           const rx = (cl.radius / dx) * PLOT_W;
           const ry = (cl.radius / dy) * PLOT_H;
+          const perim = 2 * Math.PI * ((rx + ry) / 2);
           return (
             <ellipse key={i} cx={p.px} cy={p.py} rx={rx} ry={ry}
               fill="none"
               stroke="var(--color-primary)"
-              strokeOpacity={0.2}
+              strokeOpacity={0.15}
               strokeDasharray="3 6"
-              strokeWidth={1.25} />
+              strokeWidth={1.25}
+              className="pm-ring-draw"
+              style={{
+                ["--pm-dash-len" as string]: `${perim.toFixed(1)}`,
+                ["--pm-delay" as string]: `${T_RINGS + i * 80}ms`,
+              }} />
           );
         })}
 
         {/* Landmarks (tier c) — hollow */}
-        {landmarkData.map(({ l, x, y }) => {
+        {landmarkData.map(({ l, x, y }, i) => {
           const p = toPx({ x, y });
           const isSelected = selected?.kind === "landmark" && selected.l.label === l.label;
           return (
             <g key={l.label}
               onClick={(e) => { e.stopPropagation(); setSelected({ kind: "landmark", l }); }}
-              style={{ cursor: "pointer" }}>
-              <circle cx={p.px} cy={p.py} r={12} fill="transparent" />
-              <circle cx={p.px} cy={p.py} r={7}
-                fill="var(--color-background)"
-                stroke="var(--color-muted-foreground)"
-                strokeWidth={isSelected ? 2 : 1.5} />
+              style={{ cursor: "pointer" }}
+              className="pm-fade-in [--pm-hover-scale:1.1] hover:[&>circle:last-child]:scale-110">
+              <g style={{ ["--pm-delay" as string]: `${T_LANDMARKS + i * 40}ms` }}>
+                <circle cx={p.px} cy={p.py} r={12} fill="transparent" />
+                <circle cx={p.px} cy={p.py} r={7}
+                  fill="var(--color-background)"
+                  stroke="var(--color-muted-foreground)"
+                  strokeWidth={isSelected ? 2 : 1.25}
+                  style={{ transformBox: "fill-box", transformOrigin: "center", transition: "transform 180ms ease-out" }} />
+              </g>
             </g>
           );
         })}
@@ -278,10 +331,15 @@ export function TasteMap({ type, landmarks, loved, showOverlay, overlayText }: P
               onClick={(e) => { e.stopPropagation(); setSelected({ kind: "loved", p }); }}
               style={{ cursor: "pointer" }}>
               <circle cx={px.px} cy={px.py} r={12} fill="transparent" />
-              <circle cx={px.px} cy={px.py} r={r}
-                fill="var(--color-primary)"
-                stroke={isSelected ? "var(--color-foreground)" : "none"}
-                strokeWidth={isSelected ? 1.5 : 0} />
+              <g className="pm-pop-in" style={{ ["--pm-delay" as string]: `${T_DOTS + i * T_DOT_STAGGER}ms` }}>
+                <circle
+                  key={isSelected ? `sel-${pulseTick}` : `dot-${p.key}`}
+                  cx={px.px} cy={px.py} r={r}
+                  fill="var(--color-primary)"
+                  stroke={isSelected ? "var(--color-foreground)" : "none"}
+                  strokeWidth={isSelected ? 1.5 : 0}
+                  className={isSelected ? "pm-pulse" : ""} />
+              </g>
             </g>
           );
         })}
@@ -301,22 +359,23 @@ export function TasteMap({ type, landmarks, loved, showOverlay, overlayText }: P
       </svg>
 
       {/* Callout slot — fixed position directly below the plot */}
-      <div className="mt-2 min-h-[52px] rounded-md border border-border bg-card/50 px-3 py-2 text-xs">
+      <div className="mt-3 min-h-[64px] rounded-[14px] border-[0.5px] border-border bg-card/60 px-4 py-3 shadow-[var(--pm-card-shadow)]">
         {selected ? (
-          <Callout selected={selected} />
+          <Callout key={`${selected.kind}-${selected.kind === "loved" ? selected.p.key : selected.l.label}`}
+            selected={selected} />
         ) : (
-          <p className="text-muted-foreground text-center">Tap any dot to see the wine</p>
+          <p className="text-muted-foreground text-center text-[12px]">Tap any dot to see the wine</p>
         )}
       </div>
 
       {/* Legend */}
-      <div className="mt-2 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[12px] text-muted-foreground">
+      <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
         <span className="inline-flex items-center gap-1.5">
           <span className="inline-block w-2.5 h-2.5 rounded-full bg-primary" />
           Wines you love
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="inline-block w-2.5 h-2.5 rounded-full border-[1.5px] border-muted-foreground bg-background" />
+          <span className="inline-block w-2.5 h-2.5 rounded-full border-[1.25px] border-muted-foreground bg-background" />
           Famous landmarks
         </span>
         <span className="inline-flex items-center gap-1.5">
@@ -338,19 +397,24 @@ function Callout({ selected }: { selected: NonNullable<Selected> }) {
     const meta = [p.producer, p.region].filter(Boolean).join(" · ");
     const stars = "★".repeat(p.stars) + "☆".repeat(5 - p.stars);
     return (
-      <div>
-        <div className="font-medium text-foreground truncate">{p.name}</div>
-        {meta && <div className="text-muted-foreground truncate">{meta}</div>}
-        <div className="mt-0.5 text-primary">Your rating: {stars}</div>
+      <div className="pm-rise">
+        <div className="font-serif text-[17px] leading-snug text-foreground truncate">{p.name}</div>
+        {meta && <div className="text-[13px] text-muted-foreground truncate">{meta}</div>}
+        <div className="mt-1 text-primary text-[14px]" style={{ letterSpacing: "0.15em" }}>{stars}</div>
       </div>
     );
   }
   const l = selected.l;
   return (
-    <div>
-      <div className="font-medium text-foreground truncate">{l.label}</div>
-      <div className="text-muted-foreground truncate">{l.sub}</div>
-      <div className="mt-0.5 text-muted-foreground uppercase tracking-[0.15em] text-[10px]">Landmark</div>
+    <div className="pm-rise">
+      <div className="font-serif text-[17px] leading-snug text-foreground truncate">{l.label}</div>
+      <div className="text-[13px] text-muted-foreground truncate">{l.sub}</div>
+      <div className="mt-1.5">
+        <span className="inline-block rounded-full border-[0.5px] border-border px-2 py-[2px] text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+          Landmark
+        </span>
+      </div>
     </div>
   );
 }
+
