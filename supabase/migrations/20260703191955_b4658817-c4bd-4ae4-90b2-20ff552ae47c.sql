@@ -1,0 +1,2 @@
+CREATE INDEX IF NOT EXISTS bottles_lower_type_idx ON public.bottles (lower(type));
+CREATE INDEX IF NOT EXISTS bottles_lower_type_critic_idx ON public.bottles (lower(type), critic_score DESC NULLS LAST);
