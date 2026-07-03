@@ -34,66 +34,9 @@ export const refingerprintBatch = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // Build the priority queue via a single SQL pass.
-    // Priority order: (a) has a rating, (b) has a restaurant_wines row, (c) fully-defaulted rows.
-    const prioritySql = `
-      WITH g AS (
-        SELECT
-          id, producer, name, type, region, country, grape,
-          fp_fresh, fp_acid, fp_tannin, fp_fruit_dark, fp_ripe, fp_oak, fp_body, fp_savory,
-          refingerprinted_at,
-          lower(coalesce(producer,'')) AS gp,
-          regexp_replace(regexp_replace(lower(name), '\\y(19|20)\\d{2}\\y', '', 'g'), '\\s+', ' ', 'g') AS gn,
-          lower(coalesce(type,'')) AS gt,
-          lower(coalesce(region,'')) AS gr
-        FROM public.bottles
-      ),
-      cuvee AS (
-        SELECT gp, gn, gt, gr,
-               bool_and(refingerprinted_at IS NULL) AS all_unstamped,
-               array_agg(id) AS ids,
-               (array_agg(id ORDER BY id))[1] AS representative_id,
-               bool_and(
-                 abs(fp_fresh-0.5) < 0.02 AND abs(fp_acid-0.5) < 0.02 AND
-                 abs(fp_tannin-0.5) < 0.02 AND abs(fp_fruit_dark-0.5) < 0.02 AND
-                 abs(fp_ripe-0.5) < 0.02 AND abs(fp_oak-0.5) < 0.02 AND
-                 abs(fp_body-0.5) < 0.02 AND abs(fp_savory-0.5) < 0.02
-               ) AS all_default,
-               bool_or(id IN (SELECT bottle_id FROM public.ratings)) AS has_rating,
-               bool_or(id IN (SELECT bottle_id FROM public.restaurant_wines)) AS has_menu
-        FROM g
-        GROUP BY gp, gn, gt, gr
-      ),
-      ranked AS (
-        SELECT c.*,
-          CASE
-            WHEN c.has_rating THEN 0
-            WHEN c.has_menu THEN 1
-            WHEN c.all_default THEN 2
-            ELSE NULL
-          END AS bucket
-        FROM cuvee c
-        WHERE c.all_unstamped
-      )
-      SELECT r.gp, r.gn, r.gt, r.gr, r.ids, r.representative_id,
-             b.producer, b.name, b.type, b.region, b.country, b.grape,
-             r.bucket
-      FROM ranked r
-      JOIN public.bottles b ON b.id = r.representative_id
-      WHERE r.bucket IS NOT NULL
-      ORDER BY r.bucket ASC, r.gp, r.gn
-    `;
+    // Build the priority queue in JS: fetch unstamped bottles, group them,
+    // then check rating/menu presence for their ids.
 
-    const { data: allGroups, error: qErr } = await supabaseAdmin.rpc("_placeholder_never_exists" as any, {}).catch(() => ({ data: null, error: null } as any));
-    // The above rpc call is a no-op guard; we use raw SQL via a dedicated call:
-    void allGroups; void qErr;
-
-    // Use a raw SQL query via the underlying REST is not directly available;
-    // instead run the same logic via two supabase queries against a SQL function is overkill.
-    // We rely on a single call using the postgres-meta-style RPC: use `execute_sql` if present,
-    // otherwise fall back to a JS-side priority build with two smaller queries.
-    //
-    // Since a generic sql-execute RPC isn't guaranteed, do this in JS:
 
     // Fetch candidates (all bottles) with only needed columns.
     // For scale safety, cap at 5000 rows per invocation of the priority build.
