@@ -118,13 +118,41 @@ export const getPourCandidates = createServerFn({ method: "POST" })
     });
     if (error) throw new Error(error.message);
 
-    // Project to BOTTLE_COLS shape (RPC returns full row; the client only needs these).
+    const rows = (data ?? []) as any[];
+
+    // Diagnostic: first row shape + fp values.
+    if (rows.length > 0) {
+      const r0 = rows[0];
+      console.log("[pour] rpc first row keys:", Object.keys(r0));
+      console.log("[pour] rpc first row fp:", {
+        id: r0.id,
+        fp_fresh: r0.fp_fresh, fp_acid: r0.fp_acid, fp_tannin: r0.fp_tannin,
+        fp_fruit_dark: r0.fp_fruit_dark, fp_ripe: r0.fp_ripe, fp_oak: r0.fp_oak,
+        fp_body: r0.fp_body, fp_savory: r0.fp_savory,
+      });
+    }
+
+    // Project to BOTTLE_COLS. Drop rows missing any fp_* (no silent defaults).
     const cols = BOTTLE_COLS.split(",");
-    const bottles = ((data ?? []) as any[]).map((row) => {
+    const fpKeys = [
+      "fp_fresh","fp_acid","fp_tannin","fp_fruit_dark",
+      "fp_ripe","fp_oak","fp_body","fp_savory",
+    ];
+    const bottles: Record<string, any>[] = [];
+    let dropped = 0;
+    for (const row of rows) {
+      const missing = fpKeys.find((k) => typeof row[k] !== "number");
+      if (missing) {
+        console.warn(`[pour] dropping ${row.id}: missing ${missing}`);
+        dropped += 1;
+        continue;
+      }
       const out: Record<string, any> = {};
       for (const k of cols) out[k] = row[k];
-      return out;
-    });
+      bottles.push(out);
+    }
+    if (dropped > 0) console.warn(`[pour] dropped ${dropped}/${rows.length} rows with missing fp_*`);
+
 
     return { bottles };
   });
