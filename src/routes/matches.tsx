@@ -314,7 +314,7 @@ function SectionView({ section, groupScores, groupActive, groupLoading }: Sectio
           Group picks · ranked by worst-case ★{groupLoading ? " · scoring…" : ""}
         </p>
       )}
-      <ListControls value={controls} onChange={setControls} idPrefix={`pour-${section.type}`} />
+      <ListControls value={controls} onChange={setControls} idPrefix={`matches-${section.type}`} />
       {visible.length === 0 ? (
         <p className="mt-4 text-sm text-muted-foreground">
           No wines in this section match those filters. Widen the price range or turn off "catalog only".
