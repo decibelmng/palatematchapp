@@ -72,6 +72,7 @@ export type CuveeCandidate = {
   critic_score: number | null;
   price_band: string | null;
   vintages: number[];    // sorted desc
+  raw: boolean;          // true = every vintage in this cuvée is un-refingerprinted
 };
 
 type RatedInput = {
@@ -94,6 +95,7 @@ type CandidateInput = {
   fp: Record<FpKey, number>;
   critic_score?: number | null;
   price_band?: string | null;
+  raw?: boolean;
 };
 
 function meanFp(rows: { fp: Record<FpKey, number> }[]): Record<FpKey, number> {
