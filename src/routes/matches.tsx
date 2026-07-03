@@ -210,6 +210,7 @@ type Row = Priced & {
   nearestCuvee: CuveeRated | null;
   greatValue: boolean;
   confidence: number | null;
+  raw: boolean;            // uncalibrated (import-defaults) cuvée — hide from top 10
 };
 
 function toRows(section: Section): Row[] {
