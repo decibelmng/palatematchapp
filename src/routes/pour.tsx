@@ -101,7 +101,6 @@ function Pour() {
         }));
         const recs = recommend(ratedFp, candFp).slice(0, 60);
         if (type === "red") {
-          const { selectBandwidth } = await import("@/lib/recommender");
           const bw = selectBandwidth(ratedFp);
           const preds = recs.map((r) => r.predicted);
           // eslint-disable-next-line no-console
