@@ -420,11 +420,45 @@ export function TasteMap({ type, landmarks, loved, others = [], showOverlay, ove
         )}
       </div>
 
+      {/* Rating-tier toggles */}
+      <div className="mt-3 flex flex-wrap items-center justify-center gap-1.5">
+        {([5, 4, 3, 2, 1] as const).map((s) => {
+          const on = tierOn[s];
+          const disabled = tierCounts[s] === 0;
+          return (
+            <button
+              key={s}
+              type="button"
+              disabled={disabled}
+              onClick={() => setTierOn((prev) => ({ ...prev, [s]: !prev[s] }))}
+              aria-pressed={on}
+              className={`rounded-full border-[0.5px] px-2 py-0.5 text-[10px] uppercase transition ${
+                disabled
+                  ? "border-border/50 text-muted-foreground/40 cursor-not-allowed"
+                  : on
+                  ? "border-primary bg-primary/10 text-foreground"
+                  : "border-border text-muted-foreground hover:bg-accent"
+              }`}
+              style={{ letterSpacing: "0.14em" }}
+            >
+              {s}★
+            </button>
+          );
+        })}
+      </div>
+
       {/* Legend */}
       <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
         <span className="inline-flex items-center gap-1.5">
           <span className="inline-block w-2.5 h-2.5 rounded-full bg-primary" />
           Wines you love
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
+            <line x1="2.5" y1="2.5" x2="9.5" y2="9.5" stroke="var(--color-muted-foreground)" strokeOpacity={0.55} strokeWidth={1.5} strokeLinecap="round" />
+            <line x1="2.5" y1="9.5" x2="9.5" y2="2.5" stroke="var(--color-muted-foreground)" strokeOpacity={0.55} strokeWidth={1.5} strokeLinecap="round" />
+          </svg>
+          Wines you avoid
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span className="inline-block w-2.5 h-2.5 rounded-full border-[1.25px] border-muted-foreground bg-background" />
