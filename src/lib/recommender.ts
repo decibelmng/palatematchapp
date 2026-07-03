@@ -125,8 +125,11 @@ function scoreCandidate(
     if (sim > best && r.stars >= 4) { best = sim; nearest = r; }
   }
   if (!nearest) nearest = nearestAny;
-  const predicted = (num + alpha * prior) / (den + alpha);
-  const confidence = den / (den + alpha);
+  // Evidence-scaled shrinkage: a candidate surrounded by many similar rated
+  // wines barely feels the prior, while a lonely candidate is still pulled to it.
+  const alphaEff = alpha / (1 + den);
+  const predicted = (num + alphaEff * prior) / (den + alphaEff);
+  const confidence = den / (den + alphaEff);
   return { predicted, nearest, maxSimilarity: Math.max(bestAny, 0), confidence };
 }
 
