@@ -248,6 +248,7 @@ function toRows(section: Section): Row[] {
       isCatalog: true,
       predicted: 0,
       greatValue: false,
+      confidence: null,
     };
   });
 }
