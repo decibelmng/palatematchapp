@@ -76,19 +76,42 @@ export const refingerprintBatch = createServerFn({ method: "POST" })
       }
     }
 
+    // Tier (d): cuvée groups containing any bottle in the /pour candidate pool.
+    // Pour loads via useAllBottlesPaged(pageSize=1000, maxRows=20000):
+    //   supabase.from("bottles").select(...).order("id").range(from, to)
+    //   paged in 1000-row chunks up to 20000. No filters.
+    // Reproduce that exact selection here (id-only) to get pour's id set.
+    const pourIds = new Set<string>();
+    {
+      const PAGE = 1000;
+      const MAX = 20000;
+      for (let from = 0; from < MAX; from += PAGE) {
+        const to = Math.min(from + PAGE, MAX) - 1;
+        const { data, error } = await supabaseAdmin
+          .from("bottles").select("id").order("id").range(from, to);
+        if (error) throw new Error(error.message);
+        const chunk = (data ?? []) as { id: string }[];
+        for (const r of chunk) pourIds.add(r.id);
+        if (chunk.length < PAGE) break;
+      }
+    }
+
     // Rank groups.
-    type Ranked = { bucket: 0 | 1 | 2; g: typeof groups extends Map<any, infer V> ? V : never };
+    type Ranked = { bucket: 0 | 1 | 2 | 3; g: typeof groups extends Map<any, infer V> ? V : never };
     const ranked: Ranked[] = [];
     for (const g of groups.values()) {
       const hasRating = g.ids.some((id) => ratedIds.has(id));
       const hasMenu = g.ids.some((id) => menuIds.has(id));
-      let bucket: 0 | 1 | 2 | null = null;
+      const inPour = g.ids.some((id) => pourIds.has(id));
+      let bucket: 0 | 1 | 2 | 3 | null = null;
       if (hasRating) bucket = 0;
       else if (hasMenu) bucket = 1;
       else if (g.allDefault) bucket = 2;
+      else if (inPour) bucket = 3;
       if (bucket != null) ranked.push({ bucket, g });
     }
     ranked.sort((a, b) => a.bucket - b.bucket);
+
 
     const remaining = ranked.length;
     const batch = ranked.slice(0, BATCH_SIZE);
