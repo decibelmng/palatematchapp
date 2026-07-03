@@ -676,6 +676,117 @@ function Scan() {
   );
 }
 
+function PrescanRestaurantPicker({
+  value, onChange, disabled,
+}: {
+  value: { id: string; name: string } | null;
+  onChange: (v: { id: string; name: string } | null) => void;
+  disabled: boolean;
+}) {
+  const searchFn = useServerFn(searchRestaurantsFn);
+  const createFn = useServerFn(createRestaurantFn);
+  const [q, setQ] = useState("");
+  const [debounced, setDebounced] = useState("");
+  const [city, setCity] = useState("");
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebounced(q.trim()), 250);
+    return () => clearTimeout(t);
+  }, [q]);
+
+  const results = useQuery({
+    queryKey: ["restaurants", "prescan-search", debounced],
+    enabled: debounced.length >= 2 && !value,
+    queryFn: () => searchFn({ data: { q: debounced } }),
+    staleTime: 30_000,
+  });
+
+  const create = useMutation({
+    mutationFn: async (name: string) => createFn({ data: { name, city: city.trim() || null } }),
+    onSuccess: (row) => {
+      onChange({ id: row.id, name: row.name });
+      setQ("");
+      toast.success(`Selected ${row.name}`);
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Couldn't create"),
+  });
+
+  if (value) {
+    return (
+      <div className="mt-4 rounded-md border border-primary/40 bg-primary/5 p-3 flex items-center justify-between gap-3">
+        <div className="text-sm">
+          <p className="text-[10px] uppercase tracking-wider text-primary">Attributing to</p>
+          <p className="font-medium">{value.name}</p>
+        </div>
+        {!disabled && (
+          <button
+            type="button"
+            onClick={() => onChange(null)}
+            className="text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-2"
+          >
+            Change
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  const showCreate = debounced.length >= 2 && results.data && results.data.length === 0;
+
+  return (
+    <div className="mt-4 rounded-md border border-border bg-card/70 p-3">
+      <p className="text-sm font-medium">Where are you? <span className="text-muted-foreground font-normal">(optional)</span></p>
+      <p className="text-[11px] text-muted-foreground">Pick a restaurant now to attribute this list automatically.</p>
+      <input
+        type="text"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        placeholder="Restaurant name…"
+        disabled={disabled}
+        className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
+      />
+      {results.data && results.data.length > 0 && (
+        <ul className="mt-2 divide-y divide-border rounded-md border border-border overflow-hidden">
+          {results.data.map((r) => (
+            <li key={r.id}>
+              <button
+                type="button"
+                disabled={disabled}
+                onClick={() => { onChange({ id: r.id, name: r.name }); setQ(""); }}
+                className="w-full text-left px-3 py-2 text-sm hover:bg-accent/60 disabled:opacity-60"
+              >
+                <span className="font-medium">{r.name}</span>
+                {r.city && <span className="text-muted-foreground"> · {r.city}</span>}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {showCreate && (
+        <div className="mt-2 space-y-2">
+          <p className="text-xs text-muted-foreground">No match — create it:</p>
+          <input
+            type="text"
+            value={city}
+            onChange={(e) => setCity(e.target.value)}
+            placeholder="City (optional)"
+            disabled={disabled || create.isPending}
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
+          />
+          <button
+            type="button"
+            disabled={disabled || create.isPending || !debounced}
+            onClick={() => create.mutate(debounced)}
+            className="rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-sm font-medium disabled:opacity-60"
+          >
+            {create.isPending ? "Creating…" : `Create "${debounced}"`}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RestaurantAttribution({ scanId }: { scanId: string }) {
   const searchFn = useServerFn(searchRestaurantsFn);
   const createFn = useServerFn(createRestaurantFn);
