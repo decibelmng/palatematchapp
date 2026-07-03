@@ -164,7 +164,7 @@ export const attributeScanFn = createServerFn({ method: "POST" })
             fp_body: w.fp_resolved.body,
             fp_savory: w.fp_resolved.savory,
             ax_body: w.fp_resolved.body,
-            ax_fruit_char: w.fp_resolved.fruit_dark,
+            ax_fruit_char: w.fp_resolved.savory,
             ax_tannin: keepsTannin ? w.fp_resolved.tannin : 0,
             ax_acidity: w.fp_resolved.acid,
             ax_sweet: 0,
