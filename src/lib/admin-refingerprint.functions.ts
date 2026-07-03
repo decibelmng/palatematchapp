@@ -177,15 +177,45 @@ export const refingerprintMyMatchesBatch = createServerFn({ method: "POST" })
       throw new Error("Not authorized");
     }
     const key = process.env.LOVABLE_API_KEY;
+    const keyPresent = !!key;
+    console.log("[matches-refp] handler entry", { keyPresent, keyLen: key?.length ?? 0 });
     if (!key) throw new Error("Missing LOVABLE_API_KEY");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
+    // Helper: run one supabase batch fetch resiliently. On raw fetch failure,
+    // log the detail and return an empty batch so the outer flow can continue.
+    async function safeFetch<T>(label: string, run: () => Promise<{ data: T[] | null; error: any }>): Promise<T[]> {
+      try {
+        const { data, error } = await run();
+        if (error) {
+          console.warn(`[matches-refp] ${label} postgrest error`, { message: error.message, code: (error as any).code });
+          return [];
+        }
+        return data ?? [];
+      } catch (e: any) {
+        console.warn(`[matches-refp] ${label} fetch threw`, {
+          name: e?.name, message: e?.message, cause: e?.cause?.message ?? e?.cause,
+        });
+        return [];
+      }
+    }
+
     // 1. Pull the caller's candidate bottle ids from the pour pipeline.
-    const { bottles: candidates } = await getPourCandidates();
+    let candidates: any[] = [];
+    try {
+      const res = await getPourCandidates();
+      candidates = res.bottles ?? [];
+    } catch (e: any) {
+      console.warn("[matches-refp] getPourCandidates threw", {
+        name: e?.name, message: e?.message, cause: e?.cause?.message ?? e?.cause,
+      });
+      throw new Error(`Failed to load matches: ${e?.message ?? e}`);
+    }
     const candidateIds = Array.from(
-      new Set((candidates ?? []).map((b: any) => b.id as string).filter(Boolean)),
+      new Set(candidates.map((b: any) => b.id as string).filter(Boolean)),
     );
+    console.log("[matches-refp] candidates", { count: candidateIds.length });
     if (candidateIds.length === 0) {
       return { processed: 0, skipped: 0, remaining: 0, errors: [] };
     }
@@ -196,12 +226,10 @@ export const refingerprintMyMatchesBatch = createServerFn({ method: "POST" })
     const seedRows: any[] = [];
     for (let i = 0; i < candidateIds.length; i += 500) {
       const chunk = candidateIds.slice(i, i + 500);
-      const { data, error } = await supabaseAdmin
-        .from("bottles")
-        .select(COLS)
-        .in("id", chunk);
-      if (error) throw new Error(error.message);
-      seedRows.push(...(data ?? []));
+      const batch = await safeFetch<any>("seed.in(id)", () =>
+        supabaseAdmin.from("bottles").select(COLS).in("id", chunk),
+      );
+      seedRows.push(...batch);
     }
 
     const producers = Array.from(
@@ -210,12 +238,10 @@ export const refingerprintMyMatchesBatch = createServerFn({ method: "POST" })
     const rowById = new Map<string, any>();
     for (let i = 0; i < producers.length; i += 200) {
       const chunk = producers.slice(i, i + 200);
-      const { data, error } = await supabaseAdmin
-        .from("bottles")
-        .select(COLS)
-        .in("producer", chunk);
-      if (error) throw new Error(error.message);
-      for (const r of data ?? []) rowById.set(r.id as string, r);
+      const batch = await safeFetch<any>("sibs.in(producer)", () =>
+        supabaseAdmin.from("bottles").select(COLS).in("producer", chunk),
+      );
+      for (const r of batch) rowById.set(r.id as string, r);
     }
 
     // 3. Group by cuvée key; keep groups that (a) contain a candidate id and
@@ -250,10 +276,12 @@ export const refingerprintMyMatchesBatch = createServerFn({ method: "POST" })
 
     const remaining = queue.length;
     const batch = queue.slice(0, BATCH_SIZE);
+    console.log("[matches-refp] queue", { groups: groups.size, unstampedInMatches: remaining, batchSize: batch.length });
 
     let processed = 0;
     let skipped = 0;
     const errors: string[] = [];
+    let firstFailureLogged = false;
 
     for (const g of batch) {
       try {
@@ -263,9 +291,23 @@ export const refingerprintMyMatchesBatch = createServerFn({ method: "POST" })
         } else {
           skipped += 1;
           errors.push(result.reason);
+          if (!firstFailureLogged) {
+            console.warn("[matches-refp] first skip", { representativeId: g.representativeId, reason: result.reason });
+            firstFailureLogged = true;
+          }
         }
       } catch (e: any) {
         const msg = e?.message ?? String(e);
+        if (!firstFailureLogged) {
+          console.warn("[matches-refp] first throw", {
+            representativeId: g.representativeId,
+            name: e?.name,
+            message: msg,
+            status: e?.status ?? e?.cause?.status,
+            cause: e?.cause?.message ?? e?.cause,
+          });
+          firstFailureLogged = true;
+        }
         if (/AI credits exhausted/i.test(msg) || /Rate limited/i.test(msg)) {
           throw new Error(msg);
         }
