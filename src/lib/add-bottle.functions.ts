@@ -89,64 +89,23 @@ export const researchBottle = createServerFn({ method: "POST" })
     }
     duplicates.sort((a, b) => b.score - a.score);
 
-    // --- LLM research ---
-    const userMsg = JSON.stringify({
-      producer: data.producer,
-      cuvee: data.name,
-      type: data.type,
-      region: data.region ?? null,
-      country: data.country ?? null,
-      grape: data.grape ?? null,
-      vintage: data.vintage ?? null,
-    });
-
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { "content-type": "application/json", "Lovable-API-Key": key },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: SYS },
-          { role: "user", content: userMsg },
-        ],
-        response_format: { type: "json_object" },
-      }),
-    });
-    if (!res.ok) {
-      const body = await res.text();
-      if (res.status === 429) throw new Error("Rate limited — try again in a moment.");
-      if (res.status === 402) throw new Error("AI credits exhausted on this workspace.");
-      throw new Error(`Research failed (${res.status}): ${body.slice(0, 300)}`);
-    }
-    const j = await res.json();
-    const content: string = j?.choices?.[0]?.message?.content ?? "";
-    let parsed: any;
-    try { parsed = JSON.parse(content); }
-    catch {
-      const cleaned = content.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
-      parsed = JSON.parse(cleaned);
-    }
-
-    const fp = {
-      fresh: clamp01(parsed?.fp?.fresh),
-      acid: clamp01(parsed?.fp?.acid),
-      tannin: clamp01(parsed?.fp?.tannin),
-      fruit_dark: clamp01(parsed?.fp?.fruit_dark),
-      ripe: clamp01(parsed?.fp?.ripe),
-      oak: clamp01(parsed?.fp?.oak),
-      body: clamp01(parsed?.fp?.body),
-      savory: clamp01(parsed?.fp?.savory),
-    };
-    // Enforce non-red rule
-    if (data.type !== "red" && data.type !== "dessert") {
-      fp.tannin = 0;
-      fp.fruit_dark = 0;
-    }
-    const ax_sweet = clamp01(parsed?.ax_sweet ?? 0);
-    const tasting_note: string = String(parsed?.tasting_note ?? "").slice(0, 400);
+    // --- LLM research (shared calibrated prompt) ---
+    const { fp, ax_sweet, tasting_note } = await callFingerprintGateway(
+      {
+        producer: data.producer,
+        name: data.name,
+        type: data.type,
+        region: data.region ?? null,
+        country: data.country ?? null,
+        grape: data.grape ?? null,
+        vintage: data.vintage ?? null,
+      },
+      key,
+    );
 
     return { fp, ax_sweet, tasting_note, duplicates };
   });
+
 
 const NoteInput = z.object({
   bottle_id: z.string().uuid(),
