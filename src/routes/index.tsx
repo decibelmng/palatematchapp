@@ -91,6 +91,11 @@ function Home() {
   const { data: landmarks } = useLandmarks(scope);
   const resolvedLandmarks = landmarks ?? [];
 
+  const { data: myProfile } = useMyProfile();
+  const [shareOpen, setShareOpen] = useState(false);
+  const activeCode = scope === "red" ? red.code : white.code;
+  const canShare = activeRated.length >= MIN_RATINGS;
+
   return (
     <div className="pt-2">
       <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Your palates</p>
@@ -100,6 +105,27 @@ function Home() {
         <CodeChipRow type="red" code={red.code} n={redRated.length} active={scope === "red"} onClick={() => setScope("red")} />
         <CodeChipRow type="white" code={white.code} n={whiteRated.length} active={scope === "white"} onClick={() => setScope("white")} />
       </div>
+
+      {canShare && (
+        <div className="mt-2 text-center">
+          <button
+            type="button"
+            onClick={() => setShareOpen(true)}
+            className="text-xs text-muted-foreground hover:text-primary"
+          >
+            Share your palate →
+          </button>
+        </div>
+      )}
+
+      <ShareCardDialog
+        open={shareOpen}
+        onClose={() => setShareOpen(false)}
+        type={scope}
+        code={activeCode}
+        displayName={myProfile?.display_name || myProfile?.username || ""}
+      />
+
 
       {/* Taste map */}
       <div className="mt-6">
