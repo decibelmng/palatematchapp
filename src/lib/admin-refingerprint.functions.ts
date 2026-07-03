@@ -20,34 +20,86 @@ export const refingerprintBatch = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // Build the priority queue in JS: fetch unstamped bottles, group them,
-    // then check rating/menu presence for their ids.
+    // Build the priority queue with TARGETED fetches per tier, then group in JS.
+    // A single ".limit(N)" over all unstamped bottles is not safe: without an
+    // ORDER BY, the slice is arbitrary and can miss the (few) rated / menu ids
+    // entirely — which is why the first run returned remaining=0.
 
-
-    // Fetch candidates (all bottles) with only needed columns.
-    // For scale safety, cap at 5000 rows per invocation of the priority build.
-    const { data: rows, error: rowsErr } = await supabaseAdmin
-      .from("bottles")
-      .select("id,producer,name,type,region,country,grape,source,fp_fresh,fp_acid,fp_tannin,fp_fruit_dark,fp_ripe,fp_oak,fp_body,fp_savory,refingerprinted_at")
-      .is("refingerprinted_at", null)
-      .limit(20000);
-    if (rowsErr) throw new Error(rowsErr.message);
-
-    // Group in JS with the same key.
     const stripYear = (s: string) => s.replace(/\b(19|20)\d{2}\b/g, "").replace(/\s+/g, " ").trim();
+    const isDef = (v: number | null) => v != null && Math.abs(v - 0.5) < 0.02;
+
+    // 1. Priority bottle ids: rated + menu (catalog-wide reads → service role).
+    const [{ data: rated, error: rErr }, { data: menu, error: mErr }] = await Promise.all([
+      supabaseAdmin.from("ratings").select("bottle_id"),
+      supabaseAdmin.from("restaurant_wines").select("bottle_id"),
+    ]);
+    if (rErr) throw new Error(rErr.message);
+    if (mErr) throw new Error(mErr.message);
+    const ratedIds = new Set<string>((rated ?? []).map((x: any) => x.bottle_id as string));
+    const menuIds = new Set<string>((menu ?? []).map((x: any) => x.bottle_id as string));
+
+    // 2. Fetch metadata for those ids to discover the producers we need to expand.
+    const priorityIds = Array.from(new Set<string>([...ratedIds, ...menuIds]));
+    const producers = new Set<string>();
+    for (let i = 0; i < priorityIds.length; i += 500) {
+      const chunk = priorityIds.slice(i, i + 500);
+      const { data, error } = await supabaseAdmin
+        .from("bottles")
+        .select("producer")
+        .in("id", chunk);
+      if (error) throw new Error(error.message);
+      for (const r of data ?? []) if (r.producer) producers.add(r.producer as string);
+    }
+
+    // 3. Load unstamped bottles: (a+b) all rows for those producers so we group
+    // siblings correctly, plus (c) a bounded slice of fully-defaulted rows.
+    const rowById = new Map<string, any>();
+    const COLS = "id,producer,name,type,region,country,grape,source,fp_fresh,fp_acid,fp_tannin,fp_fruit_dark,fp_ripe,fp_oak,fp_body,fp_savory,refingerprinted_at";
+
+    const producerList = Array.from(producers);
+    for (let i = 0; i < producerList.length; i += 200) {
+      const chunk = producerList.slice(i, i + 200);
+      const { data, error } = await supabaseAdmin
+        .from("bottles")
+        .select(COLS)
+        .is("refingerprinted_at", null)
+        .in("producer", chunk);
+      if (error) throw new Error(error.message);
+      for (const r of data ?? []) rowById.set(r.id as string, r);
+    }
+
+    // Tier (c): fully-defaulted, bounded slice.
+    {
+      const { data, error } = await supabaseAdmin
+        .from("bottles")
+        .select(COLS)
+        .is("refingerprinted_at", null)
+        .gte("fp_fresh", 0.48).lte("fp_fresh", 0.52)
+        .gte("fp_acid", 0.48).lte("fp_acid", 0.52)
+        .gte("fp_tannin", 0.48).lte("fp_tannin", 0.52)
+        .gte("fp_fruit_dark", 0.48).lte("fp_fruit_dark", 0.52)
+        .gte("fp_ripe", 0.48).lte("fp_ripe", 0.52)
+        .gte("fp_oak", 0.48).lte("fp_oak", 0.52)
+        .gte("fp_body", 0.48).lte("fp_body", 0.52)
+        .gte("fp_savory", 0.48).lte("fp_savory", 0.52)
+        .limit(2000);
+      if (error) throw new Error(error.message);
+      for (const r of data ?? []) if (!rowById.has(r.id)) rowById.set(r.id as string, r);
+    }
+
+    // 4. Group by cuvée key.
     const groups = new Map<string, {
       key: string;
       representative: any;
       ids: string[];
       allDefault: boolean;
     }>();
-    for (const r of rows ?? []) {
+    for (const r of rowById.values()) {
       const gp = (r.producer ?? "").toLowerCase();
       const gn = stripYear((r.name ?? "").toLowerCase());
       const gt = (r.type ?? "").toLowerCase();
       const gr = (r.region ?? "").toLowerCase();
       const k = `${gp}|${gn}|${gt}|${gr}`;
-      const isDef = (v: number | null) => v != null && Math.abs(v - 0.5) < 0.02;
       const rowDef = isDef(r.fp_fresh) && isDef(r.fp_acid) && isDef(r.fp_tannin) && isDef(r.fp_fruit_dark)
                   && isDef(r.fp_ripe) && isDef(r.fp_oak) && isDef(r.fp_body) && isDef(r.fp_savory);
       const existing = groups.get(k);
@@ -58,26 +110,10 @@ export const refingerprintBatch = createServerFn({ method: "POST" })
         groups.set(k, { key: k, representative: r, ids: [r.id], allDefault: rowDef });
       }
     }
-    const allIds = Array.from(groups.values()).flatMap(g => g.ids);
 
-    // Load rating/menu presence for those ids.
-    const ratedIds = new Set<string>();
-    const menuIds = new Set<string>();
-    if (allIds.length > 0) {
-      // Chunk .in() calls to avoid URL limits (Postgrest ~2KB URL).
-      for (let i = 0; i < allIds.length; i += 500) {
-        const chunk = allIds.slice(i, i + 500);
-        const [{ data: rr }, { data: mm }] = await Promise.all([
-          supabaseAdmin.from("ratings").select("bottle_id").in("bottle_id", chunk),
-          supabaseAdmin.from("restaurant_wines").select("bottle_id").in("bottle_id", chunk),
-        ]);
-        for (const x of rr ?? []) ratedIds.add(x.bottle_id as string);
-        for (const x of mm ?? []) menuIds.add(x.bottle_id as string);
-      }
-    }
-
-    // Rank groups: (a) rated, (b) on a menu, (c) fully defaulted.
-    type Ranked = { bucket: 0 | 1 | 2; g: typeof groups extends Map<any, infer V> ? V : never };
+    // 5. Rank groups by tier.
+    type Group = { key: string; representative: any; ids: string[]; allDefault: boolean };
+    type Ranked = { bucket: 0 | 1 | 2; g: Group };
     const ranked: Ranked[] = [];
     for (const g of groups.values()) {
       const hasRating = g.ids.some((id) => ratedIds.has(id));
