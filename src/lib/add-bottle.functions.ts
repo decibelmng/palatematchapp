@@ -180,7 +180,7 @@ export const researchBottle = createServerFn({ method: "POST" })
       savory: clamp01(parsed?.fp?.savory),
     };
     // Enforce non-red rule
-    if (data.type !== "red") {
+    if (data.type !== "red" && data.type !== "dessert") {
       fp.tannin = 0;
       fp.fruit_dark = 0;
     }
