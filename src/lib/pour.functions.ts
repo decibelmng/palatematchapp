@@ -93,7 +93,10 @@ export const getPourCandidates = createServerFn({ method: "POST" })
     }));
 
     const cuvees = aggregateRated(ratedRows);
-    const loved = cuvees.filter((c) => c.stars >= LOVE_THRESHOLD);
+    const loved = cuvees
+      .filter((c) => c.stars >= LOVE_THRESHOLD)
+      .sort((a, b) => b.stars - a.stars)
+      .slice(0, MAX_LOVED);
 
     const lovedPayload = loved.map((c) => ({
       type: c.type,
