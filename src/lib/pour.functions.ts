@@ -118,10 +118,12 @@ export async function computePourCandidatesFor(
     overall_cap: OVERALL_CAP,
   });
   if (error) throw new Error(error.message);
-  const projected = projectRows((data ?? []) as any[]);
+  return attachRawFlag(supabase, projectRows((data ?? []) as any[]));
+}
 
-  // Attach `raw` = refingerprinted_at IS NULL for each candidate row so the
-  // recommender can down-weight uncalibrated template bottles.
+// Attach `raw` = refingerprinted_at IS NULL for each candidate row so the
+// recommender can down-weight uncalibrated template bottles.
+async function attachRawFlag(supabase: any, projected: any[]): Promise<any[]> {
   const ids = projected.map((r) => r.id as string).filter(Boolean);
   const stampById = new Map<string, boolean>();
   for (let i = 0; i < ids.length; i += 500) {
