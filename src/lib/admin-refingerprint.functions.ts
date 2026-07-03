@@ -266,9 +266,9 @@ export const refingerprintMyMatchesBatch = createServerFn({ method: "POST" })
         existing.ids.push(r.id);
         existing.hasUnstamped = existing.hasUnstamped || unstamped;
         existing.hasCandidate = existing.hasCandidate || isCand;
-        // Pick an unstamped id as representative when possible so the worker
-        // seeds from a raw row (not a stamped one it would immediately skip).
-        if (unstamped && !!r.refingerprinted_at === false) existing.representativeId = r.id;
+        // Prefer an unstamped id as representative so the worker seeds from
+        // a raw row (a stamped seed would be skipped by its own guard).
+        if (unstamped) existing.representativeId = r.id;
       } else {
         groups.set(k, { key: k, representativeId: r.id, ids: [r.id], hasUnstamped: unstamped, hasCandidate: isCand });
       }
