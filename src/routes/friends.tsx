@@ -43,7 +43,7 @@ function Friends() {
         <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Friends</p>
         <h1 className="font-serif text-3xl mt-2">Drink together</h1>
         <p className="mt-2 text-sm text-muted-foreground">
-          Add friends by username or QR — then group your palates on Pour and Scan.
+          Add friends by username or QR — then group your palates on Matches and Scan.
         </p>
       </div>
 

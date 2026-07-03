@@ -137,6 +137,7 @@ function Home() {
         displayName={myProfile?.display_name || myProfile?.username || ""}
       />
 
+      {totalRated > 0 && <TopMatchesSection />}
 
       {/* Taste map */}
       <div className="mt-10">
@@ -169,15 +170,9 @@ function Home() {
             <Link to="/rate" className="rounded-[14px] border-[0.5px] border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent shadow-[var(--pm-card-shadow)]">
               Rate more
             </Link>
-            <Link to="/pour" className="rounded-[14px] bg-primary text-primary-foreground px-3 py-1.5 text-xs font-medium hover:opacity-90 shadow-[var(--pm-card-shadow)]">
-              Pour next →
-            </Link>
           </div>
         </>
       )}
-
-
-      {totalRated > 0 && <TopMatchesSection />}
     </div>
   );
 }
@@ -203,7 +198,7 @@ function OnboardingBlock({ scope, n }: { scope: PaletteType; n: number }) {
         {[
           "Rate wines you know you love — or don't",
           "You appear on the map with a palate code",
-          "Scan any wine list — we rank it for you",
+          "Scan any wine list — we show your matches",
         ].map((text, i) => (
           <li key={i} className={`flex items-center gap-3 text-[13px] ${i === 0 ? "" : "opacity-60"}`}>
             <span className="w-5 h-5 rounded-full border border-border flex items-center justify-center text-[11px]">
@@ -261,14 +256,14 @@ function CodeChipRow({
 
 
 function TopMatchesSection() {
-  const { data: matches, loading } = useTopMatches(5);
+  const { data: matches, loading } = useTopMatches(3);
   if (loading && matches.length === 0) return null;
   if (matches.length === 0) return null;
   return (
-    <section className="mt-10">
+    <section className="mt-6">
       <div className="flex items-baseline justify-between gap-3">
-        <h2 className="font-serif text-xl">Top matches for you</h2>
-        <Link to="/pour" className="text-xs font-semibold text-primary hover:opacity-80">
+        <h2 className="font-serif text-xl">Your top matches</h2>
+        <Link to="/matches" className="text-xs font-semibold text-primary hover:opacity-80">
           See all matches →
         </Link>
       </div>

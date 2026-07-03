@@ -9,7 +9,7 @@ type Props = {
   onSet: (ids: string[]) => void;
 };
 
-/** "Who's drinking?" chip row for Pour and Scan.
+/** "Who's drinking?" chip row for Matches and Scan.
  *  - Session-only selection (state managed by parent).
  *  - Recent groups shortcut persisted per user in localStorage.
  *  - Cap of 6 friends enforced by the parent hook.
