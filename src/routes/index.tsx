@@ -11,7 +11,6 @@ import {
   useRatings,
   bottleToValues,
   bottleType,
-  bottleType,
   usePersistCode,
 } from "@/hooks/use-palate-data";
 import { useLandmarks } from "@/hooks/use-landmarks";
