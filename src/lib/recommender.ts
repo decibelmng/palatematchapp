@@ -168,6 +168,9 @@ export function debugContributors(
   const den5 = contribs.filter((c) => c.stars >= 5).reduce((s, c) => s + c.sim, 0);
   const denLt5 = contribs.filter((c) => c.stars < 5).reduce((s, c) => s + c.sim, 0);
   return { contribs, num, den, den5, denLt5, alphaEff, predicted };
+}
+
+
 
 const BW_GRID = [0.08, 0.12, 0.18, 0.25] as const;
 const ALPHA_GRID = [0.2, 0.4, 0.8] as const;
