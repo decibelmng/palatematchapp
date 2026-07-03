@@ -34,6 +34,7 @@ export type Database = {
           fp_ripe: number
           fp_savory: number
           fp_tannin: number
+          fp_vec: string | null
           grape: string | null
           id: string
           name: string
@@ -66,6 +67,7 @@ export type Database = {
           fp_ripe?: number
           fp_savory?: number
           fp_tannin?: number
+          fp_vec?: string | null
           grape?: string | null
           id?: string
           name: string
@@ -98,6 +100,7 @@ export type Database = {
           fp_ripe?: number
           fp_savory?: number
           fp_tannin?: number
+          fp_vec?: string | null
           grape?: string | null
           id?: string
           name?: string
@@ -522,6 +525,7 @@ export type Database = {
           fp_ripe: number
           fp_savory: number
           fp_tannin: number
+          fp_vec: string | null
           grape: string | null
           id: string
           name: string
@@ -568,6 +572,7 @@ export type Database = {
           fp_ripe: number
           fp_savory: number
           fp_tannin: number
+          fp_vec: string | null
           grape: string | null
           id: string
           name: string
