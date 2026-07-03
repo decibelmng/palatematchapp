@@ -70,6 +70,11 @@ function singleLinkage(pts: { x: number; y: number }[], thr: number) {
   });
 }
 
+const isDebugHost =
+  typeof window !== "undefined" &&
+  (import.meta.env.DEV ||
+    /(?:-preview|lovable\.app|localhost)/.test(window.location.hostname));
+
 export function TasteMap({ type, landmarks, loved, showOverlay, overlayText }: Props) {
   const corners = type === "red"
     ? {
@@ -83,33 +88,46 @@ export function TasteMap({ type, landmarks, loved, showOverlay, overlayText }: P
         xCap: "Crisp → Rich", yCap: "Fruit → Mineral",
       };
 
-  // Set of loved cuveeKeys and bottleIds for dedupe
+  // Dedupe: landmark that matches a loved wine renders as one primary dot with its label.
   const lovedKeys = new Set(loved.map((l) => l.key));
   const lovedBottleIds = new Set(loved.map((l) => l.bottleId).filter(Boolean) as string[]);
 
   const lmData = landmarks.map((l) => {
-    const isLoved = lovedKeys.has(l.cuveeKey) || lovedBottleIds.has(l.bottleId);
+    const isLoved =
+      lovedKeys.has(l.cuveeKey) || (!!l.bottleId && lovedBottleIds.has(l.bottleId));
     const c = coordFor(type, l.fp);
     const p = toPx(c);
     return { ...l, ...c, ...p, isLoved };
   });
-  const labelPositions = placeLabels(lmData);
 
-  // Loved coords EXCLUDING those that match a landmark (avoid stacking)
+  // Loved coords EXCLUDING those that match a landmark (avoid stacked dots)
   const landmarkKeys = new Set(landmarks.map((l) => l.cuveeKey));
-  const landmarkBottleIds = new Set(landmarks.map((l) => l.bottleId));
+  const landmarkBottleIds = new Set(
+    landmarks.map((l) => l.bottleId).filter(Boolean) as string[]
+  );
   const lovedForDots = loved.filter(
     (l) => !landmarkKeys.has(l.key) && !(l.bottleId && landmarkBottleIds.has(l.bottleId))
   );
   const lovedCoords = lovedForDots.map((p) => coordFor(type, p.fp));
 
-  // Cluster ALL loved points (including loved-landmarks) so rings reflect true palate modes
+  // Cluster ALL loved points so rings reflect true palate modes
   const allLovedCoords = loved.map((p) => coordFor(type, p.fp));
   const clusters = allLovedCoords.length
     ? singleLinkage(allLovedCoords, CLUSTER_THRESHOLD)
         .sort((a, b) => b.size - a.size)
         .slice(0, MAX_RINGS)
     : [];
+
+  // Precompute "You" ring label rects so landmark placement can dodge them
+  const ringLabelRects = clusters.map((cl) => {
+    const p = toPx(cl.center);
+    const rNorm = Math.max(0.1, Math.min(0.2, 0.1 + cl.spread * 0.9));
+    const r = rNorm * PLOT_W;
+    const w = 28, h = 14;
+    return { x: p.px - w / 2, y: p.py - r - 4 - h, w, h };
+  });
+
+  const labelPositions = placeLabels(lmData, ringLabelRects);
 
   return (
     <div className="w-full max-w-[420px] mx-auto">
@@ -212,33 +230,83 @@ export function TasteMap({ type, landmarks, loved, showOverlay, overlayText }: P
           </g>
         )}
       </svg>
+
+      {isDebugHost && landmarks.length > 0 && (
+        <details className="mt-2 text-xs text-muted-foreground">
+          <summary className="cursor-pointer select-none">Landmark debug</summary>
+          <ul className="mt-2 space-y-1 font-mono">
+            {landmarks.map((l) => (
+              <li key={l.label}>
+                <div>
+                  <span className="text-foreground">{l.label}</span>{" "}
+                  <span>← "{l.debug.query}"</span>
+                </div>
+                <div>
+                  matched: {l.debug.matchedProducer ?? "?"} — {l.debug.matchedName}
+                </div>
+                <div>
+                  fp:{" "}
+                  {(Object.keys(l.debug.fp) as (keyof typeof l.debug.fp)[])
+                    .map((k) => `${k}=${l.debug.fp[k].toFixed(2)}`)
+                    .join(" ")}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
     </div>
   );
 }
 
 type LabelPos = { lx: number; ly: number; anchor: "start" | "end" | "middle" };
-function placeLabels(lm: { px: number; py: number; label: string }[]): LabelPos[] {
-  const placed: { x: number; y: number; w: number; h: number }[] = [];
+type Rect = { x: number; y: number; w: number; h: number };
+
+function rectFor(
+  px: number,
+  py: number,
+  approxW: number,
+  side: "right" | "left" | "below",
+): { lx: number; ly: number; anchor: LabelPos["anchor"]; rect: Rect } {
+  const H = 28; // two lines
+  if (side === "right") {
+    const lx = px + 6, ly = py - 2;
+    return { lx, ly, anchor: "start", rect: { x: lx, y: ly - 10, w: approxW, h: H } };
+  }
+  if (side === "left") {
+    const lx = px - 6, ly = py - 2;
+    return { lx, ly, anchor: "end", rect: { x: lx - approxW, y: ly - 10, w: approxW, h: H } };
+  }
+  const lx = px, ly = py + 14;
+  return { lx, ly, anchor: "middle", rect: { x: lx - approxW / 2, y: ly - 10, w: approxW, h: H } };
+}
+
+function overlapsAny(rect: Rect, others: Rect[]): boolean {
+  return others.some(
+    (p) => !(rect.x + rect.w < p.x || p.x + p.w < rect.x || rect.y + rect.h < p.y || p.y + p.h < rect.y)
+  );
+}
+
+function placeLabels(
+  lm: { px: number; py: number; label: string }[],
+  obstacles: Rect[] = [],
+): LabelPos[] {
+  const placed: Rect[] = [...obstacles];
   const out: LabelPos[] = [];
-  const LINE_H = 14;
   for (const l of lm) {
-    const preferRight = l.px < PAD_L + PLOT_W * 0.75;
-    let anchor: LabelPos["anchor"] = preferRight ? "start" : "end";
-    let lx = preferRight ? l.px + 6 : l.px - 6;
-    let ly = l.py - 2;
     const approxW = Math.max(60, l.label.length * 6.5);
-    let rect = { x: anchor === "start" ? lx : lx - approxW, y: ly - 10, w: approxW, h: LINE_H * 2 };
-    const overlaps = () => placed.some((p) =>
-      !(rect.x + rect.w < p.x || p.x + p.w < rect.x || rect.y + rect.h < p.y || p.y + p.h < rect.y)
-    );
-    if (overlaps()) {
-      lx = l.px;
-      anchor = "middle";
-      ly = l.py + 12;
-      rect = { x: lx - approxW / 2, y: ly - 10, w: approxW, h: LINE_H * 2 };
+    const preferRight = l.px < PAD_L + PLOT_W * 0.75;
+    const order: ("right" | "left" | "below")[] = preferRight
+      ? ["right", "left", "below"]
+      : ["left", "right", "below"];
+    let chosen = rectFor(l.px, l.py, approxW, order[0]);
+    for (const side of order) {
+      const cand = rectFor(l.px, l.py, approxW, side);
+      if (!overlapsAny(cand.rect, placed)) { chosen = cand; break; }
+      chosen = cand; // fall through with last tried
     }
-    placed.push(rect);
-    out.push({ lx, ly, anchor });
+    placed.push(chosen.rect);
+    out.push({ lx: chosen.lx, ly: chosen.ly, anchor: chosen.anchor });
   }
   return out;
 }
