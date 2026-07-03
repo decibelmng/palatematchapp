@@ -114,7 +114,7 @@ export const attributeScanFn = createServerFn({ method: "POST" })
         const name = (w.wine_name ?? "").trim() || "Unknown cuvée";
         const producer = (w.producer ?? "").trim() || null;
         const type = w.type ?? "red";
-        const isRed = type === "red";
+        const keepsTannin = type === "red" || type === "dessert";
         const { data: newB, error: bErr } = await supabaseAdmin
           .from("bottles")
           .insert({
@@ -126,15 +126,15 @@ export const attributeScanFn = createServerFn({ method: "POST" })
             type,
             fp_fresh: w.fp_resolved.fresh,
             fp_acid: w.fp_resolved.acid,
-            fp_tannin: isRed ? w.fp_resolved.tannin : 0,
-            fp_fruit_dark: isRed ? w.fp_resolved.fruit_dark : 0,
+            fp_tannin: keepsTannin ? w.fp_resolved.tannin : 0,
+            fp_fruit_dark: keepsTannin ? w.fp_resolved.fruit_dark : 0,
             fp_ripe: w.fp_resolved.ripe,
             fp_oak: w.fp_resolved.oak,
             fp_body: w.fp_resolved.body,
             fp_savory: w.fp_resolved.savory,
             ax_body: w.fp_resolved.body,
             ax_fruit_char: w.fp_resolved.fruit_dark,
-            ax_tannin: isRed ? w.fp_resolved.tannin : 0,
+            ax_tannin: keepsTannin ? w.fp_resolved.tannin : 0,
             ax_acidity: w.fp_resolved.acid,
             ax_sweet: 0,
             source: "scan; unverified community bottle",
