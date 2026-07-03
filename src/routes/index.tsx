@@ -1,11 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState, useEffect } from "react";
 import { AuthGate } from "@/components/AuthGate";
-import { PalateStar } from "@/components/PalateStar";
+import { TasteMap, type LovedPoint } from "@/components/TasteMap";
 import { PalateBars } from "@/components/PalateBars";
 import { PourMatchRow } from "@/components/PourMatchRow";
-import { useBottlesByIds, useRatings, bottleToValues, bottleType, usePersistCode } from "@/hooks/use-palate-data";
+import {
+  useBottlesByIds,
+  useRatings,
+  bottleToValues,
+  bottleToFp,
+  bottleType,
+  usePersistCode,
+} from "@/hooks/use-palate-data";
+import { useLandmarks } from "@/hooks/use-landmarks";
 import { useTopMatches } from "@/lib/top-matches";
+import { aggregateRated } from "@/lib/cuvee";
 import { computeCode, describeCode, axesFor, type RatedBottle, type PaletteType } from "@/lib/palate";
 
 export const Route = createFileRoute("/")({
@@ -26,6 +35,7 @@ function Home() {
   const ratedIds = useMemo(() => (ratings ?? []).map((r) => r.bottle_id), [ratings]);
   const { data: bottles } = useBottlesByIds(ratedIds);
 
+  // Palate letter code inputs (unchanged math)
   const { redRated, whiteRated } = useMemo(() => {
     const byId = new Map((bottles ?? []).map((b) => [b.id, b]));
     const redRated: RatedBottle[] = [];
@@ -57,18 +67,27 @@ function Home() {
   const totalRated = ratings?.length ?? 0;
   const onboarding = activeRated.length < MIN_RATINGS;
 
-  const [highlightAxis, setHighlightAxis] = useState<string | null>(null);
-  const toggleHighlight = (key: string) =>
-    setHighlightAxis((prev) => (prev === key ? null : key));
+  // Loved cuvées of the active type, mapped to fingerprint points
+  const lovedPoints: LovedPoint[] = useMemo(() => {
+    const byId = new Map((bottles ?? []).map((b) => [b.id, b]));
+    const rows = (ratings ?? [])
+      .map((r) => ({ r, b: byId.get(r.bottle_id) }))
+      .filter((x) => x.b && bottleType(x.b!) === scope && x.r.stars >= 4)
+      .map(({ r, b }) => ({
+        id: b!.id,
+        name: b!.name,
+        producer: b!.producer,
+        region: b!.region,
+        type: bottleType(b!),
+        vintage: b!.vintage,
+        fp: bottleToFp(b!),
+        stars: r.stars,
+      }));
+    return aggregateRated(rows).map((c) => ({ key: c.cuvee, fp: c.fp }));
+  }, [bottles, ratings, scope]);
 
-  // Unresolved letters view for onboarding star
-  const emptyLetters = useMemo(
-    () => activeAxes.map((a) => ({
-      axis: a.key, label: a.label, low: a.low, high: a.high,
-      letter: "·", descriptor: "—", resolved: false, value: null, bimodal: false,
-    })),
-    [activeAxes]
-  );
+  const { data: landmarks } = useLandmarks(scope);
+  const resolvedLandmarks = landmarks ?? [];
 
   return (
     <div className="pt-2">
@@ -80,13 +99,14 @@ function Home() {
         <CodeChipRow type="white" code={white.code} n={whiteRated.length} active={scope === "white"} onClick={() => setScope("white")} />
       </div>
 
-      {/* Compass */}
+      {/* Taste map */}
       <div className="mt-6">
-        <PalateStar
-          axes={activeAxes}
-          letters={onboarding ? emptyLetters : active.letters}
-          highlightAxis={onboarding ? null : highlightAxis}
-          onAxisTap={onboarding ? undefined : toggleHighlight}
+        <TasteMap
+          type={scope}
+          landmarks={resolvedLandmarks}
+          loved={onboarding ? [] : lovedPoints}
+          showOverlay={onboarding}
+          overlayText="Where do you land?"
         />
       </div>
 
@@ -95,34 +115,28 @@ function Home() {
       ) : (
         <>
           <p className="mt-3 text-xs text-muted-foreground text-center">
-            Each spoke runs from its first letter at the center to its second at the rim · middle ring = N
+            Small dots are wines you love · each ring is one of your taste modes — you can have more than one
           </p>
           <p className="mt-3 text-sm text-foreground/90 leading-relaxed text-center">
             {describeCode(active.letters)}
           </p>
+
           <div className="mt-6">
-            <PalateBars
-              axes={activeAxes}
-              letters={active.letters}
-              highlightAxis={highlightAxis}
-              onAxisTap={toggleHighlight}
-            />
+            <PalateBars axes={activeAxes} letters={active.letters} />
+          </div>
+
+          <div className="mt-6 flex flex-wrap gap-2">
+            <Link to="/rate" className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent">
+              Edit your ratings ({totalRated})
+            </Link>
+            <Link to="/rate" className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent">
+              Rate more
+            </Link>
+            <Link to="/pour" className="rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-xs font-medium hover:opacity-90">
+              Pour next →
+            </Link>
           </div>
         </>
-      )}
-
-      {totalRated > 0 && !onboarding && (
-        <div className="mt-6 flex flex-wrap gap-2">
-          <Link to="/rate" className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent">
-            Edit your ratings ({totalRated})
-          </Link>
-          <Link to="/rate" className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent">
-            Rate more
-          </Link>
-          <Link to="/pour" className="rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-xs font-medium hover:opacity-90">
-            Pour next →
-          </Link>
-        </div>
       )}
 
       {totalRated > 0 && <TopMatchesSection />}
@@ -132,11 +146,10 @@ function Home() {
 
 function OnboardingBlock({ scope, n }: { scope: PaletteType; n: number }) {
   const pct = Math.min(100, (n / MIN_RATINGS) * 100);
-  const label = scope === "red" ? "red" : "white";
   return (
     <div className="mt-5 text-center">
       <h2 className="font-serif text-[17px] leading-snug">
-        Rate {MIN_RATINGS} wines to reveal your {label} palate
+        Rate {MIN_RATINGS} {scope === "red" ? "reds" : "whites"} to place yourself on the map
       </h2>
       <p className="mt-1 text-xs text-muted-foreground">{n} of {MIN_RATINGS} rated</p>
       <div className="mx-auto mt-3 h-1 max-w-xs rounded-full bg-muted overflow-hidden">
@@ -151,7 +164,7 @@ function OnboardingBlock({ scope, n }: { scope: PaletteType; n: number }) {
       <ol className="mt-6 grid gap-3 text-left max-w-sm mx-auto">
         {[
           "Rate wines you know you love — or don't",
-          "Your palate resolves into a code",
+          "You appear on the map with a palate code",
           "Scan any wine list — we rank it for you",
         ].map((text, i) => (
           <li key={i} className={`flex items-center gap-3 text-[13px] ${i === 0 ? "" : "opacity-60"}`}>
