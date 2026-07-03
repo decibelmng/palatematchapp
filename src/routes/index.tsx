@@ -83,7 +83,7 @@ function Home() {
         fp: bottleToFp(b!),
         stars: r.stars,
       }));
-    return aggregateRated(rows).map((c) => ({ key: c.cuvee, fp: c.fp }));
+    return aggregateRated(rows).map((c) => ({ key: c.cuvee, bottleId: c.id, fp: c.fp }));
   }, [bottles, ratings, scope]);
 
   const { data: landmarks } = useLandmarks(scope);
