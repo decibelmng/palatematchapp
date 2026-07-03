@@ -307,7 +307,10 @@ function SectionView({ section, groupScores, groupActive, groupLoading }: Sectio
     }
     return out;
   }, [rows, effective, treatAsFallback]);
-  const visible = filtered.slice(0, 10);
+  // Uncalibrated (raw import defaults) cuvées are held out of the visible top-10
+  // so a template bottle can't outrank calibrated real matches. They stay in the
+  // pool and reappear once re-fingerprinted.
+  const visible = filtered.filter((r) => !r.raw).slice(0, 10);
   const hidden = Math.max(0, filtered.length - visible.length);
 
   return (
