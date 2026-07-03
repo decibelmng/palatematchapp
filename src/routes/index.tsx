@@ -163,7 +163,17 @@ function Home() {
         displayName={myProfile?.display_name || myProfile?.username || ""}
       />
 
-      {totalRated > 0 && <TopMatchesSection />}
+      {canShare && (
+        <div className="mt-2 text-center">
+          <Link
+            to="/matches"
+            className="text-[11px] uppercase text-muted-foreground hover:text-primary"
+            style={{ letterSpacing: "0.18em" }}
+          >
+            See your matches →
+          </Link>
+        </div>
+      )}
 
       {/* Taste map */}
       <div className="mt-10">
@@ -171,6 +181,7 @@ function Home() {
           type={scope}
           landmarks={resolvedLandmarks}
           loved={onboarding ? [] : lovedPoints}
+          others={onboarding ? [] : otherPoints}
           showOverlay={onboarding}
           overlayText="Where do you land?"
         />
