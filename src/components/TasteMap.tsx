@@ -181,11 +181,12 @@ export function TasteMap({ type, landmarks, loved, others = [], showOverlay, ove
     () => computeDomain(
       [
         ...lovedData.map((d) => ({ x: d.x, y: d.y })),
+        ...othersData.map((d) => ({ x: d.x, y: d.y })),
         ...landmarkData.map((d) => ({ x: d.x, y: d.y })),
       ],
       clusters,
     ),
-    [lovedData, landmarkData, clusters]
+    [lovedData, othersData, landmarkData, clusters]
   );
   const dx = domain.x1 - domain.x0;
   const dy = domain.y1 - domain.y0;
