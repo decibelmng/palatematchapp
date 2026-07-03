@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { refingerprintCuveeByBottleId, stripYear } from "@/lib/fingerprint-worker";
-import { getPourCandidates } from "@/lib/pour.functions";
+import { computePourCandidatesFor } from "@/lib/pour.functions";
 
 // NOTE: ADMIN_USER_ID must be set in Lovable Cloud env to the owner's auth user id.
 // Any signed-in user whose auth uid does NOT match will get "Not authorized".
