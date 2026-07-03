@@ -97,6 +97,33 @@ function Home() {
     return Array.from(seen.values());
   }, [bottles, ratings, scope]);
 
+  // Non-loved rated cuvées (1–3★) of the active type — for × marks and neutral dots.
+  // Dedupe by cuvée keeping the LOWEST star (worst impression drives the mark).
+  const otherPoints: LovedPoint[] = useMemo(() => {
+    const byId = new Map((bottles ?? []).map((b) => [b.id, b]));
+    const lovedKeys = new Set(lovedPoints.map((p) => p.key));
+    const seen = new Map<string, LovedPoint>();
+    for (const r of ratings ?? []) {
+      const b = byId.get(r.bottle_id);
+      if (!b) continue;
+      if (bottleType(b) !== scope) continue;
+      if (r.stars >= 4) continue;
+      const key = cuveeKey(b);
+      if (lovedKeys.has(key)) continue;
+      const existing = seen.get(key);
+      if (existing) {
+        if (r.stars < existing.stars) existing.stars = r.stars;
+        continue;
+      }
+      seen.set(key, {
+        key, bottleId: b.id,
+        axBody: b.ax_body, axFruit: b.ax_fruit_char,
+        stars: r.stars, name: b.name, producer: b.producer, region: b.region,
+      });
+    }
+    return Array.from(seen.values());
+  }, [bottles, ratings, scope, lovedPoints]);
+
   const { data: landmarks } = useLandmarks(scope);
   const resolvedLandmarks = landmarks ?? [];
 
