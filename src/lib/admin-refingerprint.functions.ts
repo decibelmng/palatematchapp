@@ -28,7 +28,7 @@ export const refingerprintBatch = createServerFn({ method: "POST" })
     // For scale safety, cap at 5000 rows per invocation of the priority build.
     const { data: rows, error: rowsErr } = await supabaseAdmin
       .from("bottles")
-      .select("id,producer,name,type,region,country,grape,fp_fresh,fp_acid,fp_tannin,fp_fruit_dark,fp_ripe,fp_oak,fp_body,fp_savory,refingerprinted_at")
+      .select("id,producer,name,type,region,country,grape,source,fp_fresh,fp_acid,fp_tannin,fp_fruit_dark,fp_ripe,fp_oak,fp_body,fp_savory,refingerprinted_at")
       .is("refingerprinted_at", null)
       .limit(20000);
     if (rowsErr) throw new Error(rowsErr.message);
