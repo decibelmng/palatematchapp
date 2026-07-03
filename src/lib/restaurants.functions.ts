@@ -2,6 +2,37 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+// Mirror the generated client's fetch: set apikey header and strip a
+// bearer-format Authorization for new-style sb_publishable_ keys, which are
+// opaque strings rather than JWTs.
+function isNewSupabaseApiKey(value: string): boolean {
+  return value.startsWith("sb_publishable_") || value.startsWith("sb_secret_");
+}
+function createPublicSupabaseFetch(supabaseKey: string): typeof fetch {
+  return (input, init) => {
+    const headers = new Headers(
+      typeof Request !== "undefined" && input instanceof Request ? input.headers : undefined,
+    );
+    if (init?.headers) {
+      new Headers(init.headers).forEach((value, key) => headers.set(key, value));
+    }
+    if (isNewSupabaseApiKey(supabaseKey) && headers.get("Authorization") === `Bearer ${supabaseKey}`) {
+      headers.delete("Authorization");
+    }
+    headers.set("apikey", supabaseKey);
+    return fetch(input, { ...init, headers });
+  };
+}
+async function createPublicSupabase() {
+  const { createClient } = await import("@supabase/supabase-js");
+  const url = process.env.SUPABASE_URL!;
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY!;
+  return createClient(url, key, {
+    global: { fetch: createPublicSupabaseFetch(key) },
+    auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
+  });
+}
+
 // ============================================================================
 // Search & create restaurants
 // ============================================================================
