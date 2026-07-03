@@ -115,6 +115,7 @@ function Matches() {
     }
     // Suppress unused var warning for cuveeKey/ratedCuveeByKey (kept for future debug).
     void cuveeKey; void ratedCuveeByKey;
+
     return out;
   }, [ratedBottles, ratings, pool]);
 
