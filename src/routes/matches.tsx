@@ -111,6 +111,29 @@ function Matches() {
           })
           .filter((x): x is RankedCuvee => x !== null);
         if (items.length > 0) out.push({ type, mode: "personalized", nSameType: sameTypeRated.length, items });
+
+        if (type === "red" && typeof window !== "undefined") {
+          const params = selectKernelParams(ratedFp);
+          const prior = computeTypePriors(ratedFp).red;
+          const top5 = recs.slice(0, 5);
+          const cask = recs.find((r) => r.bottle.name.includes("Cask 23"));
+          const targets = [...top5, ...(cask && !top5.includes(cask) ? [cask] : [])];
+          const dump = targets.map((r) => {
+            const d = debugContributors(r.bottle, ratedFp, params.bandwidth, params.alpha, prior);
+            return {
+              name: r.bottle.name,
+              predicted: +d.predicted.toFixed(4),
+              den: +d.den.toFixed(4),
+              den5: +d.den5.toFixed(4),
+              denLt5: +d.denLt5.toFixed(4),
+              contribs: d.contribs.filter((c) => c.sim > 0.01).map((c) => ({
+                name: c.name, stars: c.stars, sim: +c.sim.toFixed(4),
+              })),
+            };
+          });
+          (window as unknown as { __DIAG_MATCHES_RED_V3: unknown }).__DIAG_MATCHES_RED_V3 = { params, prior: +prior.toFixed(4), dump };
+          console.log("[DIAG_V3]", (window as unknown as { __DIAG_MATCHES_RED_V3: unknown }).__DIAG_MATCHES_RED_V3);
+        }
       }
     }
     // Suppress unused var warning for cuveeKey/ratedCuveeByKey (kept for future debug).
