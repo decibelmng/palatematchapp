@@ -26,7 +26,7 @@ export const refingerprintBatch = createServerFn({ method: "POST" })
     // ORDER BY, the slice is arbitrary and can miss the (few) rated / menu ids
     // entirely — which is why the first run returned remaining=0.
 
-    const isDefaultish = (v: number | null) => v != null && Math.abs(v - 0.5) < 0.02;
+    const isDef = (v: number | null) => v != null && Math.abs(v - 0.5) < 0.02;
 
     // 1. Priority bottle ids: rated + menu (catalog-wide reads → service role).
     const [{ data: rated, error: rErr }, { data: menu, error: mErr }] = await Promise.all([
