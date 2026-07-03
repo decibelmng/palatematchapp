@@ -118,7 +118,23 @@ export async function computePourCandidatesFor(
     overall_cap: OVERALL_CAP,
   });
   if (error) throw new Error(error.message);
-  return projectRows((data ?? []) as any[]);
+  const projected = projectRows((data ?? []) as any[]);
+
+  // Attach `raw` = refingerprinted_at IS NULL for each candidate row so the
+  // recommender can down-weight uncalibrated template bottles.
+  const ids = projected.map((r) => r.id as string).filter(Boolean);
+  const stampById = new Map<string, boolean>();
+  for (let i = 0; i < ids.length; i += 500) {
+    const chunk = ids.slice(i, i + 500);
+    const { data: srows, error: sErr } = await supabase
+      .from("bottles")
+      .select("id,refingerprinted_at")
+      .in("id", chunk);
+    if (sErr) throw new Error(sErr.message);
+    for (const r of srows ?? []) stampById.set(r.id as string, !r.refingerprinted_at);
+  }
+  for (const r of projected) r.raw = stampById.get(r.id as string) ?? true;
+  return projected;
 }
 
 function projectRows(rows: any[]): any[] {
