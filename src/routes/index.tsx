@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState, useEffect } from "react";
 import { AuthGate } from "@/components/AuthGate";
 import { PalateStar } from "@/components/PalateStar";
+import { PalateBars } from "@/components/PalateBars";
 import { PourMatchRow } from "@/components/PourMatchRow";
 import { useBottlesByIds, useRatings, bottleToValues, bottleType, usePersistCode } from "@/hooks/use-palate-data";
 import { useTopMatches } from "@/lib/top-matches";
@@ -18,13 +19,13 @@ export const Route = createFileRoute("/")({
   component: () => <AuthGate><Home /></AuthGate>,
 });
 
+const MIN_RATINGS = 5;
+
 function Home() {
   const { data: ratings } = useRatings();
   const ratedIds = useMemo(() => (ratings ?? []).map((r) => r.bottle_id), [ratings]);
   const { data: bottles } = useBottlesByIds(ratedIds);
 
-  // Per-type rated-bottle pools. Each pool only contains bottles of that type,
-  // and each bottle's `values` map is built using that type's axis set.
   const { redRated, whiteRated } = useMemo(() => {
     const byId = new Map((bottles ?? []).map((b) => [b.id, b]));
     const redRated: RatedBottle[] = [];
@@ -44,7 +45,6 @@ function Home() {
 
   usePersistCode(red.code, white.code, ratings?.length ?? 0);
 
-  // Default the large star to whichever palate has more ratings (red on tie).
   const [scope, setScope] = useState<PaletteType>("red");
   useEffect(() => {
     if (whiteRated.length > redRated.length) setScope("white");
@@ -54,9 +54,21 @@ function Home() {
   const active = scope === "red" ? red : white;
   const activeAxes = axesFor(scope);
   const activeRated = scope === "red" ? redRated : whiteRated;
-  const resolved = active.letters.filter((l) => l.resolved).length;
-
   const totalRated = ratings?.length ?? 0;
+  const onboarding = activeRated.length < MIN_RATINGS;
+
+  const [highlightAxis, setHighlightAxis] = useState<string | null>(null);
+  const toggleHighlight = (key: string) =>
+    setHighlightAxis((prev) => (prev === key ? null : key));
+
+  // Unresolved letters view for onboarding star
+  const emptyLetters = useMemo(
+    () => activeAxes.map((a) => ({
+      axis: a.key, label: a.label, low: a.low, high: a.high,
+      letter: "·", descriptor: "—", resolved: false, value: null, bimodal: false,
+    })),
+    [activeAxes]
+  );
 
   return (
     <div className="pt-2">
@@ -64,37 +76,42 @@ function Home() {
 
       {/* Two-code header */}
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
-        <CodeChipRow type="red" code={red.code} axes={axesFor("red")} letters={red.letters} n={redRated.length} active={scope === "red"} onClick={() => setScope("red")} />
-        <CodeChipRow type="white" code={white.code} axes={axesFor("white")} letters={white.letters} n={whiteRated.length} active={scope === "white"} onClick={() => setScope("white")} />
+        <CodeChipRow type="red" code={red.code} n={redRated.length} active={scope === "red"} onClick={() => setScope("red")} />
+        <CodeChipRow type="white" code={white.code} n={whiteRated.length} active={scope === "white"} onClick={() => setScope("white")} />
       </div>
 
-      {/* Star visualization for the selected palate */}
+      {/* Compass */}
       <div className="mt-6">
-        <PalateStar axes={activeAxes} letters={active.letters} />
+        <PalateStar
+          axes={activeAxes}
+          letters={onboarding ? emptyLetters : active.letters}
+          highlightAxis={onboarding ? null : highlightAxis}
+          onAxisTap={onboarding ? undefined : toggleHighlight}
+        />
       </div>
 
-      <p className="mt-4 text-sm text-foreground/90 leading-relaxed text-center">
-        {activeRated.length === 0
-          ? `Rate some ${scope === "red" ? "reds" : "whites"} to reveal your ${scope === "red" ? "red" : "white"} palate.`
-          : describeCode(active.letters)}
-      </p>
-      <p className="mt-1 text-xs text-muted-foreground text-center">
-        {resolved}/5 axes resolved · {activeRated.length} {scope === "red" ? "red" : "white"}{activeRated.length === 1 ? "" : "s"}
-      </p>
-
-      {totalRated === 0 && (
-        <div className="mt-10 rounded-xl border border-border bg-card/60 p-5">
-          <h2 className="font-serif text-lg">Start tasting.</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Tap stars on bottles you've actually tried. Your two palates resolve as you go — no descriptions, no quizzes.
+      {onboarding ? (
+        <OnboardingBlock scope={scope} n={activeRated.length} />
+      ) : (
+        <>
+          <p className="mt-3 text-xs text-muted-foreground text-center">
+            Dot near the center = the left letter · at the rim = the right letter · middle ring = N
           </p>
-          <Link to="/rate" className="mt-4 inline-block rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium">
-            Rate a bottle
-          </Link>
-        </div>
+          <p className="mt-3 text-sm text-foreground/90 leading-relaxed text-center">
+            {describeCode(active.letters)}
+          </p>
+          <div className="mt-6">
+            <PalateBars
+              axes={activeAxes}
+              letters={active.letters}
+              highlightAxis={highlightAxis}
+              onAxisTap={toggleHighlight}
+            />
+          </div>
+        </>
       )}
 
-      {totalRated > 0 && (
+      {totalRated > 0 && !onboarding && (
         <div className="mt-6 flex flex-wrap gap-2">
           <Link to="/rate" className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent">
             Edit your ratings ({totalRated})
@@ -109,28 +126,42 @@ function Home() {
       )}
 
       {totalRated > 0 && <TopMatchesSection />}
+    </div>
+  );
+}
 
-      <div className="mt-10">
-        <h3 className="font-serif text-base">What the letters mean</h3>
-        <div className="mt-3 grid gap-4 sm:grid-cols-2 text-xs text-muted-foreground">
-          <div>
-            <p className="text-foreground/80 mb-1">Reds</p>
-            <ul className="space-y-1">
-              {axesFor("red").map((a) => (
-                <li key={a.key}><span className="text-foreground">{a.label}</span> · {a.low} {a.lowName} / {a.high} {a.highName}</li>
-              ))}
-            </ul>
-          </div>
-          <div>
-            <p className="text-foreground/80 mb-1">Whites</p>
-            <ul className="space-y-1">
-              {axesFor("white").map((a) => (
-                <li key={a.key}><span className="text-foreground">{a.label}</span> · {a.low} {a.lowName} / {a.high} {a.highName}</li>
-              ))}
-            </ul>
-          </div>
-        </div>
+function OnboardingBlock({ scope, n }: { scope: PaletteType; n: number }) {
+  const pct = Math.min(100, (n / MIN_RATINGS) * 100);
+  const label = scope === "red" ? "red" : "white";
+  return (
+    <div className="mt-5 text-center">
+      <h2 className="font-serif text-[17px] leading-snug">
+        Rate {MIN_RATINGS} wines to reveal your {label} palate
+      </h2>
+      <p className="mt-1 text-xs text-muted-foreground">{n} of {MIN_RATINGS} rated</p>
+      <div className="mx-auto mt-3 h-1 max-w-xs rounded-full bg-muted overflow-hidden">
+        <div className="h-full bg-primary transition-all" style={{ width: `${pct}%` }} />
       </div>
+      <Link
+        to="/rate"
+        className="mt-5 inline-block rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium hover:opacity-90"
+      >
+        {n >= 1 ? "Keep rating" : "Rate your first wine"}
+      </Link>
+      <ol className="mt-6 grid gap-3 text-left max-w-sm mx-auto">
+        {[
+          "Rate wines you know you love — or don't",
+          "Your palate resolves into a code",
+          "Scan any wine list — we rank it for you",
+        ].map((text, i) => (
+          <li key={i} className={`flex items-center gap-3 text-[13px] ${i === 0 ? "" : "opacity-60"}`}>
+            <span className="w-5 h-5 rounded-full border border-border flex items-center justify-center text-[11px]">
+              {i + 1}
+            </span>
+            <span>{text}</span>
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }
@@ -140,8 +171,6 @@ function CodeChipRow({
 }: {
   type: PaletteType;
   code: string;
-  axes: ReturnType<typeof axesFor>;
-  letters: ReturnType<typeof computeCode>["letters"];
   n: number;
   active: boolean;
   onClick: () => void;
@@ -161,9 +190,12 @@ function CodeChipRow({
           {n === 0 ? "no ratings yet" : n < 3 ? `still learning · ${n}` : `${n} rated`}
         </span>
       </div>
-      <div className="mt-2 flex gap-1.5 font-serif text-2xl text-primary">
+      <div
+        className="mt-2 font-serif text-2xl text-primary"
+        style={{ letterSpacing: "0.3em" }}
+      >
         {code.split("").map((ch, i) => (
-          <span key={i} className={`w-6 text-center ${ch === "·" ? "text-muted-foreground/60" : ""}`}>{ch}</span>
+          <span key={i} className={ch === "·" ? "text-muted-foreground/60" : ""}>{ch}</span>
         ))}
       </div>
     </button>
@@ -188,4 +220,3 @@ function TopMatchesSection() {
     </section>
   );
 }
-
