@@ -130,17 +130,24 @@ function scoreCandidate(
   return { predicted, nearest, maxSimilarity: Math.max(bestAny, 0), confidence };
 }
 
-const BW_GRID = [0.05, 0.08, 0.1, 0.14, 0.2] as const;
+const BW_GRID = [0.03, 0.05, 0.08, 0.12, 0.18] as const;
+const SMALL_SAMPLE_MIN_BW = 0.08;
+const SMALL_SAMPLE_THRESHOLD = 8;
 
 /** Leave-one-out CV over a small bandwidth grid. Picks the bandwidth with
- *  lowest squared prediction error on held-out rated wines. Needs ≥5 rated. */
+ *  lowest squared prediction error on held-out rated wines. Needs ≥5 rated.
+ *  Small-sample floor: fewer than 8 rated wines never selects below 0.08
+ *  (tight kernels overfit tiny samples). */
 export function selectBandwidth(rated: RatedFp[]): number {
-  if (rated.length < 5) return 0.14;
+  if (rated.length < 5) return 0.12;
   const alpha = 0.4;
   const prior = 3.0;
-  let bestBw = 0.14;
+  const grid = rated.length < SMALL_SAMPLE_THRESHOLD
+    ? BW_GRID.filter((bw) => bw >= SMALL_SAMPLE_MIN_BW)
+    : (BW_GRID as unknown as number[]);
+  let bestBw = 0.12;
   let bestErr = Infinity;
-  for (const bw of BW_GRID) {
+  for (const bw of grid) {
     let err = 0;
     for (let i = 0; i < rated.length; i++) {
       const heldOut = rated[i];
