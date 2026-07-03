@@ -48,7 +48,7 @@ function Pour() {
   const { data: ratings } = useRatings();
   const ratedIds = useMemo(() => (ratings ?? []).map((r) => r.bottle_id), [ratings]);
   const { data: ratedBottles } = useBottlesByIds(ratedIds);
-  const { data: pool } = useAllBottlesPaged();
+  const { data: pool } = usePourCandidates();
 
   const sections: Section[] = useMemo(() => {
     if (!ratings || !pool) return [];
