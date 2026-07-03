@@ -507,44 +507,32 @@ export type Database = {
           rated_types: string[]
         }
         Returns: {
-          added_by: string | null
+          added_by: string
           ax_acidity: number
           ax_body: number
           ax_fruit_char: number
           ax_sweet: number
           ax_tannin: number
-          country: string | null
-          created_at: string
-          critic_score: number | null
+          critic_score: number
           fp_acid: number
           fp_body: number
           fp_fresh: number
           fp_fruit_dark: number
-          fp_harmonized_at: string | null
           fp_oak: number
           fp_ripe: number
           fp_savory: number
           fp_tannin: number
-          fp_vec: string | null
-          grape: string | null
+          grape: string
           id: string
           name: string
-          price_band: string | null
-          producer: string | null
-          refingerprinted_at: string | null
-          region: string | null
-          source: string | null
-          tasting_note: string | null
+          price_band: string
+          producer: string
+          region: string
+          source: string
+          tasting_note: string
           type: string
-          unverified: boolean
-          vintage: number | null
+          vintage: number
         }[]
-        SetofOptions: {
-          from: "*"
-          to: "bottles"
-          isOneToOne: false
-          isSetofReturn: true
-        }
       }
       search_bottles_fuzzy: {
         Args: {
