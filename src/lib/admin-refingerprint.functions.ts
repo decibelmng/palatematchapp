@@ -185,7 +185,7 @@ export const refingerprintMyMatchesBatch = createServerFn({ method: "POST" })
 
     // Helper: run one supabase batch fetch resiliently. On raw fetch failure,
     // log the detail and return an empty batch so the outer flow can continue.
-    async function safeFetch<T>(label: string, run: () => Promise<{ data: T[] | null; error: any }>): Promise<T[]> {
+    async function safeFetch<T>(label: string, run: () => any): Promise<T[]> {
       try {
         const { data, error } = await run();
         if (error) {
