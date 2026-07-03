@@ -30,6 +30,7 @@ export type Recommendation = {
   predicted: number;
   nearest: RatedFp | null;
   maxSimilarity: number;
+  confidence: number;
 };
 
 /**
