@@ -486,6 +486,12 @@ function Scan() {
         </div>
       )}
 
+      <PrescanRestaurantPicker
+        value={prescanRestaurant}
+        onChange={setPrescanRestaurant}
+        disabled={isRunning || !!scanId}
+      />
+
       <div className="mt-5 flex flex-wrap gap-3">
         <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden"
           onChange={(e) => onPick(e.target.files, e.currentTarget)} />
