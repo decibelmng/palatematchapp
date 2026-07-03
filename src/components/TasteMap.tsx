@@ -182,10 +182,8 @@ export function TasteMap({ type, landmarks, loved, showOverlay, overlayText }: P
   const showCrosshair = 0.5 >= domain.x0 && 0.5 <= domain.x1
     && 0.5 >= domain.y0 && 0.5 <= domain.y1;
 
-
-  const gridOpacity = 0.6;
-
   const clearOnBg = () => setSelected(null);
+
 
   const uid = useId().replace(/[:]/g, "");
   const clipId = `pm-clip-${uid}`;
