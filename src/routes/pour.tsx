@@ -100,6 +100,13 @@ function Pour() {
           type: c.type, fp: c.fp,
         }));
         const recs = recommend(ratedFp, candFp).slice(0, 60);
+        if (type === "red") {
+          const { selectBandwidth } = await import("@/lib/recommender");
+          const bw = selectBandwidth(ratedFp);
+          const preds = recs.map((r) => r.predicted);
+          // eslint-disable-next-line no-console
+          console.log(`[pour:bw] type=red bw=${bw} n=${preds.length} min=${Math.min(...preds).toFixed(4)} max=${Math.max(...preds).toFixed(4)}`);
+        }
         const candByRepId = new Map(cands.map((c) => [c.id, c]));
         const ratedByRepId = new Map(sameTypeRated.map((r) => [r.id, r]));
         const items: RankedCuvee[] = recs
