@@ -94,7 +94,7 @@ function Home() {
 
       {totalRated > 0 && (
         <div className="mt-6 flex flex-wrap gap-2">
-          <Link to="/my-ratings" className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent">
+          <Link to="/rate" className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent">
             Edit your ratings ({totalRated})
           </Link>
           <Link to="/rate" className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent">
@@ -105,6 +105,8 @@ function Home() {
           </Link>
         </div>
       )}
+
+      {totalRated > 0 && <TopMatchesSection />}
 
       <div className="mt-10">
         <h3 className="font-serif text-base">What the letters mean</h3>
