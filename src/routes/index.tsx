@@ -290,23 +290,3 @@ function CodeChipRow({
     </button>
   );
 }
-
-
-function TopMatchesSection() {
-  const { data: matches, loading } = useTopMatches(3);
-  if (loading && matches.length === 0) return null;
-  if (matches.length === 0) return null;
-  return (
-    <section className="mt-6">
-      <div className="flex items-baseline justify-between gap-3">
-        <h2 className="font-serif text-xl">Your top matches</h2>
-        <Link to="/matches" className="text-xs font-semibold text-primary hover:opacity-80">
-          See all matches →
-        </Link>
-      </div>
-      <ul className="mt-2 divide-y divide-border">
-        {matches.map((m) => <PourMatchRow key={m.cuvee.cuvee} match={m} />)}
-      </ul>
-    </section>
-  );
-}
