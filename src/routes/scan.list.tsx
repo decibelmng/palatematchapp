@@ -127,6 +127,12 @@ function Scan() {
   const [dismissedResume, setDismissedResume] = useState(false);
   const finalizingRef = useRef(false);
 
+  // Pre-scan restaurant selection (optional): stored here so `finalizeScan`
+  // can auto-attribute without a second UI trip.
+  const [prescanRestaurant, setPrescanRestaurant] = useState<{ id: string; name: string } | null>(null);
+  const [autoAttributedTo, setAutoAttributedTo] = useState<string | null>(null);
+  const attributeFn = useServerFn(attributeScanFn);
+
   const isRunning = status === "running";
 
   // ---------- Resume: hydrate any scan from the last 4h ----------
