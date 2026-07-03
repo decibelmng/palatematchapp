@@ -10,13 +10,12 @@ import {
   useBottlesByIds,
   useRatings,
   bottleToValues,
-  bottleToFp,
   bottleType,
   usePersistCode,
 } from "@/hooks/use-palate-data";
 import { useLandmarks } from "@/hooks/use-landmarks";
 import { useTopMatches } from "@/lib/top-matches";
-import { aggregateRated } from "@/lib/cuvee";
+import { cuveeKey } from "@/lib/cuvee";
 import { computeCode, describeCode, axesFor, type RatedBottle, type PaletteType } from "@/lib/palate";
 
 export const Route = createFileRoute("/")({
@@ -69,23 +68,20 @@ function Home() {
   const totalRated = ratings?.length ?? 0;
   const onboarding = activeRated.length < MIN_RATINGS;
 
-  // Loved cuvées of the active type, mapped to fingerprint points
+  // Loved bottles (≥4★) of the active type, deduped by cuvée for the map
   const lovedPoints: LovedPoint[] = useMemo(() => {
     const byId = new Map((bottles ?? []).map((b) => [b.id, b]));
-    const rows = (ratings ?? [])
-      .map((r) => ({ r, b: byId.get(r.bottle_id) }))
-      .filter((x) => x.b && bottleType(x.b!) === scope && x.r.stars >= 4)
-      .map(({ r, b }) => ({
-        id: b!.id,
-        name: b!.name,
-        producer: b!.producer,
-        region: b!.region,
-        type: bottleType(b!),
-        vintage: b!.vintage,
-        fp: bottleToFp(b!),
-        stars: r.stars,
-      }));
-    return aggregateRated(rows).map((c) => ({ key: c.cuvee, bottleId: c.id, fp: c.fp }));
+    const seen = new Map<string, LovedPoint>();
+    for (const r of ratings ?? []) {
+      const b = byId.get(r.bottle_id);
+      if (!b) continue;
+      if (bottleType(b) !== scope) continue;
+      if (r.stars < 4) continue;
+      const key = cuveeKey(b);
+      if (seen.has(key)) continue;
+      seen.set(key, { key, bottleId: b.id, axBody: b.ax_body, axFruit: b.ax_fruit_char });
+    }
+    return Array.from(seen.values());
   }, [bottles, ratings, scope]);
 
   const { data: landmarks } = useLandmarks(scope);
@@ -143,7 +139,7 @@ function Home() {
       ) : (
         <>
           <p className="mt-3 text-xs text-muted-foreground text-center">
-            Small dots are wines you love · each ring is one of your taste modes — you can have more than one
+            Small dots are wines you love · rings are your taste modes · the map is your Body and Fruit sliders, crossed
           </p>
           <p className="mt-3 text-sm text-foreground/90 leading-relaxed text-center">
             {describeCode(active.letters)}

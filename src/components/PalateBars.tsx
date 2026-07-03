@@ -50,12 +50,10 @@ export function PalateBars({ axes, letters }: Props) {
                 />
               )}
               {resolved && r!.bimodal && (
-                <>
-                  <div className="absolute w-2.5 h-2.5 rounded-full bg-primary"
-                    style={{ left: "calc(25% - 5px)", boxShadow: "0 0 0 2px var(--color-background)" }} />
-                  <div className="absolute w-2.5 h-2.5 rounded-full bg-primary"
-                    style={{ left: "calc(75% - 5px)", boxShadow: "0 0 0 2px var(--color-background)" }} />
-                </>
+                <div
+                  className="absolute h-2 rounded-full bg-primary"
+                  style={{ left: "25%", width: "50%", opacity: 0.18 }}
+                />
               )}
             </div>
           </li>
