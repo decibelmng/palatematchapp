@@ -78,22 +78,38 @@ function AdminData() {
       <p style={{ opacity: 0.7, fontSize: 13, marginBottom: 16 }}>
         Processes up to 15 unstamped cuvée groups per click. Priority: rated → on a menu → fully defaulted.
       </p>
-      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
         <button
-          onClick={once}
+          onClick={() => once("all")}
           disabled={busy || loop}
           style={{ padding: "8px 12px", border: "1px solid #999", borderRadius: 6 }}
         >
-          {busy && !loop ? "Working…" : "Re-fingerprint next 15 cuvées"}
+          {busy && !loop && mode === "all" ? "Working…" : "Re-fingerprint next 15 cuvées"}
+        </button>
+        <button
+          onClick={() => once("matches")}
+          disabled={busy || loop}
+          style={{ padding: "8px 12px", border: "1px solid #999", borderRadius: 6 }}
+        >
+          {busy && !loop && mode === "matches" ? "Working…" : "Re-score my current matches"}
         </button>
         {!loop ? (
-          <button
-            onClick={runUntilDone}
-            disabled={busy}
-            style={{ padding: "8px 12px", border: "1px solid #999", borderRadius: 6 }}
-          >
-            Run until done
-          </button>
+          <>
+            <button
+              onClick={() => runUntilDone("all")}
+              disabled={busy}
+              style={{ padding: "8px 12px", border: "1px solid #999", borderRadius: 6 }}
+            >
+              Run until done (all)
+            </button>
+            <button
+              onClick={() => runUntilDone("matches")}
+              disabled={busy}
+              style={{ padding: "8px 12px", border: "1px solid #999", borderRadius: 6 }}
+            >
+              Run until done (matches)
+            </button>
+          </>
         ) : (
           <button
             onClick={stopLoop}
