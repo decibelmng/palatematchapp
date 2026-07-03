@@ -233,3 +233,33 @@ export function recommend(
 
   return results.sort((a, b) => b.predicted - a.predicted);
 }
+
+/** TEMP DIAG: score one candidate and expose the raw kernel numerator/denominator. */
+export function debugScore(
+  rated: RatedFp[],
+  candidate: BottleFp,
+  opts: { bandwidth?: number; alpha?: number; prior?: number } = {},
+): { predicted: number; den: number; num: number; bandwidth: number; alpha: number; prior: number; nearest: RatedFp | null } | null {
+  const sameType = rated.filter((r) => r.type === candidate.type);
+  if (sameType.length === 0) return null;
+  const params = selectKernelParams(rated);
+  const bw = opts.bandwidth ?? params.bandwidth;
+  const alpha = opts.alpha ?? params.alpha;
+  const prior = opts.prior ?? computeTypePriors(rated)[candidate.type];
+  const { W, active } = learnWeights(sameType, candidate.type);
+  const twoBwSq = 2 * bw * bw;
+  const used = active.filter((k) => axisApplies(k, candidate.type));
+  let num = 0, den = 0, best = -1;
+  let nearest: RatedFp | null = null;
+  for (const r of sameType) {
+    if (used.length === 0) continue;
+    let wsum = 0, d2 = 0;
+    for (const k of used) { const w = W[k]; wsum += w; const diff = candidate.fp[k] - r.fp[k]; d2 += w * diff * diff; }
+    if (wsum === 0) continue;
+    d2 /= wsum;
+    const sim = Math.exp(-d2 / twoBwSq);
+    num += sim * r.stars; den += sim;
+    if (sim > best) { best = sim; nearest = r; }
+  }
+  return { predicted: (num + alpha * prior) / (den + alpha), den, num, bandwidth: bw, alpha, prior, nearest };
+}
