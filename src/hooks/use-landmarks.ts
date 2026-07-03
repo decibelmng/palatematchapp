@@ -31,6 +31,8 @@ export type ResolvedLandmark = {
   label: string;
   sub: string;
   fp: Record<FpKey, number>;
+  axBody: number;
+  axFruit: number;
   bottleId: string;
   cuveeKey: string;
   debug: {
@@ -38,6 +40,8 @@ export type ResolvedLandmark = {
     matchedName: string;
     matchedProducer: string | null;
     fp: Record<FpKey, number>;
+    axBody: number;
+    axFruit: number;
   };
 };
 
