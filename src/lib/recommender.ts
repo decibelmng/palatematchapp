@@ -38,7 +38,7 @@ export type Recommendation = {
  * axes are absent, not zero-valued votes. Shared axes apply to every type.
  */
 export function axisApplies(axis: FpKey, type: WineType): boolean {
-  if (axis === "tannin" || axis === "fruit_dark") return type === "red";
+  if (axis === "tannin" || axis === "fruit_dark") return type === "red" || type === "dessert";
   return true;
 }
 
