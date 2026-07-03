@@ -1,11 +1,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { callFingerprintGateway } from "@/lib/fingerprint-prompt";
+import { refingerprintCuveeByBottleId, stripYear } from "@/lib/fingerprint-worker";
 
 // NOTE: ADMIN_USER_ID must be set in Lovable Cloud env to the owner's auth user id.
 // Any signed-in user whose auth uid does NOT match will get "Not authorized".
 
 const BATCH_SIZE = 15;
+
 
 
 export const refingerprintBatch = createServerFn({ method: "POST" })
