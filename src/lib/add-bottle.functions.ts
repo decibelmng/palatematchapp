@@ -68,7 +68,7 @@ Grape exemplars (anchor; adjust for producer/vintage):
 
 Rules:
 - All values clamped 0..1.
-- For non-reds (white/rose/sparkling/dessert) tannin and fruit_dark MUST be 0.
+- For white, rosé, and sparkling wines, tannin and fruit_dark MUST be 0. For dessert wines: white dessert (Sauternes, Tokaji, ice wine) tannin 0; fortified reds (Port, Banyuls, Maury) use real tannin values (typically 0.5–0.8).
 - ax_sweet 0..1: 0 = bone dry; 0.15 = off-dry; 0.5 = medium-sweet; 1 = dessert/Sauternes/PX.
 - tasting_note: ONE concise sentence (max 220 chars) describing aroma, palate, structure — written like a sommelier note, not marketing copy.
 
