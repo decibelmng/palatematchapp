@@ -231,27 +231,34 @@ function CodeChipRow({
     <button
       type="button"
       onClick={onClick}
-      className={`text-left rounded-xl border p-3 transition ${
-        active ? "border-primary bg-primary/5" : "border-border bg-card/60 hover:bg-accent"
+      className={`text-left rounded-[14px] border-[0.5px] p-4 transition shadow-[var(--pm-card-shadow)] ${
+        active ? "border-primary bg-[color-mix(in_oklab,var(--color-primary)_3%,var(--color-card))]" : "border-border bg-card/60 hover:bg-accent"
       }`}
     >
       <div className="flex items-center justify-between">
-        <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">{label}</span>
+        <span className="text-[10px] uppercase text-muted-foreground" style={{ letterSpacing: "0.22em" }}>{label}</span>
         <span className="text-[10px] text-muted-foreground">
           {n === 0 ? "no ratings yet" : n < 3 ? `still learning · ${n}` : `${n} rated`}
         </span>
       </div>
       <div
-        className="mt-2 font-serif text-2xl text-primary"
+        className="mt-3 mb-1 font-serif text-[30px] text-primary leading-none"
         style={{ letterSpacing: "0.3em" }}
       >
         {code.split("").map((ch, i) => (
-          <span key={i} className={ch === "·" ? "text-muted-foreground/60" : ""}>{ch}</span>
+          <span
+            key={`${type}-${i}-${ch}`}
+            className={`pm-letter ${ch === "·" ? "text-muted-foreground/60" : ""}`}
+            style={{ ["--pm-delay" as string]: `${i * 50}ms` }}
+          >
+            {ch}
+          </span>
         ))}
       </div>
     </button>
   );
 }
+
 
 function TopMatchesSection() {
   const { data: matches, loading } = useTopMatches(5);
