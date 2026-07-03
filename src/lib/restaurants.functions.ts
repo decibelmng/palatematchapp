@@ -237,13 +237,7 @@ export const attributeScanFn = createServerFn({ method: "POST" })
 
 export const listRestaurantsFn = createServerFn({ method: "GET" })
   .handler(async () => {
-    // Public read.
-    const { createClient } = await import("@supabase/supabase-js");
-    const supabase = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_PUBLISHABLE_KEY!,
-      { auth: { storage: undefined, persistSession: false, autoRefreshToken: false } },
-    );
+    const supabase = await createPublicSupabase();
     const { data, error } = await supabase
       .from("restaurants")
       .select("id,name,city,locale,created_at")
