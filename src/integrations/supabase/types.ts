@@ -480,6 +480,14 @@ export type Database = {
     }
     Functions: {
       are_friends: { Args: { _a: string; _b: string }; Returns: boolean }
+      mark_scan_batch_done: {
+        Args: { p_batch_index: number; p_scan_id: string }
+        Returns: undefined
+      }
+      mark_scan_batch_failed: {
+        Args: { p_batch_index: number; p_scan_id: string }
+        Returns: undefined
+      }
       search_bottles_fuzzy: {
         Args: {
           lim?: number
