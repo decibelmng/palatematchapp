@@ -14,7 +14,6 @@ import {
   usePersistCode,
 } from "@/hooks/use-palate-data";
 import { useLandmarks } from "@/hooks/use-landmarks";
-import { useTopMatches } from "@/lib/top-matches";
 import { cuveeKey } from "@/lib/cuvee";
 import { computeCode, describeCode, axesFor, type RatedBottle, type PaletteType } from "@/lib/palate";
 
