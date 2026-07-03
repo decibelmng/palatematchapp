@@ -257,6 +257,7 @@ function toRows(section: Section): Row[] {
       predicted: 0,
       greatValue: false,
       confidence: null,
+      raw: c.raw,
     };
   });
 }
