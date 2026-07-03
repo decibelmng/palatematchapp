@@ -120,15 +120,28 @@ export function useRate() {
         const { error } = await supabase.from("ratings").delete()
           .eq("user_id", session.user.id).eq("bottle_id", bottleId);
         if (error) throw error;
+        return { bottleId, stars };
       } else {
         const { error } = await supabase.from("ratings").upsert({
           user_id: session.user.id, bottle_id: bottleId, stars,
         }, { onConflict: "user_id,bottle_id" });
         if (error) throw error;
+        return { bottleId, stars };
       }
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: ["ratings"] });
+      // Self-healing: fire-and-forget cuvée re-fingerprint. The stamp in the
+      // DB is the natural once-ever guard; failures/skips are silent.
+      if (result?.stars !== null) {
+        refreshBottleFingerprint({ data: { bottle_id: result.bottleId } })
+          .then((r) => {
+            if (r && "ok" in r && r.ok) {
+              qc.invalidateQueries({ queryKey: ["bottles"] });
+            }
+          })
+          .catch(() => {});
+      }
     },
   });
 }
