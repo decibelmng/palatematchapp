@@ -130,9 +130,8 @@ function Matches() {
         | undefined;
       const preds = redSec ? redSec.items.map((i) => i.predicted) : [];
       const first = redSec?.items[0];
-      // eslint-disable-next-line no-console
-      console.log("[DIAG-MATCHES-RED]", JSON.stringify({
-        v: 2,
+      const diag = {
+        v: 3,
         selectKernelParams: params,
         redPrior: priors.red,
         nRedRatedCuvees: redRated.length,
@@ -143,7 +142,10 @@ function Matches() {
           predicted: first.predicted,
           nearest: first.nearestCuvee ? { name: first.nearestCuvee.name, stars: first.nearestCuvee.stars } : null,
         } : null,
-      }));
+      };
+      // eslint-disable-next-line no-console
+      console.log("[DIAG-MATCHES-RED]", JSON.stringify(diag));
+      if (typeof window !== "undefined") (window as any).__DIAG_MATCHES_RED = diag;
     }
 
     return out;
