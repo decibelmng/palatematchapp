@@ -339,6 +339,8 @@ export function TasteMap({ type, landmarks, loved, others = [], showOverlay, ove
 
         {/* Loved wines (tier a) — solid primary; 8px for 5★, 6px for 4★ */}
         {lovedData.map(({ p, x, y }, i) => {
+          const tier = p.stars as 1|2|3|4|5;
+          if (!tierOn[tier]) return null;
           const px = toPx({ x, y });
           const r = p.stars >= 5 ? 8 : 6;
           const isSelected = selected?.kind === "loved" && selected.p.key === p.key;
@@ -356,6 +358,40 @@ export function TasteMap({ type, landmarks, loved, others = [], showOverlay, ove
                   strokeWidth={isSelected ? 1.5 : 0}
                   className={isSelected ? "pm-pulse" : ""} />
               </g>
+            </g>
+          );
+        })}
+
+        {/* Other rated wines (1–3★) — never rings, never glow */}
+        {othersData.map(({ p, x, y }, i) => {
+          const tier = p.stars as 1|2|3|4|5;
+          if (!tierOn[tier]) return null;
+          const px = toPx({ x, y });
+          const isSelected = selected?.kind === "loved" && selected.p.key === p.key;
+          const onClick = (e: React.MouseEvent) => { e.stopPropagation(); setSelected({ kind: "loved", p }); };
+          if (p.stars === 3) {
+            return (
+              <g key={`o-${p.key}-${i}`} onClick={onClick} style={{ cursor: "pointer" }}>
+                <circle cx={px.px} cy={px.py} r={12} fill="transparent" />
+                <circle cx={px.px} cy={px.py} r={4}
+                  fill="none"
+                  stroke="var(--color-muted-foreground)"
+                  strokeOpacity={isSelected ? 0.9 : 0.55}
+                  strokeWidth={1.25} />
+              </g>
+            );
+          }
+          // × mark for 1–2★
+          const s = 4.5; // half-length ~9px total
+          return (
+            <g key={`o-${p.key}-${i}`} onClick={onClick} style={{ cursor: "pointer" }}
+               stroke="var(--color-muted-foreground)"
+               strokeOpacity={isSelected ? 0.9 : 0.55}
+               strokeWidth={1.5}
+               strokeLinecap="round">
+              <circle cx={px.px} cy={px.py} r={12} fill="transparent" stroke="none" />
+              <line x1={px.px - s} y1={px.py - s} x2={px.px + s} y2={px.py + s} />
+              <line x1={px.px - s} y1={px.py + s} x2={px.px + s} y2={px.py - s} />
             </g>
           );
         })}
