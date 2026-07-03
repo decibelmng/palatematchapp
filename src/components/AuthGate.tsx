@@ -3,9 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { useSession } from "@/hooks/use-session";
 import { AppShell } from "./AppShell";
+import { PalateStar, lettersFromCode } from "./PalateStar";
+import { axesFor } from "@/lib/palate";
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const session = useSession();
+  const [showAuth, setShowAuth] = useState(false);
 
   if (session === undefined) {
     return (
@@ -15,9 +18,69 @@ export function AuthGate({ children }: { children: ReactNode }) {
     );
   }
 
-  if (!session) return <AuthScreen />;
+  if (!session) {
+    return showAuth ? <AuthScreen /> : <GuestLanding onReveal={() => setShowAuth(true)} />;
+  }
   return <AppShell>{children}</AppShell>;
 }
+
+function GuestLanding({ onReveal }: { onReveal: () => void }) {
+  const exampleCode = "LNSND";
+  const exampleLetters = lettersFromCode(exampleCode, axesFor("red"));
+  return (
+    <div className="cellar-bg min-h-screen flex flex-col items-center px-6 py-12">
+      <div className="w-full max-w-md flex flex-col items-center text-center">
+        <PalateStar axes={axesFor("red")} letters={exampleLetters} size={220} animate />
+        <div
+          className="mt-4 font-serif text-2xl text-primary"
+          style={{ letterSpacing: "0.3em" }}
+        >
+          {exampleCode.split("").map((c, i) => <span key={i}>{c}</span>)}
+        </div>
+
+        <h1 className="mt-8 font-serif text-[28px] leading-tight">Your palate has a code.</h1>
+        <p className="mt-3 text-sm text-muted-foreground max-w-[40ch]">
+          Rate wines you've tried. We learn your taste, then rank any wine list — for you, or your whole table.
+        </p>
+
+        <button
+          type="button"
+          onClick={onReveal}
+          className="mt-8 rounded-md bg-primary text-primary-foreground px-6 py-2.5 text-sm font-medium hover:opacity-90"
+        >
+          Reveal your palate
+        </button>
+        <a
+          href="#how-it-works"
+          className="mt-3 text-xs text-muted-foreground hover:text-foreground"
+        >
+          How it works
+        </a>
+
+        <div id="how-it-works" className="mt-16 w-full">
+          <ol className="grid gap-4 text-left">
+            {[
+              "Rate wines you know you love — or don't",
+              "Your code and taste map appear",
+              "Scan any wine list — we rank it for you",
+            ].map((text, i) => (
+              <li key={i} className="flex items-center gap-3 text-[13px]">
+                <span className="w-5 h-5 rounded-full border border-border flex items-center justify-center text-[11px] shrink-0">
+                  {i + 1}
+                </span>
+                <span>{text}</span>
+              </li>
+            ))}
+          </ol>
+          <p className="mt-6 text-[11px] text-muted-foreground text-center">
+            Free to start · your ratings stay yours
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 function AuthScreen() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
