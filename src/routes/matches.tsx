@@ -142,10 +142,10 @@ function Matches() {
 
   return (
     <div className="pt-2">
-      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Pour these next</p>
-      <h1 className="font-serif text-3xl mt-2">Bottles you'd likely love</h1>
+      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Matches</p>
+      <h1 className="font-serif text-3xl mt-2">Matches</h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Vintages of the same wine are grouped — we match on style, not year.
+        Bottles that match your palate — vintages of the same wine are grouped.
       </p>
 
       <div className="mt-4">
