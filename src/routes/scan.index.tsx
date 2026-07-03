@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { Camera, ScanLine } from "lucide-react";
 
 export const Route = createFileRoute("/scan/")({
   ssr: false,
@@ -15,63 +16,49 @@ function ScanChooser() {
   return (
     <div className="pt-2">
       <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Scan</p>
-      <h1 className="font-serif text-3xl mt-2">What are you scanning?</h1>
+      <h1 className="font-serif text-3xl mt-2">Point the camera</h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Pick one — you can always switch after.
+        Pick a scan mode — the camera opens on the next screen. You can attribute the scan to a restaurant before you shoot.
       </p>
 
       <div className="mt-6 grid gap-3">
-        <ChoiceCard
+        <PrimaryCard
           to="/scan/list"
-          icon={<MenuIcon />}
+          icon={<ScanLine size={28} strokeWidth={1.7} />}
           title="Scan a wine list"
-          desc="Photograph a restaurant's list to see what matches your table."
+          desc="Photograph the pages of a restaurant list. Pick the restaurant first to auto-attribute."
+          cta="Open camera"
         />
-        <ChoiceCard
+        <PrimaryCard
           to="/scan/bottle"
-          icon={<BottleIcon />}
+          icon={<Camera size={28} strokeWidth={1.7} />}
           title="Scan a bottle"
           desc="Photograph a label to identify, rate, or add one wine."
+          cta="Open camera"
         />
       </div>
     </div>
   );
 }
 
-function ChoiceCard({
-  to, icon, title, desc,
-}: { to: "/scan/list" | "/scan/bottle"; icon: React.ReactNode; title: string; desc: string }) {
+function PrimaryCard({
+  to, icon, title, desc, cta,
+}: { to: "/scan/list" | "/scan/bottle"; icon: React.ReactNode; title: string; desc: string; cta: string }) {
   return (
     <Link
       to={to}
-      className="group flex items-start gap-4 rounded-xl border border-border bg-card p-4 hover:bg-accent/50 transition-colors"
+      className="group flex items-start gap-4 rounded-xl border-2 border-border bg-card p-5 hover:border-primary/60 hover:bg-accent/40 transition-colors"
     >
-      <div className="shrink-0 h-12 w-12 rounded-lg border border-border bg-background flex items-center justify-center text-primary">
+      <div className="shrink-0 h-14 w-14 rounded-xl border border-border bg-primary/10 text-primary flex items-center justify-center">
         {icon}
       </div>
-      <div className="min-w-0">
+      <div className="min-w-0 flex-1">
         <p className="font-serif text-lg leading-tight">{title}</p>
         <p className="mt-1 text-xs text-muted-foreground">{desc}</p>
+        <span className="mt-2 inline-block text-[11px] font-semibold uppercase tracking-wider text-primary">
+          {cta} →
+        </span>
       </div>
-      <span className="ml-auto self-center text-muted-foreground group-hover:text-primary transition-colors">›</span>
     </Link>
-  );
-}
-
-function MenuIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round">
-      <rect x="4" y="3" width="16" height="18" rx="1.5" />
-      <path d="M7 8h10M7 12h10M7 16h6" />
-    </svg>
-  );
-}
-
-function BottleIcon() {
-  return (
-    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M10 2h4v3.2c0 .6.2 1.2.6 1.6l1.2 1.2c.8.8 1.2 1.9 1.2 3V20a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V11c0-1.1.4-2.2 1.2-3l1.2-1.2c.4-.4.6-1 .6-1.6V2Z" />
-      <path d="M8 13h8" />
-    </svg>
   );
 }
