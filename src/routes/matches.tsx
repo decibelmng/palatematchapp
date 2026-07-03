@@ -132,6 +132,7 @@ function Matches() {
       const first = redSec?.items[0];
       // eslint-disable-next-line no-console
       console.log("[DIAG-MATCHES-RED]", JSON.stringify({
+        v: 2,
         selectKernelParams: params,
         redPrior: priors.red,
         nRedRatedCuvees: redRated.length,
