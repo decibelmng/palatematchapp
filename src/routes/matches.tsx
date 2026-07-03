@@ -44,7 +44,7 @@ function vintageLabel(vs: number[]): string | null {
   return `${vs[0]}–${vs[vs.length - 1]} (${vs.length} vintages)`;
 }
 
-function Pour() {
+function Matches() {
   const { data: ratings } = useRatings();
   const ratedIds = useMemo(() => (ratings ?? []).map((r) => r.bottle_id), [ratings]);
   const { data: ratedBottles } = useBottlesByIds(ratedIds);
