@@ -71,6 +71,7 @@ function Matches() {
       id: b.id, name: b.name, producer: b.producer, region: b.region,
       type: bottleType(b), vintage: b.vintage, fp: bottleToFp(b),
       critic_score: b.critic_score, price_band: b.price_band,
+      raw: b.raw ?? false,
     }));
     const allCuvees = aggregateCandidates(candidatesRaw)
       .filter((c) => !ratedCuveeKeys.has(c.cuvee));
@@ -107,9 +108,13 @@ function Matches() {
             const cuvee = candByRepId.get(r.bottle.id);
             if (!cuvee) return null;
             const nearestCuvee = r.nearest ? ratedByRepId.get(r.nearest.id) ?? null : null;
-            return { ...r, cuvee, nearestCuvee };
+            // Down-weight uncalibrated (raw import default) cuvées so a
+            // template bottle can't outrank a calibrated real match.
+            const predicted = cuvee.raw ? r.predicted * 0.9 : r.predicted;
+            return { ...r, predicted, cuvee, nearestCuvee };
           })
-          .filter((x): x is RankedCuvee => x !== null);
+          .filter((x): x is RankedCuvee => x !== null)
+          .sort((a, b) => b.predicted - a.predicted);
         if (items.length > 0) out.push({ type, mode: "personalized", nSameType: sameTypeRated.length, items });
       }
     }
