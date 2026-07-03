@@ -133,6 +133,42 @@ function scoreCandidate(
   return { predicted, nearest, maxSimilarity: Math.max(bestAny, 0), confidence };
 }
 
+/** DIAGNOSTIC: full breakdown of one candidate's kernel contributors. */
+export function debugContributors(
+  candidate: BottleFp,
+  rated: RatedFp[],
+  bandwidth: number,
+  alpha: number,
+  prior: number,
+) {
+  const sameType = rated.filter((r) => r.type === candidate.type);
+  const { W, active } = learnWeights(sameType, candidate.type);
+  const used = active.filter((k) => axisApplies(k, candidate.type));
+  const twoBwSq = 2 * bandwidth * bandwidth;
+  const contribs: { name: string; stars: number; sim: number }[] = [];
+  let num = 0, den = 0;
+  for (const r of sameType) {
+    let wsum = 0, d2 = 0;
+    for (const k of used) {
+      const w = W[k];
+      wsum += w;
+      const diff = candidate.fp[k] - r.fp[k];
+      d2 += w * diff * diff;
+    }
+    if (wsum === 0) continue;
+    d2 = d2 / wsum;
+    const sim = Math.exp(-d2 / twoBwSq);
+    num += sim * r.stars;
+    den += sim;
+    contribs.push({ name: r.name, stars: r.stars, sim });
+  }
+  contribs.sort((a, b) => b.sim - a.sim);
+  const alphaEff = alpha / (1 + den);
+  const predicted = (num + alphaEff * prior) / (den + alphaEff);
+  const den5 = contribs.filter((c) => c.stars >= 5).reduce((s, c) => s + c.sim, 0);
+  const denLt5 = contribs.filter((c) => c.stars < 5).reduce((s, c) => s + c.sim, 0);
+  return { contribs, num, den, den5, denLt5, alphaEff, predicted };
+
 const BW_GRID = [0.08, 0.12, 0.18, 0.25] as const;
 const ALPHA_GRID = [0.2, 0.4, 0.8] as const;
 const SMALL_SAMPLE_THRESHOLD = 8;
