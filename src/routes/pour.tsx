@@ -203,6 +203,7 @@ type Row = Priced & {
   criticScore: number | null;
   nearestCuvee: CuveeRated | null;
   greatValue: boolean;
+  confidence: number | null;
 };
 
 function toRows(section: Section): Row[] {
