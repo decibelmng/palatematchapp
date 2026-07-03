@@ -7,7 +7,7 @@ export type LovedPoint = {
   bottleId?: string;
   axBody: number;
   axFruit: number;
-  stars: number;      // 4 or 5
+  stars: number;      // 1..5
   name: string;
   producer: string | null;
   region: string | null;
@@ -16,7 +16,8 @@ export type LovedPoint = {
 type Props = {
   type: PaletteType;
   landmarks: ResolvedLandmark[];
-  loved: LovedPoint[];
+  loved: LovedPoint[];             // 4–5★, drives clusters + glow
+  others?: LovedPoint[];           // 1–3★, display only (× or hollow dot)
   showOverlay?: boolean;
   overlayText?: string;
 };
