@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useState } from "react";
 import type { PaletteType } from "@/lib/palate";
 import type { ResolvedLandmark } from "@/hooks/use-landmarks";
 
