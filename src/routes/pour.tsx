@@ -329,7 +329,6 @@ function SectionView({ section, groupScores, groupActive, groupLoading }: Sectio
                 <div className="min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
                     <WineTypeBadge type={section.type} />
-                    <p className="font-medium leading-tight truncate">{r.name}</p>
                     <span className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-primary/40 bg-primary/10 text-primary">
                       catalog
                     </span>
@@ -339,6 +338,7 @@ function SectionView({ section, groupScores, groupActive, groupLoading }: Sectio
                       </span>
                     )}
                   </div>
+                  <p className="font-medium leading-tight truncate mt-1">{r.name}</p>
                   <CuveeMeta producer={r.producer} region={r.region} vintages={r.vintages} />
                   {r.price_display && (
                     <p className="mt-0.5 text-[11px] text-muted-foreground">Price: {r.price_display}</p>
