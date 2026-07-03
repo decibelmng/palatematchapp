@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import type { PaletteType } from "@/lib/palate";
 import type { FpKey } from "@/lib/recommender";
 import { bottleToFp, type BottleRow } from "./use-palate-data";
+import { cuveeKey } from "@/lib/cuvee";
 
 export type LandmarkDef = { label: string; sub: string; q: string };
 
@@ -30,6 +31,8 @@ export type ResolvedLandmark = {
   label: string;
   sub: string;
   fp: Record<FpKey, number>;
+  bottleId: string;
+  cuveeKey: string;
 };
 
 export function useLandmarks(type: PaletteType) {
@@ -49,10 +52,17 @@ export function useLandmarks(type: PaletteType) {
           if (error) return null;
           const row = (data as BottleRow[] | null)?.[0];
           if (!row) return null;
-          return { label: d.label, sub: d.sub, fp: bottleToFp(row) } as ResolvedLandmark;
+          return {
+            label: d.label,
+            sub: d.sub,
+            fp: bottleToFp(row),
+            bottleId: row.id,
+            cuveeKey: cuveeKey(row),
+          } as ResolvedLandmark;
         })
       );
       return results.filter((r): r is ResolvedLandmark => r !== null);
     },
   });
 }
+
