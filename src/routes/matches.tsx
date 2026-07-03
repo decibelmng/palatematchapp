@@ -111,6 +111,28 @@ function Matches() {
           })
           .filter((x): x is RankedCuvee => x !== null);
         if (items.length > 0) out.push({ type, mode: "personalized", nSameType: sameTypeRated.length, items });
+
+        // === DIAG (red only) ===
+        if (type === "red" && typeof window !== "undefined") {
+          const params = selectKernelParams(ratedFp);
+          const targetsSubstr = ["Figuero", "Alpha Omega", "Insignia"];
+          const targets = recs.filter((r) => targetsSubstr.some((s) => r.bottle.name.includes(s)));
+          (window as unknown as { __DIAG_MATCHES_RED_V2: unknown }).__DIAG_MATCHES_RED_V2 = {
+            params,
+            top5: recs.slice(0, 5).map((r) => ({
+              name: r.bottle.name,
+              predicted: +r.predicted.toFixed(4),
+              nearest: r.nearest ? `${r.nearest.name} (${r.nearest.stars}★)` : null,
+            })),
+            targets: targets.map((r) => ({
+              name: r.bottle.name,
+              predicted: +r.predicted.toFixed(4),
+              nearest: r.nearest ? `${r.nearest.name} (${r.nearest.stars}★)` : null,
+              confidence: +r.confidence.toFixed(4),
+            })),
+          };
+          console.log("[DIAG_MATCHES_RED_V2]", (window as unknown as { __DIAG_MATCHES_RED_V2: unknown }).__DIAG_MATCHES_RED_V2);
+        }
       }
     }
     // Suppress unused var warning for cuveeKey/ratedCuveeByKey (kept for future debug).
