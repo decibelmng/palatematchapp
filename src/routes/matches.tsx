@@ -15,11 +15,11 @@ export const Route = createFileRoute("/matches")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Pour these next — Palate Match" },
-      { name: "description", content: "Bottles you haven't tried, ranked by how likely you are to love them." },
+      { title: "Matches — Palate Match" },
+      { name: "description", content: "Bottles that match your palate — vintages of the same wine are grouped." },
     ],
   }),
-  component: () => <AuthGate><Pour /></AuthGate>,
+  component: () => <AuthGate><Matches /></AuthGate>,
 });
 
 const TYPE_ORDER: WineType[] = ["red", "white", "sparkling", "rose", "dessert"];
