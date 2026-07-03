@@ -136,50 +136,19 @@ export const refingerprintBatch = createServerFn({ method: "POST" })
     const errors: string[] = [];
 
     for (const { g } of batch) {
-      const rep = g.representative;
+      // Use the shared worker (seed = first row in group). It re-fetches the
+      // group internally, but its "already stamped" and size guards make it
+      // safe and idempotent alongside our ranked queue.
       try {
-        const { fp, ax_sweet } = await callFingerprintGateway(
-          {
-            producer: rep.producer ?? "",
-            name: stripYear(rep.name ?? ""),
-            type: rep.type ?? "red",
-            region: rep.region,
-            country: rep.country,
-            grape: rep.grape,
-            vintage: null,
-          },
-          key,
-        );
-        // Write to every row in the group.
-        const { error: uErr } = await supabaseAdmin
-          .from("bottles")
-          .update({
-            fp_fresh: fp.fresh,
-            fp_acid: fp.acid,
-            fp_tannin: fp.tannin,
-            fp_fruit_dark: fp.fruit_dark,
-            fp_ripe: fp.ripe,
-            fp_oak: fp.oak,
-            fp_body: fp.body,
-            fp_savory: fp.savory,
-            ax_body: fp.body,
-            ax_fruit_char: fp.savory,
-            ax_tannin: fp.tannin,
-            ax_acidity: fp.acid,
-            ax_sweet,
-            source: (rep.source ? `${rep.source}; refingerprinted (cuvée-level)` : "refingerprinted (cuvée-level)"),
-            refingerprinted_at: new Date().toISOString(),
-          })
-          .in("id", g.ids);
-        if (uErr) {
+        const result = await refingerprintCuveeByBottleId(g.ids[0], supabaseAdmin);
+        if ("ok" in result) {
+          processed += 1;
+        } else {
           skipped += 1;
-          errors.push(uErr.message);
-          continue;
+          errors.push(result.reason);
         }
-        processed += 1;
       } catch (e: any) {
         const msg = e?.message ?? String(e);
-        // Bubble up fatal auth/credit errors so the UI can stop the loop.
         if (/AI credits exhausted/i.test(msg) || /Rate limited/i.test(msg)) {
           throw new Error(msg);
         }
