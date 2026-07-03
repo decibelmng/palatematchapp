@@ -33,126 +33,120 @@ function toWineType(t: string | null): WineType {
  *        - the top 150 bottles per rated type by critic_score.
  *        Dedup + exclude the caller's rated bottle ids. Cap 800.
  */
-export const getPourCandidates = createServerFn({ method: "POST" })
-  .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
-    const { supabase, userId } = context;
+// Shared internal helper: compute the pour candidate bottle rows for a user.
+// Callable from any server context (server fn handler or admin batch) by
+// passing a supabase client that can read `ratings` and `bottles` for `userId`.
+export async function computePourCandidatesFor(
+  supabase: any,
+  userId: string,
+): Promise<any[]> {
+  // 1. Ratings.
+  const { data: ratings, error: rErr } = await supabase
+    .from("ratings")
+    .select("bottle_id,stars")
+    .eq("user_id", userId);
+  if (rErr) throw new Error(rErr.message);
 
-    // 1. Ratings.
-    const { data: ratings, error: rErr } = await supabase
-      .from("ratings")
-      .select("bottle_id,stars")
-      .eq("user_id", userId);
-    if (rErr) throw new Error(rErr.message);
+  const ratedIds = (ratings ?? []).map((r: any) => r.bottle_id as string);
+  const starsById = new Map<string, number>();
+  for (const r of ratings ?? []) starsById.set(r.bottle_id as string, r.stars as number);
 
-    const ratedIds = (ratings ?? []).map((r) => r.bottle_id as string);
-    const starsById = new Map<string, number>();
-    for (const r of ratings ?? []) starsById.set(r.bottle_id as string, r.stars as number);
-
-    // No ratings yet → return top critic scorers across all types.
-    if (ratedIds.length === 0) {
-      const { data, error } = await supabase.rpc("rpc_pour_candidates", {
-        loved: [],
-        rated_types: WINE_TYPES as unknown as string[],
-        excluded_ids: [],
-        per_loved: PER_LOVED,
-        per_type_critic: PER_TYPE_CRITIC,
-        overall_cap: OVERALL_CAP,
-      });
-      if (error) throw new Error(error.message);
-      return { bottles: (data ?? []) as any[] };
-    }
-
-    // 2. Rated bottles (needed for cuvée aggregation).
-    const ratedBottles: any[] = [];
-    for (let i = 0; i < ratedIds.length; i += 200) {
-      const chunk = ratedIds.slice(i, i + 200);
-      const { data, error } = await supabase
-        .from("bottles")
-        .select(
-          "id,name,producer,region,type,vintage,fp_fresh,fp_acid,fp_tannin,fp_fruit_dark,fp_ripe,fp_oak,fp_body,fp_savory",
-        )
-        .in("id", chunk);
-      if (error) throw new Error(error.message);
-      ratedBottles.push(...(data ?? []));
-    }
-
-    // 3. Cuvée aggregation → loved subset.
-    const ratedRows: (RatedFp & { vintage: number | null })[] = ratedBottles.map((b) => ({
-      id: b.id,
-      name: b.name,
-      producer: b.producer,
-      region: b.region,
-      type: toWineType(b.type),
-      vintage: b.vintage ?? null,
-      fp: {
-        fresh: b.fp_fresh, acid: b.fp_acid, tannin: b.fp_tannin, fruit_dark: b.fp_fruit_dark,
-        ripe: b.fp_ripe, oak: b.fp_oak, body: b.fp_body, savory: b.fp_savory,
-      } as Record<FpKey, number>,
-      stars: starsById.get(b.id) ?? 0,
-    }));
-
-    const cuvees = aggregateRated(ratedRows);
-    const loved = cuvees
-      .filter((c) => c.stars >= LOVE_THRESHOLD)
-      .sort((a, b) => b.stars - a.stars)
-      .slice(0, MAX_LOVED);
-
-    const lovedPayload = loved.map((c) => ({
-      type: c.type,
-      fresh: c.fp.fresh, acid: c.fp.acid, tannin: c.fp.tannin, fruit_dark: c.fp.fruit_dark,
-      ripe: c.fp.ripe, oak: c.fp.oak, body: c.fp.body, savory: c.fp.savory,
-    }));
-
-    // Rated types (deduped) — feeds the per-type critic slice.
-    const ratedTypes = Array.from(new Set(cuvees.map((c) => c.type)));
-
-    // 4. Server-side candidate selection.
+  // No ratings yet → return top critic scorers across all types.
+  if (ratedIds.length === 0) {
     const { data, error } = await supabase.rpc("rpc_pour_candidates", {
-      loved: lovedPayload,
-      rated_types: ratedTypes,
-      excluded_ids: ratedIds,
+      loved: [],
+      rated_types: WINE_TYPES as unknown as string[],
+      excluded_ids: [],
       per_loved: PER_LOVED,
       per_type_critic: PER_TYPE_CRITIC,
       overall_cap: OVERALL_CAP,
     });
     if (error) throw new Error(error.message);
+    return projectRows((data ?? []) as any[]);
+  }
 
-    const rows = (data ?? []) as any[];
+  // 2. Rated bottles (needed for cuvée aggregation).
+  const ratedBottles: any[] = [];
+  for (let i = 0; i < ratedIds.length; i += 200) {
+    const chunk = ratedIds.slice(i, i + 200);
+    const { data, error } = await supabase
+      .from("bottles")
+      .select(
+        "id,name,producer,region,type,vintage,fp_fresh,fp_acid,fp_tannin,fp_fruit_dark,fp_ripe,fp_oak,fp_body,fp_savory",
+      )
+      .in("id", chunk);
+    if (error) throw new Error(error.message);
+    ratedBottles.push(...(data ?? []));
+  }
 
-    // Diagnostic: first row shape + fp values.
-    if (rows.length > 0) {
-      const r0 = rows[0];
-      console.log("[pour] rpc first row keys:", Object.keys(r0));
-      console.log("[pour] rpc first row fp:", {
-        id: r0.id,
-        fp_fresh: r0.fp_fresh, fp_acid: r0.fp_acid, fp_tannin: r0.fp_tannin,
-        fp_fruit_dark: r0.fp_fruit_dark, fp_ripe: r0.fp_ripe, fp_oak: r0.fp_oak,
-        fp_body: r0.fp_body, fp_savory: r0.fp_savory,
-      });
+  // 3. Cuvée aggregation → loved subset.
+  const ratedRows: (RatedFp & { vintage: number | null })[] = ratedBottles.map((b) => ({
+    id: b.id,
+    name: b.name,
+    producer: b.producer,
+    region: b.region,
+    type: toWineType(b.type),
+    vintage: b.vintage ?? null,
+    fp: {
+      fresh: b.fp_fresh, acid: b.fp_acid, tannin: b.fp_tannin, fruit_dark: b.fp_fruit_dark,
+      ripe: b.fp_ripe, oak: b.fp_oak, body: b.fp_body, savory: b.fp_savory,
+    } as Record<FpKey, number>,
+    stars: starsById.get(b.id) ?? 0,
+  }));
+
+  const cuvees = aggregateRated(ratedRows);
+  const loved = cuvees
+    .filter((c) => c.stars >= LOVE_THRESHOLD)
+    .sort((a, b) => b.stars - a.stars)
+    .slice(0, MAX_LOVED);
+
+  const lovedPayload = loved.map((c) => ({
+    type: c.type,
+    fresh: c.fp.fresh, acid: c.fp.acid, tannin: c.fp.tannin, fruit_dark: c.fp.fruit_dark,
+    ripe: c.fp.ripe, oak: c.fp.oak, body: c.fp.body, savory: c.fp.savory,
+  }));
+
+  const ratedTypes = Array.from(new Set(cuvees.map((c) => c.type)));
+
+  // 4. Server-side candidate selection.
+  const { data, error } = await supabase.rpc("rpc_pour_candidates", {
+    loved: lovedPayload,
+    rated_types: ratedTypes,
+    excluded_ids: ratedIds,
+    per_loved: PER_LOVED,
+    per_type_critic: PER_TYPE_CRITIC,
+    overall_cap: OVERALL_CAP,
+  });
+  if (error) throw new Error(error.message);
+  return projectRows((data ?? []) as any[]);
+}
+
+function projectRows(rows: any[]): any[] {
+  const cols = BOTTLE_COLS.split(",");
+  const fpKeys = [
+    "fp_fresh","fp_acid","fp_tannin","fp_fruit_dark",
+    "fp_ripe","fp_oak","fp_body","fp_savory",
+  ];
+  const bottles: Record<string, any>[] = [];
+  let dropped = 0;
+  for (const row of rows) {
+    const missing = fpKeys.find((k) => typeof row[k] !== "number");
+    if (missing) {
+      console.warn(`[pour] dropping ${row.id}: missing ${missing}`);
+      dropped += 1;
+      continue;
     }
+    const out: Record<string, any> = {};
+    for (const k of cols) out[k] = row[k];
+    bottles.push(out);
+  }
+  if (dropped > 0) console.warn(`[pour] dropped ${dropped}/${rows.length} rows with missing fp_*`);
+  return bottles;
+}
 
-    // Project to BOTTLE_COLS. Drop rows missing any fp_* (no silent defaults).
-    const cols = BOTTLE_COLS.split(",");
-    const fpKeys = [
-      "fp_fresh","fp_acid","fp_tannin","fp_fruit_dark",
-      "fp_ripe","fp_oak","fp_body","fp_savory",
-    ];
-    const bottles: Record<string, any>[] = [];
-    let dropped = 0;
-    for (const row of rows) {
-      const missing = fpKeys.find((k) => typeof row[k] !== "number");
-      if (missing) {
-        console.warn(`[pour] dropping ${row.id}: missing ${missing}`);
-        dropped += 1;
-        continue;
-      }
-      const out: Record<string, any> = {};
-      for (const k of cols) out[k] = row[k];
-      bottles.push(out);
-    }
-    if (dropped > 0) console.warn(`[pour] dropped ${dropped}/${rows.length} rows with missing fp_*`);
-
-
+export const getPourCandidates = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const bottles = await computePourCandidatesFor(context.supabase, context.userId);
     return { bottles };
   });
