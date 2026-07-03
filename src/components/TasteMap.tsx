@@ -164,9 +164,9 @@ export function TasteMap({ type, landmarks, loved, showOverlay, overlayText }: P
   const showCrosshair = 0.5 >= domain.x0 && 0.5 <= domain.x1
     && 0.5 >= domain.y0 && 0.5 <= domain.y1;
 
-  // Clusters use data-space threshold
+  // Cluster the RAW 0..1 (x, y) values, not screen coords.
   const clusters = lovedData.length
-    ? singleLinkage(lovedData.map((d) => ({ x: d.x, y: d.y })), CLUSTER_THRESHOLD_DATA)
+    ? completeLinkage(lovedData.map((d) => ({ x: d.x, y: d.y })), CLUSTER_MAX_DIAMETER)
         .sort((a, b) => b.size - a.size)
         .slice(0, MAX_RINGS)
     : [];
