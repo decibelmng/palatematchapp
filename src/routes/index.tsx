@@ -2,7 +2,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState, useEffect } from "react";
 import { AuthGate } from "@/components/AuthGate";
 import { PalateStar } from "@/components/PalateStar";
+import { PourMatchRow } from "@/components/PourMatchRow";
 import { useBottlesByIds, useRatings, bottleToValues, bottleType, usePersistCode } from "@/hooks/use-palate-data";
+import { useTopMatches } from "@/lib/top-matches";
 import { computeCode, describeCode, axesFor, type RatedBottle, type PaletteType } from "@/lib/palate";
 
 export const Route = createFileRoute("/")({
