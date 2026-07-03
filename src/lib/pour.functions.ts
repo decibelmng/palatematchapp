@@ -11,6 +11,7 @@ const LOVE_THRESHOLD = 4;
 const PER_LOVED = 40;
 const PER_TYPE_CRITIC = 150;
 const OVERALL_CAP = 800;
+const MAX_LOVED = 20;
 
 const WINE_TYPES: readonly WineType[] = ["red", "white", "sparkling", "rose", "dessert"];
 
@@ -92,7 +93,10 @@ export const getPourCandidates = createServerFn({ method: "POST" })
     }));
 
     const cuvees = aggregateRated(ratedRows);
-    const loved = cuvees.filter((c) => c.stars >= LOVE_THRESHOLD);
+    const loved = cuvees
+      .filter((c) => c.stars >= LOVE_THRESHOLD)
+      .sort((a, b) => b.stars - a.stars)
+      .slice(0, MAX_LOVED);
 
     const lovedPayload = loved.map((c) => ({
       type: c.type,
