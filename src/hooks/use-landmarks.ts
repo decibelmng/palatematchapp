@@ -5,44 +5,47 @@ import type { FpKey } from "@/lib/recommender";
 import { bottleToFp, type BottleRow } from "./use-palate-data";
 import { cuveeKey } from "@/lib/cuvee";
 
-export type LandmarkDef = { label: string; sub: string; q: string };
+export type LandmarkDef = {
+  label: string;
+  sub: string;
+  /** Pinned x — 0..1 (Light → Bold). */
+  body: number;
+  /** Pinned y — 0..1 (Fruit-forward → Earthy/Mineral). */
+  earthy: number;
+  /** Query used only to attempt bottle-id resolution. */
+  q: string;
+};
 
 const LANDMARKS: Record<PaletteType, LandmarkDef[]> = {
   red: [
-    { label: "Romanée-Conti", sub: "DRC · Burgundy", q: "Romanee-Conti Domaine de la Romanee-Conti" },
-    { label: "Monfortino", sub: "Conterno · Barolo", q: "Giacomo Conterno Monfortino Barolo" },
-    { label: "Screaming Eagle", sub: "Napa", q: "Screaming Eagle Cabernet" },
-    { label: "Silver Oak", sub: "Alexander Valley", q: "Silver Oak Alexander Valley Cabernet" },
-    { label: "Realm", sub: "Napa", q: "Realm Cellars Cabernet" },
-    { label: "Fleurie", sub: "Cru Beaujolais", q: "Fleurie Beaujolais" },
-    { label: "Château Margaux", sub: "Bordeaux", q: "Chateau Margaux" },
+    { label: "Romanée-Conti",   sub: "DRC · Burgundy",    body: 0.48, earthy: 0.72, q: "Romanee-Conti Domaine de la Romanee-Conti" },
+    { label: "Monfortino",      sub: "Conterno · Barolo", body: 0.85, earthy: 0.85, q: "Giacomo Conterno Monfortino Barolo" },
+    { label: "Screaming Eagle", sub: "Napa",              body: 0.85, earthy: 0.28, q: "Screaming Eagle Cabernet" },
+    { label: "Silver Oak",      sub: "Alexander Valley",  body: 0.78, earthy: 0.33, q: "Silver Oak Alexander Valley Cabernet" },
+    { label: "Realm",           sub: "Napa",              body: 0.86, earthy: 0.22, q: "Realm Cellars Cabernet" },
+    { label: "Fleurie",         sub: "Cru Beaujolais",    body: 0.30, earthy: 0.35, q: "Fleurie Beaujolais" },
+    { label: "Château Margaux", sub: "Bordeaux",          body: 0.70, earthy: 0.60, q: "Chateau Margaux" },
   ],
   white: [
-    { label: "Montrachet", sub: "Burgundy", q: "Montrachet Grand Cru" },
-    { label: "Chablis", sub: "Raveneau", q: "Raveneau Chablis" },
-    { label: "Kistler", sub: "Sonoma Chardonnay", q: "Kistler Chardonnay" },
-    { label: "Sancerre", sub: "Loire", q: "Sancerre" },
-    { label: "Mosel Riesling", sub: "Kabinett", q: "Mosel Riesling Kabinett" },
-    { label: "Corton-Charlemagne", sub: "Burgundy", q: "Corton-Charlemagne" },
+    { label: "Montrachet",         sub: "Burgundy",          body: 0.80, earthy: 0.65, q: "Montrachet Grand Cru" },
+    { label: "Chablis",            sub: "Raveneau",          body: 0.45, earthy: 0.75, q: "Raveneau Chablis" },
+    { label: "Kistler",            sub: "Sonoma Chardonnay", body: 0.80, earthy: 0.30, q: "Kistler Chardonnay" },
+    { label: "Sancerre",           sub: "Loire",             body: 0.40, earthy: 0.55, q: "Sancerre" },
+    { label: "Mosel Riesling",     sub: "Kabinett",          body: 0.25, earthy: 0.45, q: "Mosel Riesling Kabinett" },
+    { label: "Corton-Charlemagne", sub: "Burgundy",          body: 0.75, earthy: 0.60, q: "Corton-Charlemagne" },
   ],
 };
 
 export type ResolvedLandmark = {
   label: string;
   sub: string;
-  fp: Record<FpKey, number>;
+  /** Pinned plot coordinates (0..1). Always present. */
   axBody: number;
   axFruit: number;
-  bottleId: string;
-  cuveeKey: string;
-  debug: {
-    query: string;
-    matchedName: string;
-    matchedProducer: string | null;
-    fp: Record<FpKey, number>;
-    axBody: number;
-    axFruit: number;
-  };
+  /** Populated only if fuzzy lookup resolved a catalog bottle. */
+  fp?: Record<FpKey, number>;
+  bottleId?: string;
+  cuveeKey?: string;
 };
 
 const STOPWORDS = new Set([
@@ -77,52 +80,36 @@ export function useLandmarks(type: PaletteType) {
     staleTime: Infinity,
     queryFn: async (): Promise<ResolvedLandmark[]> => {
       const defs = LANDMARKS[type];
-      const results = await Promise.all(
-        defs.map(async (d) => {
-          const qStripped = stripAccents(d.q);
-          const { data, error } = await supabase.rpc("search_bottles_fuzzy", {
-            q: qStripped,
-            type_variants: [type],
-            lim: 5,
-            threshold: 0.25,
-          });
-          if (error) return null;
-          const rows = (data as BottleRow[] | null) ?? [];
-          if (rows.length === 0) {
-            console.warn(`[landmarks] no hits for "${d.q}"`);
-            return null;
-          }
-          const row = pickBestHit(qStripped, rows);
-          if (!row) {
-            console.warn(
-              `[landmarks] no producer-token match for "${d.q}"; candidates:`,
-              rows.map((r) => `${r.producer ?? "?"} — ${r.name}`)
-            );
-            return null;
-          }
-          const fp = bottleToFp(row);
-          const axBody = row.ax_body;
-          const axFruit = row.ax_fruit_char;
-          return {
+      return await Promise.all(
+        defs.map(async (d): Promise<ResolvedLandmark> => {
+          const base: ResolvedLandmark = {
             label: d.label,
             sub: d.sub,
-            fp,
-            axBody,
-            axFruit,
-            bottleId: row.id,
-            cuveeKey: cuveeKey(row),
-            debug: {
-              query: d.q,
-              matchedName: row.name,
-              matchedProducer: row.producer,
-              fp,
-              axBody,
-              axFruit,
-            },
-          } as ResolvedLandmark;
+            axBody: d.body,
+            axFruit: d.earthy,
+          };
+          try {
+            const { data, error } = await supabase.rpc("search_bottles_fuzzy", {
+              q: stripAccents(d.q),
+              type_variants: [type],
+              lim: 5,
+              threshold: 0.25,
+            });
+            if (error) return base;
+            const rows = (data as BottleRow[] | null) ?? [];
+            const row = rows.length ? pickBestHit(stripAccents(d.q), rows) : null;
+            if (!row) return base;
+            return {
+              ...base,
+              fp: bottleToFp(row),
+              bottleId: row.id,
+              cuveeKey: cuveeKey(row),
+            };
+          } catch {
+            return base;
+          }
         })
       );
-      return results.filter((r): r is ResolvedLandmark => r !== null);
     },
   });
 }

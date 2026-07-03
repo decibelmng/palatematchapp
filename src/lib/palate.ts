@@ -104,5 +104,20 @@ export function computeCode(rated: RatedBottle[], axes: AxisDef[]): { code: stri
 export function describeCode(letters: LetterResult[]): string {
   const resolved = letters.filter((l) => l.resolved);
   if (resolved.length === 0) return "Rate a few bottles to reveal this palate.";
-  return resolved.map((l) => l.descriptor).join(", ") + ".";
+
+  const bimodalAxes = resolved.filter((l) => l.bimodal);
+  const singles = resolved.filter((l) => !l.bimodal).map((l) => l.descriptor);
+
+  const parts = [...singles];
+  if (bimodalAxes.length > 0) {
+    const names = bimodalAxes.map((l) => l.label.toLowerCase());
+    const joined =
+      names.length === 1
+        ? names[0]
+        : names.length === 2
+          ? `${names[0]} and ${names[1]}`
+          : `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
+    parts.push(`loves both poles on ${joined}`);
+  }
+  return parts.join(", ") + ".";
 }

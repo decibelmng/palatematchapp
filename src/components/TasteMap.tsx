@@ -96,15 +96,20 @@ function completeLinkage(pts: { x: number; y: number }[], maxDiameter: number) {
 }
 
 type Domain = { x0: number; x1: number; y0: number; y1: number };
-function computeDomain(pts: { x: number; y: number }[]): Domain {
-  if (pts.length === 0) return { x0: 0, x1: 1, y0: 0, y1: 1 };
+function computeDomain(pts: { x: number; y: number }[], rings: { center: { x: number; y: number }; radius: number }[] = []): Domain {
+  const box: { x: number; y: number }[] = [...pts];
+  for (const r of rings) {
+    box.push({ x: r.center.x - r.radius, y: r.center.y - r.radius });
+    box.push({ x: r.center.x + r.radius, y: r.center.y + r.radius });
+  }
+  if (box.length === 0) return { x0: 0, x1: 1, y0: 0, y1: 1 };
   let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
-  for (const p of pts) {
+  for (const p of box) {
     if (p.x < x0) x0 = p.x; if (p.x > x1) x1 = p.x;
     if (p.y < y0) y0 = p.y; if (p.y > y1) y1 = p.y;
   }
-  const padX = Math.max(0.05, (x1 - x0) * 0.15);
-  const padY = Math.max(0.05, (y1 - y0) * 0.15);
+  const padX = Math.max(0.04, (x1 - x0) * 0.08);
+  const padY = Math.max(0.04, (y1 - y0) * 0.08);
   x0 -= padX; x1 += padX; y0 -= padY; y1 += padY;
   const MIN_SPAN = 0.5;
   if (x1 - x0 < MIN_SPAN) {
@@ -147,12 +152,25 @@ export function TasteMap({ type, landmarks, loved, showOverlay, overlayText }: P
     [landmarks]
   );
 
+  // Cluster the RAW 0..1 (x, y) values, not screen coords.
+  const clusters = useMemo(
+    () => lovedData.length
+      ? completeLinkage(lovedData.map((d) => ({ x: d.x, y: d.y })), CLUSTER_MAX_DIAMETER)
+          .sort((a, b) => b.size - a.size)
+          .slice(0, MAX_RINGS)
+      : [],
+    [lovedData]
+  );
+
   const domain = useMemo(
-    () => computeDomain([
-      ...lovedData.map((d) => ({ x: d.x, y: d.y })),
-      ...landmarkData.map((d) => ({ x: d.x, y: d.y })),
-    ]),
-    [lovedData, landmarkData]
+    () => computeDomain(
+      [
+        ...lovedData.map((d) => ({ x: d.x, y: d.y })),
+        ...landmarkData.map((d) => ({ x: d.x, y: d.y })),
+      ],
+      clusters,
+    ),
+    [lovedData, landmarkData, clusters]
   );
   const dx = domain.x1 - domain.x0;
   const dy = domain.y1 - domain.y0;
@@ -164,12 +182,6 @@ export function TasteMap({ type, landmarks, loved, showOverlay, overlayText }: P
   const showCrosshair = 0.5 >= domain.x0 && 0.5 <= domain.x1
     && 0.5 >= domain.y0 && 0.5 <= domain.y1;
 
-  // Cluster the RAW 0..1 (x, y) values, not screen coords.
-  const clusters = lovedData.length
-    ? completeLinkage(lovedData.map((d) => ({ x: d.x, y: d.y })), CLUSTER_MAX_DIAMETER)
-        .sort((a, b) => b.size - a.size)
-        .slice(0, MAX_RINGS)
-    : [];
 
   const gridOpacity = 0.6;
 
