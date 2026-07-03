@@ -130,39 +130,59 @@ function scoreCandidate(
   return { predicted, nearest, maxSimilarity: Math.max(bestAny, 0), confidence };
 }
 
-const BW_GRID = [0.03, 0.05, 0.08, 0.12, 0.18] as const;
-const SMALL_SAMPLE_MIN_BW = 0.08;
+const BW_GRID = [0.05, 0.08, 0.12, 0.18] as const;
+const ALPHA_GRID = [0.2, 0.4, 0.8] as const;
 const SMALL_SAMPLE_THRESHOLD = 8;
+const DEFAULT_BW = 0.12;
+const DEFAULT_ALPHA = 0.4;
+const GLOBAL_PRIOR = 3.0;
 
-/** Leave-one-out CV over a small bandwidth grid. Picks the bandwidth with
- *  lowest squared prediction error on held-out rated wines. Needs ≥5 rated.
- *  Small-sample floor: fewer than 8 rated wines never selects below 0.08
- *  (tight kernels overfit tiny samples). */
-export function selectBandwidth(rated: RatedFp[]): number {
-  if (rated.length < 5) return 0.12;
-  const alpha = 0.4;
-  const prior = 3.0;
-  const grid = rated.length < SMALL_SAMPLE_THRESHOLD
-    ? BW_GRID.filter((bw) => bw >= SMALL_SAMPLE_MIN_BW)
-    : (BW_GRID as unknown as number[]);
-  let bestBw = 0.12;
-  let bestErr = Infinity;
-  for (const bw of grid) {
-    let err = 0;
-    for (let i = 0; i < rated.length; i++) {
-      const heldOut = rated[i];
-      const rest = rated.slice(0, i).concat(rated.slice(i + 1));
-      const sameType = rest.filter((r) => r.type === heldOut.type);
-      if (sameType.length === 0) continue;
-      const { W, active } = learnWeights(rest, heldOut.type);
-      const scored = scoreCandidate(heldOut, sameType, W, active, bw, alpha, prior);
-      if (!scored) continue;
-      const d = scored.predicted - heldOut.stars;
-      err += d * d;
-    }
-    if (err < bestErr) { bestErr = err; bestBw = bw; }
+export type KernelParams = { bandwidth: number; alpha: number };
+
+/** Personalized per-type prior with 3-pseudocount shrinkage toward 3.0. */
+export function computeTypePriors(rated: RatedFp[]): Record<WineType, number> {
+  const types: WineType[] = ["red", "white", "sparkling", "rose", "dessert"];
+  const out = {} as Record<WineType, number>;
+  for (const t of types) {
+    const pool = rated.filter((r) => r.type === t);
+    if (pool.length === 0) { out[t] = GLOBAL_PRIOR; continue; }
+    const sum = pool.reduce((s, r) => s + r.stars, 0);
+    out[t] = (sum + 3 * GLOBAL_PRIOR) / (pool.length + 3);
   }
-  return bestBw;
+  return out;
+}
+
+/** Backwards-compatible bandwidth-only selector (delegates to joint LOO). */
+export function selectBandwidth(rated: RatedFp[]): number {
+  return selectKernelParams(rated).bandwidth;
+}
+
+/** Joint leave-one-out CV over (bandwidth, alpha), using personalized per-type priors. */
+export function selectKernelParams(rated: RatedFp[]): KernelParams {
+  if (rated.length < SMALL_SAMPLE_THRESHOLD) {
+    return { bandwidth: DEFAULT_BW, alpha: DEFAULT_ALPHA };
+  }
+  const priors = computeTypePriors(rated);
+  let best: KernelParams = { bandwidth: DEFAULT_BW, alpha: DEFAULT_ALPHA };
+  let bestErr = Infinity;
+  for (const bw of BW_GRID) {
+    for (const alpha of ALPHA_GRID) {
+      let err = 0;
+      for (let i = 0; i < rated.length; i++) {
+        const heldOut = rated[i];
+        const rest = rated.slice(0, i).concat(rated.slice(i + 1));
+        const sameType = rest.filter((r) => r.type === heldOut.type);
+        if (sameType.length === 0) continue;
+        const { W, active } = learnWeights(rest, heldOut.type);
+        const scored = scoreCandidate(heldOut, sameType, W, active, bw, alpha, priors[heldOut.type]);
+        if (!scored) continue;
+        const d = scored.predicted - heldOut.stars;
+        err += d * d;
+      }
+      if (err < bestErr) { bestErr = err; best = { bandwidth: bw, alpha }; }
+    }
+  }
+  return best;
 }
 
 export function recommend(
@@ -171,9 +191,12 @@ export function recommend(
   opts: { bandwidth?: number; shrinkAlpha?: number; shrinkPrior?: number; restrictToRatedTypes?: boolean } = {},
 ): Recommendation[] {
   if (rated.length === 0) return [];
-  const bw = opts.bandwidth ?? selectBandwidth(rated);
-  const alpha = opts.shrinkAlpha ?? 0.4;
-  const prior = opts.shrinkPrior ?? 3.0;
+  const params = (opts.bandwidth === undefined || opts.shrinkAlpha === undefined)
+    ? selectKernelParams(rated)
+    : { bandwidth: opts.bandwidth, alpha: opts.shrinkAlpha };
+  const bw = opts.bandwidth ?? params.bandwidth;
+  const alpha = opts.shrinkAlpha ?? params.alpha;
+  const typePriors = computeTypePriors(rated);
   const restrict = opts.restrictToRatedTypes ?? true;
 
   const ratedTypes = new Set(rated.map((r) => r.type));
@@ -184,6 +207,7 @@ export function recommend(
       const sameType = rated.filter((r) => r.type === b.type);
       if (sameType.length === 0) return null;
       const { W, active } = learnWeights(sameType, b.type);
+      const prior = opts.shrinkPrior ?? typePriors[b.type] ?? GLOBAL_PRIOR;
       const scored = scoreCandidate(b, sameType, W, active, bw, alpha, prior);
       if (!scored) return null;
       return { bottle: b, ...scored };
