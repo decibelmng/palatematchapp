@@ -1,12 +1,13 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Star, Pencil, ScanLine, MapPin } from "lucide-react";
+import { Star, Wine, Pencil, ScanLine, MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyProfile } from "@/hooks/use-friends";
 import { ThemeToggle } from "./ThemeToggle";
 
 const TABS = [
   { to: "/", label: "Palate", Icon: Star },
+  { to: "/matches", label: "Matches", Icon: Wine },
   { to: "/rate", label: "Rate", Icon: Pencil },
   { to: "/scan", label: "Scan", Icon: ScanLine },
   { to: "/restaurants", label: "Restaurants", Icon: MapPin },
