@@ -22,6 +22,7 @@ function AdminData() {
   const [mode, setMode] = useState<"all" | "matches">("all");
 
   async function once(which: "all" | "matches" = mode) {
+    setMode(which);
     setBusy(true);
     try {
       const res = which === "matches" ? await runMatches() : await run();
