@@ -12,7 +12,7 @@ export function useTopMatches(limit = 5): { data: TopMatch[]; loading: boolean; 
   const { data: ratings } = useRatings();
   const ratedIds = useMemo(() => (ratings ?? []).map((r) => r.bottle_id), [ratings]);
   const { data: ratedBottles } = useBottlesByIds(ratedIds);
-  const { data: pool } = useAllBottlesPaged();
+  const { data: pool } = usePourCandidates();
 
   const loading = !ratings || (ratedIds.length > 0 && !ratedBottles) || !pool;
   const hasRatings = (ratings?.length ?? 0) > 0;
