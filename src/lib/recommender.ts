@@ -130,7 +130,7 @@ function scoreCandidate(
   return { predicted, nearest, maxSimilarity: Math.max(bestAny, 0), confidence };
 }
 
-const BW_GRID = [0.05, 0.08, 0.12, 0.18] as const;
+const BW_GRID = [0.08, 0.12, 0.18, 0.25] as const;
 const ALPHA_GRID = [0.2, 0.4, 0.8] as const;
 const SMALL_SAMPLE_THRESHOLD = 8;
 const DEFAULT_BW = 0.12;
@@ -157,14 +157,14 @@ export function selectBandwidth(rated: RatedFp[]): number {
   return selectKernelParams(rated).bandwidth;
 }
 
-/** Joint leave-one-out CV over (bandwidth, alpha), using personalized per-type priors. */
-export function selectKernelParams(rated: RatedFp[]): KernelParams {
-  if (rated.length < SMALL_SAMPLE_THRESHOLD) {
-    return { bandwidth: DEFAULT_BW, alpha: DEFAULT_ALPHA };
-  }
+export type LooCell = { bandwidth: number; alpha: number; error: number };
+
+/** Compute the weighted-LOO error grid used by selectKernelParams. Exported
+ *  for diagnostics. Each held-out wine's squared error is weighted by
+ *  |stars - typePrior| + 0.5, so extreme (loved/disliked) wines dominate. */
+export function looErrorTable(rated: RatedFp[]): LooCell[] {
   const priors = computeTypePriors(rated);
-  let best: KernelParams = { bandwidth: DEFAULT_BW, alpha: DEFAULT_ALPHA };
-  let bestErr = Infinity;
+  const cells: LooCell[] = [];
   for (const bw of BW_GRID) {
     for (const alpha of ALPHA_GRID) {
       let err = 0;
@@ -177,10 +177,27 @@ export function selectKernelParams(rated: RatedFp[]): KernelParams {
         const scored = scoreCandidate(heldOut, sameType, W, active, bw, alpha, priors[heldOut.type]);
         if (!scored) continue;
         const d = scored.predicted - heldOut.stars;
-        err += d * d;
+        const w = Math.abs(heldOut.stars - priors[heldOut.type]) + 0.5;
+        err += w * d * d;
       }
-      if (err < bestErr) { bestErr = err; best = { bandwidth: bw, alpha }; }
+      cells.push({ bandwidth: bw, alpha, error: err });
     }
+  }
+  return cells;
+}
+
+/** Joint leave-one-out CV over (bandwidth, alpha), using personalized per-type
+ *  priors and an extremes-weighted squared-error objective so a timid kernel
+ *  (huge alpha, tiny bandwidth) can't win by predicting the prior. */
+export function selectKernelParams(rated: RatedFp[]): KernelParams {
+  if (rated.length < SMALL_SAMPLE_THRESHOLD) {
+    return { bandwidth: DEFAULT_BW, alpha: DEFAULT_ALPHA };
+  }
+  const table = looErrorTable(rated);
+  let best: KernelParams = { bandwidth: DEFAULT_BW, alpha: DEFAULT_ALPHA };
+  let bestErr = Infinity;
+  for (const c of table) {
+    if (c.error < bestErr) { bestErr = c.error; best = { bandwidth: c.bandwidth, alpha: c.alpha }; }
   }
   return best;
 }
