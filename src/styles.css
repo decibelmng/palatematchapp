@@ -191,3 +191,50 @@
 @utility code-slot-empty {
   color: color-mix(in oklab, var(--color-muted-foreground) 70%, transparent);
 }
+
+/* ---------------------------------------------------------------
+   Beauty Pass — motion, glow, hairlines
+   All motion is opt-in via prefers-reduced-motion.
+   --------------------------------------------------------------- */
+:root {
+  --pm-glow-opacity: 0.10;
+  --pm-card-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
+}
+[data-theme="dark"] {
+  --pm-glow-opacity: 0.14;
+  --pm-card-shadow: none;
+}
+
+@keyframes pm-fade-in { from { opacity: 0 } to { opacity: 1 } }
+@keyframes pm-pop-in {
+  0%   { transform: scale(0); opacity: 0 }
+  70%  { transform: scale(1.08); opacity: 1 }
+  100% { transform: scale(1); opacity: 1 }
+}
+@keyframes pm-ring-draw {
+  from { stroke-dashoffset: var(--pm-dash-len, 400) }
+  to   { stroke-dashoffset: 0 }
+}
+@keyframes pm-rise {
+  from { opacity: 0; transform: translateY(4px) }
+  to   { opacity: 1; transform: translateY(0) }
+}
+@keyframes pm-letter-rise {
+  from { opacity: 0; transform: translateY(6px) }
+  to   { opacity: 1; transform: translateY(0) }
+}
+@keyframes pm-pulse {
+  0%   { transform: scale(1) }
+  50%  { transform: scale(1.15) }
+  100% { transform: scale(1) }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .pm-fade-in    { animation: pm-fade-in 400ms ease-out both; animation-delay: var(--pm-delay, 0ms); }
+  .pm-pop-in     { animation: pm-pop-in 350ms cubic-bezier(0.34, 1.56, 0.64, 1) both; animation-delay: var(--pm-delay, 0ms); transform-box: fill-box; transform-origin: center; }
+  .pm-ring-draw  { animation: pm-ring-draw 600ms ease-out both; animation-delay: var(--pm-delay, 0ms); }
+  .pm-rise       { animation: pm-rise 150ms ease-out both; }
+  .pm-letter     { animation: pm-letter-rise 350ms ease-out both; animation-delay: var(--pm-delay, 0ms); display: inline-block; }
+  .pm-pulse      { animation: pm-pulse 260ms ease-out both; transform-box: fill-box; transform-origin: center; }
+}
+
