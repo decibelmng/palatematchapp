@@ -11,6 +11,7 @@ const LOVE_THRESHOLD = 4;
 const PER_LOVED = 40;
 const PER_TYPE_CRITIC = 150;
 const OVERALL_CAP = 800;
+const MAX_LOVED = 20;
 
 const WINE_TYPES: readonly WineType[] = ["red", "white", "sparkling", "rose", "dessert"];
 
