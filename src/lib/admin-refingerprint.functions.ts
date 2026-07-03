@@ -1,11 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { refingerprintCuveeByBottleId, stripYear } from "@/lib/fingerprint-worker";
+import { getPourCandidates } from "@/lib/pour.functions";
 
 // NOTE: ADMIN_USER_ID must be set in Lovable Cloud env to the owner's auth user id.
 // Any signed-in user whose auth uid does NOT match will get "Not authorized".
 
 const BATCH_SIZE = 15;
+
 
 
 
@@ -141,6 +143,121 @@ export const refingerprintBatch = createServerFn({ method: "POST" })
       // safe and idempotent alongside our ranked queue.
       try {
         const result = await refingerprintCuveeByBottleId(g.ids[0], supabaseAdmin);
+        if ("ok" in result) {
+          processed += 1;
+        } else {
+          skipped += 1;
+          errors.push(result.reason);
+        }
+      } catch (e: any) {
+        const msg = e?.message ?? String(e);
+        if (/AI credits exhausted/i.test(msg) || /Rate limited/i.test(msg)) {
+          throw new Error(msg);
+        }
+        skipped += 1;
+        errors.push(msg);
+      }
+    }
+
+    return {
+      processed,
+      skipped,
+      remaining: Math.max(0, remaining - processed),
+      errors: errors.slice(0, 5),
+    };
+  });
+
+// Re-score cuvées that appear in the admin's own /matches candidate pool
+// but have never been re-fingerprinted. Same batch size + skip semantics.
+export const refingerprintMyMatchesBatch = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const adminId = process.env.ADMIN_USER_ID;
+    if (!adminId || context.userId !== adminId) {
+      throw new Error("Not authorized");
+    }
+    const key = process.env.LOVABLE_API_KEY;
+    if (!key) throw new Error("Missing LOVABLE_API_KEY");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // 1. Pull the caller's candidate bottle ids from the pour pipeline.
+    const { bottles: candidates } = await getPourCandidates();
+    const candidateIds = Array.from(
+      new Set((candidates ?? []).map((b: any) => b.id as string).filter(Boolean)),
+    );
+    if (candidateIds.length === 0) {
+      return { processed: 0, skipped: 0, remaining: 0, errors: [] };
+    }
+
+    // 2. Load metadata for those ids, then expand to sibling rows by producer
+    //    so cuvée grouping is complete.
+    const COLS = "id,producer,name,type,region,refingerprinted_at";
+    const seedRows: any[] = [];
+    for (let i = 0; i < candidateIds.length; i += 500) {
+      const chunk = candidateIds.slice(i, i + 500);
+      const { data, error } = await supabaseAdmin
+        .from("bottles")
+        .select(COLS)
+        .in("id", chunk);
+      if (error) throw new Error(error.message);
+      seedRows.push(...(data ?? []));
+    }
+
+    const producers = Array.from(
+      new Set(seedRows.map((r) => r.producer).filter((p) => !!p) as string[]),
+    );
+    const rowById = new Map<string, any>();
+    for (let i = 0; i < producers.length; i += 200) {
+      const chunk = producers.slice(i, i + 200);
+      const { data, error } = await supabaseAdmin
+        .from("bottles")
+        .select(COLS)
+        .in("producer", chunk);
+      if (error) throw new Error(error.message);
+      for (const r of data ?? []) rowById.set(r.id as string, r);
+    }
+
+    // 3. Group by cuvée key; keep groups that (a) contain a candidate id and
+    //    (b) have no stamped row yet.
+    const candidateIdSet = new Set(candidateIds);
+    type Group = { key: string; representativeId: string; ids: string[]; anyStamped: boolean; hasCandidate: boolean };
+    const groups = new Map<string, Group>();
+    for (const r of rowById.values()) {
+      const gp = (r.producer ?? "").toLowerCase();
+      const gn = stripYear((r.name ?? "").toLowerCase());
+      const gt = (r.type ?? "").toLowerCase();
+      const gr = (r.region ?? "").toLowerCase();
+      const k = `${gp}|${gn}|${gt}|${gr}`;
+      const existing = groups.get(k);
+      const stamped = !!r.refingerprinted_at;
+      const isCand = candidateIdSet.has(r.id);
+      if (existing) {
+        existing.ids.push(r.id);
+        existing.anyStamped = existing.anyStamped || stamped;
+        existing.hasCandidate = existing.hasCandidate || isCand;
+      } else {
+        groups.set(k, { key: k, representativeId: r.id, ids: [r.id], anyStamped: stamped, hasCandidate: isCand });
+      }
+    }
+
+    const queue: Group[] = [];
+    for (const g of groups.values()) {
+      if (!g.hasCandidate) continue;
+      if (g.anyStamped) continue;
+      queue.push(g);
+    }
+
+    const remaining = queue.length;
+    const batch = queue.slice(0, BATCH_SIZE);
+
+    let processed = 0;
+    let skipped = 0;
+    const errors: string[] = [];
+
+    for (const g of batch) {
+      try {
+        const result = await refingerprintCuveeByBottleId(g.representativeId, supabaseAdmin);
         if ("ok" in result) {
           processed += 1;
         } else {

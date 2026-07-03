@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { AuthGate } from "@/components/AuthGate";
 import { useServerFn } from "@tanstack/react-start";
 import { useState, useRef } from "react";
-import { refingerprintBatch } from "@/lib/admin-refingerprint.functions";
+import { refingerprintBatch, refingerprintMyMatchesBatch } from "@/lib/admin-refingerprint.functions";
 
 export const Route = createFileRoute("/admin/data")({
   ssr: false,
@@ -13,16 +13,19 @@ type LogEntry = { at: string; processed: number; skipped: number; remaining: num
 
 function AdminData() {
   const run = useServerFn(refingerprintBatch);
+  const runMatches = useServerFn(refingerprintMyMatchesBatch);
   const [log, setLog] = useState<LogEntry[]>([]);
   const [busy, setBusy] = useState(false);
   const [loop, setLoop] = useState(false);
   const [fatal, setFatal] = useState<string | null>(null);
   const loopRef = useRef(false);
+  const [mode, setMode] = useState<"all" | "matches">("all");
 
-  async function once() {
+  async function once(which: "all" | "matches" = mode) {
+    setMode(which);
     setBusy(true);
     try {
-      const res = await run();
+      const res = which === "matches" ? await runMatches() : await run();
       const entry: LogEntry = {
         at: new Date().toLocaleTimeString(),
         processed: res.processed,
@@ -42,12 +45,13 @@ function AdminData() {
     }
   }
 
-  async function runUntilDone() {
+  async function runUntilDone(which: "all" | "matches") {
+    setMode(which);
     loopRef.current = true;
     setLoop(true);
     setFatal(null);
     while (loopRef.current) {
-      const res = await once();
+      const res = await once(which);
       if (!res) break;
       if (res.remaining <= 0) break;
       await new Promise((r) => setTimeout(r, 2000));
@@ -75,22 +79,38 @@ function AdminData() {
       <p style={{ opacity: 0.7, fontSize: 13, marginBottom: 16 }}>
         Processes up to 15 unstamped cuvée groups per click. Priority: rated → on a menu → fully defaulted.
       </p>
-      <div style={{ display: "flex", gap: 8, marginBottom: 16 }}>
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
         <button
-          onClick={once}
+          onClick={() => once("all")}
           disabled={busy || loop}
           style={{ padding: "8px 12px", border: "1px solid #999", borderRadius: 6 }}
         >
-          {busy && !loop ? "Working…" : "Re-fingerprint next 15 cuvées"}
+          {busy && !loop && mode === "all" ? "Working…" : "Re-fingerprint next 15 cuvées"}
+        </button>
+        <button
+          onClick={() => once("matches")}
+          disabled={busy || loop}
+          style={{ padding: "8px 12px", border: "1px solid #999", borderRadius: 6 }}
+        >
+          {busy && !loop && mode === "matches" ? "Working…" : "Re-score my current matches"}
         </button>
         {!loop ? (
-          <button
-            onClick={runUntilDone}
-            disabled={busy}
-            style={{ padding: "8px 12px", border: "1px solid #999", borderRadius: 6 }}
-          >
-            Run until done
-          </button>
+          <>
+            <button
+              onClick={() => runUntilDone("all")}
+              disabled={busy}
+              style={{ padding: "8px 12px", border: "1px solid #999", borderRadius: 6 }}
+            >
+              Run until done (all)
+            </button>
+            <button
+              onClick={() => runUntilDone("matches")}
+              disabled={busy}
+              style={{ padding: "8px 12px", border: "1px solid #999", borderRadius: 6 }}
+            >
+              Run until done (matches)
+            </button>
+          </>
         ) : (
           <button
             onClick={stopLoop}
