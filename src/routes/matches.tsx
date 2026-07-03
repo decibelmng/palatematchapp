@@ -11,7 +11,7 @@ import { aggregateRated, aggregateCandidates, cuveeKey, type CuveeCandidate, typ
 import { applyControls, normalizePrice, isGreatValue, DEFAULT_CONTROLS, type Controls, type Priced } from "@/lib/list-controls";
 import type { GroupScored } from "@/lib/group.functions";
 
-export const Route = createFileRoute("/pour")({
+export const Route = createFileRoute("/matches")({
   ssr: false,
   head: () => ({
     meta: [
