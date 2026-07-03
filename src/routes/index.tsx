@@ -95,7 +95,7 @@ function Home() {
       ) : (
         <>
           <p className="mt-3 text-xs text-muted-foreground text-center">
-            Dot near the center = the left letter · at the rim = the right letter · middle ring = N
+            Each spoke runs from its first letter at the center to its second at the rim · middle ring = N
           </p>
           <p className="mt-3 text-sm text-foreground/90 leading-relaxed text-center">
             {describeCode(active.letters)}
