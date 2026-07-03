@@ -21,6 +21,7 @@ import { Route as RestaurantsIndexRouteImport } from './routes/restaurants.index
 import { Route as ScanListRouteImport } from './routes/scan.list'
 import { Route as ScanBottleRouteImport } from './routes/scan.bottle'
 import { Route as RestaurantsIdRouteImport } from './routes/restaurants.$id'
+import { Route as AdminDataRouteImport } from './routes/admin.data'
 import { Route as AddFriendUsernameRouteImport } from './routes/add-friend.$username'
 
 const ScanRoute = ScanRouteImport.update({
@@ -83,6 +84,11 @@ const RestaurantsIdRoute = RestaurantsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => RestaurantsRoute,
 } as any)
+const AdminDataRoute = AdminDataRouteImport.update({
+  id: '/admin/data',
+  path: '/admin/data',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AddFriendUsernameRoute = AddFriendUsernameRouteImport.update({
   id: '/add-friend/$username',
   path: '/add-friend/$username',
@@ -98,6 +104,7 @@ export interface FileRoutesByFullPath {
   '/restaurants': typeof RestaurantsRouteWithChildren
   '/scan': typeof ScanRouteWithChildren
   '/add-friend/$username': typeof AddFriendUsernameRoute
+  '/admin/data': typeof AdminDataRoute
   '/restaurants/$id': typeof RestaurantsIdRoute
   '/scan/bottle': typeof ScanBottleRoute
   '/scan/list': typeof ScanListRoute
@@ -111,6 +118,7 @@ export interface FileRoutesByTo {
   '/pour': typeof PourRoute
   '/rate': typeof RateRoute
   '/add-friend/$username': typeof AddFriendUsernameRoute
+  '/admin/data': typeof AdminDataRoute
   '/restaurants/$id': typeof RestaurantsIdRoute
   '/scan/bottle': typeof ScanBottleRoute
   '/scan/list': typeof ScanListRoute
@@ -127,6 +135,7 @@ export interface FileRoutesById {
   '/restaurants': typeof RestaurantsRouteWithChildren
   '/scan': typeof ScanRouteWithChildren
   '/add-friend/$username': typeof AddFriendUsernameRoute
+  '/admin/data': typeof AdminDataRoute
   '/restaurants/$id': typeof RestaurantsIdRoute
   '/scan/bottle': typeof ScanBottleRoute
   '/scan/list': typeof ScanListRoute
@@ -144,6 +153,7 @@ export interface FileRouteTypes {
     | '/restaurants'
     | '/scan'
     | '/add-friend/$username'
+    | '/admin/data'
     | '/restaurants/$id'
     | '/scan/bottle'
     | '/scan/list'
@@ -157,6 +167,7 @@ export interface FileRouteTypes {
     | '/pour'
     | '/rate'
     | '/add-friend/$username'
+    | '/admin/data'
     | '/restaurants/$id'
     | '/scan/bottle'
     | '/scan/list'
@@ -172,6 +183,7 @@ export interface FileRouteTypes {
     | '/restaurants'
     | '/scan'
     | '/add-friend/$username'
+    | '/admin/data'
     | '/restaurants/$id'
     | '/scan/bottle'
     | '/scan/list'
@@ -188,6 +200,7 @@ export interface RootRouteChildren {
   RestaurantsRoute: typeof RestaurantsRouteWithChildren
   ScanRoute: typeof ScanRouteWithChildren
   AddFriendUsernameRoute: typeof AddFriendUsernameRoute
+  AdminDataRoute: typeof AdminDataRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -276,6 +289,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RestaurantsIdRouteImport
       parentRoute: typeof RestaurantsRoute
     }
+    '/admin/data': {
+      id: '/admin/data'
+      path: '/admin/data'
+      fullPath: '/admin/data'
+      preLoaderRoute: typeof AdminDataRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/add-friend/$username': {
       id: '/add-friend/$username'
       path: '/add-friend/$username'
@@ -323,6 +343,7 @@ const rootRouteChildren: RootRouteChildren = {
   RestaurantsRoute: RestaurantsRouteWithChildren,
   ScanRoute: ScanRouteWithChildren,
   AddFriendUsernameRoute: AddFriendUsernameRoute,
+  AdminDataRoute: AdminDataRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
