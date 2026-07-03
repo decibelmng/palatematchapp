@@ -115,6 +115,36 @@ function Matches() {
     }
     // Suppress unused var warning for cuveeKey/ratedCuveeByKey (kept for future debug).
     void cuveeKey; void ratedCuveeByKey;
+
+    // TEMP DIAG: red-specific stats
+    const redRated = ratedCuvees.filter((r) => r.type === "red");
+    if (redRated.length > 0) {
+      const ratedFpAll: RatedFp[] = ratedCuvees.map((r) => ({
+        id: r.id, name: r.name, producer: r.producer, region: r.region,
+        type: r.type, fp: r.fp, stars: r.stars,
+      }));
+      const params = selectKernelParams(ratedFpAll);
+      const priors = computeTypePriors(ratedFpAll);
+      const redSec = out.find((s) => s.type === "red" && s.mode === "personalized") as
+        | { type: WineType; mode: "personalized"; nSameType: number; items: RankedCuvee[] }
+        | undefined;
+      const preds = redSec ? redSec.items.map((i) => i.predicted) : [];
+      const first = redSec?.items[0];
+      // eslint-disable-next-line no-console
+      console.log("[DIAG-MATCHES-RED]", JSON.stringify({
+        selectKernelParams: params,
+        redPrior: priors.red,
+        nRedRatedCuvees: redRated.length,
+        top60: { count: preds.length, min: preds.length ? Math.min(...preds) : null, max: preds.length ? Math.max(...preds) : null },
+        top1: first ? {
+          name: first.cuvee.name,
+          producer: first.cuvee.producer,
+          predicted: first.predicted,
+          nearest: first.nearestCuvee ? { name: first.nearestCuvee.name, stars: first.nearestCuvee.stars } : null,
+        } : null,
+      }));
+    }
+
     return out;
   }, [ratedBottles, ratings, pool]);
 
