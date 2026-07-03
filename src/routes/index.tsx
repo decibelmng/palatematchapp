@@ -69,23 +69,20 @@ function Home() {
   const totalRated = ratings?.length ?? 0;
   const onboarding = activeRated.length < MIN_RATINGS;
 
-  // Loved cuvées of the active type, mapped to fingerprint points
+  // Loved bottles (≥4★) of the active type, deduped by cuvée for the map
   const lovedPoints: LovedPoint[] = useMemo(() => {
     const byId = new Map((bottles ?? []).map((b) => [b.id, b]));
-    const rows = (ratings ?? [])
-      .map((r) => ({ r, b: byId.get(r.bottle_id) }))
-      .filter((x) => x.b && bottleType(x.b!) === scope && x.r.stars >= 4)
-      .map(({ r, b }) => ({
-        id: b!.id,
-        name: b!.name,
-        producer: b!.producer,
-        region: b!.region,
-        type: bottleType(b!),
-        vintage: b!.vintage,
-        fp: bottleToFp(b!),
-        stars: r.stars,
-      }));
-    return aggregateRated(rows).map((c) => ({ key: c.cuvee, bottleId: c.id, fp: c.fp }));
+    const seen = new Map<string, LovedPoint>();
+    for (const r of ratings ?? []) {
+      const b = byId.get(r.bottle_id);
+      if (!b) continue;
+      if (bottleType(b) !== scope) continue;
+      if (r.stars < 4) continue;
+      const key = cuveeKey(b);
+      if (seen.has(key)) continue;
+      seen.set(key, { key, bottleId: b.id, axBody: b.ax_body, axFruit: b.ax_fruit_char });
+    }
+    return Array.from(seen.values());
   }, [bottles, ratings, scope]);
 
   const { data: landmarks } = useLandmarks(scope);
