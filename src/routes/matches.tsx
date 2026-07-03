@@ -6,7 +6,7 @@ import { ListControls } from "@/components/ListControls";
 import { DrinkingGroupSelector } from "@/components/DrinkingGroupSelector";
 import { usePourCandidates, useBottlesByIds, useRatings, bottleToFp, bottleType } from "@/hooks/use-palate-data";
 import { useGroupSelection, useGroupPredict, type GroupCandidateInput } from "@/hooks/use-friends";
-import { recommend, selectKernelParams, type BottleFp, type RatedFp, type Recommendation, type WineType } from "@/lib/recommender";
+import { recommend, type BottleFp, type RatedFp, type Recommendation, type WineType } from "@/lib/recommender";
 import { aggregateRated, aggregateCandidates, cuveeKey, type CuveeCandidate, type CuveeRated } from "@/lib/cuvee";
 import { applyControls, normalizePrice, isGreatValue, DEFAULT_CONTROLS, type Controls, type Priced } from "@/lib/list-controls";
 import type { GroupScored } from "@/lib/group.functions";
