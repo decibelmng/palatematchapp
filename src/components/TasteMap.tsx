@@ -129,7 +129,7 @@ type Selected =
   | { kind: "landmark"; l: ResolvedLandmark }
   | null;
 
-export function TasteMap({ type, landmarks, loved, showOverlay, overlayText }: Props) {
+export function TasteMap({ type, landmarks, loved, others = [], showOverlay, overlayText }: Props) {
   const corners = type === "red"
     ? {
         tl: "Light & earthy",   tr: "Bold & earthy",
@@ -143,15 +143,29 @@ export function TasteMap({ type, landmarks, loved, showOverlay, overlayText }: P
       };
 
   const [selected, setSelected] = useState<Selected>(null);
+  // Tier toggles: 5,4,2,1 on; 3 off by default.
+  const [tierOn, setTierOn] = useState<Record<1|2|3|4|5, boolean>>({ 5: true, 4: true, 3: false, 2: true, 1: true });
 
   const lovedData = useMemo(
     () => loved.map((p) => ({ p, x: clamp01(p.axBody), y: clamp01(p.axFruit) })),
     [loved]
   );
+  const othersData = useMemo(
+    () => others.map((p) => ({ p, x: clamp01(p.axBody), y: clamp01(p.axFruit) })),
+    [others]
+  );
   const landmarkData = useMemo(
     () => landmarks.map((l) => ({ l, x: clamp01(l.axBody), y: clamp01(l.axFruit) })),
     [landmarks]
   );
+
+  // Counts per tier for chip enable/disable.
+  const tierCounts = useMemo(() => {
+    const c = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } as Record<1|2|3|4|5, number>;
+    for (const p of loved) if (p.stars >= 1 && p.stars <= 5) c[p.stars as 1|2|3|4|5]++;
+    for (const p of others) if (p.stars >= 1 && p.stars <= 5) c[p.stars as 1|2|3|4|5]++;
+    return c;
+  }, [loved, others]);
 
   // Cluster the RAW 0..1 (x, y) values, not screen coords.
   const clusters = useMemo(
