@@ -247,9 +247,11 @@ export const refingerprintMyMatchesBatch = createServerFn({ method: "POST" })
     }
 
     // 3. Group by cuvée key; keep groups that (a) contain a candidate id and
-    //    (b) have no stamped row yet.
+    //    (b) still have at least one unstamped row (raw imports we want re-scored).
+    //    A mixed cuvée (some vintages stamped, some raw) is INCLUDED — the worker
+    //    is idempotent and will re-score the raw siblings against the group mean.
     const candidateIdSet = new Set(candidateIds);
-    type Group = { key: string; representativeId: string; ids: string[]; anyStamped: boolean; hasCandidate: boolean };
+    type Group = { key: string; representativeId: string; ids: string[]; hasUnstamped: boolean; hasCandidate: boolean };
     const groups = new Map<string, Group>();
     for (const r of rowById.values()) {
       const gp = (r.producer ?? "").toLowerCase();
@@ -258,21 +260,24 @@ export const refingerprintMyMatchesBatch = createServerFn({ method: "POST" })
       const gr = (r.region ?? "").toLowerCase();
       const k = `${gp}|${gn}|${gt}|${gr}`;
       const existing = groups.get(k);
-      const stamped = !!r.refingerprinted_at;
+      const unstamped = !r.refingerprinted_at;
       const isCand = candidateIdSet.has(r.id);
       if (existing) {
         existing.ids.push(r.id);
-        existing.anyStamped = existing.anyStamped || stamped;
+        existing.hasUnstamped = existing.hasUnstamped || unstamped;
         existing.hasCandidate = existing.hasCandidate || isCand;
+        // Pick an unstamped id as representative when possible so the worker
+        // seeds from a raw row (not a stamped one it would immediately skip).
+        if (unstamped && !!r.refingerprinted_at === false) existing.representativeId = r.id;
       } else {
-        groups.set(k, { key: k, representativeId: r.id, ids: [r.id], anyStamped: stamped, hasCandidate: isCand });
+        groups.set(k, { key: k, representativeId: r.id, ids: [r.id], hasUnstamped: unstamped, hasCandidate: isCand });
       }
     }
 
     const queue: Group[] = [];
     for (const g of groups.values()) {
       if (!g.hasCandidate) continue;
-      if (g.anyStamped) continue;
+      if (!g.hasUnstamped) continue;
       queue.push(g);
     }
 
