@@ -7,20 +7,6 @@ import { callFingerprintGateway } from "@/lib/fingerprint-prompt";
 
 const BATCH_SIZE = 15;
 
-type GroupRow = {
-  gp: string;
-  gn: string;
-  gt: string;
-  gr: string;
-  representative_id: string;
-  producer: string | null;
-  name: string;
-  type: string;
-  region: string | null;
-  country: string | null;
-  grape: string | null;
-  ids: string[];
-};
 
 export const refingerprintBatch = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
