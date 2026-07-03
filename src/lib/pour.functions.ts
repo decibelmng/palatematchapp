@@ -62,7 +62,7 @@ export async function computePourCandidatesFor(
       overall_cap: OVERALL_CAP,
     });
     if (error) throw new Error(error.message);
-    return projectRows((data ?? []) as any[]);
+    return attachRawFlag(supabase, projectRows((data ?? []) as any[]));
   }
 
   // 2. Rated bottles (needed for cuvée aggregation).
