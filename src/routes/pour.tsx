@@ -4,7 +4,7 @@ import { AuthGate } from "@/components/AuthGate";
 import { WineTypeBadge } from "@/components/WineTypeBadge";
 import { ListControls } from "@/components/ListControls";
 import { DrinkingGroupSelector } from "@/components/DrinkingGroupSelector";
-import { useAllBottlesPaged, useBottlesByIds, useRatings, bottleToFp, bottleType } from "@/hooks/use-palate-data";
+import { usePourCandidates, useBottlesByIds, useRatings, bottleToFp, bottleType } from "@/hooks/use-palate-data";
 import { useGroupSelection, useGroupPredict, type GroupCandidateInput } from "@/hooks/use-friends";
 import { recommend, type BottleFp, type RatedFp, type Recommendation, type WineType } from "@/lib/recommender";
 import { aggregateRated, aggregateCandidates, cuveeKey, type CuveeCandidate, type CuveeRated } from "@/lib/cuvee";
@@ -48,7 +48,7 @@ function Pour() {
   const { data: ratings } = useRatings();
   const ratedIds = useMemo(() => (ratings ?? []).map((r) => r.bottle_id), [ratings]);
   const { data: ratedBottles } = useBottlesByIds(ratedIds);
-  const { data: pool } = useAllBottlesPaged();
+  const { data: pool } = usePourCandidates();
 
   const sections: Section[] = useMemo(() => {
     if (!ratings || !pool) return [];

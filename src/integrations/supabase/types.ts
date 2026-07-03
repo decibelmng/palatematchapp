@@ -494,6 +494,54 @@ export type Database = {
         Args: { p_batch_index: number; p_scan_id: string }
         Returns: undefined
       }
+      rpc_pour_candidates: {
+        Args: {
+          excluded_ids?: string[]
+          loved: Json
+          overall_cap?: number
+          per_loved?: number
+          per_type_critic?: number
+          rated_types: string[]
+        }
+        Returns: {
+          added_by: string | null
+          ax_acidity: number
+          ax_body: number
+          ax_fruit_char: number
+          ax_sweet: number
+          ax_tannin: number
+          country: string | null
+          created_at: string
+          critic_score: number | null
+          fp_acid: number
+          fp_body: number
+          fp_fresh: number
+          fp_fruit_dark: number
+          fp_harmonized_at: string | null
+          fp_oak: number
+          fp_ripe: number
+          fp_savory: number
+          fp_tannin: number
+          grape: string | null
+          id: string
+          name: string
+          price_band: string | null
+          producer: string | null
+          refingerprinted_at: string | null
+          region: string | null
+          source: string | null
+          tasting_note: string | null
+          type: string
+          unverified: boolean
+          vintage: number | null
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "bottles"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       search_bottles_fuzzy: {
         Args: {
           lim?: number

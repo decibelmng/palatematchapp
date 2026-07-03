@@ -77,25 +77,20 @@ export function useBottlesByIds(ids: string[]) {
   });
 }
 
-export function useAllBottlesPaged(pageSize = 1000, maxRows = 20000) {
+export function usePourCandidates() {
+  const session = useSession();
   return useQuery({
-    queryKey: ["bottles", "all", pageSize, maxRows],
+    queryKey: ["pour-candidates", session?.user.id ?? null],
+    enabled: !!session,
     queryFn: async (): Promise<BottleRow[]> => {
-      const out: BottleRow[] = [];
-      for (let from = 0; from < maxRows; from += pageSize) {
-        const to = Math.min(from + pageSize, maxRows) - 1;
-        const { data, error } = await supabase
-          .from("bottles").select(BOTTLE_COLS).order("id").range(from, to);
-        if (error) throw error;
-        const rows = (data ?? []) as BottleRow[];
-        out.push(...rows);
-        if (rows.length < pageSize) break;
-      }
-      return out;
+      const { getPourCandidates } = await import("@/lib/pour.functions");
+      const res = await getPourCandidates();
+      return (res.bottles ?? []) as BottleRow[];
     },
-    staleTime: 10 * 60_000,
+    staleTime: 5 * 60_000,
   });
 }
+
 
 export function useRatings() {
   const session = useSession();
