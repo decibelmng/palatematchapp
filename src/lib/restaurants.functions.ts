@@ -2,6 +2,37 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+// Mirror the generated client's fetch: set apikey header and strip a
+// bearer-format Authorization for new-style sb_publishable_ keys, which are
+// opaque strings rather than JWTs.
+function isNewSupabaseApiKey(value: string): boolean {
+  return value.startsWith("sb_publishable_") || value.startsWith("sb_secret_");
+}
+function createPublicSupabaseFetch(supabaseKey: string): typeof fetch {
+  return (input, init) => {
+    const headers = new Headers(
+      typeof Request !== "undefined" && input instanceof Request ? input.headers : undefined,
+    );
+    if (init?.headers) {
+      new Headers(init.headers).forEach((value, key) => headers.set(key, value));
+    }
+    if (isNewSupabaseApiKey(supabaseKey) && headers.get("Authorization") === `Bearer ${supabaseKey}`) {
+      headers.delete("Authorization");
+    }
+    headers.set("apikey", supabaseKey);
+    return fetch(input, { ...init, headers });
+  };
+}
+async function createPublicSupabase() {
+  const { createClient } = await import("@supabase/supabase-js");
+  const url = process.env.SUPABASE_URL!;
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY!;
+  return createClient(url, key, {
+    global: { fetch: createPublicSupabaseFetch(key) },
+    auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
+  });
+}
+
 // ============================================================================
 // Search & create restaurants
 // ============================================================================
@@ -114,7 +145,7 @@ export const attributeScanFn = createServerFn({ method: "POST" })
         const name = (w.wine_name ?? "").trim() || "Unknown cuvée";
         const producer = (w.producer ?? "").trim() || null;
         const type = w.type ?? "red";
-        const isRed = type === "red";
+        const keepsTannin = type === "red" || type === "dessert";
         const { data: newB, error: bErr } = await supabaseAdmin
           .from("bottles")
           .insert({
@@ -126,15 +157,15 @@ export const attributeScanFn = createServerFn({ method: "POST" })
             type,
             fp_fresh: w.fp_resolved.fresh,
             fp_acid: w.fp_resolved.acid,
-            fp_tannin: isRed ? w.fp_resolved.tannin : 0,
-            fp_fruit_dark: isRed ? w.fp_resolved.fruit_dark : 0,
+            fp_tannin: keepsTannin ? w.fp_resolved.tannin : 0,
+            fp_fruit_dark: keepsTannin ? w.fp_resolved.fruit_dark : 0,
             fp_ripe: w.fp_resolved.ripe,
             fp_oak: w.fp_resolved.oak,
             fp_body: w.fp_resolved.body,
             fp_savory: w.fp_resolved.savory,
             ax_body: w.fp_resolved.body,
             ax_fruit_char: w.fp_resolved.fruit_dark,
-            ax_tannin: isRed ? w.fp_resolved.tannin : 0,
+            ax_tannin: keepsTannin ? w.fp_resolved.tannin : 0,
             ax_acidity: w.fp_resolved.acid,
             ax_sweet: 0,
             source: "scan; unverified community bottle",
@@ -206,13 +237,7 @@ export const attributeScanFn = createServerFn({ method: "POST" })
 
 export const listRestaurantsFn = createServerFn({ method: "GET" })
   .handler(async () => {
-    // Public read.
-    const { createClient } = await import("@supabase/supabase-js");
-    const supabase = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_PUBLISHABLE_KEY!,
-      { auth: { storage: undefined, persistSession: false, autoRefreshToken: false } },
-    );
+    const supabase = await createPublicSupabase();
     const { data, error } = await supabase
       .from("restaurants")
       .select("id,name,city,locale,created_at")
@@ -227,12 +252,7 @@ export const getRestaurantWinesFn = createServerFn({ method: "POST" })
     z.object({ restaurant_id: z.string().uuid() }).parse(input),
   )
   .handler(async ({ data }) => {
-    const { createClient } = await import("@supabase/supabase-js");
-    const supabase = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_PUBLISHABLE_KEY!,
-      { auth: { storage: undefined, persistSession: false, autoRefreshToken: false } },
-    );
+    const supabase = await createPublicSupabase();
     const { data: rest, error: rErr } = await supabase
       .from("restaurants")
       .select("id,name,city,locale")

@@ -338,7 +338,7 @@ function Scan() {
     }));
     if (ratedRows.length === 0) {
       return candidates.map((b, i) => ({
-        bottle: b, predicted: 0, nearest: null, maxSimilarity: 0, scanned: readable[i],
+        bottle: b, predicted: 0, nearest: null, maxSimilarity: 0, confidence: 0, scanned: readable[i],
       }));
     }
     const recs = recommend(ratedRows, candidates);

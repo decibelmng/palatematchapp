@@ -40,7 +40,7 @@ For each wine, output an object with:
 
 Rules:
 - Include every wine, even if you must guess. If a line is illegible, omit it.
-- For non-reds, tannin and fruit_dark must be ~0.
+- For white, rosé, and sparkling wines, tannin and fruit_dark MUST be 0. For dessert wines: white dessert (Sauternes, Tokaji, ice wine) tannin 0; fortified reds (Port, Banyuls, Maury) use real tannin values (typically 0.5–0.8).
 - Do NOT invent wines that aren't on the list.
 - Keep each object COMPACT — short strings only, no extra keys.
 - Output shape: { "wines": [ { ... }, ... ] }`;
@@ -268,6 +268,11 @@ export const scanWineBatch = createServerFn({ method: "POST" })
     if (!key) throw new Error("Missing LOVABLE_API_KEY");
     const { supabase, userId } = context;
 
+    // Ownership check (RLS-scoped; nonexistent OR not owned both return null).
+    const { data: owned } = await supabase
+      .from("scans").select("id").eq("id", data.scan_id).maybeSingle();
+    if (!owned) throw new Error("Scan not found");
+
     try {
       const raw = await extractWinesWithRetry(data.images, key);
       const resolved = await resolveAgainstCatalog(raw, supabase);
@@ -295,22 +300,11 @@ export const scanWineBatch = createServerFn({ method: "POST" })
         await supabase.from("scan_wines").insert(rows);
       }
 
-      // Bump batches_done via RPC-less atomic-ish update
-      await supabase.rpc as any; // no-op guard
-      const { data: cur } = await supabase.from("scans").select("batches_done,batches_failed").eq("id", data.scan_id).single();
-      const failed = ((cur?.batches_failed ?? []) as number[]).filter((i) => i !== data.batch_index);
-      await supabase.from("scans").update({
-        batches_done: (cur?.batches_done ?? 0) + 1,
-        batches_failed: failed,
-      }).eq("id", data.scan_id);
+      await supabase.rpc("mark_scan_batch_done", { p_scan_id: data.scan_id, p_batch_index: data.batch_index });
 
       return { batch_index: data.batch_index, wines: resolved };
     } catch (e) {
-      // Mark failure and rethrow
-      const { data: cur } = await supabase.from("scans").select("batches_failed").eq("id", data.scan_id).single();
-      const failed = new Set<number>(((cur?.batches_failed ?? []) as number[]));
-      failed.add(data.batch_index);
-      await supabase.from("scans").update({ batches_failed: Array.from(failed) }).eq("id", data.scan_id);
+      await supabase.rpc("mark_scan_batch_failed", { p_scan_id: data.scan_id, p_batch_index: data.batch_index });
       throw e;
     }
   });

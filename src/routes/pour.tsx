@@ -203,6 +203,7 @@ type Row = Priced & {
   criticScore: number | null;
   nearestCuvee: CuveeRated | null;
   greatValue: boolean;
+  confidence: number | null;
 };
 
 function toRows(section: Section): Row[] {
@@ -224,6 +225,7 @@ function toRows(section: Section): Row[] {
         isCatalog: true, // /pour candidates are all catalog wines
         predicted: r.predicted,
         greatValue: false,
+        confidence: r.confidence,
       };
       row.greatValue = isGreatValue(row);
       return row;
@@ -246,6 +248,7 @@ function toRows(section: Section): Row[] {
       isCatalog: true,
       predicted: 0,
       greatValue: false,
+      confidence: null,
     };
   });
 }
@@ -365,6 +368,11 @@ function SectionView({ section, groupScores, groupActive, groupLoading }: Sectio
                     <>
                       <span className="font-serif text-primary text-xl">{r.predicted.toFixed(1)}</span>
                       <span className="text-primary text-sm">★</span>
+                      {r.confidence !== null && r.confidence < 0.35 && (
+                        <p className="mt-0.5 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-border bg-muted text-muted-foreground">
+                          low match data
+                        </p>
+                      )}
                     </>
                   )}
                 </div>

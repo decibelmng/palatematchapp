@@ -30,6 +30,7 @@ export type Recommendation = {
   predicted: number;
   nearest: RatedFp | null;
   maxSimilarity: number;
+  confidence: number;
 };
 
 /**
@@ -37,7 +38,7 @@ export type Recommendation = {
  * axes are absent, not zero-valued votes. Shared axes apply to every type.
  */
 export function axisApplies(axis: FpKey, type: WineType): boolean {
-  if (axis === "tannin" || axis === "fruit_dark") return type === "red";
+  if (axis === "tannin" || axis === "fruit_dark") return type === "red" || type === "dessert";
   return true;
 }
 
@@ -62,7 +63,7 @@ export function recommend(
 ): Recommendation[] {
   if (rated.length === 0) return [];
   const bw = opts.bandwidth ?? 0.2;
-  const alpha = opts.shrinkAlpha ?? 1.5;   // Laplace-style shrinkage toward prior
+  const alpha = opts.shrinkAlpha ?? 0.4;   // Laplace-style shrinkage toward prior
   const prior = opts.shrinkPrior ?? 3.0;   // neutral baseline when similarity is low
   const restrict = opts.restrictToRatedTypes ?? true;
 
@@ -123,7 +124,8 @@ export function recommend(
       }
       if (!nearest) nearest = nearestAny;
       const predicted = (num + alpha * prior) / (den + alpha);
-      return { bottle: b, predicted, nearest, maxSimilarity: Math.max(bestAny, 0) };
+      const confidence = den / (den + alpha);
+      return { bottle: b, predicted, nearest, maxSimilarity: Math.max(bestAny, 0), confidence };
     })
     .filter((r): r is Recommendation => r !== null);
 
