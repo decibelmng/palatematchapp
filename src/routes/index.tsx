@@ -137,6 +137,7 @@ function Home() {
         displayName={myProfile?.display_name || myProfile?.username || ""}
       />
 
+      {totalRated > 0 && <TopMatchesSection />}
 
       {/* Taste map */}
       <div className="mt-10">
@@ -169,15 +170,9 @@ function Home() {
             <Link to="/rate" className="rounded-[14px] border-[0.5px] border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent shadow-[var(--pm-card-shadow)]">
               Rate more
             </Link>
-            <Link to="/pour" className="rounded-[14px] bg-primary text-primary-foreground px-3 py-1.5 text-xs font-medium hover:opacity-90 shadow-[var(--pm-card-shadow)]">
-              Pour next →
-            </Link>
           </div>
         </>
       )}
-
-
-      {totalRated > 0 && <TopMatchesSection />}
     </div>
   );
 }
