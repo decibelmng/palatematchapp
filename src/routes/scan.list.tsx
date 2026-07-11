@@ -1003,6 +1003,14 @@ function ScanSection({
                         great value
                       </span>
                     )}
+                    {prodFam && (
+                      <span
+                        className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-border bg-muted text-muted-foreground"
+                        title={`You've rated ${prodFam.n} wine${prodFam.n === 1 ? "" : "s"} from ${prodFam.name} (avg ${prodFam.avg.toFixed(1)}★)`}
+                      >
+                        producer you know · {prodFam.avg.toFixed(1)}★
+                      </span>
+                    )}
                   </div>
                   <p className="text-xs text-muted-foreground truncate">
                     {[r.bottle.region, r.scanned.grape, price_display].filter(Boolean).join(" · ")}
