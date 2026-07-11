@@ -66,7 +66,9 @@ export function computeCode(rated: RatedBottle[], axes: AxisDef[]): { code: stri
 
     const pts = rated.map((r) => ({
       x: r.values[axisDef.key] ?? 0.5,
-      w: Math.max(0, r.stars - 2), // 1–2★ contribute ~0
+      // 1–2★ contribute ~0. Canon anchors get CANON_WEIGHT so their fingerprint
+      // pulls each axis toward the benchmark proportional to that weight.
+      w: Math.max(0, r.stars - 2) * (r.canon ? CANON_WEIGHT : 1),
       stars: r.stars,
     }));
     const W = pts.reduce((s, p) => s + p.w, 0);
