@@ -23,7 +23,25 @@ export type BottleFp = {
   fp: Record<FpKey, number>;
 };
 
-export type RatedFp = BottleFp & { stars: number };
+export type RatedFp = BottleFp & {
+  stars: number;
+  /** Sample weight in the kernel regression (default 1.0). Canon wines pass CANON_WEIGHT. */
+  weight?: number;
+  /** True if this rated wine is a Canon anchor for its region. */
+  canon?: boolean;
+};
+
+export type Recommendation = {
+  bottle: BottleFp;
+  predicted: number;
+  nearest: RatedFp | null;
+  nearestIsCanon: boolean;
+  maxSimilarity: number;
+  confidence: number;
+};
+
+/** Fixed sample-weight multiplier applied to Canon anchors in the kernel regression. */
+export const CANON_WEIGHT = 3.0;
 
 export type Recommendation = {
   bottle: BottleFp;
