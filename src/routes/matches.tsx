@@ -153,7 +153,7 @@ function Matches() {
             if (a.vetoed !== b.vetoed) return a.vetoed ? 1 : -1;
             return b.predicted - a.predicted;
           });
-        if (items.length > 0) out.push({ type, mode: "personalized", nSameType: sameTypeRated.length, items });
+        if (items.length > 0) out.push({ type, mode: "personalized", nSameType: sameTypeRated.length, items, ratedFp });
       }
     }
     // Suppress unused var warning for cuveeKey/ratedCuveeByKey (kept for future debug).
