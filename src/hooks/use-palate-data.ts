@@ -4,6 +4,7 @@ import { useSession } from "./use-session";
 import type { PaletteType } from "@/lib/palate";
 import type { FpKey, WineType } from "@/lib/recommender";
 import { refreshBottleFingerprint } from "@/lib/fingerprint-refresh.functions";
+import { usePalateVersion } from "./use-palate-version";
 
 export type BottleRow = {
   id: string;
