@@ -4,6 +4,7 @@ import { useSession } from "./use-session";
 import type { PaletteType } from "@/lib/palate";
 import type { FpKey, WineType } from "@/lib/recommender";
 import { refreshBottleFingerprint } from "@/lib/fingerprint-refresh.functions";
+import { usePalateVersion } from "./use-palate-version";
 
 export type BottleRow = {
   id: string;
@@ -81,8 +82,9 @@ export function useBottlesByIds(ids: string[]) {
 
 export function usePourCandidates() {
   const session = useSession();
+  const { data: palateVersion } = usePalateVersion();
   return useQuery({
-    queryKey: ["pour-candidates", session?.user.id ?? null],
+    queryKey: ["pour-candidates", session?.user.id ?? null, palateVersion ?? 0],
     enabled: !!session,
     queryFn: async (): Promise<BottleRow[]> => {
       const { getPourCandidates } = await import("@/lib/pour.functions");
@@ -96,8 +98,9 @@ export function usePourCandidates() {
 
 export function useRatings() {
   const session = useSession();
+  const { data: palateVersion } = usePalateVersion();
   return useQuery({
-    queryKey: ["ratings", session?.user.id ?? null],
+    queryKey: ["ratings", session?.user.id ?? null, palateVersion ?? 0],
     enabled: !!session,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -132,6 +135,7 @@ export function useRate() {
     },
     onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: ["ratings"] });
+      qc.invalidateQueries({ queryKey: ["palate-version"] });
       // Self-healing: fire-and-forget cuvée re-fingerprint. The stamp in the
       // DB is the natural once-ever guard; failures/skips are silent.
       if (result?.stars !== null) {

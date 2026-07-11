@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "./use-session";
 import { bottleType, type BottleRow } from "./use-palate-data";
+import { useApplyBumpedPalateVersion, usePalateVersion } from "./use-palate-version";
 
 export type BenchmarkTier = "canon" | "nemesis";
 
@@ -44,11 +45,14 @@ export function canonScopeType(b: Pick<BottleRow, "type">): "red" | "white" | "r
   return bottleType(b as BottleRow);
 }
 
-/** Active benchmarks (canon + nemesis) for the signed-in user. */
+/** Active benchmarks (canon + nemesis) for the signed-in user.
+ *  Keyed on `palate_version` so any B1/B2 mutation (promote / demote / swap /
+ *  rating-edit cascade) triggers an automatic refetch. */
 export function useMyCanons() {
   const session = useSession();
+  const { data: palateVersion } = usePalateVersion();
   return useQuery({
-    queryKey: ["canons", session?.user.id ?? null],
+    queryKey: ["canons", session?.user.id ?? null, palateVersion ?? 0],
     enabled: !!session,
     staleTime: 30_000,
     queryFn: async (): Promise<CanonRow[]> => {
@@ -106,70 +110,60 @@ function friendlyPromotionError(err: unknown): Error {
   return err instanceof Error ? err : new Error(msg);
 }
 
+/** Shape returned by the `set_benchmark` RPC (B1). */
+type SetBenchmarkResult = {
+  benchmark_id: string | null;
+  replaced_id: string | null;
+  palate_version: number;
+};
+
+async function callSetBenchmark(args: {
+  bottleId: string;
+  tier: BenchmarkTier;
+  action: "promote" | "demote" | "demote-on-rating";
+}): Promise<SetBenchmarkResult> {
+  const { data, error } = await (supabase as any).rpc("set_benchmark", {
+    p_bottle_id: args.bottleId,
+    p_tier: args.tier,
+    p_action: args.action,
+  });
+  if (error) throw friendlyPromotionError(error);
+  // Postgres TABLE-returning functions come back as an array of rows.
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) throw new Error("set_benchmark returned no row");
+  return row as SetBenchmarkResult;
+}
+
 function usePromoteBenchmark(tier: BenchmarkTier) {
   const session = useSession();
   const qc = useQueryClient();
+  const applyVersion = useApplyBumpedPalateVersion();
   return useMutation({
     mutationFn: async (args: {
       bottle: BottleRow;
-      /** existing active benchmark of THIS tier for the same (region, type), if any — will be demoted */
+      /** kept for API compatibility; server-side swap handles this atomically now */
       replace?: CanonRow | null;
     }) => {
       if (!session) throw new Error("Not signed in");
-      const uid = session.user.id;
       const region = (args.bottle.region ?? "").trim();
       if (!region) throw new Error(`Bottle has no region — cannot ${tier === "canon" ? "crown" : "mark as Nemesis"}.`);
-      const wine_type = canonScopeType(args.bottle);
 
-      // Client-side guard for the excluded-bottle rule (matches the
-      // canon_wines_validate_tier trigger). Server enforces regardless.
+      // Client-side guard — server enforces regardless via set_benchmark.
       if ((args.bottle as { excluded_from_recs?: boolean }).excluded_from_recs) {
         throw new Error("Barrel samples can't be benchmarks — crown the finished wine instead.");
       }
 
-      // Ensure a rating row exists AND satisfies the tier's star gate.
-      const { data: ratingRow, error: rErr } = await supabase
-        .from("ratings")
-        .select("id,stars")
-        .eq("user_id", uid)
-        .eq("bottle_id", args.bottle.id)
-        .maybeSingle();
-      if (rErr) throw rErr;
-      if (!ratingRow) throw new Error(`Rate this bottle before ${tier === "canon" ? "crowning" : "marking"} it.`);
-      validateBenchmarkPromotion(tier, ratingRow.stars);
-
-      if (args.replace) {
-        const { error: dErr } = await (supabase as any)
-          .from("canon_wines")
-          .update({ replaced_at: new Date().toISOString() })
-          .eq("id", args.replace.id);
-        if (dErr) throw dErr;
-      }
-
-      const { data, error } = await (supabase as any)
-        .from("canon_wines")
-        .insert({
-          user_id: uid,
-          rating_id: ratingRow.id,
-          bottle_id: args.bottle.id,
-          region,
-          wine_type,
-          tier,
-        })
-        .select()
-        .single();
-      if (error) throw friendlyPromotionError(error);
-      return data as CanonRow;
-    },
-    onSuccess: (row, args) => {
-      const benchmark = { ...row, tier } satisfies CanonRow;
-      qc.setQueriesData<CanonRow[]>({ queryKey: ["canons"] }, (old) => {
-        if (!old) return [benchmark];
-        return [
-          benchmark,
-          ...old.filter((c) => c.id !== benchmark.id && c.id !== args.replace?.id),
-        ];
+      const res = await callSetBenchmark({
+        bottleId: args.bottle.id,
+        tier,
+        action: "promote",
       });
+      return res;
+    },
+    onSuccess: (res) => {
+      applyVersion(res.palate_version);
+      // palate_version bump auto-refetches the canons query; still invalidate
+      // for safety and to catch any queries not yet keyed on the version.
       qc.invalidateQueries({ queryKey: ["canons"] });
     },
   });
@@ -183,19 +177,37 @@ export function usePromoteNemesis() {
   return usePromoteBenchmark("nemesis");
 }
 
+/** Demote a benchmark by its bottle id + tier. The RPC atomically bumps
+ *  palate_version so downstream queries refresh. */
 export function useDemoteCanon() {
   const qc = useQueryClient();
+  const applyVersion = useApplyBumpedPalateVersion();
   return useMutation({
-    mutationFn: async (canonId: string) => {
-      const { error } = await (supabase as any)
-        .from("canon_wines")
-        .update({ replaced_at: new Date().toISOString() })
-        .eq("id", canonId);
-      if (error) throw error;
-      return canonId;
+    mutationFn: async (input: string | { canonId?: string; bottleId: string; tier: BenchmarkTier }) => {
+      // Back-compat: legacy callers pass a canon row id. We look up its
+      // (bottle_id, tier) so we can route through the RPC.
+      let bottleId: string;
+      let tier: BenchmarkTier = "canon";
+      if (typeof input === "string") {
+        const { data, error } = await (supabase as any)
+          .from("canon_wines")
+          .select("bottle_id,tier")
+          .eq("id", input)
+          .maybeSingle();
+        if (error) throw error;
+        if (!data) throw new Error("Benchmark row not found");
+        bottleId = data.bottle_id;
+        const t = normalizeBenchmarkTier(data.tier);
+        if (!t) throw new Error(`Unknown tier on benchmark row: ${data.tier}`);
+        tier = t;
+      } else {
+        bottleId = input.bottleId;
+        tier = input.tier;
+      }
+      return callSetBenchmark({ bottleId, tier, action: "demote" });
     },
-    onSuccess: (canonId) => {
-      qc.setQueriesData<CanonRow[]>({ queryKey: ["canons"] }, (old) => old?.filter((c) => c.id !== canonId));
+    onSuccess: (res) => {
+      applyVersion(res.palate_version);
       qc.invalidateQueries({ queryKey: ["canons"] });
     },
   });
