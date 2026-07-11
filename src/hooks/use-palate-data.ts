@@ -21,7 +21,7 @@ export type BottleRow = {
   source: string | null;
   added_by: string | null;
   price_band: string | null;
-  raw?: boolean;                    // true = refingerprinted_at IS NULL (import defaults)
+  raw?: boolean;                    // true = no calibrated fingerprint (LLM/harmonized/refingerprinted all absent)
 };
 
 const BOTTLE_COLS =
