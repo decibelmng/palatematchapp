@@ -130,16 +130,17 @@ function learnOmega(rated: RatedFp[], type: WineType): OmegaFit {
   }
   if (pairs.length === 0) return { omega: uniform, active };
 
-  // Option-2 fix: rescale to Σω=A BEFORE clamping so a data-driven axis
-  // doesn't get pinned below uniform by ridge on the other axes. Ridge is
-  // additionally capped at 1.0 so a thin-data user with n≈4–8 ratings can
-  // still see informative axes rise above uniform.
+  // Ridge target = 1 (uniform prior); λ capped at 1.0 so thin-data users can
+  // still see informative axes rise above uniform. NO Σω=A rescale — the
+  // distance formula d² = Σ ω(x−xᵢ)² / Σ ω is already scale-invariant in ω,
+  // so a rescale contributes nothing to distances and only imposes a zero-sum
+  // budget that traps informative axes below uniform when other axes park at
+  // the ridge fixed-point of 1.0.
   const lambda = Math.min(10 / pairs.length, 1.0);
   const omega: Record<FpKey, number> = { ...uniform };
 
   // Coordinate descent: for each axis a,
   //   ω_a := (Σ w·δ_a·(g - Σ_{b≠a} ω_b·δ_b) + λ) / (Σ w·δ_a² + λ)
-  // No per-iteration clamping — that happens once, after normalization.
   for (let iter = 0; iter < 25; iter++) {
     let maxDelta = 0;
     for (const a of active) {
@@ -162,17 +163,13 @@ function learnOmega(rated: RatedFp[], type: WineType): OmegaFit {
     if (maxDelta < 1e-4) break;
   }
 
-  // Renormalize active axes so Σ ω_active = |active|, THEN clamp.
-  const sum = active.reduce((s, k) => s + omega[k], 0);
-  if (sum > 0) {
-    const scale = active.length / sum;
-    for (const k of active) omega[k] *= scale;
-  }
+  // Clamp to [0.25, 4.0]. No renormalization.
   for (const k of active)
     omega[k] = Math.min(OMEGA_CLAMP[1], Math.max(OMEGA_CLAMP[0], omega[k]));
   for (const k of RAX) if (!active.includes(k)) omega[k] = 0;
   return { omega, active };
 }
+
 
 // ────────── Step 2: adaptive bandwidth h ──────────
 
