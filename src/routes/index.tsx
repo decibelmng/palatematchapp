@@ -208,12 +208,17 @@ function Home() {
             <PalateBars axes={activeAxes} letters={active.letters} />
           </div>
 
+          <CanonAnchors scope={scope} bottles={bottles ?? []} canons={canons ?? []} />
+
           <div className="mt-10 flex flex-wrap gap-2">
             <Link to="/rate" className="rounded-[14px] border-[0.5px] border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent shadow-[var(--pm-card-shadow)]">
               Edit your ratings ({totalRated})
             </Link>
             <Link to="/rate" className="rounded-[14px] border-[0.5px] border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent shadow-[var(--pm-card-shadow)]">
               Rate more
+            </Link>
+            <Link to="/canons" className="rounded-[14px] border-[0.5px] border-amber-500/50 bg-amber-50/60 dark:bg-amber-950/30 text-amber-800 dark:text-amber-200 px-3 py-1.5 text-xs font-medium hover:bg-amber-100/70 shadow-[var(--pm-card-shadow)] inline-flex items-center gap-1">
+              <Crown size={12} strokeWidth={2.2} fill="currentColor" /> Canon Cellar
             </Link>
           </div>
         </>
