@@ -122,18 +122,28 @@ export async function computePourCandidatesFor(
 }
 
 // Attach `raw` = refingerprinted_at IS NULL for each candidate row so the
-// recommender can down-weight uncalibrated template bottles.
+// recommender can down-weight uncalibrated template bottles. A transient
+// Data API failure here must NOT crash the whole pour request — fall back
+// to `raw = true` (the safe assumption) for any id we couldn't resolve.
 async function attachRawFlag(supabase: any, projected: any[]): Promise<any[]> {
   const ids = projected.map((r) => r.id as string).filter(Boolean);
   const stampById = new Map<string, boolean>();
   for (let i = 0; i < ids.length; i += 500) {
     const chunk = ids.slice(i, i + 500);
-    const { data: srows, error: sErr } = await supabase
-      .from("bottles")
-      .select("id,refingerprinted_at")
-      .in("id", chunk);
-    if (sErr) throw new Error(sErr.message);
-    for (const r of srows ?? []) stampById.set(r.id as string, !r.refingerprinted_at);
+    try {
+      const { data: srows, error: sErr } = await supabase
+        .from("bottles")
+        .select("id,refingerprinted_at")
+        .in("id", chunk);
+      if (sErr) {
+        console.warn("[pour] attachRawFlag: query error, falling back", sErr.message);
+        continue;
+      }
+      for (const r of srows ?? []) stampById.set(r.id as string, !r.refingerprinted_at);
+    } catch (e) {
+      console.warn("[pour] attachRawFlag: fetch failed, falling back", (e as Error)?.message);
+      // Leave this chunk's ids unresolved; they'll default to raw=true below.
+    }
   }
   for (const r of projected) r.raw = stampById.get(r.id as string) ?? true;
   return projected;
