@@ -221,6 +221,34 @@ function RestaurantDetail() {
               const byKey = new Map(section.rows.map((r) => [r.rw.id, r]));
               const rows = orderedKeys.map((k) => byKey.get(k)!).filter(Boolean);
 
+              type RowT = (typeof rows)[number];
+              const laneEligible =
+                layout === "lanes" &&
+                !groupActive &&
+                section.enoughRatings &&
+                rows.length >= 15 &&
+                section.rated.some((r) => r.canon && r.type === section.type);
+              let lanesToRender: ReturnType<typeof applyGlobalCap<RowT>> | null = null;
+              if (laneEligible) {
+                const laneItems: LaneItem<RowT>[] = rows
+                  .filter((r) => !r.vetoed)
+                  .map((r) => ({
+                    predicted: r.predicted ?? 0,
+                    maxSimilarity: r.maxSimilarity,
+                    nearestId: r.nearestId,
+                    vetoed: r.vetoed,
+                    payload: r,
+                  }));
+                const res = buildLanes(laneItems, section.rated, section.type);
+                if (res.hasCanons && res.lanes.length > 0) {
+                  lanesToRender = applyGlobalCap(res.lanes, 8, Math.max(15, rows.length));
+                }
+              }
+
+              const renderRow = (r: RowT) => {
+                const g = groupActive && groupScores ? groupScores.get(r.bottle.id) ?? null : null;
+                return <RestaurantWineRow r={r} g={g} enoughRatings={section.enoughRatings} />;
+              };
 
               return (
                 <section key={section.type}>
@@ -232,69 +260,24 @@ function RestaurantDetail() {
 
                   {rows.length === 0 ? (
                     <p className="mt-2 text-xs text-muted-foreground italic">Nothing matches those filters.</p>
+                  ) : lanesToRender ? (
+                    <LaneList
+                      lanes={lanesToRender}
+                      keyFor={(r: RowT) => r.rw.id}
+                      renderRow={renderRow}
+                    />
                   ) : (
                     <ul className="mt-3 divide-y divide-border">
-                      {rows.map((r) => {
-                        const g = groupActive && groupScores ? groupScores.get(r.bottle.id) ?? null : null;
-                        return (
-                          <li key={r.rw.id} className="py-3 flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <p className="font-medium text-sm leading-tight truncate">{r.bottle.name}</p>
-                                {!r.isCatalog && (
-                                  <span className="shrink-0 rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-border bg-muted text-muted-foreground">
-                                    community
-                                  </span>
-                                )}
-                                {r.greatValue && (
-                                  <span className="shrink-0 rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
-                                    great value
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-xs text-muted-foreground truncate">
-                                {[r.bottle.producer, r.bottle.region, r.price_display].filter(Boolean).join(" · ")}
-                              </p>
-                              <p className="text-[11px] text-muted-foreground mt-0.5">
-                                {r.isStale ? (
-                                  <span className="italic">last seen {freshnessLabel(r.days)} — confirm availability</span>
-                                ) : (
-                                  <span>seen {freshnessLabel(r.days)}</span>
-                                )}
-                              </p>
-                              {g && (
-                                <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
-                                  {g.per_person.map((p, i) => (
-                                    <span key={p.user_id}>
-                                      {i > 0 && <span className="opacity-50"> · </span>}
-                                      <span className="text-foreground/80">{p.display_name}</span>{" "}
-                                      {p.predicted.toFixed(1)}
-                                    </span>
-                                  ))}
-                                </p>
-                              )}
-                            </div>
-                            {g ? (
-                              <div className="shrink-0 text-right">
-                                <span className="font-serif text-primary text-xl">{g.group_min.toFixed(1)}</span>
-                                <span className="text-primary text-sm">★</span>
-                                <p className="text-[10px] text-muted-foreground">avg {g.group_avg.toFixed(1)}</p>
-                              </div>
-                            ) : section.enoughRatings && r.predicted != null ? (
-                              <div className="shrink-0 text-right">
-                                <span className="font-serif text-primary text-xl">{r.predicted.toFixed(1)}</span>
-                                <span className="text-primary text-sm">★</span>
-                              </div>
-                            ) : null}
-                          </li>
-                        );
-                      })}
+                      {rows.map((r) => (
+                        <li key={r.rw.id}>{renderRow(r)}</li>
+                      ))}
                     </ul>
                   )}
                 </section>
               );
             })}
           </div>
+
         </>
       )}
     </div>
