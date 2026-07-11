@@ -225,6 +225,8 @@ type Row = Priced & {
   vintages: number[];
   criticScore: number | null;
   nearestCuvee: CuveeRated | null;
+  nearestIsCanon: boolean;
+  nearestCanonRegion: string | null;
   greatValue: boolean;
   confidence: number | null;
   raw: boolean;            // uncalibrated (import-defaults) cuvée — hide from top 10
