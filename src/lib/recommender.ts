@@ -337,3 +337,6 @@ export function recommend(
 
   return results.sort((a, b) => b.predicted - a.predicted);
 }
+
+export const __debug_learnOmega = learnOmega;
+export const __debug_pickBandwidth = pickBandwidth;
