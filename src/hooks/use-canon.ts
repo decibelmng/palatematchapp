@@ -56,6 +56,21 @@ export function useMyNemeses() {
   return { ...rest, data: (data ?? []).filter((c) => c.tier === "nemesis") };
 }
 
+/** Pure guard: throws if a (tier, stars) pair violates the promotion rules.
+ *  Mirrors the DB trigger `canon_wines_validate_tier` so client failures
+ *  match server failures. Exported for unit tests. */
+export function validateBenchmarkPromotion(tier: BenchmarkTier, stars: number): void {
+  if (tier !== "canon" && tier !== "nemesis") {
+    throw new Error(`Invalid tier: ${tier}`);
+  }
+  if (tier === "canon" && stars < 5) {
+    throw new Error("Only 5★ wines can become a Canon.");
+  }
+  if (tier === "nemesis" && stars > 2) {
+    throw new Error("Only 1★ or 2★ wines can become a Nemesis.");
+  }
+}
+
 function usePromoteBenchmark(tier: BenchmarkTier) {
   const session = useSession();
   const qc = useQueryClient();
@@ -80,12 +95,7 @@ function usePromoteBenchmark(tier: BenchmarkTier) {
         .maybeSingle();
       if (rErr) throw rErr;
       if (!ratingRow) throw new Error(`Rate this bottle before ${tier === "canon" ? "crowning" : "marking"} it.`);
-      if (tier === "canon" && ratingRow.stars < 5) {
-        throw new Error("Only 5★ wines can become a Canon.");
-      }
-      if (tier === "nemesis" && ratingRow.stars > 2) {
-        throw new Error("Only 1★ or 2★ wines can become a Nemesis.");
-      }
+      validateBenchmarkPromotion(tier, ratingRow.stars);
 
       if (args.replace) {
         const { error: dErr } = await (supabase as any)
