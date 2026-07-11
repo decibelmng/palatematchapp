@@ -11,6 +11,7 @@ import {
   type CanonRow,
 } from "@/hooks/use-canon";
 import { useBottlesByIds } from "@/hooks/use-palate-data";
+import { useGenericWarning } from "@/hooks/use-generic-warning";
 
 type Props = {
   bottle: BottleRow;
@@ -28,6 +29,7 @@ export function CanonAction({ bottle, stars, compact = false }: Props) {
   const conflicting = useCanonForScope(bottle);
   const promote = usePromoteCanon();
   const demote = useDemoteCanon();
+  const genericWarning = useGenericWarning();
   const [dialog, setDialog] = useState<"idle" | "confirm" | "replace">("idle");
 
   const myCanonForThis = findBenchmarkForBottle(canons, bottle.id, "canon");
@@ -82,6 +84,8 @@ export function CanonAction({ bottle, stars, compact = false }: Props) {
           existing={dialog === "replace" ? conflicting : null}
           onCancel={() => setDialog("idle")}
           onConfirm={async () => {
+            const ok = await genericWarning.confirmIfGeneric(bottle);
+            if (!ok) { setDialog("idle"); return; }
             await promote.mutateAsync({ bottle, replace: dialog === "replace" ? conflicting : null });
             setDialog("idle");
           }}
