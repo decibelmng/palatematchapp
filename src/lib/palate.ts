@@ -84,10 +84,16 @@ export function computeCode(rated: RatedBottle[], axes: AxisDef[]): { code: stri
       return { ...base, letter: axisDef.low, descriptor: axisDef.lowName, resolved: true, value: 0, bimodal: false };
     }
 
+    // Bimodal (X) requires real evidence at BOTH poles, not one outlier:
+    //   - ≥6 rated wines of this type overall (avoids early-onboarding noise)
+    //   - ≥2 loved (≥4★) anchors at the low pole (<0.42)
+    //   - ≥2 loved anchors at the high pole (>0.58)
+    // Otherwise fall through to the standard letter based on weighted mean.
     let bimodal = false;
-    if (loved.length >= 2) {
-      const spread = Math.max(...loved) - Math.min(...loved);
-      bimodal = spread >= 0.5 && Math.min(...loved) < 0.42 && Math.max(...loved) > 0.58;
+    if (rated.length >= 6 && loved.length >= 4) {
+      const lowPole = loved.filter((v) => v < 0.42).length;
+      const highPole = loved.filter((v) => v > 0.58).length;
+      bimodal = lowPole >= 2 && highPole >= 2;
     }
 
     let letter: string;
