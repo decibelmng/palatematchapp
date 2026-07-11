@@ -4,6 +4,7 @@ import { toast } from "sonner";
 import { useEligibleSwapCandidates } from "@/hooks/use-swap-candidates";
 import { usePromoteCanon, usePromoteNemesis, type BenchmarkTier } from "@/hooks/use-canon";
 import type { BottleRow } from "@/hooks/use-palate-data";
+import { useGenericWarning } from "@/hooks/use-generic-warning";
 import { WineTypeBadge } from "@/components/WineTypeBadge";
 
 type Props = {
@@ -30,6 +31,7 @@ export function SwapPickerDialog({
   const promoteCanon = usePromoteCanon();
   const promoteNemesis = usePromoteNemesis();
   const promote = tier === "canon" ? promoteCanon : promoteNemesis;
+  const genericWarning = useGenericWarning();
   const [pendingId, setPendingId] = useState<string | null>(null);
 
   const { data: candidates, isLoading } = useEligibleSwapCandidates({
@@ -48,6 +50,8 @@ export function SwapPickerDialog({
   const handlePick = async (b: BottleRow) => {
     setPendingId(b.id);
     try {
+      const ok = await genericWarning.confirmIfGeneric(b);
+      if (!ok) { setPendingId(null); return; }
       await promote.mutateAsync({ bottle: b });
       onSwapped(b, currentBottle);
       onClose();

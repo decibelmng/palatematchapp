@@ -11,6 +11,7 @@ import {
   type CanonRow,
 } from "@/hooks/use-canon";
 import { useBottlesByIds } from "@/hooks/use-palate-data";
+import { useGenericWarning } from "@/hooks/use-generic-warning";
 
 type Props = {
   bottle: BottleRow;
@@ -28,6 +29,7 @@ export function NemesisAction({ bottle, stars, compact = false }: Props) {
   const conflicting = useNemesisForScope(bottle);
   const promote = usePromoteNemesis();
   const demote = useDemoteNemesis();
+  const genericWarning = useGenericWarning();
   const [dialog, setDialog] = useState<"idle" | "confirm" | "replace">("idle");
 
   const myNemesisForThis = findBenchmarkForBottle(canons, bottle.id, "nemesis");
@@ -89,6 +91,8 @@ export function NemesisAction({ bottle, stars, compact = false }: Props) {
           existing={dialog === "replace" ? conflicting : null}
           onCancel={() => setDialog("idle")}
           onConfirm={async () => {
+            const ok = await genericWarning.confirmIfGeneric(bottle);
+            if (!ok) { setDialog("idle"); return; }
             await promote.mutateAsync({ bottle, replace: dialog === "replace" ? conflicting : null });
             setDialog("idle");
           }}
