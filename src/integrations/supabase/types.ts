@@ -601,6 +601,21 @@ export type Database = {
           vintage: number
         }[]
       }
+      rpc_type_centroids: {
+        Args: never
+        Returns: {
+          acid: number
+          body: number
+          fresh: number
+          fruit_dark: number
+          n: number
+          oak: number
+          ripe: number
+          savory: number
+          tannin: number
+          type: string
+        }[]
+      }
       save_rating_with_cascade: {
         Args: { p_bottle_id: string; p_stars: number }
         Returns: {
