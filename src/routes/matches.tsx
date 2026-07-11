@@ -256,7 +256,7 @@ type Row = Priced & {
   vetoNemesisName: string | null;
   vetoAxes: string[];
   maxSimilarity?: number;
-
+  nearestId: string | null;
 };
 
 
