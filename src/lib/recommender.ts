@@ -1,4 +1,21 @@
-// Engine 2 — Kernel-regression recommender over fingerprint axes (type-aware).
+// Engine v2 — "Sharpened Anchor Field"
+//
+// Nonparametric, per-user, per-type recommender:
+//   1) learn axis-importance weights ω from the user's OWN rating contrasts
+//      (non-negative ridge regression on pairwise |Δstars| vs Σ ω·Δxᵢ²);
+//   2) pick an adaptive bandwidth h from the median ω-weighted pair distance;
+//   3) score each candidate as a sharpened Gaussian-kernel weighted mean
+//      (kᵢ = wᵢ·simᵢ^γ), which follows the NEAREST style mode instead of
+//      averaging across modes;
+//   4) shrink gently toward the user's own per-type mean (not a global 3.0),
+//      so a lonely 5★ candidate can predict ~4.6, not 3.8;
+//   5) return the evidence mass M = Σ kᵢ separately from the star score;
+//   6) cap the prediction near plain dislikes (dislike guard).
+//
+// Canon anchors carry BENCHMARK_WEIGHT (= 3.0) as a per-sample weight in
+// both the ridge fit (via pairWeight = wᵢ·wⱼ) and the kernel sum, without
+// contaminating the shrinkage target μᵤ. No axis masking beyond the
+// type-scoped `axisApplies` rule.
 
 export const RAX = [
   "fresh",
@@ -25,9 +42,9 @@ export type BottleFp = {
 
 export type RatedFp = BottleFp & {
   stars: number;
-  /** Sample weight in the kernel regression (default 1.0). Canon wines pass CANON_WEIGHT. */
+  /** Per-sample weight in the kernel regression + ridge fit (default 1). */
   weight?: number;
-  /** True if this rated wine is a Canon anchor for its region. */
+  /** Marks this rated wine as a Canon anchor (drives explanation copy). */
   canon?: boolean;
 };
 
@@ -37,221 +54,286 @@ export type Recommendation = {
   nearest: RatedFp | null;
   nearestIsCanon: boolean;
   maxSimilarity: number;
+  /** Legacy 0..1 confidence derived from evidence mass. */
   confidence: number;
+  /** Raw evidence mass M = Σ kᵢ. */
+  evidence: number;
+  /** "strong" | "moderate" | "exploratory" from M. */
+  evidenceTier: "strong" | "moderate" | "exploratory";
 };
 
-/** Fixed sample-weight multiplier applied to Canon anchors in the kernel regression. */
-export const CANON_WEIGHT = 3.0;
-
+// ────────── Config (single tunable object) ──────────
+export const SHARPEN_GAMMA = 2.0;
+export const PRIOR_ALPHA = 0.5;
+export const BENCHMARK_WEIGHT = 3.0;
+/** Back-compat alias — old code imports CANON_WEIGHT. */
+export const CANON_WEIGHT = BENCHMARK_WEIGHT;
+export const H_FLOOR = 0.12;
+export const H_CAP = 0.35;
+export const H_FALLBACK = 0.20;
+export const OMEGA_CLAMP: [number, number] = [0.25, 4.0];
+export const EVIDENCE_STRONG = 1.5;
+export const EVIDENCE_MODERATE = 0.5;
+const GLOBAL_PRIOR = 3.5;
 
 /**
- * A white/sparkling/rosé bottle has NO tannin and NO fruit_dark signal — those
+ * White/sparkling/rosé have no meaningful tannin / dark-fruit signal — those
  * axes are absent, not zero-valued votes. Shared axes apply to every type.
  */
 export function axisApplies(axis: FpKey, type: WineType): boolean {
-  if (axis === "tannin" || axis === "fruit_dark") return type === "red" || type === "dessert";
+  if (axis === "tannin" || axis === "fruit_dark")
+    return type === "red" || type === "dessert";
   return true;
 }
 
-function corr(xs: number[], ys: number[]): number {
-  const n = xs.length;
-  if (n < 2) return 0;
-  const mx = xs.reduce((a, b) => a + b, 0) / n;
-  const my = ys.reduce((a, b) => a + b, 0) / n;
-  let num = 0, dx = 0, dy = 0;
-  for (let i = 0; i < n; i++) {
-    const a = xs[i] - mx, b = ys[i] - my;
-    num += a * b; dx += a * a; dy += b * b;
-  }
-  const den = Math.sqrt(dx * dy);
-  return den === 0 ? 0 : num / den;
+function activeAxesFor(type: WineType): FpKey[] {
+  return RAX.filter((a) => axisApplies(a, type));
 }
 
-/** Learn per-axis importance weights from rated wines (correlation vs stars).
- *  Falls back to UNIFORM weights across applicable axes when no axis has
- *  ≥2 datapoints — so a single rated wine of a type still yields a signal. */
-function learnWeights(
-  rated: RatedFp[],
-  fallbackType: WineType,
-): { W: Record<FpKey, number>; active: FpKey[] } {
-  const importance: Record<FpKey, number> = {} as Record<FpKey, number>;
-  for (const k of RAX) {
-    const pool = rated.filter((r) => axisApplies(k, r.type));
-    if (pool.length < 2) {
-      importance[k] = 0;
-    } else {
-      const xs = pool.map((r) => r.fp[k]);
-      const ys = pool.map((r) => r.stars);
-      importance[k] = Math.max(Math.abs(corr(xs, ys)), 0.05);
-    }
-  }
-  let active = RAX.filter((k) => importance[k] > 0);
-  const W: Record<FpKey, number> = {} as Record<FpKey, number>;
+// ────────── Step 1: learn axis-importance ω via pairwise non-neg ridge ──────────
 
-  if (active.length === 0) {
-    // Cold-type fallback: uniform across axes applicable to the candidate's type.
-    const applicable = RAX.filter((k) => axisApplies(k, fallbackType));
-    const w = applicable.length > 0 ? 1 / applicable.length : 0;
-    for (const k of RAX) W[k] = applicable.includes(k) ? w : 0;
-    active = applicable;
-  } else {
-    const totalImp = active.reduce((s, k) => s + importance[k], 0);
-    for (const k of RAX) W[k] = totalImp > 0 && active.includes(k) ? importance[k] / totalImp : 0;
-  }
-  return { W, active };
-}
+type OmegaFit = { omega: Record<FpKey, number>; active: FpKey[] };
 
-/** Kernel-regression score of one candidate against a set of same-type rated wines. */
-function scoreCandidate(
-  candidate: BottleFp,
-  sameType: RatedFp[],
-  W: Record<FpKey, number>,
-  active: FpKey[],
-  bandwidth: number,
-  alpha: number,
-  prior: number,
-): { predicted: number; nearest: RatedFp | null; nearestIsCanon: boolean; maxSimilarity: number; confidence: number } | null {
-  if (sameType.length === 0) return null;
-  const twoBwSq = 2 * bandwidth * bandwidth;
-  const used = active.filter((k) => axisApplies(k, candidate.type));
-  let num = 0, den = 0, best = -1, bestAny = -1;
-  let nearest: RatedFp | null = null;
-  let nearestAny: RatedFp | null = null;
-  for (const r of sameType) {
-    if (used.length === 0) continue;
-    let wsum = 0;
-    let d2 = 0;
-    for (const k of used) {
-      const w = W[k];
-      wsum += w;
-      const diff = candidate.fp[k] - r.fp[k];
-      d2 += w * diff * diff;
-    }
-    if (wsum === 0) continue;
-    d2 = d2 / wsum;
-    const sim = Math.exp(-d2 / twoBwSq);
-    // Per-sample weight: Canon wines carry CANON_WEIGHT so their similarity
-    // mass dominates the kernel sum; ordinary rated wines pass weight = 1.
-    const sw = r.weight ?? 1;
-    num += sim * sw * r.stars;
-    den += sim * sw;
-    if (sim > bestAny) { bestAny = sim; nearestAny = r; }
-    if (sim > best && r.stars >= 4) { best = sim; nearest = r; }
-  }
-  if (!nearest) nearest = nearestAny;
-  // Evidence-scaled shrinkage: a candidate surrounded by many similar rated
-  // wines barely feels the prior, while a lonely candidate is still pulled to it.
-  const alphaEff = alpha / (1 + den);
-  const predicted = (num + alphaEff * prior) / (den + alphaEff);
-  const confidence = den / (den + alphaEff);
-  const nearestIsCanon = !!nearest?.canon;
-  return { predicted, nearest, nearestIsCanon, maxSimilarity: Math.max(bestAny, 0), confidence };
-}
+/**
+ * For every pair (i,j) of same-type rated wines:
+ *   target g = |sᵢ - sⱼ| / 4  ∈ [0,1]
+ *   features δₐ = (xᵢₐ - xⱼₐ)²
+ *   pair weight w = wᵢ · wⱼ   (Canon–Nemesis pair carries 9× ordinary weight)
+ * Solve non-negative ridge (min Σ w(g - Σ ω δ)² + λ Σ (ω-1)²) via
+ * coordinate descent with clamping. λ = 10 / n_pairs shrinks strongly to
+ * uniform when data is thin. Then clamp [0.25, 4.0] and renormalize so
+ * Σ_active ω = |active|.
+ *
+ * Fallback: uniform ω = 1 when n < 4.
+ */
+function learnOmega(rated: RatedFp[], type: WineType): OmegaFit {
+  const active = activeAxesFor(type);
+  const uniform: Record<FpKey, number> = {} as Record<FpKey, number>;
+  for (const a of RAX) uniform[a] = active.includes(a) ? 1 : 0;
 
+  if (rated.length < 4) return { omega: uniform, active };
 
-
-
-const BW_GRID = [0.08, 0.12, 0.18, 0.25] as const;
-const ALPHA_GRID = [0.2, 0.4, 0.8] as const;
-const SMALL_SAMPLE_THRESHOLD = 8;
-const DEFAULT_BW = 0.12;
-const DEFAULT_ALPHA = 0.4;
-const GLOBAL_PRIOR = 3.0;
-
-export type KernelParams = { bandwidth: number; alpha: number };
-
-/** Personalized per-type prior with 3-pseudocount shrinkage toward 3.0. */
-export function computeTypePriors(rated: RatedFp[]): Record<WineType, number> {
-  const types: WineType[] = ["red", "white", "sparkling", "rose", "dessert"];
-  const out = {} as Record<WineType, number>;
-  for (const t of types) {
-    const pool = rated.filter((r) => r.type === t);
-    if (pool.length === 0) { out[t] = GLOBAL_PRIOR; continue; }
-    const sum = pool.reduce((s, r) => s + r.stars, 0);
-    out[t] = (sum + 3 * GLOBAL_PRIOR) / (pool.length + 3);
-  }
-  return out;
-}
-
-/** Backwards-compatible bandwidth-only selector (delegates to joint LOO). */
-export function selectBandwidth(rated: RatedFp[]): number {
-  return selectKernelParams(rated).bandwidth;
-}
-
-export type LooCell = { bandwidth: number; alpha: number; error: number };
-
-/** Compute the weighted-LOO error grid used by selectKernelParams. Exported
- *  for diagnostics. Each held-out wine's squared error is weighted by
- *  |stars - typePrior| + 0.5, so extreme (loved/disliked) wines dominate. */
-export function looErrorTable(rated: RatedFp[]): LooCell[] {
-  const priors = computeTypePriors(rated);
-  const cells: LooCell[] = [];
-  for (const bw of BW_GRID) {
-    for (const alpha of ALPHA_GRID) {
-      let err = 0;
-      for (let i = 0; i < rated.length; i++) {
-        const heldOut = rated[i];
-        const rest = rated.slice(0, i).concat(rated.slice(i + 1));
-        const sameType = rest.filter((r) => r.type === heldOut.type);
-        if (sameType.length === 0) continue;
-        const { W, active } = learnWeights(rest, heldOut.type);
-        const scored = scoreCandidate(heldOut, sameType, W, active, bw, alpha, priors[heldOut.type]);
-        if (!scored) continue;
-        const d = scored.predicted - heldOut.stars;
-        const w = Math.abs(heldOut.stars - priors[heldOut.type]) + 0.5;
-        err += w * d * d;
+  // Build pairs
+  type Pair = { g: number; d2: Record<FpKey, number>; w: number };
+  const pairs: Pair[] = [];
+  for (let i = 0; i < rated.length; i++) {
+    for (let j = i + 1; j < rated.length; j++) {
+      const a = rated[i], b = rated[j];
+      const g = Math.abs(a.stars - b.stars) / 4;
+      const d2: Record<FpKey, number> = {} as Record<FpKey, number>;
+      for (const k of active) {
+        const diff = a.fp[k] - b.fp[k];
+        d2[k] = diff * diff;
       }
-      cells.push({ bandwidth: bw, alpha, error: err });
+      pairs.push({ g, d2, w: (a.weight ?? 1) * (b.weight ?? 1) });
     }
   }
-  return cells;
+  if (pairs.length === 0) return { omega: uniform, active };
+
+  const lambda = 10 / pairs.length;
+  const omega: Record<FpKey, number> = { ...uniform };
+
+  // Coordinate descent: for each axis a,
+  //   ω_a := clamp( (Σ w·δ_a·(g - Σ_{b≠a} ω_b·δ_b) + λ) / (Σ w·δ_a² + λ) )
+  for (let iter = 0; iter < 25; iter++) {
+    let maxDelta = 0;
+    for (const a of active) {
+      let num = lambda; // λ · 1  (prior mean 1)
+      let den = lambda;
+      for (const p of pairs) {
+        let partial = p.g;
+        for (const b of active) {
+          if (b === a) continue;
+          partial -= omega[b] * p.d2[b];
+        }
+        const da = p.d2[a];
+        num += p.w * da * partial;
+        den += p.w * da * da;
+      }
+      const raw = den > 0 ? num / den : 1;
+      const clamped = Math.min(OMEGA_CLAMP[1], Math.max(OMEGA_CLAMP[0], raw));
+      maxDelta = Math.max(maxDelta, Math.abs(clamped - omega[a]));
+      omega[a] = clamped;
+    }
+    if (maxDelta < 1e-4) break;
+  }
+
+  // Renormalize active axes so Σ ω_active = |active|
+  const sum = active.reduce((s, k) => s + omega[k], 0);
+  if (sum > 0) {
+    const scale = active.length / sum;
+    for (const k of active) omega[k] *= scale;
+    // Re-clamp after normalization (rare edge case)
+    for (const k of active)
+      omega[k] = Math.min(OMEGA_CLAMP[1], Math.max(OMEGA_CLAMP[0], omega[k]));
+  }
+  for (const k of RAX) if (!active.includes(k)) omega[k] = 0;
+  return { omega, active };
 }
 
-/** Joint leave-one-out CV over (bandwidth, alpha), using personalized per-type
- *  priors and an extremes-weighted squared-error objective so a timid kernel
- *  (huge alpha, tiny bandwidth) can't win by predicting the prior. */
-export function selectKernelParams(rated: RatedFp[]): KernelParams {
-  if (rated.length < SMALL_SAMPLE_THRESHOLD) {
-    return { bandwidth: DEFAULT_BW, alpha: DEFAULT_ALPHA };
+// ────────── Step 2: adaptive bandwidth h ──────────
+
+function omegaDistance(
+  a: Record<FpKey, number>,
+  b: Record<FpKey, number>,
+  omega: Record<FpKey, number>,
+  active: FpKey[],
+): number {
+  let num = 0, den = 0;
+  for (const k of active) {
+    const w = omega[k];
+    if (w <= 0) continue;
+    const diff = a[k] - b[k];
+    num += w * diff * diff;
+    den += w;
   }
-  const table = looErrorTable(rated);
-  let best: KernelParams = { bandwidth: DEFAULT_BW, alpha: DEFAULT_ALPHA };
-  let bestErr = Infinity;
-  for (const c of table) {
-    if (c.error < bestErr) { bestErr = c.error; best = { bandwidth: c.bandwidth, alpha: c.alpha }; }
-  }
-  return best;
+  return den > 0 ? Math.sqrt(num / den) : 0;
 }
+
+function median(xs: number[]): number {
+  if (xs.length === 0) return 0;
+  const sorted = [...xs].sort((a, b) => a - b);
+  const mid = sorted.length >> 1;
+  return sorted.length % 2 === 0
+    ? (sorted[mid - 1] + sorted[mid]) / 2
+    : sorted[mid];
+}
+
+function pickBandwidth(rated: RatedFp[], fit: OmegaFit): number {
+  if (rated.length < 3) return H_FALLBACK;
+  const dists: number[] = [];
+  for (let i = 0; i < rated.length; i++) {
+    for (let j = i + 1; j < rated.length; j++) {
+      dists.push(omegaDistance(rated[i].fp, rated[j].fp, fit.omega, fit.active));
+    }
+  }
+  const raw = median(dists) / 2;
+  return Math.min(H_CAP, Math.max(H_FLOOR, raw));
+}
+
+// ────────── Step 4 helper: unweighted per-type mean (excludes benchmark inflation) ──────────
+
+function typeMean(rated: RatedFp[]): number {
+  if (rated.length === 0) return GLOBAL_PRIOR;
+  // Use raw stars — do NOT multiply by benchmark weights, so μᵤ reflects
+  // the user's actual ordinary taste, not their crowning bias.
+  const sum = rated.reduce((s, r) => s + r.stars, 0);
+  return sum / rated.length;
+}
+
+function shrinkPrior(mean: number, n: number): number {
+  // (n·μᵤ + 3·GLOBAL_PRIOR) / (n + 3)
+  return (n * mean + 3 * GLOBAL_PRIOR) / (n + 3);
+}
+
+// ────────── Step 5: evidence tier ──────────
+
+function evidenceTier(M: number): Recommendation["evidenceTier"] {
+  if (M >= EVIDENCE_STRONG) return "strong";
+  if (M >= EVIDENCE_MODERATE) return "moderate";
+  return "exploratory";
+}
+
+// ────────── Per-type context (cached across candidates in one recommend() call) ──────────
+
+type TypeCtx = {
+  rated: RatedFp[];
+  fit: OmegaFit;
+  h: number;
+  mu: number;
+  muPrior: number;
+};
+
+function buildCtx(rated: RatedFp[], type: WineType): TypeCtx | null {
+  const same = rated.filter((r) => r.type === type);
+  if (same.length === 0) return null;
+  const fit = learnOmega(same, type);
+  const h = pickBandwidth(same, fit);
+  const mu = typeMean(same);
+  const muPrior = shrinkPrior(mu, same.length);
+  return { rated: same, fit, h, mu, muPrior };
+}
+
+// ────────── Score one candidate ──────────
+
+function scoreOne(cand: BottleFp, ctx: TypeCtx): Recommendation {
+  const { rated, fit, h, muPrior } = ctx;
+  const twoH2 = 2 * h * h;
+
+  let num = 0;
+  let M = 0;
+  let bestK = -Infinity;
+  let bestKAnchor: RatedFp | null = null;
+  let bestSim = 0;
+  let nearestByDist: RatedFp | null = null;
+  let nearestDist = Infinity;
+
+  for (const r of rated) {
+    const d = omegaDistance(cand.fp, r.fp, fit.omega, fit.active);
+    const sim = Math.exp(-(d * d) / twoH2);
+    const w = r.weight ?? 1;
+    const k = w * Math.pow(sim, SHARPEN_GAMMA);
+    num += k * r.stars;
+    M += k;
+    if (sim > bestSim) bestSim = sim;
+    if (k > bestK) { bestK = k; bestKAnchor = r; }
+    if (d < nearestDist) { nearestDist = d; nearestByDist = r; }
+  }
+
+  let predicted = (num + PRIOR_ALPHA * muPrior) / (M + PRIOR_ALPHA);
+
+  // Step 6: dislike guard — nearest anchor by ω-distance is a dislike we're
+  // sitting on top of. Cap so a lonely candidate glued to a 1★ can't average
+  // its way to a middling score.
+  if (nearestByDist && nearestByDist.stars <= 2 && nearestDist < h) {
+    const cap = nearestByDist.stars + 0.5;
+    if (predicted > cap) predicted = cap;
+  }
+
+  predicted = Math.min(5, Math.max(1, predicted));
+  const tier = evidenceTier(M);
+
+  return {
+    bottle: cand,
+    predicted,
+    nearest: bestKAnchor,
+    nearestIsCanon: !!bestKAnchor?.canon,
+    maxSimilarity: bestSim,
+    confidence: M / (M + PRIOR_ALPHA),
+    evidence: M,
+    evidenceTier: tier,
+  };
+}
+
+// ────────── Public entry ──────────
 
 export function recommend(
   rated: RatedFp[],
   unrated: BottleFp[],
-  opts: { bandwidth?: number; shrinkAlpha?: number; shrinkPrior?: number; restrictToRatedTypes?: boolean } = {},
+  opts: { restrictToRatedTypes?: boolean } = {},
 ): Recommendation[] {
   if (rated.length === 0) return [];
-  const params = (opts.bandwidth === undefined || opts.shrinkAlpha === undefined)
-    ? selectKernelParams(rated)
-    : { bandwidth: opts.bandwidth, alpha: opts.shrinkAlpha };
-  const bw = opts.bandwidth ?? params.bandwidth;
-  const alpha = opts.shrinkAlpha ?? params.alpha;
-  const typePriors = computeTypePriors(rated);
   const restrict = opts.restrictToRatedTypes ?? true;
 
   const ratedTypes = new Set(rated.map((r) => r.type));
-  const candidates = restrict ? unrated.filter((b) => ratedTypes.has(b.type)) : unrated;
+  const candidates = restrict
+    ? unrated.filter((b) => ratedTypes.has(b.type))
+    : unrated;
 
-  const results: Recommendation[] = candidates
-    .map((b) => {
-      const sameType = rated.filter((r) => r.type === b.type);
-      if (sameType.length === 0) return null;
-      const { W, active } = learnWeights(sameType, b.type);
-      const prior = opts.shrinkPrior ?? typePriors[b.type] ?? GLOBAL_PRIOR;
-      const scored = scoreCandidate(b, sameType, W, active, bw, alpha, prior);
-      if (!scored) return null;
-      return { bottle: b, ...scored };
-    })
-    .filter((r): r is Recommendation => r !== null);
+  // Build per-type context once.
+  const ctxByType = new Map<WineType, TypeCtx | null>();
+  for (const t of ratedTypes) ctxByType.set(t, buildCtx(rated, t));
+
+  const results: Recommendation[] = [];
+  for (const b of candidates) {
+    let ctx = ctxByType.get(b.type);
+    if (ctx === undefined) {
+      ctx = buildCtx(rated, b.type);
+      ctxByType.set(b.type, ctx);
+    }
+    if (!ctx) continue;
+    results.push(scoreOne(b, ctx));
+  }
 
   return results.sort((a, b) => b.predicted - a.predicted);
 }
-
