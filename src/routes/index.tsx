@@ -38,7 +38,11 @@ function Home() {
   const ratedIds = useMemo(() => (ratings ?? []).map((r) => r.bottle_id), [ratings]);
   const { data: bottles } = useBottlesByIds(ratedIds);
 
-  // Palate letter code inputs (unchanged math)
+  const { data: canons } = useMyCanons();
+  const canonBottleIds = useMemo(() => new Set((canons ?? []).map((c) => c.bottle_id)), [canons]);
+
+  // Palate letter code inputs (unchanged math). Canon-anchored bottles pass
+  // canon:true so computeCode multiplies their sample weight by CANON_WEIGHT.
   const { redRated, whiteRated } = useMemo(() => {
     const byId = new Map((bottles ?? []).map((b) => [b.id, b]));
     const redRated: RatedBottle[] = [];
@@ -47,11 +51,12 @@ function Home() {
       const b = byId.get(r.bottle_id);
       if (!b) continue;
       const t = bottleType(b);
-      if (t === "red") redRated.push({ stars: r.stars, values: bottleToValues(b, "red") });
-      else if (t === "white") whiteRated.push({ stars: r.stars, values: bottleToValues(b, "white") });
+      const canon = canonBottleIds.has(b.id);
+      if (t === "red") redRated.push({ stars: r.stars, values: bottleToValues(b, "red"), canon });
+      else if (t === "white") whiteRated.push({ stars: r.stars, values: bottleToValues(b, "white"), canon });
     }
     return { redRated, whiteRated };
-  }, [bottles, ratings]);
+  }, [bottles, ratings, canonBottleIds]);
 
   const red = useMemo(() => computeCode(redRated, axesFor("red")), [redRated]);
   const white = useMemo(() => computeCode(whiteRated, axesFor("white")), [whiteRated]);
