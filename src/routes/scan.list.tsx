@@ -683,6 +683,7 @@ function Scan() {
               groupScores={groupScores}
               groupActive={groupActive}
               groupLoading={groupPred.isFetching}
+              producers={cellar.producers}
             />
           ))}
         </div>
