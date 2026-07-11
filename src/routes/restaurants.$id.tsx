@@ -283,3 +283,77 @@ function RestaurantDetail() {
     </div>
   );
 }
+
+type WineRow = {
+  rw: { id: string };
+  bottle: { id: string; name: string; producer?: string | null; region?: string | null };
+  predicted: number | null;
+  price_display: string | null;
+  days: number;
+  isStale: boolean;
+  isCatalog: boolean;
+  greatValue: boolean;
+};
+
+function RestaurantWineRow({
+  r,
+  g,
+  enoughRatings,
+}: {
+  r: WineRow;
+  g: GroupScored | null;
+  enoughRatings: boolean;
+}) {
+  return (
+    <div className="py-3 flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="font-medium text-sm leading-tight truncate">{r.bottle.name}</p>
+          {!r.isCatalog && (
+            <span className="shrink-0 rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-border bg-muted text-muted-foreground">
+              community
+            </span>
+          )}
+          {r.greatValue && (
+            <span className="shrink-0 rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
+              great value
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground truncate">
+          {[r.bottle.producer, r.bottle.region, r.price_display].filter(Boolean).join(" · ")}
+        </p>
+        <p className="text-[11px] text-muted-foreground mt-0.5">
+          {r.isStale ? (
+            <span className="italic">last seen {freshnessLabel(r.days)} — confirm availability</span>
+          ) : (
+            <span>seen {freshnessLabel(r.days)}</span>
+          )}
+        </p>
+        {g && (
+          <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
+            {g.per_person.map((p, i) => (
+              <span key={p.user_id}>
+                {i > 0 && <span className="opacity-50"> · </span>}
+                <span className="text-foreground/80">{p.display_name}</span>{" "}
+                {p.predicted.toFixed(1)}
+              </span>
+            ))}
+          </p>
+        )}
+      </div>
+      {g ? (
+        <div className="shrink-0 text-right">
+          <span className="font-serif text-primary text-xl">{g.group_min.toFixed(1)}</span>
+          <span className="text-primary text-sm">★</span>
+          <p className="text-[10px] text-muted-foreground">avg {g.group_avg.toFixed(1)}</p>
+        </div>
+      ) : enoughRatings && r.predicted != null ? (
+        <div className="shrink-0 text-right">
+          <span className="font-serif text-primary text-xl">{r.predicted.toFixed(1)}</span>
+          <span className="text-primary text-sm">★</span>
+        </div>
+      ) : null}
+    </div>
+  );
+}
