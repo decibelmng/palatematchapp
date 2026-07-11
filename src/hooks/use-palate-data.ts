@@ -135,6 +135,7 @@ export function useRate() {
     },
     onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: ["ratings"] });
+      qc.invalidateQueries({ queryKey: ["palate-version"] });
       // Self-healing: fire-and-forget cuvée re-fingerprint. The stamp in the
       // DB is the natural once-ever guard; failures/skips are silent.
       if (result?.stars !== null) {
