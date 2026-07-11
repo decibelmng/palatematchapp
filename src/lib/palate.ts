@@ -38,7 +38,12 @@ export type RatedBottle = {
   stars: number;
   /** Values for this type's axes; keys match axesFor(type)[i].key. */
   values: Record<string, number>;
+  /** True if this rated bottle is a Canon anchor. Its sample weight is multiplied by CANON_WEIGHT. */
+  canon?: boolean;
 };
+
+/** Same multiplier used in the kernel recommender — kept local to avoid a cycle. */
+const CANON_WEIGHT = 3.0;
 
 export type LetterResult = {
   axis: string;
