@@ -130,11 +130,16 @@ function learnOmega(rated: RatedFp[], type: WineType): OmegaFit {
   }
   if (pairs.length === 0) return { omega: uniform, active };
 
-  const lambda = 10 / pairs.length;
+  // Option-2 fix: rescale to Σω=A BEFORE clamping so a data-driven axis
+  // doesn't get pinned below uniform by ridge on the other axes. Ridge is
+  // additionally capped at 1.0 so a thin-data user with n≈4–8 ratings can
+  // still see informative axes rise above uniform.
+  const lambda = Math.min(10 / pairs.length, 1.0);
   const omega: Record<FpKey, number> = { ...uniform };
 
   // Coordinate descent: for each axis a,
-  //   ω_a := clamp( (Σ w·δ_a·(g - Σ_{b≠a} ω_b·δ_b) + λ) / (Σ w·δ_a² + λ) )
+  //   ω_a := (Σ w·δ_a·(g - Σ_{b≠a} ω_b·δ_b) + λ) / (Σ w·δ_a² + λ)
+  // No per-iteration clamping — that happens once, after normalization.
   for (let iter = 0; iter < 25; iter++) {
     let maxDelta = 0;
     for (const a of active) {
@@ -150,23 +155,21 @@ function learnOmega(rated: RatedFp[], type: WineType): OmegaFit {
         num += p.w * da * partial;
         den += p.w * da * da;
       }
-      const raw = den > 0 ? num / den : 1;
-      const clamped = Math.min(OMEGA_CLAMP[1], Math.max(OMEGA_CLAMP[0], raw));
-      maxDelta = Math.max(maxDelta, Math.abs(clamped - omega[a]));
-      omega[a] = clamped;
+      const raw = den > 0 ? Math.max(0, num / den) : 1;
+      maxDelta = Math.max(maxDelta, Math.abs(raw - omega[a]));
+      omega[a] = raw;
     }
     if (maxDelta < 1e-4) break;
   }
 
-  // Renormalize active axes so Σ ω_active = |active|
+  // Renormalize active axes so Σ ω_active = |active|, THEN clamp.
   const sum = active.reduce((s, k) => s + omega[k], 0);
   if (sum > 0) {
     const scale = active.length / sum;
     for (const k of active) omega[k] *= scale;
-    // Re-clamp after normalization (rare edge case)
-    for (const k of active)
-      omega[k] = Math.min(OMEGA_CLAMP[1], Math.max(OMEGA_CLAMP[0], omega[k]));
   }
+  for (const k of active)
+    omega[k] = Math.min(OMEGA_CLAMP[1], Math.max(OMEGA_CLAMP[0], omega[k]));
   for (const k of RAX) if (!active.includes(k)) omega[k] = 0;
   return { omega, active };
 }
