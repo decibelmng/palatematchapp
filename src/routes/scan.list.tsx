@@ -346,6 +346,18 @@ function Scan() {
     }));
   }, [ratedBottles, ratings]);
 
+  // Cellar-memory matches (Tier 1 exact / Tier 2 same cuvée). Recomputed
+  // whenever ratings or scanned wines change — so a wine rated AFTER the scan
+  // was saved will appear when the scan is reopened.
+  const cellar = useMemo(() => {
+    return computeCellarMemory({
+      readable,
+      ratedBottles: ratedBottles ?? [],
+      ratings: ratings ?? [],
+      canons: myCanons ?? [],
+    });
+  }, [readable, ratedBottles, ratings, myCanons]);
+
   const ranked: Ranked[] = useMemo(() => {
     if (readable.length === 0) return [];
     const candidates: BottleFp[] = readable.map((w, i) => ({
@@ -366,11 +378,24 @@ function Scan() {
     return recs.map((r) => ({ ...r, scanned: byId.get(r.bottle.id)! }));
   }, [readable, ratedRows]);
 
+  // Predictions keyed by scanned index (for Tier 2 hybrid card).
+  const predictionsByIndex = useMemo(() => {
+    const m = new Map<number, Recommendation>();
+    for (const r of ranked) {
+      const idx = Number(r.bottle.id.replace("scan-", ""));
+      if (!Number.isNaN(idx)) m.set(idx, r);
+    }
+    return m;
+  }, [ranked]);
+
   const enoughRatings = ratedRows.length >= 3;
 
   const grouped: { type: WineType; rows: ScanRow[] }[] = useMemo(() => {
     const buckets = new Map<WineType, ScanRow[]>();
     ranked.forEach((r, i) => {
+      const idx = Number(r.bottle.id.replace("scan-", ""));
+      // Skip anything already surfaced in cellar memory (both tiers).
+      if (cellar.byIndex.has(idx)) return;
       const t = (r.scanned.type ?? "red") as WineType;
       const p = normalizePrice(r.scanned.price ?? null);
       const isCatalog = r.scanned.fp_source === "catalog";
@@ -391,7 +416,7 @@ function Scan() {
     });
     const order: WineType[] = ["red", "white", "rose", "sparkling", "dessert"];
     return order.filter((t) => buckets.has(t)).map((t) => ({ type: t, rows: buckets.get(t)! }));
-  }, [ranked]);
+  }, [ranked, cellar]);
 
   const group = useGroupSelection();
   const groupCandidates: GroupCandidateInput[] = useMemo(() => {
