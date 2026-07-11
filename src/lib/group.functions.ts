@@ -32,6 +32,7 @@ export type GroupPerPerson = {
   n_ratings_same_type: number;
   still_learning: boolean;      // < 3 same-type ratings
   contributed_min: number;      // predicted after floor-3.0 rule
+  vetoed: boolean;              // candidate hit this member's Nemesis radius
 };
 
 export type GroupScored = {
@@ -39,7 +40,10 @@ export type GroupScored = {
   per_person: GroupPerPerson[];
   group_min: number;   // used for ranking (uses contributed_min per person)
   group_avg: number;   // simple mean of raw predicted
+  /** display names of members for whom this candidate is inside a Nemesis radius. */
+  nemesis_flagged_by: string[];
 };
+
 
 async function loadMemberRatings(admin: any, userId: string): Promise<RatedFp[]> {
   const { data: ratings, error: rErr } = await admin
