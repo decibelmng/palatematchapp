@@ -21,6 +21,9 @@ import { applyControls, normalizePrice, isGreatValue, DEFAULT_CONTROLS, type Con
 import type { GroupScored } from "@/lib/group.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useMyCanons } from "@/hooks/use-canon";
+import { computeCellarMemory, producerLookup } from "@/lib/cellar-memory";
+import { CellarMemorySection } from "@/components/CellarMemorySection";
 
 export const Route = createFileRoute("/scan/list")({
   ssr: false,
