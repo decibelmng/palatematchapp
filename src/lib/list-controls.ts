@@ -69,6 +69,7 @@ export type Priced = {
   price_display: string | null;
   isCatalog: boolean;
   predicted: number; // 0 when the user hasn't rated the type yet
+  maxSimilarity?: number;
 };
 
 export function applyControls<T extends Priced>(items: T[], c: Controls): T[] {
@@ -81,34 +82,38 @@ export function applyControls<T extends Priced>(items: T[], c: Controls): T[] {
     else out = out.filter((x) => x.price_band === c.price);
   }
 
+  const byPredictedThenSim = (a: T, b: T) => {
+    if (b.predicted !== a.predicted) return b.predicted - a.predicted;
+    return (b.maxSimilarity ?? 0) - (a.maxSimilarity ?? 0);
+  };
+
   const cmp = (a: T, b: T) => {
     switch (c.sort) {
       case "price_asc": {
         const av = a.price_amount ?? Infinity;
         const bv = b.price_amount ?? Infinity;
         if (av !== bv) return av - bv;
-        return b.predicted - a.predicted;
+        return byPredictedThenSim(a, b);
       }
       case "price_desc": {
         const av = a.price_amount ?? -Infinity;
         const bv = b.price_amount ?? -Infinity;
         if (av !== bv) return bv - av;
-        return b.predicted - a.predicted;
+        return byPredictedThenSim(a, b);
       }
       case "value": {
-        // Higher predicted stars per € wins. Unknown price → sinks to bottom.
         const av = a.price_amount && a.price_amount > 0 ? a.predicted / a.price_amount : -Infinity;
         const bv = b.price_amount && b.price_amount > 0 ? b.predicted / b.price_amount : -Infinity;
         if (av !== bv) return bv - av;
-        return b.predicted - a.predicted;
+        return byPredictedThenSim(a, b);
       }
       case "confident": {
         if (a.isCatalog !== b.isCatalog) return a.isCatalog ? -1 : 1;
-        return b.predicted - a.predicted;
+        return byPredictedThenSim(a, b);
       }
       case "best":
       default:
-        return b.predicted - a.predicted;
+        return byPredictedThenSim(a, b);
     }
   };
 

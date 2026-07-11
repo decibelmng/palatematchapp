@@ -255,6 +255,8 @@ type Row = Priced & {
   vetoed: boolean;
   vetoNemesisName: string | null;
   vetoAxes: string[];
+  maxSimilarity?: number;
+
 };
 
 
@@ -287,6 +289,7 @@ function toRows(section: Section, canonRegionByBottle: Map<string, string>): Row
         vetoed: r.vetoed,
         vetoNemesisName: r.vetoReason?.nemesis.name ?? null,
         vetoAxes: r.vetoReason?.drivingAxes ?? [],
+        maxSimilarity: r.maxSimilarity,
       };
       row.greatValue = !row.vetoed && isGreatValue(row);
       return row;
@@ -472,6 +475,17 @@ function SectionView({ section, groupScores, groupActive, groupLoading, canonReg
                     <>
                       <span className="font-serif text-primary text-xl">{r.predicted.toFixed(1)}</span>
                       <span className="text-primary text-sm">★</span>
+                      {typeof r.maxSimilarity === "number" && (
+                        <p
+                          className="mt-0.5 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-border bg-muted text-muted-foreground"
+                          title={`Similarity to nearest anchor: ${(r.maxSimilarity * 100).toFixed(0)}%`}
+                        >
+                          {r.maxSimilarity >= 0.85 ? "strong match"
+                            : r.maxSimilarity >= 0.65 ? "close match"
+                            : r.maxSimilarity >= 0.45 ? "loose match"
+                            : "distant match"}
+                        </p>
+                      )}
                       {r.confidence !== null && r.confidence < 0.35 && (
                         <p className="mt-0.5 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-border bg-muted text-muted-foreground">
                           low match data
