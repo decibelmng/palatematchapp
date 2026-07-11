@@ -202,6 +202,47 @@ describe("Engine v2 — acceptance", () => {
     const weightedFit = __debug_learnOmega!(weighted, "red");
     expect(weightedFit.omega.body).toBeGreaterThanOrEqual(plainFit.omega.body);
   });
+
+  it("(9) D3 inversion is bounded: k informative axes stay ≥0.85× uniform, and beat uniform by n=8", () => {
+    // Regression guard for the documented D3 case: variance concentrated on
+    // 2 axes (body + tannin), everything else held constant. With only 4
+    // anchors the Σω=A rescale can dip informative axes below uniform (1.0),
+    // but the drift must be bounded — no informative axis may fall below
+    // 0.85× uniform. By n=8 anchors the inversion must vanish entirely.
+    const uniform = 1.0;
+    const floor = 0.85 * uniform;
+    const informative: FpKey[] = ["body", "tannin"];
+    const uninformative: FpKey[] = ["fresh", "acid", "ripe", "oak", "savory", "fruit_dark"];
+
+    // --- n=4: bounded inversion allowed, drift must not exceed 15% ---
+    const small: RatedFp[] = [
+      rated("hi1", 5, { body: 0.90, tannin: 0.88 }),
+      rated("hi2", 5, { body: 0.85, tannin: 0.92 }),
+      rated("lo1", 1, { body: 0.10, tannin: 0.12 }),
+      rated("lo2", 1, { body: 0.15, tannin: 0.08 }),
+    ];
+    const smallFit = __debug_learnOmega!(small, "red");
+    for (const k of informative) {
+      expect(smallFit.omega[k]).toBeGreaterThanOrEqual(floor);
+    }
+
+    // --- n=8: inversion must vanish. Every informative axis > every uninformative axis. ---
+    const large: RatedFp[] = [
+      rated("h1", 5, { body: 0.90, tannin: 0.88 }),
+      rated("h2", 5, { body: 0.85, tannin: 0.92 }),
+      rated("h3", 5, { body: 0.88, tannin: 0.86 }),
+      rated("h4", 4, { body: 0.78, tannin: 0.80 }),
+      rated("l1", 1, { body: 0.10, tannin: 0.12 }),
+      rated("l2", 1, { body: 0.15, tannin: 0.08 }),
+      rated("l3", 2, { body: 0.22, tannin: 0.18 }),
+      rated("l4", 1, { body: 0.12, tannin: 0.14 }),
+    ];
+    const largeFit = __debug_learnOmega!(large, "red");
+    const minInformative = Math.min(...informative.map((k) => largeFit.omega[k]));
+    const maxUninformative = Math.max(...uninformative.map((k) => largeFit.omega[k]));
+    expect(minInformative).toBeGreaterThan(uniform);
+    expect(minInformative).toBeGreaterThan(maxUninformative);
+  });
 });
 
 // ---------- computeCode() ----------
