@@ -199,6 +199,33 @@ export function useRate() {
       qc.invalidateQueries({ queryKey: ["palate-version"] });
       if (result?.demotedTier) {
         qc.invalidateQueries({ queryKey: ["canons"] });
+        // 10s undo — restores rating + benchmark in one atomic RPC (+1 version bump).
+        const verb = result.demotedTier === "canon" ? "Canon" : "Nemesis";
+        toast(`${verb} removed (rating changed).`, {
+          duration: 10_000,
+          action: {
+            label: "Undo",
+            onClick: async () => {
+              if (result.previousStars == null) {
+                toast.error("No previous rating to restore.");
+                return;
+              }
+              const { error } = await (supabase as any).rpc("restore_rating_and_benchmark", {
+                p_bottle_id: result.bottleId,
+                p_stars: result.previousStars,
+                p_tier: result.demotedTier,
+              });
+              if (error) {
+                toast.error(error.message || "Couldn't undo.");
+                return;
+              }
+              qc.invalidateQueries({ queryKey: ["ratings"] });
+              qc.invalidateQueries({ queryKey: ["canons"] });
+              qc.invalidateQueries({ queryKey: ["palate-version"] });
+              toast.success("Restored.");
+            },
+          },
+        });
       }
       // Self-healing cuvée re-fingerprint (unchanged).
       if (result?.stars !== null) {
