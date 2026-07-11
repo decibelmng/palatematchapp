@@ -33,7 +33,7 @@ const TYPE_LABEL: Record<WineType, string> = {
   dessert: "Dessert wines for you",
 };
 
-type RankedCuvee = Recommendation & { cuvee: CuveeCandidate; nearestCuvee: CuveeRated | null };
+type RankedCuvee = Recommendation & { cuvee: CuveeCandidate; nearestCuvee: CuveeRated | null; nearestIsCanon: boolean };
 
 type Section =
   | { type: WineType; mode: "personalized"; nSameType: number; items: RankedCuvee[] }
