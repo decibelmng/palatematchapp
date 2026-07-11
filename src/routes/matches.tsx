@@ -411,6 +411,35 @@ function SectionView({ section, groupScores, groupActive, groupLoading, canonReg
   const hidden = Math.max(0, calibrated.length - visible.length - vetoed.length);
   const [showRaw, setShowRaw] = useState(false);
 
+  // ── Lane clustering (presentation-only) ──
+  // Lanes require: personalized mode, layout preference = "lanes", section
+  // has Canons for this type, and we're not in group mode (group keeps the
+  // flat maximin list).
+  const laneEligible =
+    section.mode === "personalized" &&
+    layout === "lanes" &&
+    !groupActive &&
+    section.ratedFp.some((r) => r.canon);
+  const laneItems = useMemo<LaneItem<Row>[]>(() => {
+    if (!laneEligible) return [];
+    return calibrated.map((r) => ({
+      predicted: r.predicted,
+      maxSimilarity: r.maxSimilarity ?? 0,
+      nearestId: r.nearestId,
+      vetoed: r.vetoed,
+      raw: r.raw,
+      payload: r,
+    }));
+  }, [laneEligible, calibrated]);
+  const laneResult = useMemo(() => {
+    if (!laneEligible || section.mode !== "personalized") return null;
+    const res = buildLanes(laneItems, section.ratedFp, section.type);
+    if (!res.hasCanons) return null;
+    return { ...res, lanes: applyGlobalCap(res.lanes, 8, 15) };
+  }, [laneEligible, laneItems, section]);
+  const useLanes = !!laneResult && laneResult.lanes.length > 0;
+  const lanes = laneResult?.lanes ?? [];
+
   // Dev-only diagnostic so we can chase render-count regressions without
   // bringing back the ad-hoc console dumps. Silent in production.
   if (typeof window !== "undefined" && (import.meta as any).env?.DEV) {
@@ -420,6 +449,7 @@ function SectionView({ section, groupScores, groupActive, groupLoading, canonReg
       `calibrated=${calibrated.length} raw=${rawItems.length}`,
       `visible=${visible.length} vetoed=${vetoed.length} hidden=${hidden}`,
       `groupActive=${groupActive} groupScoresSize=${groupScores?.size ?? "null"}`,
+      `useLanes=${useLanes} lanes=${lanes.length}`,
     );
   }
 
