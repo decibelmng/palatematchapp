@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { CanonBadge } from "@/components/CanonBadge";
+import { NemesisBadge } from "@/components/NemesisBadge";
 import type { CellarMatch } from "@/lib/cellar-memory";
 import type { Recommendation } from "@/lib/recommender";
+
 
 type Props = {
   matches: CellarMatch[];
@@ -57,7 +59,7 @@ export function CellarMemorySection({ matches, predictionsByIndex }: Props) {
 
 function Tier1Card({ m }: { m: Extract<CellarMatch, { tier: 1 }> }) {
   const w = m.scanned;
-  const isWarn = m.stars <= 2;
+  const isWarn = m.stars <= 2 || m.isNemesis;
   const title = [w.producer, w.wine_name, w.vintage].filter(Boolean).join(" ") || "Rated wine";
   return (
     <div className={`flex items-start justify-between gap-3 ${isWarn ? "rounded-md border border-destructive/40 bg-destructive/5 px-3 py-2 -mx-1" : ""}`}>
@@ -71,15 +73,20 @@ function Tier1Card({ m }: { m: Extract<CellarMatch, { tier: 1 }> }) {
             You rated this
           </span>
           {m.isCanon && <CanonBadge />}
+          {m.isNemesis && <NemesisBadge />}
         </div>
         <p className="text-xs text-muted-foreground truncate">
           {[w.region, w.grape, w.price ?? null].filter(Boolean).join(" · ")}
         </p>
-        {isWarn && (
+        {m.isNemesis ? (
+          <p className="mt-1 text-[11px] text-destructive">
+            Avoid ✕ — this is your Nemesis. You rated it {m.stars}★.
+          </p>
+        ) : isWarn ? (
           <p className="mt-1 text-[11px] text-destructive">
             You rated this {m.stars}★ — you might not want to re-order.
           </p>
-        )}
+        ) : null}
         <Link
           to="/rate"
           className="mt-1 inline-block text-[11px] text-primary underline underline-offset-2"
@@ -88,13 +95,20 @@ function Tier1Card({ m }: { m: Extract<CellarMatch, { tier: 1 }> }) {
         </Link>
       </div>
       <div className="shrink-0 text-right">
-        <span className={`font-serif text-xl ${isWarn ? "text-destructive" : "text-primary"}`}>{m.stars}</span>
-        <span className={`text-sm ${isWarn ? "text-destructive" : "text-primary"}`}>★</span>
+        {m.isNemesis ? (
+          <span className="font-serif text-destructive text-sm uppercase tracking-wider">Avoid ✕</span>
+        ) : (
+          <>
+            <span className={`font-serif text-xl ${isWarn ? "text-destructive" : "text-primary"}`}>{m.stars}</span>
+            <span className={`text-sm ${isWarn ? "text-destructive" : "text-primary"}`}>★</span>
+          </>
+        )}
         <p className="text-[10px] text-muted-foreground">your rating</p>
       </div>
     </div>
   );
 }
+
 
 function Tier2Card({
   m,
