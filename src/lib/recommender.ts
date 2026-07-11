@@ -130,38 +130,28 @@ function learnOmega(rated: RatedFp[], type: WineType): OmegaFit {
   }
   if (pairs.length === 0) return { omega: uniform, active };
 
-  // Ridge target = 1 (uniform prior); λ capped at 1.0 so thin-data users can
-  // still see informative axes rise above uniform. NO Σω=A rescale — the
-  // distance formula d² = Σ ω(x−xᵢ)² / Σ ω is already scale-invariant in ω,
-  // so a rescale contributes nothing to distances and only imposes a zero-sum
-  // budget that traps informative axes below uniform when other axes park at
-  // the ridge fixed-point of 1.0.
+  // Per-axis independent relevance fit (Phase 2 spec correction). For each
+  // axis a in isolation:
+  //   ω_a = (Σ_pairs w·g·δ²_a + λ·1) / (Σ_pairs w·δ⁴_a + λ)
+  // where g = |sᵢ−sⱼ|/4, δ²_a = (xᵢₐ−xⱼₐ)², w = wᵢ·wⱼ, λ = min(10/n_pairs, 1).
+  // Fixed point: δ²_a = 0 for all pairs ⇒ num = den = λ ⇒ ω_a = 1.0 exactly
+  // (uninformative axes rest at prior). Correlated informative axes each get
+  // full credit for the variance they explain — joint-model coupling is
+  // intentionally dropped because it forces co-varying informative axes to
+  // share a budget and land below prior.
   const lambda = Math.min(10 / pairs.length, 1.0);
   const omega: Record<FpKey, number> = { ...uniform };
-
-  // Coordinate descent: for each axis a,
-  //   ω_a := (Σ w·δ_a·(g - Σ_{b≠a} ω_b·δ_b) + λ) / (Σ w·δ_a² + λ)
-  for (let iter = 0; iter < 25; iter++) {
-    let maxDelta = 0;
-    for (const a of active) {
-      let num = lambda; // λ · 1  (prior mean 1)
-      let den = lambda;
-      for (const p of pairs) {
-        let partial = p.g;
-        for (const b of active) {
-          if (b === a) continue;
-          partial -= omega[b] * p.d2[b];
-        }
-        const da = p.d2[a];
-        num += p.w * da * partial;
-        den += p.w * da * da;
-      }
-      const raw = den > 0 ? Math.max(0, num / den) : 1;
-      maxDelta = Math.max(maxDelta, Math.abs(raw - omega[a]));
-      omega[a] = raw;
+  for (const a of active) {
+    let num = lambda; // λ · 1
+    let den = lambda;
+    for (const p of pairs) {
+      const da = p.d2[a];
+      num += p.w * p.g * da;
+      den += p.w * da * da;
     }
-    if (maxDelta < 1e-4) break;
+    omega[a] = den > 0 ? Math.max(0, num / den) : 1;
   }
+
 
   // Clamp to [0.25, 4.0]. No renormalization.
   for (const k of active)
