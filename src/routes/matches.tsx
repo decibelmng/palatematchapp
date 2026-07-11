@@ -135,10 +135,15 @@ function Matches() {
             const cuvee = candByRepId.get(r.bottle.id);
             if (!cuvee) return null;
             const nearestCuvee = r.nearest ? ratedByRepId.get(r.nearest.id) ?? null : null;
-            // Down-weight uncalibrated (raw import default) cuvées so a
-            // template bottle can't outrank a calibrated real match.
-            const predicted = cuvee.raw ? r.predicted * 0.9 : r.predicted;
-            return { ...r, predicted, cuvee, nearestCuvee, nearestIsCanon: r.nearestIsCanon };
+            // Raw (uncalibrated) cuvées: their fingerprint is a template, so
+            // the predicted score AND the veto distance are both unreliable.
+            // Clear veto on raw (we can't trust either direction) and route
+            // them into a separate "Uncalibrated" section that has NO star
+            // prediction. Calibrated wines keep their engine score and veto.
+            if (cuvee.raw) {
+              return { ...r, cuvee, nearestCuvee, nearestIsCanon: r.nearestIsCanon, vetoed: false, vetoReason: null };
+            }
+            return { ...r, cuvee, nearestCuvee, nearestIsCanon: r.nearestIsCanon };
           })
           .filter((x): x is RankedCuvee => x !== null)
           // Preserve engine sort (vetoed sink to bottom, else predicted desc).
