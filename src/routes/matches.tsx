@@ -114,11 +114,13 @@ function Matches() {
         // the Canon anchor in the reason line.
         const ratedFp: RatedFp[] = sameTypeRated.map((r) => {
           const isCanon = r.bottleIds.some((id) => canonBottleIds.has(id));
+          const isNemesis = r.bottleIds.some((id) => nemesisBottleIds.has(id));
           return {
             id: r.id, name: r.name, producer: r.producer, region: r.region,
             type: r.type, fp: r.fp, stars: r.stars,
-            weight: isCanon ? CANON_WEIGHT : 1,
+            weight: isCanon || isNemesis ? BENCHMARK_WEIGHT : 1,
             canon: isCanon,
+            nemesis: isNemesis,
           };
         });
         const candFp: BottleFp[] = cands.map((c) => ({
@@ -139,7 +141,11 @@ function Matches() {
             return { ...r, predicted, cuvee, nearestCuvee, nearestIsCanon: r.nearestIsCanon };
           })
           .filter((x): x is RankedCuvee => x !== null)
-          .sort((a, b) => b.predicted - a.predicted);
+          // Preserve engine sort (vetoed sink to bottom, else predicted desc).
+          .sort((a, b) => {
+            if (a.vetoed !== b.vetoed) return a.vetoed ? 1 : -1;
+            return b.predicted - a.predicted;
+          });
         if (items.length > 0) out.push({ type, mode: "personalized", nSameType: sameTypeRated.length, items });
       }
     }
@@ -147,7 +153,8 @@ function Matches() {
     void cuveeKey; void ratedCuveeByKey;
 
     return out;
-  }, [ratedBottles, ratings, pool, canonBottleIds]);
+  }, [ratedBottles, ratings, pool, canonBottleIds, nemesisBottleIds]);
+
 
   const nRated = ratings?.length ?? 0;
   const loading = !ratings || (ratedIds.length > 0 && !ratedBottles) || !pool;
