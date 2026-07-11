@@ -167,24 +167,27 @@ export function YourRatingsList() {
                   </div>
                 )}
               </div>
-              {aggregated ? (
-                <div className="shrink-0 flex items-center gap-3">
-                  <span className="font-serif text-primary">{c.stars.toFixed(1)}★</span>
-                  <button
-                    className="text-xs text-muted-foreground underline"
-                    onClick={() => {
-                      for (const id of c.bottleIds) rate.mutate({ bottleId: id, stars: null });
-                    }}
-                  >
-                    clear all
-                  </button>
-                </div>
-              ) : (
-                <StarTap
-                  value={c.stars}
-                  onChange={(s) => rate.mutate({ bottleId: c.bottleIds[0], stars: s })}
-                />
-              )}
+              <div className="shrink-0 flex flex-col items-end gap-1.5">
+                {aggregated ? (
+                  <div className="flex items-center gap-3">
+                    <span className="font-serif text-primary">{c.stars.toFixed(1)}★</span>
+                    <button
+                      className="text-xs text-muted-foreground underline"
+                      onClick={() => {
+                        for (const id of c.bottleIds) rate.mutate({ bottleId: id, stars: null });
+                      }}
+                    >
+                      clear all
+                    </button>
+                  </div>
+                ) : (
+                  <StarTap
+                    value={c.stars}
+                    onChange={(s) => rate.mutate({ bottleId: c.bottleIds[0], stars: s })}
+                  />
+                )}
+                {rep && <CanonAction bottle={rep} stars={c.stars} />}
+              </div>
             </li>
           );
         })}
