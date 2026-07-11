@@ -232,10 +232,13 @@ type Row = Priced & {
   raw: boolean;            // uncalibrated (import-defaults) cuvée — hide from top 10
 };
 
-function toRows(section: Section): Row[] {
+function toRows(section: Section, canonRegionByBottle: Map<string, string>): Row[] {
   if (section.mode === "personalized") {
     return section.items.map((r) => {
       const p = normalizePrice(r.cuvee.price_band);
+      const canonRegion = r.nearestIsCanon && r.nearestCuvee
+        ? r.nearestCuvee.bottleIds.map((id) => canonRegionByBottle.get(id)).find(Boolean) ?? r.nearestCuvee.region ?? null
+        : null;
       const row: Row = {
         key: r.cuvee.cuvee,
         id: r.cuvee.id,
@@ -245,6 +248,8 @@ function toRows(section: Section): Row[] {
         vintages: r.cuvee.vintages,
         criticScore: r.cuvee.critic_score,
         nearestCuvee: r.nearestCuvee,
+        nearestIsCanon: r.nearestIsCanon,
+        nearestCanonRegion: canonRegion,
         price_amount: p.amount,
         price_band: p.band,
         price_display: p.display,
@@ -269,6 +274,8 @@ function toRows(section: Section): Row[] {
       vintages: c.vintages,
       criticScore: c.critic_score,
       nearestCuvee: null,
+      nearestIsCanon: false,
+      nearestCanonRegion: null,
       price_amount: p.amount,
       price_band: p.band,
       price_display: p.display,
@@ -286,9 +293,10 @@ type SectionViewProps = {
   groupScores: Map<string, GroupScored> | null;
   groupActive: boolean;
   groupLoading: boolean;
+  canonRegionByBottle: Map<string, string>;
 };
 
-function SectionView({ section, groupScores, groupActive, groupLoading }: SectionViewProps) {
+function SectionView({ section, groupScores, groupActive, groupLoading, canonRegionByBottle }: SectionViewProps) {
   const [controls, setControls] = useState<Controls>(DEFAULT_CONTROLS);
   const isFallback = section.mode === "fallback";
   const tag = isFallback
@@ -297,7 +305,7 @@ function SectionView({ section, groupScores, groupActive, groupLoading }: Sectio
     ? `Still learning — based on ${section.nSameType} cuvée${section.nSameType === 1 ? "" : "s"} you've rated`
     : null;
 
-  const baseRows = useMemo(() => toRows(section), [section]);
+  const baseRows = useMemo(() => toRows(section, canonRegionByBottle), [section, canonRegionByBottle]);
   // In group mode, replace `predicted` with the server-computed group_min so
   // the standard "best" / "value" sort and greatValue tag work unchanged.
   const rows: Row[] = useMemo(() => {
