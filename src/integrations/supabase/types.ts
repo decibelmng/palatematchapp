@@ -209,6 +209,7 @@ export type Database = {
           palate_code: string
           palate_code_red: string
           palate_code_white: string
+          palate_version: number
           recent_groups: Json
           theme: string | null
           updated_at: string
@@ -222,6 +223,7 @@ export type Database = {
           palate_code?: string
           palate_code_red?: string
           palate_code_white?: string
+          palate_version?: number
           recent_groups?: Json
           theme?: string | null
           updated_at?: string
@@ -235,6 +237,7 @@ export type Database = {
           palate_code?: string
           palate_code_red?: string
           palate_code_white?: string
+          palate_version?: number
           recent_groups?: Json
           theme?: string | null
           updated_at?: string
@@ -654,6 +657,14 @@ export type Database = {
           display_name: string
           user_id: string
           username: string
+        }[]
+      }
+      set_benchmark: {
+        Args: { p_action: string; p_bottle_id: string; p_tier: string }
+        Returns: {
+          benchmark_id: string
+          palate_version: number
+          replaced_id: string
         }[]
       }
     }
