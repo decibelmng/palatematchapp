@@ -1,6 +1,9 @@
 import { useMemo, useState } from "react";
 import { useBottlesByIds, useRatings, useRate, bottleToFp, bottleType, type BottleRow } from "@/hooks/use-palate-data";
 import { StarTap } from "@/components/StarTap";
+import { CanonAction } from "@/components/CanonAction";
+import { CanonBadge } from "@/components/CanonBadge";
+import { useMyCanons } from "@/hooks/use-canon";
 import { aggregateRated } from "@/lib/cuvee";
 import { useSession } from "@/hooks/use-session";
 import { supabase } from "@/integrations/supabase/client";
