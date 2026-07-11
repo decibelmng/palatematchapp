@@ -163,6 +163,45 @@ describe("Engine v2 — acceptance", () => {
     expect(canonRec.evidence).toBeGreaterThan(plainRec.evidence);
     expect(canonRec.nearestIsCanon).toBe(true);
   });
+
+  it("(7) ω-ordering: informative axis (body) rises above uniform when signal concentrates there", () => {
+    // Rating variance lives ENTIRELY on body; every other axis is held at
+    // 0.5 across all 4 anchors. After the option-2 rescale (Σω=A before
+    // clamping) body's learned ω must exceed uniform (1.0).
+    const r: RatedFp[] = [
+      rated("hi1", 5, { body: 0.90 }),
+      rated("hi2", 5, { body: 0.85 }),
+      rated("lo1", 1, { body: 0.10 }),
+      rated("lo2", 1, { body: 0.15 }),
+    ];
+    const fit = __debug_learnOmega!(r, "red");
+    expect(fit.omega.body).toBeGreaterThan(1.0);
+    // All uninformative axes tie (they share the same ridge fixed-point).
+    for (const k of ["fresh", "acid", "ripe", "oak", "savory", "fruit_dark"] as FpKey[]) {
+      expect(fit.omega[k]).toBeLessThan(fit.omega.body);
+    }
+  });
+
+  it("(8) Canon–Nemesis pair weight (9×) sharpens ω further than ordinary pairs", () => {
+    // Same fingerprints; only the pair weights change. The Canon(5★)–Nemesis(1★)
+    // contrast pair carries 3·3 = 9× an ordinary pair, so ω_body under
+    // canon/nemesis flags should be >= ω_body under plain weights.
+    const plain: RatedFp[] = [
+      rated("hi1", 5, { body: 0.90 }),
+      rated("hi2", 5, { body: 0.85 }),
+      rated("lo1", 1, { body: 0.10 }),
+      rated("lo2", 1, { body: 0.15 }),
+    ];
+    const weighted: RatedFp[] = [
+      { ...plain[0], weight: 3.0, canon: true },
+      plain[1],
+      { ...plain[2], weight: 3.0 }, // nemesis-role anchor
+      plain[3],
+    ];
+    const plainFit = __debug_learnOmega!(plain, "red");
+    const weightedFit = __debug_learnOmega!(weighted, "red");
+    expect(weightedFit.omega.body).toBeGreaterThanOrEqual(plainFit.omega.body);
+  });
 });
 
 // ---------- computeCode() ----------
