@@ -930,7 +930,7 @@ function RestaurantAttribution({ scanId }: { scanId: string }) {
 }
 
 function ScanSection({
-  type, rows, enoughRatings, flagFor, groupScores, groupActive, groupLoading,
+  type, rows, enoughRatings, flagFor, groupScores, groupActive, groupLoading, producers,
 }: {
   type: WineType;
   rows: ScanRow[];
@@ -939,6 +939,7 @@ function ScanSection({
   groupScores: Map<string, GroupScored> | null;
   groupActive: boolean;
   groupLoading: boolean;
+  producers: Map<string, { avg: number; n: number; name: string }>;
 }) {
   const [controls, setControls] = useState<Controls>(DEFAULT_CONTROLS);
 
