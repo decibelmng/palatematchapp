@@ -1,11 +1,20 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo } from "react";
-import { Crown, Skull } from "lucide-react";
+import { useCallback, useMemo, useState } from "react";
+import { Crown, Skull, ArrowLeftRight, X } from "lucide-react";
+import { toast } from "sonner";
 import { AuthGate } from "@/components/AuthGate";
-import { useMyCanons, useDemoteCanon, type CanonRow } from "@/hooks/use-canon";
+import {
+  useMyCanons,
+  useDemoteCanon,
+  usePromoteCanon,
+  usePromoteNemesis,
+  type CanonRow,
+  type BenchmarkTier,
+} from "@/hooks/use-canon";
 import { useBottlesByIds, type BottleRow } from "@/hooks/use-palate-data";
 import { BenchmarkTierBadge } from "@/components/BenchmarkTierBadge";
 import { WineTypeBadge } from "@/components/WineTypeBadge";
+import { SwapPickerDialog } from "@/components/SwapPickerDialog";
 import type { WineType } from "@/lib/recommender";
 
 export const Route = createFileRoute("/canons")({
@@ -37,11 +46,69 @@ const NEMESIS_TYPE_LABEL: Record<string, string> = {
 
 type Row = { canon: CanonRow; bottle: BottleRow };
 
+type SwapTarget = {
+  tier: BenchmarkTier;
+  region: string;
+  regionKey: string;
+  wineType: string;
+  currentBottle: BottleRow;
+};
+
 function CanonsPage() {
   const { data: canons, isLoading } = useMyCanons();
   const bottleIds = useMemo(() => (canons ?? []).map((c) => c.bottle_id), [canons]);
   const { data: bottles } = useBottlesByIds(bottleIds);
   const demote = useDemoteCanon();
+  const promoteCanon = usePromoteCanon();
+  const promoteNemesis = usePromoteNemesis();
+
+  const [swapTarget, setSwapTarget] = useState<SwapTarget | null>(null);
+
+  const armUndo = useCallback(
+    (opts: {
+      tier: BenchmarkTier;
+      previousBottle: BottleRow;
+      label: string;
+    }) => {
+      const promote = opts.tier === "canon" ? promoteCanon : promoteNemesis;
+      // 10s window per spec. Sonner's `duration` is in ms.
+      toast(opts.label, {
+        duration: 10_000,
+        action: {
+          label: "Undo",
+          onClick: () => {
+            promote.mutate(
+              { bottle: opts.previousBottle },
+              {
+                onSuccess: () => toast.success("Restored."),
+                onError: (err) =>
+                  toast.error((err as Error).message || "Couldn't undo."),
+              },
+            );
+          },
+        },
+      });
+    },
+    [promoteCanon, promoteNemesis],
+  );
+
+  const handleRemove = useCallback(
+    (row: Row) => {
+      const verb = row.canon.tier === "canon" ? "Canon" : "Nemesis";
+      demote.mutate(row.canon.id, {
+        onSuccess: () => {
+          armUndo({
+            tier: row.canon.tier,
+            previousBottle: row.bottle,
+            label: `${verb} removed: ${row.bottle.name}`,
+          });
+        },
+        onError: (err) =>
+          toast.error((err as Error).message || `Couldn't remove ${verb}`),
+      });
+    },
+    [demote, armUndo],
+  );
 
   const { canonGrouped, nemesisGrouped, totalCanons, totalNemeses } = useMemo(() => {
     const byId = new Map((bottles ?? []).map((b) => [b.id, b]));
@@ -107,7 +174,16 @@ function CanonsPage() {
                     tier="canon"
                     label={CANON_TYPE_LABEL[t]}
                     rows={rows}
-                    onDemote={(id) => demote.mutate(id)}
+                    onRemove={handleRemove}
+                    onSwap={(row) =>
+                      setSwapTarget({
+                        tier: "canon",
+                        region: row.canon.region,
+                        regionKey: row.canon.region_key ?? row.canon.region.toLowerCase(),
+                        wineType: row.canon.wine_type,
+                        currentBottle: row.bottle,
+                      })
+                    }
                   />,
                 ];
               })}
@@ -135,7 +211,16 @@ function CanonsPage() {
                       tier="nemesis"
                       label={NEMESIS_TYPE_LABEL[t]}
                       rows={rows}
-                      onDemote={(id) => demote.mutate(id)}
+                      onRemove={handleRemove}
+                      onSwap={(row) =>
+                        setSwapTarget({
+                          tier: "nemesis",
+                          region: row.canon.region,
+                          regionKey: row.canon.region_key ?? row.canon.region.toLowerCase(),
+                          wineType: row.canon.wine_type,
+                          currentBottle: row.bottle,
+                        })
+                      }
                     />,
                   ];
                 })}
@@ -153,18 +238,39 @@ function CanonsPage() {
           See your matches
         </Link>
       </div>
+
+      {swapTarget && (
+        <SwapPickerDialog
+          open
+          onClose={() => setSwapTarget(null)}
+          tier={swapTarget.tier}
+          region={swapTarget.region}
+          regionKey={swapTarget.regionKey}
+          wineType={swapTarget.wineType}
+          currentBottle={swapTarget.currentBottle}
+          onSwapped={(newBottle, previousBottle) => {
+            const verb = swapTarget.tier === "canon" ? "Canon" : "Nemesis";
+            armUndo({
+              tier: swapTarget.tier,
+              previousBottle,
+              label: `${verb} swapped → ${newBottle.name}`,
+            });
+          }}
+        />
+      )}
     </div>
   );
 }
 
 function TierSection({
-  type, tier, label, rows, onDemote,
+  type, tier, label, rows, onRemove, onSwap,
 }: {
   type: WineType;
   tier: "canon" | "nemesis";
   label: string;
   rows: Row[];
-  onDemote: (id: string) => void;
+  onRemove: (row: Row) => void;
+  onSwap: (row: Row) => void;
 }) {
   return (
     <section>
@@ -173,38 +279,48 @@ function TierSection({
         <span className="text-[11px] text-muted-foreground">{rows.length} region{rows.length === 1 ? "" : "s"}</span>
       </div>
       <ul className="mt-3 divide-y divide-border">
-        {rows.map(({ canon, bottle }) => (
-          <li key={canon.id} className="py-4 flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <div className="flex items-center gap-2 flex-wrap">
-                <BenchmarkTierBadge tier={canon.tier} />
-                <WineTypeBadge type={bottle.type} />
-                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{canon.region}</span>
+        {rows.map((row) => {
+          const { canon, bottle } = row;
+          return (
+            <li key={canon.id} className="py-4 flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <BenchmarkTierBadge tier={canon.tier} />
+                  <WineTypeBadge type={bottle.type} />
+                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{canon.region}</span>
+                </div>
+                <p className="mt-1 font-medium leading-tight truncate">{bottle.name}</p>
+                <p className="text-xs text-muted-foreground truncate">
+                  {[bottle.producer, bottle.vintage].filter(Boolean).join(" · ")}
+                </p>
+                {bottle.tasting_note && (
+                  <p className="mt-1 text-[11px] italic text-muted-foreground line-clamp-2">"{bottle.tasting_note}"</p>
+                )}
               </div>
-              <p className="mt-1 font-medium leading-tight truncate">{bottle.name}</p>
-              <p className="text-xs text-muted-foreground truncate">
-                {[bottle.producer, bottle.vintage].filter(Boolean).join(" · ")}
-              </p>
-              {bottle.tasting_note && (
-                <p className="mt-1 text-[11px] italic text-muted-foreground line-clamp-2">"{bottle.tasting_note}"</p>
-              )}
-            </div>
-            <button
-              type="button"
-              onClick={() => {
-                const verb = tier === "canon" ? "Canon" : "Nemesis";
-                if (confirm(`Remove ${verb} status from ${bottle.name}?`)) {
-                  onDemote(canon.id);
-                }
-              }}
-              className="shrink-0 text-[11px] text-muted-foreground hover:text-destructive underline underline-offset-2"
-            >
-              remove
-            </button>
-          </li>
-        ))}
+              <div className="shrink-0 flex flex-col items-end gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => onSwap(row)}
+                  className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-medium hover:bg-accent"
+                  aria-label={`Swap ${tier} for ${canon.region}`}
+                >
+                  <ArrowLeftRight size={12} />
+                  Swap
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onRemove(row)}
+                  className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-card px-2 py-1 text-[11px] font-medium text-muted-foreground hover:text-destructive hover:border-destructive/40"
+                  aria-label={`Remove ${tier} status from ${bottle.name}`}
+                >
+                  <X size={12} />
+                  Remove
+                </button>
+              </div>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );
 }
-
