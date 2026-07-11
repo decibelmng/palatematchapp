@@ -185,6 +185,8 @@ function Matches() {
   const groupPred = useGroupPredict(group.friendIds, groupCandidates);
   const groupScores = groupPred.data ?? null;
 
+  const [layout, setLayout] = useMatchesLayout();
+
   return (
     <div className="pt-2">
       <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Matches</p>
@@ -193,13 +195,31 @@ function Matches() {
         Bottles that match your palate — vintages of the same wine are grouped.
       </p>
 
-      <div className="mt-4">
+      <div className="mt-4 flex items-center justify-between gap-3 flex-wrap">
         <DrinkingGroupSelector
           selectedIds={group.friendIds}
           onToggle={group.toggle}
           onClear={group.clear}
           onSet={group.set}
         />
+        <div className="inline-flex items-center gap-1 rounded-full border border-border bg-card/60 p-0.5 text-[10px] uppercase tracking-wider">
+          <button
+            type="button"
+            onClick={() => setLayout("lanes")}
+            aria-pressed={layout === "lanes"}
+            className={`rounded-full px-2.5 py-1 transition ${layout === "lanes" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            Lanes
+          </button>
+          <button
+            type="button"
+            onClick={() => setLayout("flat")}
+            aria-pressed={layout === "flat"}
+            className={`rounded-full px-2.5 py-1 transition ${layout === "flat" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            Flat list
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -213,7 +233,7 @@ function Matches() {
             Go rate
           </Link>
           <div className="mt-8 space-y-10">
-            {sections.map((s) => <SectionView key={s.type} section={s} groupScores={groupScores} groupActive={group.friendIds.length > 0} groupLoading={groupPred.isFetching} canonRegionByBottle={canonRegionByBottle} />)}
+            {sections.map((s) => <SectionView key={s.type} section={s} groupScores={groupScores} groupActive={group.friendIds.length > 0} groupLoading={groupPred.isFetching} canonRegionByBottle={canonRegionByBottle} layout={layout} />)}
           </div>
         </div>
       ) : (
@@ -221,12 +241,13 @@ function Matches() {
           {sections.length === 0 && (
             <p className="text-sm text-muted-foreground">No unrated bottles in the catalogue yet.</p>
           )}
-          {sections.map((s) => <SectionView key={s.type} section={s} groupScores={groupScores} groupActive={group.friendIds.length > 0} groupLoading={groupPred.isFetching} canonRegionByBottle={canonRegionByBottle} />)}
+          {sections.map((s) => <SectionView key={s.type} section={s} groupScores={groupScores} groupActive={group.friendIds.length > 0} groupLoading={groupPred.isFetching} canonRegionByBottle={canonRegionByBottle} layout={layout} />)}
         </div>
       )}
     </div>
   );
 }
+
 
 function CuveeMeta({ producer, region, vintages }: { producer: string | null; region: string | null; vintages: number[] }) {
   const meta = [producer, region].filter(Boolean).join(" · ");
