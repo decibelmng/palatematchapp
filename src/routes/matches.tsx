@@ -12,6 +12,9 @@ import { aggregateRated, aggregateCandidates, cuveeKey, type CuveeCandidate, typ
 import { applyControls, normalizePrice, isGreatValue, DEFAULT_CONTROLS, type Controls, type Priced } from "@/lib/list-controls";
 import type { GroupScored } from "@/lib/group.functions";
 import { CanonBadge } from "@/components/CanonBadge";
+import { LaneList } from "@/components/LaneList";
+import { buildLanes, applyGlobalCap, type LaneItem } from "@/lib/lanes";
+import { useMatchesLayout, type MatchesLayout } from "@/hooks/use-layout-pref";
 
 export const Route = createFileRoute("/matches")({
   ssr: false,
@@ -36,8 +39,8 @@ const TYPE_LABEL: Record<WineType, string> = {
 type RankedCuvee = Recommendation & { cuvee: CuveeCandidate; nearestCuvee: CuveeRated | null; nearestIsCanon: boolean };
 
 type Section =
-  | { type: WineType; mode: "personalized"; nSameType: number; items: RankedCuvee[] }
-  | { type: WineType; mode: "fallback"; nSameType: 0; items: CuveeCandidate[] };
+  | { type: WineType; mode: "personalized"; nSameType: number; items: RankedCuvee[]; ratedFp: RatedFp[] }
+  | { type: WineType; mode: "fallback"; nSameType: 0; items: CuveeCandidate[]; ratedFp: null };
 
 function vintageLabel(vs: number[]): string | null {
   if (vs.length === 0) return null;
@@ -108,7 +111,7 @@ function Matches() {
           .filter((c) => c.critic_score !== null)
           .sort((a, b) => (b.critic_score ?? 0) - (a.critic_score ?? 0))
           .slice(0, 60);
-        if (ranked.length > 0) out.push({ type, mode: "fallback", nSameType: 0, items: ranked });
+        if (ranked.length > 0) out.push({ type, mode: "fallback", nSameType: 0, items: ranked, ratedFp: null });
       } else {
         // Feed the recommender cuvée-aggregated rated rows and candidate cuvées.
         // Cuvées that contain a Canon bottle carry CANON_WEIGHT + canon flag so
@@ -153,7 +156,7 @@ function Matches() {
             if (a.vetoed !== b.vetoed) return a.vetoed ? 1 : -1;
             return b.predicted - a.predicted;
           });
-        if (items.length > 0) out.push({ type, mode: "personalized", nSameType: sameTypeRated.length, items });
+        if (items.length > 0) out.push({ type, mode: "personalized", nSameType: sameTypeRated.length, items, ratedFp });
       }
     }
     // Suppress unused var warning for cuveeKey/ratedCuveeByKey (kept for future debug).
@@ -185,6 +188,8 @@ function Matches() {
   const groupPred = useGroupPredict(group.friendIds, groupCandidates);
   const groupScores = groupPred.data ?? null;
 
+  const [layout, setLayout] = useMatchesLayout();
+
   return (
     <div className="pt-2">
       <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Matches</p>
@@ -193,13 +198,31 @@ function Matches() {
         Bottles that match your palate — vintages of the same wine are grouped.
       </p>
 
-      <div className="mt-4">
+      <div className="mt-4 flex items-center justify-between gap-3 flex-wrap">
         <DrinkingGroupSelector
           selectedIds={group.friendIds}
           onToggle={group.toggle}
           onClear={group.clear}
           onSet={group.set}
         />
+        <div className="inline-flex items-center gap-1 rounded-full border border-border bg-card/60 p-0.5 text-[10px] uppercase tracking-wider">
+          <button
+            type="button"
+            onClick={() => setLayout("lanes")}
+            aria-pressed={layout === "lanes"}
+            className={`rounded-full px-2.5 py-1 transition ${layout === "lanes" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            Lanes
+          </button>
+          <button
+            type="button"
+            onClick={() => setLayout("flat")}
+            aria-pressed={layout === "flat"}
+            className={`rounded-full px-2.5 py-1 transition ${layout === "flat" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          >
+            Flat list
+          </button>
+        </div>
       </div>
 
       {loading ? (
@@ -213,7 +236,7 @@ function Matches() {
             Go rate
           </Link>
           <div className="mt-8 space-y-10">
-            {sections.map((s) => <SectionView key={s.type} section={s} groupScores={groupScores} groupActive={group.friendIds.length > 0} groupLoading={groupPred.isFetching} canonRegionByBottle={canonRegionByBottle} />)}
+            {sections.map((s) => <SectionView key={s.type} section={s} groupScores={groupScores} groupActive={group.friendIds.length > 0} groupLoading={groupPred.isFetching} canonRegionByBottle={canonRegionByBottle} layout={layout} />)}
           </div>
         </div>
       ) : (
@@ -221,12 +244,13 @@ function Matches() {
           {sections.length === 0 && (
             <p className="text-sm text-muted-foreground">No unrated bottles in the catalogue yet.</p>
           )}
-          {sections.map((s) => <SectionView key={s.type} section={s} groupScores={groupScores} groupActive={group.friendIds.length > 0} groupLoading={groupPred.isFetching} canonRegionByBottle={canonRegionByBottle} />)}
+          {sections.map((s) => <SectionView key={s.type} section={s} groupScores={groupScores} groupActive={group.friendIds.length > 0} groupLoading={groupPred.isFetching} canonRegionByBottle={canonRegionByBottle} layout={layout} />)}
         </div>
       )}
     </div>
   );
 }
+
 
 function CuveeMeta({ producer, region, vintages }: { producer: string | null; region: string | null; vintages: number[] }) {
   const meta = [producer, region].filter(Boolean).join(" · ");
@@ -256,7 +280,7 @@ type Row = Priced & {
   vetoNemesisName: string | null;
   vetoAxes: string[];
   maxSimilarity?: number;
-
+  nearestId: string | null;
 };
 
 
@@ -290,6 +314,7 @@ function toRows(section: Section, canonRegionByBottle: Map<string, string>): Row
         vetoNemesisName: r.vetoReason?.nemesis.name ?? null,
         vetoAxes: r.vetoReason?.drivingAxes ?? [],
         maxSimilarity: r.maxSimilarity,
+        nearestId: r.nearest?.id ?? null,
       };
       row.greatValue = !row.vetoed && isGreatValue(row);
       return row;
@@ -320,6 +345,7 @@ function toRows(section: Section, canonRegionByBottle: Map<string, string>): Row
       vetoed: false,
       vetoNemesisName: null,
       vetoAxes: [],
+      nearestId: null,
     };
   });
 }
@@ -331,9 +357,10 @@ type SectionViewProps = {
   groupActive: boolean;
   groupLoading: boolean;
   canonRegionByBottle: Map<string, string>;
+  layout: MatchesLayout;
 };
 
-function SectionView({ section, groupScores, groupActive, groupLoading, canonRegionByBottle }: SectionViewProps) {
+function SectionView({ section, groupScores, groupActive, groupLoading, canonRegionByBottle, layout }: SectionViewProps) {
   const [controls, setControls] = useState<Controls>(DEFAULT_CONTROLS);
   const isFallback = section.mode === "fallback";
   const tag = isFallback
@@ -384,6 +411,35 @@ function SectionView({ section, groupScores, groupActive, groupLoading, canonReg
   const hidden = Math.max(0, calibrated.length - visible.length - vetoed.length);
   const [showRaw, setShowRaw] = useState(false);
 
+  // ── Lane clustering (presentation-only) ──
+  // Lanes require: personalized mode, layout preference = "lanes", section
+  // has Canons for this type, and we're not in group mode (group keeps the
+  // flat maximin list).
+  const laneEligible =
+    section.mode === "personalized" &&
+    layout === "lanes" &&
+    !groupActive &&
+    section.ratedFp.some((r) => r.canon);
+  const laneItems = useMemo<LaneItem<Row>[]>(() => {
+    if (!laneEligible) return [];
+    return calibrated.map((r) => ({
+      predicted: r.predicted,
+      maxSimilarity: r.maxSimilarity ?? 0,
+      nearestId: r.nearestId,
+      vetoed: r.vetoed,
+      raw: r.raw,
+      payload: r,
+    }));
+  }, [laneEligible, calibrated]);
+  const laneResult = useMemo(() => {
+    if (!laneEligible || section.mode !== "personalized") return null;
+    const res = buildLanes(laneItems, section.ratedFp, section.type);
+    if (!res.hasCanons) return null;
+    return { ...res, lanes: applyGlobalCap(res.lanes, 8, 15) };
+  }, [laneEligible, laneItems, section]);
+  const useLanes = !!laneResult && laneResult.lanes.length > 0;
+  const lanes = laneResult?.lanes ?? [];
+
   // Dev-only diagnostic so we can chase render-count regressions without
   // bringing back the ad-hoc console dumps. Silent in production.
   if (typeof window !== "undefined" && (import.meta as any).env?.DEV) {
@@ -393,6 +449,7 @@ function SectionView({ section, groupScores, groupActive, groupLoading, canonReg
       `calibrated=${calibrated.length} raw=${rawItems.length}`,
       `visible=${visible.length} vetoed=${vetoed.length} hidden=${hidden}`,
       `groupActive=${groupActive} groupScoresSize=${groupScores?.size ?? "null"}`,
+      `useLanes=${useLanes} lanes=${lanes.length}`,
     );
   }
 
@@ -415,85 +472,27 @@ function SectionView({ section, groupScores, groupActive, groupLoading, canonReg
         <p className="mt-4 text-sm text-muted-foreground">
           No wines in this section match those filters. Widen the price range or turn off "catalog only".
         </p>
+      ) : useLanes ? (
+        <LaneList
+          lanes={lanes}
+          keyFor={(r: Row) => r.key}
+          renderRow={(r: Row) => (
+            <MatchRow
+              r={r}
+              type={section.type}
+              g={groupActive && groupScores ? groupScores.get(r.id) ?? null : null}
+              showFallbackScore={treatAsFallback && !(groupActive && groupScores?.get(r.id))}
+            />
+          )}
+        />
       ) : (
         <ul className="mt-3 divide-y divide-border">
           {visible.map((r) => {
             const g = groupActive && groupScores ? groupScores.get(r.id) ?? null : null;
             const showFallbackScore = treatAsFallback && !g;
             return (
-              <li key={r.key} className="py-4 flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <WineTypeBadge type={section.type} />
-                    <span className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-primary/40 bg-primary/10 text-primary">
-                      catalog
-                    </span>
-                    {r.greatValue && (
-                      <span className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
-                        great value
-                      </span>
-                    )}
-                  </div>
-                  <p className="font-medium leading-tight truncate mt-1">{r.name}</p>
-                  <CuveeMeta producer={r.producer} region={r.region} vintages={r.vintages} />
-                  {r.price_display && (
-                    <p className="mt-0.5 text-[11px] text-muted-foreground">Price: {r.price_display}</p>
-                  )}
-                  {g && <GroupBreakdown g={g} />}
-                  {!g && r.nearestCuvee && r.nearestIsCanon && (
-                    <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-300 flex items-center gap-1">
-                      <CanonBadge size="sm" title="Nearest neighbour is a Canon anchor" />
-                      <span>
-                        Close match to your Canon
-                        {r.nearestCanonRegion ? <> <span className="text-foreground/80">{r.nearestCanonRegion}</span></> : null}
-                        {" — "}
-                        <span className="text-foreground/80">{r.nearestCuvee.name}</span>
-                      </span>
-                    </p>
-                  )}
-                  {!g && r.nearestCuvee && !r.nearestIsCanon && (
-                    <p className="mt-1 text-[11px] text-muted-foreground">
-                      like your {r.nearestCuvee.stars.toFixed(1)}★ <span className="text-foreground/80">{r.nearestCuvee.name}</span>
-                    </p>
-                  )}
-                </div>
-                <div className="shrink-0 text-right">
-                  {g ? (
-                    <>
-                      <span className="font-serif text-primary text-xl">{g.group_min.toFixed(1)}</span>
-                      <span className="text-primary text-sm">★</span>
-                      <p className="text-[10px] text-muted-foreground">avg {g.group_avg.toFixed(1)}</p>
-                    </>
-                  ) : showFallbackScore ? (
-                    r.criticScore !== null && (
-                      <>
-                        <span className="font-serif text-muted-foreground text-base">{r.criticScore.toFixed(0)}</span>
-                        <span className="text-muted-foreground text-xs"> critic</span>
-                      </>
-                    )
-                  ) : (
-                    <>
-                      <span className="font-serif text-primary text-xl">{r.predicted.toFixed(1)}</span>
-                      <span className="text-primary text-sm">★</span>
-                      {typeof r.maxSimilarity === "number" && (
-                        <p
-                          className="mt-0.5 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-border bg-muted text-muted-foreground"
-                          title={`Similarity to nearest anchor: ${(r.maxSimilarity * 100).toFixed(0)}%`}
-                        >
-                          {r.maxSimilarity >= 0.85 ? "strong match"
-                            : r.maxSimilarity >= 0.65 ? "close match"
-                            : r.maxSimilarity >= 0.45 ? "loose match"
-                            : "distant match"}
-                        </p>
-                      )}
-                      {r.confidence !== null && r.confidence < 0.35 && (
-                        <p className="mt-0.5 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-border bg-muted text-muted-foreground">
-                          low match data
-                        </p>
-                      )}
-                    </>
-                  )}
-                </div>
+              <li key={r.key}>
+                <MatchRow r={r} type={section.type} g={g} showFallbackScore={showFallbackScore} />
               </li>
             );
           })}
@@ -598,5 +597,94 @@ function GroupBreakdown({ g }: { g: GroupScored }) {
         </span>
       ))}
     </p>
+  );
+}
+
+function MatchRow({
+  r,
+  type,
+  g,
+  showFallbackScore,
+}: {
+  r: Row;
+  type: WineType;
+  g: GroupScored | null;
+  showFallbackScore: boolean;
+}) {
+  return (
+    <div className="py-4 flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <WineTypeBadge type={type} />
+          <span className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-primary/40 bg-primary/10 text-primary">
+            catalog
+          </span>
+          {r.greatValue && (
+            <span className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
+              great value
+            </span>
+          )}
+        </div>
+        <p className="font-medium leading-tight truncate mt-1">{r.name}</p>
+        <CuveeMeta producer={r.producer} region={r.region} vintages={r.vintages} />
+        {r.price_display && (
+          <p className="mt-0.5 text-[11px] text-muted-foreground">Price: {r.price_display}</p>
+        )}
+        {g && <GroupBreakdown g={g} />}
+        {!g && r.nearestCuvee && r.nearestIsCanon && (
+          <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-300 flex items-center gap-1">
+            <CanonBadge size="sm" title="Nearest neighbour is a Canon anchor" />
+            <span>
+              Close match to your Canon
+              {r.nearestCanonRegion ? <> <span className="text-foreground/80">{r.nearestCanonRegion}</span></> : null}
+              {" — "}
+              <span className="text-foreground/80">{r.nearestCuvee.name}</span>
+            </span>
+          </p>
+        )}
+        {!g && r.nearestCuvee && !r.nearestIsCanon && (
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            like your {r.nearestCuvee.stars.toFixed(1)}★ <span className="text-foreground/80">{r.nearestCuvee.name}</span>
+          </p>
+        )}
+      </div>
+      <div className="shrink-0 text-right">
+        {g ? (
+          <>
+            <span className="font-serif text-primary text-xl">{g.group_min.toFixed(1)}</span>
+            <span className="text-primary text-sm">★</span>
+            <p className="text-[10px] text-muted-foreground">avg {g.group_avg.toFixed(1)}</p>
+          </>
+        ) : showFallbackScore ? (
+          r.criticScore !== null && (
+            <>
+              <span className="font-serif text-muted-foreground text-base">{r.criticScore.toFixed(0)}</span>
+              <span className="text-muted-foreground text-xs"> critic</span>
+            </>
+          )
+        ) : (
+          <>
+            <span className="font-serif text-primary text-xl">{r.predicted.toFixed(1)}</span>
+            <span className="text-primary text-sm">★</span>
+            {typeof r.maxSimilarity === "number" && (
+              <p
+                className="mt-0.5 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-border bg-muted text-muted-foreground"
+                title={`Similarity to nearest anchor: ${(r.maxSimilarity * 100).toFixed(0)}%`}
+              >
+                {r.maxSimilarity >= 0.85 ? "strong match"
+                  : r.maxSimilarity >= 0.65 ? "close match"
+                  : r.maxSimilarity >= 0.45 ? "loose match"
+                  : "distant match"}
+              </p>
+            )}
+            {r.confidence !== null && r.confidence < 0.35 && (
+              <p className="mt-0.5 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-border bg-muted text-muted-foreground">
+                low match data
+              </p>
+            )}
+          </>
+        )}
+      </div>
+    </div>
   );
 }

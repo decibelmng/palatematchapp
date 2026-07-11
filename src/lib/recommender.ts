@@ -396,3 +396,23 @@ export const __debug_learnOmega: typeof learnOmega | undefined = __DEV
 export const __debug_pickBandwidth: typeof pickBandwidth | undefined = __DEV
   ? pickBandwidth
   : undefined;
+
+// ────────── Public helpers for presentation-layer clustering (lanes.ts) ──────────
+// These reuse the exact ω / h the recommender uses to score, so lane geometry
+// matches scoring geometry. No engine changes — just exposing internals.
+
+export type { TypeCtx };
+
+export function buildTypeContext(rated: RatedFp[], type: WineType): TypeCtx | null {
+  return buildCtx(rated, type);
+}
+
+/** ω-weighted distance between two fingerprints in the given type context. */
+export function distanceInContext(
+  a: Record<FpKey, number>,
+  b: Record<FpKey, number>,
+  ctx: TypeCtx,
+): number {
+  return omegaDistance(a, b, ctx.fit.omega, ctx.fit.active);
+}
+

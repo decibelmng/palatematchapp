@@ -5,12 +5,16 @@ import { useServerFn } from "@tanstack/react-start";
 import { ListControls } from "@/components/ListControls";
 import { DrinkingGroupSelector } from "@/components/DrinkingGroupSelector";
 import { WineTypeBadge } from "@/components/WineTypeBadge";
+import { LaneList } from "@/components/LaneList";
 import { useBottlesByIds, useRatings, bottleToFp, bottleType } from "@/hooks/use-palate-data";
+import { useMyCanons } from "@/hooks/use-canon";
 import { useGroupSelection, useGroupPredict, type GroupCandidateInput } from "@/hooks/use-friends";
-import { recommend, type BottleFp, type RatedFp, type WineType } from "@/lib/recommender";
+import { recommend, BENCHMARK_WEIGHT, type BottleFp, type RatedFp, type WineType } from "@/lib/recommender";
 import { aggregateRated } from "@/lib/cuvee";
 import { getRestaurantWinesFn } from "@/lib/restaurants.functions";
 import { applyControls, normalizePrice, isGreatValue, DEFAULT_CONTROLS, type Controls } from "@/lib/list-controls";
+import { buildLanes, applyGlobalCap, type LaneItem } from "@/lib/lanes";
+import { useMatchesLayout } from "@/hooks/use-layout-pref";
 import type { GroupScored } from "@/lib/group.functions";
 
 export const Route = createFileRoute("/restaurants/$id")({
@@ -46,9 +50,19 @@ function RestaurantDetail() {
   const { data: ratings } = useRatings();
   const ratedIds = useMemo(() => (ratings ?? []).map((r) => r.bottle_id), [ratings]);
   const { data: ratedBottles } = useBottlesByIds(ratedIds);
+  const { data: canons } = useMyCanons();
+  const canonBottleIds = useMemo(
+    () => new Set((canons ?? []).filter((c) => c.tier === "canon").map((c) => c.bottle_id)),
+    [canons],
+  );
+  const nemesisBottleIds = useMemo(
+    () => new Set((canons ?? []).filter((c) => c.tier === "nemesis").map((c) => c.bottle_id)),
+    [canons],
+  );
 
   const group = useGroupSelection();
   const [controls, setControls] = useState<Controls>(DEFAULT_CONTROLS);
+  const [layout] = useMatchesLayout();
 
   // Predict per-user stars for every wine on this list.
   const enrichedByType = useMemo(() => {
@@ -59,7 +73,20 @@ function RestaurantDetail() {
       type: bottleType(b), fp: bottleToFp(b),
       stars: ratings!.find((r) => r.bottle_id === b.id)?.stars ?? 3,
     }));
-    const rated = aggregateRated(ratedRowsRaw);
+    const ratedCuvees = aggregateRated(ratedRowsRaw);
+    // Attach Canon / Nemesis flags + benchmark weight so lane clustering uses
+    // the same anchor set as /matches.
+    const rated: RatedFp[] = ratedCuvees.map((r) => {
+      const isCanon = r.bottleIds.some((id) => canonBottleIds.has(id));
+      const isNemesis = r.bottleIds.some((id) => nemesisBottleIds.has(id));
+      return {
+        id: r.id, name: r.name, producer: r.producer, region: r.region,
+        type: r.type, fp: r.fp, stars: r.stars,
+        weight: isCanon || isNemesis ? BENCHMARK_WEIGHT : 1,
+        canon: isCanon,
+        nemesis: isNemesis,
+      };
+    });
     const enoughRatings = ratedRowsRaw.length >= 3;
 
     // Freshness cutoff = the most-recent scan date on this restaurant.
@@ -81,10 +108,15 @@ function RestaurantDetail() {
         id: w.bottle.id, name: w.bottle.name, producer: w.bottle.producer,
         region: w.bottle.region, type, fp: bottleToFp(w.bottle),
       }));
-      let predByBottle = new Map<string, number>();
+      const recInfo = new Map<string, { predicted: number; nearestId: string | null; maxSimilarity: number; vetoed: boolean }>();
       if (enoughRatings) {
         const recs = recommend(rated, candFps, { restrictToRatedTypes: false });
-        for (const r of recs) predByBottle.set(r.bottle.id, r.predicted);
+        for (const r of recs) recInfo.set(r.bottle.id, {
+          predicted: r.predicted,
+          nearestId: r.nearest?.id ?? null,
+          maxSimilarity: r.maxSimilarity,
+          vetoed: r.vetoed,
+        });
       }
 
       const rows = wines.map((w) => {
@@ -94,7 +126,8 @@ function RestaurantDetail() {
         const isStale = mostRecent
           ? new Date(w.last_seen_at).getTime() < mostRecent.getTime() - 24 * 3600 * 1000
           : false;
-        const predicted = predByBottle.get(w.bottle.id) ?? null;
+        const info = recInfo.get(w.bottle.id);
+        const predicted = info?.predicted ?? null;
         const isCatalog = !(w.bottle.source ?? "").includes("unverified");
         const priced = {
           price_amount: price.amount,
@@ -102,11 +135,15 @@ function RestaurantDetail() {
           price_display: price.display,
           isCatalog,
           predicted: predicted ?? 0,
+          maxSimilarity: info?.maxSimilarity,
         };
         return {
           rw: w,
           bottle: w.bottle,
           predicted,
+          nearestId: info?.nearestId ?? null,
+          maxSimilarity: info?.maxSimilarity ?? 0,
+          vetoed: info?.vetoed ?? false,
           price_display: price.display,
           days,
           isStale,
@@ -116,11 +153,11 @@ function RestaurantDetail() {
         };
       });
 
-      return { type, rows, enoughRatings };
+      return { type, rows, enoughRatings, rated };
     });
 
     return sections;
-  }, [data, ratedBottles, ratings]);
+  }, [data, ratedBottles, ratings, canonBottleIds, nemesisBottleIds]);
 
   // Group scoring
   const candidatesForGroup: GroupCandidateInput[] = useMemo(() => {
@@ -184,6 +221,34 @@ function RestaurantDetail() {
               const byKey = new Map(section.rows.map((r) => [r.rw.id, r]));
               const rows = orderedKeys.map((k) => byKey.get(k)!).filter(Boolean);
 
+              type RowT = (typeof rows)[number];
+              const laneEligible =
+                layout === "lanes" &&
+                !groupActive &&
+                section.enoughRatings &&
+                rows.length >= 15 &&
+                section.rated.some((r) => r.canon && r.type === section.type);
+              let lanesToRender: ReturnType<typeof applyGlobalCap<RowT>> | null = null;
+              if (laneEligible) {
+                const laneItems: LaneItem<RowT>[] = rows
+                  .filter((r) => !r.vetoed)
+                  .map((r) => ({
+                    predicted: r.predicted ?? 0,
+                    maxSimilarity: r.maxSimilarity,
+                    nearestId: r.nearestId,
+                    vetoed: r.vetoed,
+                    payload: r,
+                  }));
+                const res = buildLanes(laneItems, section.rated, section.type);
+                if (res.hasCanons && res.lanes.length > 0) {
+                  lanesToRender = applyGlobalCap(res.lanes, 8, Math.max(15, rows.length));
+                }
+              }
+
+              const renderRow = (r: RowT) => {
+                const g = groupActive && groupScores ? groupScores.get(r.bottle.id) ?? null : null;
+                return <RestaurantWineRow r={r} g={g} enoughRatings={section.enoughRatings} />;
+              };
 
               return (
                 <section key={section.type}>
@@ -195,71 +260,100 @@ function RestaurantDetail() {
 
                   {rows.length === 0 ? (
                     <p className="mt-2 text-xs text-muted-foreground italic">Nothing matches those filters.</p>
+                  ) : lanesToRender ? (
+                    <LaneList
+                      lanes={lanesToRender}
+                      keyFor={(r: RowT) => r.rw.id}
+                      renderRow={renderRow}
+                    />
                   ) : (
                     <ul className="mt-3 divide-y divide-border">
-                      {rows.map((r) => {
-                        const g = groupActive && groupScores ? groupScores.get(r.bottle.id) ?? null : null;
-                        return (
-                          <li key={r.rw.id} className="py-3 flex items-start justify-between gap-3">
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <p className="font-medium text-sm leading-tight truncate">{r.bottle.name}</p>
-                                {!r.isCatalog && (
-                                  <span className="shrink-0 rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-border bg-muted text-muted-foreground">
-                                    community
-                                  </span>
-                                )}
-                                {r.greatValue && (
-                                  <span className="shrink-0 rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
-                                    great value
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-xs text-muted-foreground truncate">
-                                {[r.bottle.producer, r.bottle.region, r.price_display].filter(Boolean).join(" · ")}
-                              </p>
-                              <p className="text-[11px] text-muted-foreground mt-0.5">
-                                {r.isStale ? (
-                                  <span className="italic">last seen {freshnessLabel(r.days)} — confirm availability</span>
-                                ) : (
-                                  <span>seen {freshnessLabel(r.days)}</span>
-                                )}
-                              </p>
-                              {g && (
-                                <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
-                                  {g.per_person.map((p, i) => (
-                                    <span key={p.user_id}>
-                                      {i > 0 && <span className="opacity-50"> · </span>}
-                                      <span className="text-foreground/80">{p.display_name}</span>{" "}
-                                      {p.predicted.toFixed(1)}
-                                    </span>
-                                  ))}
-                                </p>
-                              )}
-                            </div>
-                            {g ? (
-                              <div className="shrink-0 text-right">
-                                <span className="font-serif text-primary text-xl">{g.group_min.toFixed(1)}</span>
-                                <span className="text-primary text-sm">★</span>
-                                <p className="text-[10px] text-muted-foreground">avg {g.group_avg.toFixed(1)}</p>
-                              </div>
-                            ) : section.enoughRatings && r.predicted != null ? (
-                              <div className="shrink-0 text-right">
-                                <span className="font-serif text-primary text-xl">{r.predicted.toFixed(1)}</span>
-                                <span className="text-primary text-sm">★</span>
-                              </div>
-                            ) : null}
-                          </li>
-                        );
-                      })}
+                      {rows.map((r) => (
+                        <li key={r.rw.id}>{renderRow(r)}</li>
+                      ))}
                     </ul>
                   )}
                 </section>
               );
             })}
           </div>
+
         </>
       )}
+    </div>
+  );
+}
+
+type WineRow = {
+  rw: { id: string };
+  bottle: { id: string; name: string; producer?: string | null; region?: string | null };
+  predicted: number | null;
+  price_display: string | null;
+  days: number;
+  isStale: boolean;
+  isCatalog: boolean;
+  greatValue: boolean;
+};
+
+function RestaurantWineRow({
+  r,
+  g,
+  enoughRatings,
+}: {
+  r: WineRow;
+  g: GroupScored | null;
+  enoughRatings: boolean;
+}) {
+  return (
+    <div className="py-3 flex items-start justify-between gap-3">
+      <div className="min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <p className="font-medium text-sm leading-tight truncate">{r.bottle.name}</p>
+          {!r.isCatalog && (
+            <span className="shrink-0 rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-border bg-muted text-muted-foreground">
+              community
+            </span>
+          )}
+          {r.greatValue && (
+            <span className="shrink-0 rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
+              great value
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground truncate">
+          {[r.bottle.producer, r.bottle.region, r.price_display].filter(Boolean).join(" · ")}
+        </p>
+        <p className="text-[11px] text-muted-foreground mt-0.5">
+          {r.isStale ? (
+            <span className="italic">last seen {freshnessLabel(r.days)} — confirm availability</span>
+          ) : (
+            <span>seen {freshnessLabel(r.days)}</span>
+          )}
+        </p>
+        {g && (
+          <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
+            {g.per_person.map((p, i) => (
+              <span key={p.user_id}>
+                {i > 0 && <span className="opacity-50"> · </span>}
+                <span className="text-foreground/80">{p.display_name}</span>{" "}
+                {p.predicted.toFixed(1)}
+              </span>
+            ))}
+          </p>
+        )}
+      </div>
+      {g ? (
+        <div className="shrink-0 text-right">
+          <span className="font-serif text-primary text-xl">{g.group_min.toFixed(1)}</span>
+          <span className="text-primary text-sm">★</span>
+          <p className="text-[10px] text-muted-foreground">avg {g.group_avg.toFixed(1)}</p>
+        </div>
+      ) : enoughRatings && r.predicted != null ? (
+        <div className="shrink-0 text-right">
+          <span className="font-serif text-primary text-xl">{r.predicted.toFixed(1)}</span>
+          <span className="text-primary text-sm">★</span>
+        </div>
+      ) : null}
     </div>
   );
 }
