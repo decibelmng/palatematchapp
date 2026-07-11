@@ -96,6 +96,16 @@ export function validateBenchmarkPromotion(tier: BenchmarkTier, stars: number): 
   }
 }
 
+/** Friendly re-throw for the `EXCLUDED_BOTTLE:` sentinel raised by the
+ *  `canon_wines_validate_tier` trigger when a barrel sample is promoted. */
+function friendlyPromotionError(err: unknown): Error {
+  const msg = (err as { message?: string } | null)?.message ?? String(err);
+  if (msg.includes("EXCLUDED_BOTTLE")) {
+    return new Error("Barrel samples can't be benchmarks — crown the finished wine instead.");
+  }
+  return err instanceof Error ? err : new Error(msg);
+}
+
 function usePromoteBenchmark(tier: BenchmarkTier) {
   const session = useSession();
   const qc = useQueryClient();
@@ -110,6 +120,12 @@ function usePromoteBenchmark(tier: BenchmarkTier) {
       const region = (args.bottle.region ?? "").trim();
       if (!region) throw new Error(`Bottle has no region — cannot ${tier === "canon" ? "crown" : "mark as Nemesis"}.`);
       const wine_type = canonScopeType(args.bottle);
+
+      // Client-side guard for the excluded-bottle rule (matches the
+      // canon_wines_validate_tier trigger). Server enforces regardless.
+      if ((args.bottle as { excluded_from_recs?: boolean }).excluded_from_recs) {
+        throw new Error("Barrel samples can't be benchmarks — crown the finished wine instead.");
+      }
 
       // Ensure a rating row exists AND satisfies the tier's star gate.
       const { data: ratingRow, error: rErr } = await supabase
@@ -142,7 +158,7 @@ function usePromoteBenchmark(tier: BenchmarkTier) {
         })
         .select()
         .single();
-      if (error) throw error;
+      if (error) throw friendlyPromotionError(error);
       return data as CanonRow;
     },
     onSuccess: (row, args) => {
