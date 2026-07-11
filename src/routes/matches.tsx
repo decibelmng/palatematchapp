@@ -362,10 +362,15 @@ function SectionView({ section, groupScores, groupActive, groupLoading, canonReg
     return out;
   }, [rows, effective, treatAsFallback]);
   // Uncalibrated (raw import defaults) cuvées are held out of the visible top-10
-  // so a template bottle can't outrank calibrated real matches. They stay in the
-  // pool and reappear once re-fingerprinted.
-  const visible = filtered.filter((r) => !r.raw).slice(0, 10);
-  const hidden = Math.max(0, filtered.length - visible.length);
+  // so a template bottle can't outrank calibrated real matches. Vetoed wines
+  // (inside a Nemesis radius) are ALSO excluded from the top-10 slice regardless
+  // of sort — they render in a separate "Avoid" section below and are never
+  // hidden.
+  const kept = filtered.filter((r) => !r.raw);
+  const visible = kept.filter((r) => !r.vetoed).slice(0, 10);
+  const vetoed = kept.filter((r) => r.vetoed);
+  const hidden = Math.max(0, kept.length - visible.length - vetoed.length);
+
 
   return (
     <section>
