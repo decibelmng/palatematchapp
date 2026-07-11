@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { RAX, recommend, type FpKey, type RatedFp, type BottleFp, type WineType } from "@/lib/recommender";
+import { RAX, recommend, BENCHMARK_WEIGHT, type FpKey, type RatedFp, type BottleFp, type WineType } from "@/lib/recommender";
 import { aggregateRated } from "@/lib/cuvee";
 
 const FpSchema = z.object({
