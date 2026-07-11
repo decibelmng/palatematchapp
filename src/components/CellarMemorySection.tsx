@@ -136,6 +136,8 @@ function Tier2Card({
             You know this cuvée
           </span>
           {m.isCanon && <CanonBadge />}
+          {m.isNemesis && <NemesisBadge />}
+
         </div>
         <p className="text-xs text-muted-foreground truncate">
           {[w.region, w.grape, w.price ?? null].filter(Boolean).join(" · ")}
