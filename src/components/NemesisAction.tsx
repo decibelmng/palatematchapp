@@ -3,6 +3,7 @@ import { Skull } from "lucide-react";
 import type { BottleRow } from "@/hooks/use-palate-data";
 import {
   canonScopeType,
+  findBenchmarkForBottle,
   useDemoteNemesis,
   useMyCanons,
   useNemesisForScope,
@@ -29,7 +30,7 @@ export function NemesisAction({ bottle, stars, compact = false }: Props) {
   const demote = useDemoteNemesis();
   const [dialog, setDialog] = useState<"idle" | "confirm" | "replace">("idle");
 
-  const myNemesisForThis = (canons ?? []).find((c) => c.tier === "nemesis" && c.bottle_id === bottle.id) ?? null;
+  const myNemesisForThis = findBenchmarkForBottle(canons, bottle.id, "nemesis");
   const isNemesis = !!myNemesisForThis;
   const region = (bottle.region ?? "").trim();
   const wineType = canonScopeType(bottle);

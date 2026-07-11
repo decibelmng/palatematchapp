@@ -62,7 +62,9 @@ function Matches() {
   );
   const canonRegionByBottle = useMemo(() => {
     const m = new Map<string, string>();
-    for (const c of canons ?? []) m.set(c.bottle_id, c.region);
+    for (const c of canons ?? []) {
+      if (c.tier === "canon") m.set(c.bottle_id, c.region);
+    }
     return m;
   }, [canons]);
 
