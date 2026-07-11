@@ -46,6 +46,15 @@ export type RatedFp = BottleFp & {
   weight?: number;
   /** Marks this rated wine as a Canon anchor (drives explanation copy). */
   canon?: boolean;
+  /** Marks this rated wine as a Nemesis anchor (drives veto + explanation). */
+  nemesis?: boolean;
+};
+
+export type VetoReason = {
+  nemesis: RatedFp;
+  distance: number;
+  /** 1–2 axes contributing most to ω-distance. */
+  drivingAxes: FpKey[];
 };
 
 export type Recommendation = {
@@ -60,6 +69,9 @@ export type Recommendation = {
   evidence: number;
   /** "strong" | "moderate" | "exploratory" from M. */
   evidenceTier: "strong" | "moderate" | "exploratory";
+  /** True when the candidate sits inside a Nemesis's asymmetric veto radius. */
+  vetoed: boolean;
+  vetoReason: VetoReason | null;
 };
 
 // ────────── Config (single tunable object) ──────────
@@ -68,6 +80,8 @@ export const PRIOR_ALPHA = 0.5;
 export const BENCHMARK_WEIGHT = 3.0;
 /** Back-compat alias — old code imports CANON_WEIGHT. */
 export const CANON_WEIGHT = BENCHMARK_WEIGHT;
+/** Asymmetric veto: repulsion reaches 1.25× the attraction bandwidth. */
+export const NEMESIS_RADIUS_MULT = 1.25;
 export const H_FLOOR = 0.12;
 export const H_CAP = 0.35;
 export const H_FALLBACK = 0.20;
@@ -75,6 +89,7 @@ export const OMEGA_CLAMP: [number, number] = [0.25, 4.0];
 export const EVIDENCE_STRONG = 1.5;
 export const EVIDENCE_MODERATE = 0.5;
 const GLOBAL_PRIOR = 3.5;
+
 
 /**
  * White/sparkling/rosé have no meaningful tannin / dark-fruit signal — those
