@@ -5,6 +5,7 @@ import { CanonAction } from "@/components/CanonAction";
 import { NemesisAction } from "@/components/NemesisAction";
 
 import { CanonBadge } from "@/components/CanonBadge";
+import { NemesisBadge } from "@/components/NemesisBadge";
 import { useMyCanons } from "@/hooks/use-canon";
 import { aggregateRated } from "@/lib/cuvee";
 import { useSession } from "@/hooks/use-session";
