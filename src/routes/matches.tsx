@@ -51,6 +51,13 @@ function Matches() {
   const ratedIds = useMemo(() => (ratings ?? []).map((r) => r.bottle_id), [ratings]);
   const { data: ratedBottles } = useBottlesByIds(ratedIds);
   const { data: pool } = usePourCandidates();
+  const { data: canons } = useMyCanons();
+  const canonBottleIds = useMemo(() => new Set((canons ?? []).map((c) => c.bottle_id)), [canons]);
+  const canonRegionByBottle = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const c of canons ?? []) m.set(c.bottle_id, c.region);
+    return m;
+  }, [canons]);
 
   const sections: Section[] = useMemo(() => {
     if (!ratings || !pool) return [];
