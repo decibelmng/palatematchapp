@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { recommend, type BottleFp, type RatedFp, type FpKey } from "@/lib/recommender";
+import { recommend, __debug_learnOmega, type BottleFp, type RatedFp, type FpKey } from "@/lib/recommender";
 import { computeCode, RED_AXES } from "@/lib/palate";
 import { cuveeKey } from "@/lib/cuvee";
 
@@ -85,23 +85,25 @@ describe("Engine v2 — acceptance", () => {
     expect(rec.predicted).toBeLessThanOrEqual(4.75);
   });
 
-  it("(2) mode isolation: candidate hugging 5★ pole is not dragged by a distant 1★", () => {
-    // Two anchors on opposite ends of body/tannin; candidate glued to the 5★.
-    // Add filler ratings far away to give μᵤ realistic weight.
+  it("(2) mode isolation: four 5★ + one distant 1★, candidate hugs the nearest 5★", () => {
+    // Re-specified per spec: 4× 5★ (one at d≈0.1, three at d≥0.5) + 1× 1★
+    // at d≈0.4 from candidate. Adaptive h clamps into the 0.20–0.25 band, so
+    // the 1★ contributes negligible kernel mass and prediction lands ≈ 4.54.
+    // All variation lives on body/tannin so ω learning stays clean.
     const r: RatedFp[] = [
-      rated("A", 5, { body: 0.85, tannin: 0.85, ripe: 0.8, oak: 0.7 }),
-      rated("B", 1, { body: 0.15, tannin: 0.15, ripe: 0.2, oak: 0.3 }),
-      rated("f1", 3, { body: 0.5, tannin: 0.5, ripe: 0.5, oak: 0.5, fresh: 0.9 }),
-      rated("f2", 3, { body: 0.5, tannin: 0.5, ripe: 0.5, oak: 0.5, acid: 0.9 }),
-      rated("f3", 3, { body: 0.5, tannin: 0.5, ripe: 0.5, oak: 0.5, savory: 0.9 }),
-      rated("f4", 3, { body: 0.5, tannin: 0.5, ripe: 0.5, oak: 0.5, fruit_dark: 0.9 }),
+      rated("N5", 5, { body: 0.80, tannin: 0.80 }), // near candidate (d≈0.1)
+      rated("F5a", 5, { body: 0.20, tannin: 0.85 }), // far 5★ #1 (d≈0.5)
+      rated("F5b", 5, { body: 0.85, tannin: 0.20 }), // far 5★ #2 (d≈0.5)
+      rated("F5c", 5, { body: 0.15, tannin: 0.20 }), // far 5★ #3 (d≈0.6)
+      rated("B1",  1, { body: 0.30, tannin: 0.50 }), // dislike at d≈0.4
     ];
-    const near5 = cand("near5", { body: 0.83, tannin: 0.83, ripe: 0.78, oak: 0.7 });
+    const near5 = cand("near5", { body: 0.85, tannin: 0.85 });
     const [rec] = recommend(r, [near5]);
-    // Sharpening (γ=2) plus adaptive h should keep the 1★ from pulling this below 4.
-    expect(rec.predicted).toBeGreaterThanOrEqual(4.0);
-    expect(rec.nearest?.id).toBe("A");
+    expect(rec.predicted).toBeGreaterThanOrEqual(4.49);
+    expect(rec.predicted).toBeLessThanOrEqual(4.59);
+    expect(rec.nearest?.id).toBe("N5");
   });
+
 
   it("(3) dislike guard: candidate glued to a plain 1★ is capped near that 1★", () => {
     const r: RatedFp[] = [
@@ -160,6 +162,45 @@ describe("Engine v2 — acceptance", () => {
     expect(canonRec.predicted).toBeGreaterThan(plainRec.predicted);
     expect(canonRec.evidence).toBeGreaterThan(plainRec.evidence);
     expect(canonRec.nearestIsCanon).toBe(true);
+  });
+
+  it("(7) ω-ordering: informative axis (body) rises above uniform when signal concentrates there", () => {
+    // Rating variance lives ENTIRELY on body; every other axis is held at
+    // 0.5 across all 4 anchors. After the option-2 rescale (Σω=A before
+    // clamping) body's learned ω must exceed uniform (1.0).
+    const r: RatedFp[] = [
+      rated("hi1", 5, { body: 0.90 }),
+      rated("hi2", 5, { body: 0.85 }),
+      rated("lo1", 1, { body: 0.10 }),
+      rated("lo2", 1, { body: 0.15 }),
+    ];
+    const fit = __debug_learnOmega!(r, "red");
+    expect(fit.omega.body).toBeGreaterThan(1.0);
+    // All uninformative axes tie (they share the same ridge fixed-point).
+    for (const k of ["fresh", "acid", "ripe", "oak", "savory", "fruit_dark"] as FpKey[]) {
+      expect(fit.omega[k]).toBeLessThan(fit.omega.body);
+    }
+  });
+
+  it("(8) Canon–Nemesis pair weight (9×) sharpens ω further than ordinary pairs", () => {
+    // Same fingerprints; only the pair weights change. The Canon(5★)–Nemesis(1★)
+    // contrast pair carries 3·3 = 9× an ordinary pair, so ω_body under
+    // canon/nemesis flags should be >= ω_body under plain weights.
+    const plain: RatedFp[] = [
+      rated("hi1", 5, { body: 0.90 }),
+      rated("hi2", 5, { body: 0.85 }),
+      rated("lo1", 1, { body: 0.10 }),
+      rated("lo2", 1, { body: 0.15 }),
+    ];
+    const weighted: RatedFp[] = [
+      { ...plain[0], weight: 3.0, canon: true },
+      plain[1],
+      { ...plain[2], weight: 3.0 }, // nemesis-role anchor
+      plain[3],
+    ];
+    const plainFit = __debug_learnOmega!(plain, "red");
+    const weightedFit = __debug_learnOmega!(weighted, "red");
+    expect(weightedFit.omega.body).toBeGreaterThanOrEqual(plainFit.omega.body);
   });
 });
 
