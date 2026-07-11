@@ -1,82 +1,73 @@
 import { useCallback } from "react";
-import {
-  BENCHMARK_WEIGHT,
-  buildTypeContext,
-  distanceInContext,
-  type RatedFp,
-} from "@/lib/recommender";
-import { bottleToFp, bottleType, useRatings, useBottlesByIds, type BottleRow } from "./use-palate-data";
-import { useMyCanons } from "./use-canon";
-import { useTypeCentroids } from "./use-type-centroids";
+import { supabase } from "@/integrations/supabase/client";
+import { bottleToFp, bottleType, type BottleRow } from "./use-palate-data";
+
+/** Empirically calibrated on the red pool (2000-sample):
+ *    barrel-sample (excluded)     reach = 0.031
+ *    Pavillon Rouge (Canon)       reach = 0.002
+ *    Shafer Hillside (Canon)      reach = 0.0035
+ *    Gambal Vosne (Canon)         reach = 0.001
+ *    Pignier Trousseau (Jura)     reach = 0.005    (savory outlier, passes)
+ *  Threshold 0.015 sits 2× above the highest legit anchor and 2× below the barrel sample. */
+export const REACH_H = 0.2;
+export const REACH_SAMPLE = 2000;
+export const REACH_THRESHOLD = 0.015;
 
 export type GenericVerdict = {
-  distance: number;
+  reach: number;
+  threshold: number;
   h: number;
   generic: boolean;
 };
 
-/** Returns a synchronous predicate + async confirm helper for crown-time
- *  generic-fingerprint warnings. Uses the promoting user's own ω/h context
- *  (same math the recommender uses) against the catalog type centroid. */
+/** Wine-level "generic fingerprint" check.
+ *  Computes the fraction of the calibrated same-type pool sitting within
+ *  uniform-ω distance `h` of the candidate. This is a property of the wine
+ *  vs. the catalog, not the user — replaces distance-to-centroid, which
+ *  conflated "catalog is dense here" with "fingerprint is undifferentiated." */
 export function useGenericWarning() {
-  const { data: ratings } = useRatings();
-  const ratedIds = (ratings ?? []).map((r) => r.bottle_id);
-  const { data: ratedBottles } = useBottlesByIds(ratedIds);
-  const { data: centroids } = useTypeCentroids();
-  const { data: canons } = useMyCanons();
-
   const evaluate = useCallback(
-    (bottle: BottleRow): GenericVerdict | null => {
-      if (!ratings || !ratedBottles || !centroids) return null;
+    async (bottle: BottleRow): Promise<GenericVerdict | null> => {
       const type = bottleType(bottle);
-      const centroid = centroids[type];
-      if (!centroid) return null;
-
-      const canonSet = new Set(
-        (canons ?? []).filter((c) => c.tier === "canon").map((c) => c.bottle_id),
-      );
-      const nemSet = new Set(
-        (canons ?? []).filter((c) => c.tier === "nemesis").map((c) => c.bottle_id),
-      );
-
-      const rated: RatedFp[] = ratedBottles
-        .filter((b) => bottleType(b) === type)
-        .map((b) => {
-          const stars = ratings.find((r) => r.bottle_id === b.id)?.stars ?? 3;
-          const isC = canonSet.has(b.id);
-          const isN = nemSet.has(b.id);
-          return {
-            id: b.id,
-            name: b.name,
-            producer: b.producer,
-            region: b.region,
-            type,
-            fp: bottleToFp(b),
-            stars,
-            weight: isC || isN ? BENCHMARK_WEIGHT : 1,
-            canon: isC,
-            nemesis: isN,
-          };
-        });
-
-      const ctx = buildTypeContext(rated, type);
-      if (!ctx) return null;
-      const d = distanceInContext(bottleToFp(bottle), centroid, ctx);
-      return { distance: d, h: ctx.h, generic: d < ctx.h };
+      const fp = bottleToFp(bottle);
+      const { data, error } = await (supabase as any).rpc("rpc_fingerprint_reach", {
+        fp_fresh: fp.fresh,
+        fp_acid: fp.acid,
+        fp_tannin: fp.tannin,
+        fp_fruit_dark: fp.fruit_dark,
+        fp_ripe: fp.ripe,
+        fp_oak: fp.oak,
+        fp_body: fp.body,
+        fp_savory: fp.savory,
+        wine_type: type,
+        h: REACH_H,
+        sample_size: REACH_SAMPLE,
+      });
+      if (error) return null;
+      const reach = Number(data ?? 0);
+      return {
+        reach,
+        threshold: REACH_THRESHOLD,
+        h: REACH_H,
+        generic: reach > REACH_THRESHOLD,
+      };
     },
-    [ratings, ratedBottles, centroids, canons],
+    [],
   );
 
-  /** Returns true if it's safe to proceed (either not generic, or user confirmed).
-   *  Uses window.confirm — non-blocking to the pipeline (no version bump if declined). */
+  /** True = safe to proceed (either not generic, or user confirmed).
+   *  Non-blocking window.confirm — cancel = no write, no version bump. */
   const confirmIfGeneric = useCallback(
     async (bottle: BottleRow): Promise<boolean> => {
-      const v = evaluate(bottle);
+      const v = await evaluate(bottle);
       if (!v || !v.generic) return true;
+      const pct = (v.reach * 100).toFixed(1);
+      const thr = (v.threshold * 100).toFixed(1);
       const msg =
         `This wine's profile looks generic in our catalog — ` +
         `its recommendations may be unfocused. Crown anyway?\n\n` +
-        `(distance ${v.distance.toFixed(3)} < bandwidth h ${v.h.toFixed(3)})`;
+        `(${pct}% of comparable wines sit within h=${v.h} of this fingerprint; ` +
+        `threshold ${thr}%)`;
       return typeof window !== "undefined" ? window.confirm(msg) : true;
     },
     [evaluate],
