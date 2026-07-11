@@ -144,7 +144,8 @@ function scoreCandidate(
   const alphaEff = alpha / (1 + den);
   const predicted = (num + alphaEff * prior) / (den + alphaEff);
   const confidence = den / (den + alphaEff);
-  return { predicted, nearest, maxSimilarity: Math.max(bestAny, 0), confidence };
+  const nearestIsCanon = !!nearest?.canon;
+  return { predicted, nearest, nearestIsCanon, maxSimilarity: Math.max(bestAny, 0), confidence };
 }
 
 
