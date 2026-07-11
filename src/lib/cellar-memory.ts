@@ -115,6 +115,8 @@ export function computeCellarMemory(args: {
           bottle,
           stars: starsById.get(w.matched_bottle_id)!,
           isCanon: canonBottleIds.has(w.matched_bottle_id),
+          isNemesis: nemesisBottleIds.has(w.matched_bottle_id),
+
         };
         matches.push(m);
         byIndex.set(idx, m);
@@ -139,6 +141,8 @@ export function computeCellarMemory(args: {
         avgStars: g.totalStars / g.count,
         ratedVintages: Array.from(new Set(g.vintages)).sort((a, b) => b - a),
         isCanon: g.bottleIds.some((id) => canonBottleIds.has(id)),
+        isNemesis: g.bottleIds.some((id) => nemesisBottleIds.has(id)),
+
       };
       matches.push(m);
       byIndex.set(idx, m);
