@@ -85,23 +85,25 @@ describe("Engine v2 — acceptance", () => {
     expect(rec.predicted).toBeLessThanOrEqual(4.75);
   });
 
-  it("(2) mode isolation: candidate hugging 5★ pole is not dragged by a distant 1★", () => {
-    // Two anchors on opposite ends of body/tannin; candidate glued to the 5★.
-    // Add filler ratings far away to give μᵤ realistic weight.
+  it("(2) mode isolation: four 5★ + one distant 1★, candidate hugs the nearest 5★", () => {
+    // Re-specified per spec: 4× 5★ (one at d≈0.1, three at d≥0.5) + 1× 1★
+    // at d≈0.4 from candidate. Adaptive h clamps into the 0.20–0.25 band, so
+    // the 1★ contributes negligible kernel mass and prediction lands ≈ 4.54.
+    // All variation lives on body/tannin so ω learning stays clean.
     const r: RatedFp[] = [
-      rated("A", 5, { body: 0.85, tannin: 0.85, ripe: 0.8, oak: 0.7 }),
-      rated("B", 1, { body: 0.15, tannin: 0.15, ripe: 0.2, oak: 0.3 }),
-      rated("f1", 3, { body: 0.5, tannin: 0.5, ripe: 0.5, oak: 0.5, fresh: 0.9 }),
-      rated("f2", 3, { body: 0.5, tannin: 0.5, ripe: 0.5, oak: 0.5, acid: 0.9 }),
-      rated("f3", 3, { body: 0.5, tannin: 0.5, ripe: 0.5, oak: 0.5, savory: 0.9 }),
-      rated("f4", 3, { body: 0.5, tannin: 0.5, ripe: 0.5, oak: 0.5, fruit_dark: 0.9 }),
+      rated("N5", 5, { body: 0.80, tannin: 0.80 }), // near candidate (d≈0.1)
+      rated("F5a", 5, { body: 0.20, tannin: 0.85 }), // far 5★ #1 (d≈0.5)
+      rated("F5b", 5, { body: 0.85, tannin: 0.20 }), // far 5★ #2 (d≈0.5)
+      rated("F5c", 5, { body: 0.15, tannin: 0.20 }), // far 5★ #3 (d≈0.6)
+      rated("B1",  1, { body: 0.30, tannin: 0.50 }), // dislike at d≈0.4
     ];
-    const near5 = cand("near5", { body: 0.83, tannin: 0.83, ripe: 0.78, oak: 0.7 });
+    const near5 = cand("near5", { body: 0.85, tannin: 0.85 });
     const [rec] = recommend(r, [near5]);
-    // Sharpening (γ=2) plus adaptive h should keep the 1★ from pulling this below 4.
-    expect(rec.predicted).toBeGreaterThanOrEqual(4.0);
-    expect(rec.nearest?.id).toBe("A");
+    expect(rec.predicted).toBeGreaterThanOrEqual(4.49);
+    expect(rec.predicted).toBeLessThanOrEqual(4.59);
+    expect(rec.nearest?.id).toBe("N5");
   });
+
 
   it("(3) dislike guard: candidate glued to a plain 1★ is capped near that 1★", () => {
     const r: RatedFp[] = [
