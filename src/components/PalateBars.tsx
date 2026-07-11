@@ -22,12 +22,13 @@ export function PalateBars({ axes, letters }: Props) {
         const isHigh = resolved && r!.letter === axisDef.high && !r!.bimodal;
         const isLow = resolved && r!.letter === axisDef.low && !r!.bimodal;
         const isN = resolved && r!.letter === "N";
+        const isX = resolved && r!.bimodal;
         const rowOpacity = !resolved ? 0.5 : 1;
         const delay = `${rowIdx * 60}ms`;
 
-        const leftClass = isLow ? "text-primary font-medium" : "text-muted-foreground";
-        const rightClass = isHigh ? "text-primary font-medium" : "text-muted-foreground";
-        const centerClass = isN ? "text-primary" : "text-muted-foreground";
+        const leftClass = isLow || isX ? "text-primary font-medium" : "text-muted-foreground";
+        const rightClass = isHigh || isX ? "text-primary font-medium" : "text-muted-foreground";
+        const centerClass = isN || isX ? "text-primary" : "text-muted-foreground";
 
         return (
           <li key={axisDef.key} style={{ opacity: rowOpacity }}>
@@ -36,9 +37,14 @@ export function PalateBars({ axes, letters }: Props) {
                 <span className="font-serif text-[14px] mr-1">{axisDef.low}</span>
                 {axisDef.lowName}
               </span>
-              <span className={`${centerClass} text-[10px] uppercase`} style={{ letterSpacing: "0.22em" }}>
+              <span
+                className={`${centerClass} text-[10px] uppercase`}
+                style={{ letterSpacing: "0.22em" }}
+                title={isX ? "loves both poles" : undefined}
+              >
                 {axisDef.label}
                 {isN && <span className="font-serif normal-case tracking-normal"> · N</span>}
+                {isX && <span className="font-serif normal-case tracking-normal"> · X</span>}
               </span>
               <span className={rightClass}>
                 {axisDef.highName}
