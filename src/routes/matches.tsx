@@ -191,7 +191,7 @@ function Matches() {
             Go rate
           </Link>
           <div className="mt-8 space-y-10">
-            {sections.map((s) => <SectionView key={s.type} section={s} groupScores={groupScores} groupActive={group.friendIds.length > 0} groupLoading={groupPred.isFetching} />)}
+            {sections.map((s) => <SectionView key={s.type} section={s} groupScores={groupScores} groupActive={group.friendIds.length > 0} groupLoading={groupPred.isFetching} canonRegionByBottle={canonRegionByBottle} />)}
           </div>
         </div>
       ) : (
@@ -199,7 +199,7 @@ function Matches() {
           {sections.length === 0 && (
             <p className="text-sm text-muted-foreground">No unrated bottles in the catalogue yet.</p>
           )}
-          {sections.map((s) => <SectionView key={s.type} section={s} groupScores={groupScores} groupActive={group.friendIds.length > 0} groupLoading={groupPred.isFetching} />)}
+          {sections.map((s) => <SectionView key={s.type} section={s} groupScores={groupScores} groupActive={group.friendIds.length > 0} groupLoading={groupPred.isFetching} canonRegionByBottle={canonRegionByBottle} />)}
         </div>
       )}
     </div>
