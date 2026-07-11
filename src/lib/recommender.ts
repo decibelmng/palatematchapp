@@ -110,7 +110,7 @@ function scoreCandidate(
   bandwidth: number,
   alpha: number,
   prior: number,
-): { predicted: number; nearest: RatedFp | null; maxSimilarity: number; confidence: number } | null {
+): { predicted: number; nearest: RatedFp | null; nearestIsCanon: boolean; maxSimilarity: number; confidence: number } | null {
   if (sameType.length === 0) return null;
   const twoBwSq = 2 * bandwidth * bandwidth;
   const used = active.filter((k) => axisApplies(k, candidate.type));
@@ -130,8 +130,11 @@ function scoreCandidate(
     if (wsum === 0) continue;
     d2 = d2 / wsum;
     const sim = Math.exp(-d2 / twoBwSq);
-    num += sim * r.stars;
-    den += sim;
+    // Per-sample weight: Canon wines carry CANON_WEIGHT so their similarity
+    // mass dominates the kernel sum; ordinary rated wines pass weight = 1.
+    const sw = r.weight ?? 1;
+    num += sim * sw * r.stars;
+    den += sim * sw;
     if (sim > bestAny) { bestAny = sim; nearestAny = r; }
     if (sim > best && r.stars >= 4) { best = sim; nearest = r; }
   }
