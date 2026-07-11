@@ -366,15 +366,30 @@ function SectionView({ section, groupScores, groupActive, groupLoading, canonReg
     }
     return out;
   }, [rows, effective, treatAsFallback]);
-  // Uncalibrated (raw import defaults) cuvées are held out of the visible top-10
-  // so a template bottle can't outrank calibrated real matches. Vetoed wines
-  // (inside a Nemesis radius) are ALSO excluded from the top-10 slice regardless
-  // of sort — they render in a separate "Avoid" section below and are never
-  // hidden.
-  const kept = filtered.filter((r) => !r.raw);
-  const visible = kept.filter((r) => !r.vetoed).slice(0, 10);
-  const vetoed = kept.filter((r) => r.vetoed);
-  const hidden = Math.max(0, kept.length - visible.length - vetoed.length);
+  // Split: calibrated wines rank normally (top 10 by predicted, vetoed → Avoid).
+  // Raw (uncalibrated / template-fingerprint) wines are NEVER ranked by predicted
+  // score — the template coordinates make predicted and M unreliable, so we hide
+  // the star and collapse them into a separate "Uncalibrated" section below the
+  // ranked list. Raw is also exempt from Nemesis veto (distance is unreliable
+  // in both directions), so no raw wine appears in Avoid either.
+  const calibrated = filtered.filter((r) => !r.raw);
+  const rawItems = filtered.filter((r) => r.raw);
+  const visible = calibrated.filter((r) => !r.vetoed).slice(0, 10);
+  const vetoed = calibrated.filter((r) => r.vetoed);
+  const hidden = Math.max(0, calibrated.length - visible.length - vetoed.length);
+  const [showRaw, setShowRaw] = useState(false);
+
+  // Dev-only diagnostic so we can chase render-count regressions without
+  // bringing back the ad-hoc console dumps. Silent in production.
+  if (typeof window !== "undefined" && (import.meta as any).env?.DEV) {
+    // eslint-disable-next-line no-console
+    console.debug(
+      `[matches:${section.type}] rows=${rows.length} filtered=${filtered.length}`,
+      `calibrated=${calibrated.length} raw=${rawItems.length}`,
+      `visible=${visible.length} vetoed=${vetoed.length} hidden=${hidden}`,
+      `groupActive=${groupActive} groupScoresSize=${groupScores?.size ?? "null"}`,
+    );
+  }
 
 
   return (
