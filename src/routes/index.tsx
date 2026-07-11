@@ -338,6 +338,7 @@ function CodeChipRow({
             key={`${type}-${i}-${ch}`}
             className={`pm-letter ${ch === "·" ? "text-muted-foreground/60" : ""}`}
             style={{ ["--pm-delay" as string]: `${i * 50}ms` }}
+            title={ch === "X" ? "loves both poles" : undefined}
           >
             {ch}
           </span>

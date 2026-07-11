@@ -93,7 +93,7 @@ export function computeCode(rated: RatedBottle[], axes: AxisDef[]): { code: stri
     let letter: string;
     let descriptor: string;
     if (bimodal) {
-      letter = "N"; descriptor = "loves both poles";
+      letter = "X"; descriptor = "loves both poles";
     } else if (mean <= 0.42) {
       letter = axisDef.low; descriptor = axisDef.lowName;
     } else if (mean >= 0.55) {

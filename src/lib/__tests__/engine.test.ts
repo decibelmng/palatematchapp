@@ -376,7 +376,7 @@ describe("computeCode()", () => {
     const { letters } = computeCode(rows, RED_AXES);
     const body = letters.find((l) => l.axis === "body")!;
     expect(body.bimodal).toBe(true);
-    expect(body.letter).toBe("N");
+    expect(body.letter).toBe("X");
     expect(body.descriptor).toBe("loves both poles");
   });
 
