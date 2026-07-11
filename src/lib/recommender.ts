@@ -375,7 +375,9 @@ export function recommend(
     if (a.vetoed && b.vetoed) {
       return (a.vetoReason?.distance ?? 0) - (b.vetoReason?.distance ?? 0);
     }
-    return b.predicted - a.predicted;
+    if (b.predicted !== a.predicted) return b.predicted - a.predicted;
+    // Tie-break: prefer candidates closer to an anchor (higher max similarity).
+    return (b.maxSimilarity ?? 0) - (a.maxSimilarity ?? 0);
   });
 }
 
