@@ -262,6 +262,48 @@ function OnboardingBlock({ scope, n }: { scope: PaletteType; n: number }) {
   );
 }
 
+function CanonAnchors({
+  scope, bottles, canons,
+}: {
+  scope: PaletteType;
+  bottles: ReturnType<typeof useBottlesByIds>["data"] extends infer T ? (T extends undefined ? never : T) : never;
+  canons: NonNullable<ReturnType<typeof useMyCanons>["data"]>;
+}) {
+  const rows = useMemo(() => {
+    const list = (canons ?? []).map((c) => {
+      const b = (bottles ?? []).find((x) => x.id === c.bottle_id);
+      if (!b) return null;
+      const t = bottleType(b);
+      if (t !== scope) return null;
+      return { canon: c, bottle: b };
+    }).filter(Boolean) as { canon: typeof canons[number]; bottle: NonNullable<ReturnType<typeof bottles.find>> }[];
+    return list;
+  }, [bottles, canons, scope]);
+
+  if (rows.length === 0) return null;
+
+  return (
+    <div className="mt-10">
+      <div className="flex items-center justify-between">
+        <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground flex items-center gap-1.5">
+          <Crown size={12} strokeWidth={2.2} fill="currentColor" className="text-amber-600" />
+          Canon anchors feeding this palate
+        </p>
+        <Link to="/canons" className="text-[11px] text-primary hover:underline">All canons →</Link>
+      </div>
+      <ul className="mt-3 space-y-1.5">
+        {rows.map(({ canon, bottle }) => (
+          <li key={canon.id} className="text-xs flex items-center gap-2">
+            <CanonBadge />
+            <span className="text-foreground/90 truncate">{bottle.name}</span>
+            <span className="text-muted-foreground">· {canon.region}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
 function CodeChipRow({
   type, code, n, active, onClick,
 }: {
