@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { RAX, recommend, type FpKey, type RatedFp, type BottleFp, type WineType } from "@/lib/recommender";
+import { RAX, recommend, BENCHMARK_WEIGHT, type FpKey, type RatedFp, type BottleFp, type WineType } from "@/lib/recommender";
 import { aggregateRated } from "@/lib/cuvee";
 
 const FpSchema = z.object({
@@ -32,6 +32,7 @@ export type GroupPerPerson = {
   n_ratings_same_type: number;
   still_learning: boolean;      // < 3 same-type ratings
   contributed_min: number;      // predicted after floor-3.0 rule
+  vetoed: boolean;              // candidate hit this member's Nemesis radius
 };
 
 export type GroupScored = {
@@ -39,7 +40,10 @@ export type GroupScored = {
   per_person: GroupPerPerson[];
   group_min: number;   // used for ranking (uses contributed_min per person)
   group_avg: number;   // simple mean of raw predicted
+  /** display names of members for whom this candidate is inside a Nemesis radius. */
+  nemesis_flagged_by: string[];
 };
+
 
 async function loadMemberRatings(admin: any, userId: string): Promise<RatedFp[]> {
   const { data: ratings, error: rErr } = await admin
@@ -62,7 +66,22 @@ async function loadMemberRatings(admin: any, userId: string): Promise<RatedFp[]>
   const byId = new Map(bottles.map((b) => [b.id, b]));
   const starsById = new Map(ratings.map((r: any) => [r.bottle_id, r.stars]));
 
-  const raw: (RatedFp & { vintage: number | null })[] = [];
+  // Load per-member benchmarks (canon + nemesis) so anchors can carry the
+  // asymmetric veto and heavier weight in the shared kernel path.
+  const { data: benches, error: bErr } = await admin
+    .from("canon_wines")
+    .select("bottle_id, tier")
+    .eq("user_id", userId)
+    .is("replaced_at", null);
+  if (bErr) throw new Error(bErr.message);
+  const canonBottleIds = new Set<string>();
+  const nemesisBottleIds = new Set<string>();
+  for (const r of (benches ?? []) as any[]) {
+    if (r.tier === "nemesis") nemesisBottleIds.add(r.bottle_id);
+    else canonBottleIds.add(r.bottle_id);
+  }
+
+  const raw: (RatedFp & { vintage: number | null; bottleIds?: string[] })[] = [];
   for (const [id, b] of byId) {
     const stars = starsById.get(id);
     if (typeof stars !== "number") continue;
@@ -82,11 +101,19 @@ async function loadMemberRatings(admin: any, userId: string): Promise<RatedFp[]>
     });
   }
   const agg = aggregateRated(raw);
-  return agg.map((c) => ({
-    id: c.id, name: c.name, producer: c.producer, region: c.region,
-    type: c.type, fp: c.fp, stars: c.stars,
-  }));
+  return agg.map((c) => {
+    const isCanon = c.bottleIds.some((id) => canonBottleIds.has(id));
+    const isNemesis = c.bottleIds.some((id) => nemesisBottleIds.has(id));
+    return {
+      id: c.id, name: c.name, producer: c.producer, region: c.region,
+      type: c.type, fp: c.fp, stars: c.stars,
+      weight: isCanon || isNemesis ? BENCHMARK_WEIGHT : 1,
+      canon: isCanon,
+      nemesis: isNemesis,
+    };
+  });
 }
+
 
 export const groupPredict = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -149,6 +176,7 @@ export const groupPredict = createServerFn({ method: "POST" })
     }));
 
     const perMemberRecs = new Map<string, Map<string, number>>();
+    const perMemberVetoed = new Map<string, Set<string>>();
     const sameTypeCount = new Map<string, Map<WineType, number>>();
     for (const uid of groupIds) {
       const rated = memberRatings.get(uid) ?? [];
@@ -156,26 +184,30 @@ export const groupPredict = createServerFn({ method: "POST" })
       for (const r of rated) byType.set(r.type, (byType.get(r.type) ?? 0) + 1);
       sameTypeCount.set(uid, byType);
 
-      // Run the recommender with restrictToRatedTypes:false so unknown-type
-      // candidates still get a neutral score (they'll be treated as
-      // "still learning" via the same-type count check below).
       const recs = rated.length > 0
         ? recommend(rated, candidates, { restrictToRatedTypes: false })
         : [];
       const map = new Map<string, number>();
-      for (const r of recs) map.set(r.bottle.id, r.predicted);
+      const vset = new Set<string>();
+      for (const r of recs) {
+        map.set(r.bottle.id, r.predicted);
+        if (r.vetoed) vset.add(r.bottle.id);
+      }
       perMemberRecs.set(uid, map);
+      perMemberVetoed.set(uid, vset);
     }
 
     // 5. Assemble per-candidate results, applying the "still learning" floor.
-    const out: GroupScored[] = candidates.map((cand) => {
+    const raw: GroupScored[] = candidates.map((cand) => {
+      const flaggedBy: string[] = [];
       const per: GroupPerPerson[] = groupIds.map((uid) => {
         const nSame = sameTypeCount.get(uid)?.get(cand.type) ?? 0;
         const stillLearning = nSame < 3;
-        const raw = perMemberRecs.get(uid)?.get(cand.id);
-        // No prediction possible (no ratings at all, or no same-type ratings): neutral 3.0.
-        const predicted = typeof raw === "number" && !Number.isNaN(raw) ? raw : 3.0;
+        const rawScore = perMemberRecs.get(uid)?.get(cand.id);
+        const predicted = typeof rawScore === "number" && !Number.isNaN(rawScore) ? rawScore : 3.0;
         const contributed = stillLearning ? Math.max(predicted, 3.0) : predicted;
+        const vetoed = perMemberVetoed.get(uid)?.has(cand.id) ?? false;
+        if (vetoed) flaggedBy.push(nameById.get(uid) ?? "friend");
         return {
           user_id: uid,
           display_name: nameById.get(uid) ?? "friend",
@@ -183,14 +215,22 @@ export const groupPredict = createServerFn({ method: "POST" })
           n_ratings_same_type: nSame,
           still_learning: stillLearning,
           contributed_min: contributed,
+          vetoed,
         };
       });
       const group_min = Math.min(...per.map((p) => p.contributed_min));
       const group_avg = per.reduce((s, p) => s + p.predicted, 0) / per.length;
-      return { candidate_id: cand.id, per_person: per, group_min, group_avg };
+      return {
+        candidate_id: cand.id, per_person: per, group_min, group_avg,
+        nemesis_flagged_by: flaggedBy,
+      };
     });
+
+    // Per spec: exclude vetoed candidates from group_min ranking entirely.
+    const out = raw.filter((r) => r.nemesis_flagged_by.length === 0);
 
     // Sort by group_min desc, tiebreak group_avg desc.
     out.sort((a, b) => (b.group_min - a.group_min) || (b.group_avg - a.group_avg));
     return out;
   });
+

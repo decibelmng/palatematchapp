@@ -7,7 +7,7 @@ import { DrinkingGroupSelector } from "@/components/DrinkingGroupSelector";
 import { usePourCandidates, useBottlesByIds, useRatings, bottleToFp, bottleType } from "@/hooks/use-palate-data";
 import { useMyCanons } from "@/hooks/use-canon";
 import { useGroupSelection, useGroupPredict, type GroupCandidateInput } from "@/hooks/use-friends";
-import { recommend, CANON_WEIGHT, type BottleFp, type RatedFp, type Recommendation, type WineType } from "@/lib/recommender";
+import { recommend, CANON_WEIGHT, BENCHMARK_WEIGHT, type BottleFp, type RatedFp, type Recommendation, type WineType } from "@/lib/recommender";
 import { aggregateRated, aggregateCandidates, cuveeKey, type CuveeCandidate, type CuveeRated } from "@/lib/cuvee";
 import { applyControls, normalizePrice, isGreatValue, DEFAULT_CONTROLS, type Controls, type Priced } from "@/lib/list-controls";
 import type { GroupScored } from "@/lib/group.functions";
@@ -52,12 +52,20 @@ function Matches() {
   const { data: ratedBottles } = useBottlesByIds(ratedIds);
   const { data: pool } = usePourCandidates();
   const { data: canons } = useMyCanons();
-  const canonBottleIds = useMemo(() => new Set((canons ?? []).map((c) => c.bottle_id)), [canons]);
+  const canonBottleIds = useMemo(
+    () => new Set((canons ?? []).filter((c) => c.tier === "canon").map((c) => c.bottle_id)),
+    [canons],
+  );
+  const nemesisBottleIds = useMemo(
+    () => new Set((canons ?? []).filter((c) => c.tier === "nemesis").map((c) => c.bottle_id)),
+    [canons],
+  );
   const canonRegionByBottle = useMemo(() => {
     const m = new Map<string, string>();
     for (const c of canons ?? []) m.set(c.bottle_id, c.region);
     return m;
   }, [canons]);
+
 
   const sections: Section[] = useMemo(() => {
     if (!ratings || !pool) return [];
@@ -106,11 +114,13 @@ function Matches() {
         // the Canon anchor in the reason line.
         const ratedFp: RatedFp[] = sameTypeRated.map((r) => {
           const isCanon = r.bottleIds.some((id) => canonBottleIds.has(id));
+          const isNemesis = r.bottleIds.some((id) => nemesisBottleIds.has(id));
           return {
             id: r.id, name: r.name, producer: r.producer, region: r.region,
             type: r.type, fp: r.fp, stars: r.stars,
-            weight: isCanon ? CANON_WEIGHT : 1,
+            weight: isCanon || isNemesis ? BENCHMARK_WEIGHT : 1,
             canon: isCanon,
+            nemesis: isNemesis,
           };
         });
         const candFp: BottleFp[] = cands.map((c) => ({
@@ -131,7 +141,11 @@ function Matches() {
             return { ...r, predicted, cuvee, nearestCuvee, nearestIsCanon: r.nearestIsCanon };
           })
           .filter((x): x is RankedCuvee => x !== null)
-          .sort((a, b) => b.predicted - a.predicted);
+          // Preserve engine sort (vetoed sink to bottom, else predicted desc).
+          .sort((a, b) => {
+            if (a.vetoed !== b.vetoed) return a.vetoed ? 1 : -1;
+            return b.predicted - a.predicted;
+          });
         if (items.length > 0) out.push({ type, mode: "personalized", nSameType: sameTypeRated.length, items });
       }
     }
@@ -139,7 +153,8 @@ function Matches() {
     void cuveeKey; void ratedCuveeByKey;
 
     return out;
-  }, [ratedBottles, ratings, pool, canonBottleIds]);
+  }, [ratedBottles, ratings, pool, canonBottleIds, nemesisBottleIds]);
+
 
   const nRated = ratings?.length ?? 0;
   const loading = !ratings || (ratedIds.length > 0 && !ratedBottles) || !pool;
@@ -230,7 +245,11 @@ type Row = Priced & {
   greatValue: boolean;
   confidence: number | null;
   raw: boolean;            // uncalibrated (import-defaults) cuvée — hide from top 10
+  vetoed: boolean;
+  vetoNemesisName: string | null;
+  vetoAxes: string[];
 };
+
 
 function toRows(section: Section, canonRegionByBottle: Map<string, string>): Row[] {
   if (section.mode === "personalized") {
@@ -258,11 +277,15 @@ function toRows(section: Section, canonRegionByBottle: Map<string, string>): Row
         greatValue: false,
         confidence: r.confidence,
         raw: r.cuvee.raw,
+        vetoed: r.vetoed,
+        vetoNemesisName: r.vetoReason?.nemesis.name ?? null,
+        vetoAxes: r.vetoReason?.drivingAxes ?? [],
       };
-      row.greatValue = isGreatValue(row);
+      row.greatValue = !row.vetoed && isGreatValue(row);
       return row;
     });
   }
+
   return section.items.map((c) => {
     const p = normalizePrice(c.price_band);
     return {
@@ -284,9 +307,13 @@ function toRows(section: Section, canonRegionByBottle: Map<string, string>): Row
       greatValue: false,
       confidence: null,
       raw: c.raw,
+      vetoed: false,
+      vetoNemesisName: null,
+      vetoAxes: [],
     };
   });
 }
+
 
 type SectionViewProps = {
   section: Section;
@@ -335,10 +362,15 @@ function SectionView({ section, groupScores, groupActive, groupLoading, canonReg
     return out;
   }, [rows, effective, treatAsFallback]);
   // Uncalibrated (raw import defaults) cuvées are held out of the visible top-10
-  // so a template bottle can't outrank calibrated real matches. They stay in the
-  // pool and reappear once re-fingerprinted.
-  const visible = filtered.filter((r) => !r.raw).slice(0, 10);
-  const hidden = Math.max(0, filtered.length - visible.length);
+  // so a template bottle can't outrank calibrated real matches. Vetoed wines
+  // (inside a Nemesis radius) are ALSO excluded from the top-10 slice regardless
+  // of sort — they render in a separate "Avoid" section below and are never
+  // hidden.
+  const kept = filtered.filter((r) => !r.raw);
+  const visible = kept.filter((r) => !r.vetoed).slice(0, 10);
+  const vetoed = kept.filter((r) => r.vetoed);
+  const hidden = Math.max(0, kept.length - visible.length - vetoed.length);
+
 
   return (
     <section>
@@ -431,6 +463,42 @@ function SectionView({ section, groupScores, groupActive, groupLoading, canonReg
           })}
         </ul>
       )}
+      {vetoed.length > 0 && (
+        <div className="mt-6">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] uppercase tracking-[0.18em] text-destructive">Avoid ✕</span>
+            <span className="text-[11px] text-muted-foreground">
+              {vetoed.length} bottle{vetoed.length === 1 ? "" : "s"} inside a Nemesis radius
+            </span>
+          </div>
+          <ul className="mt-2 divide-y divide-border/60">
+            {vetoed.map((r) => (
+              <li key={r.key} className="py-3 flex items-start justify-between gap-3 opacity-90">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <WineTypeBadge type={section.type} />
+                    <span className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-destructive/50 bg-destructive/10 text-destructive">
+                      avoid
+                    </span>
+                  </div>
+                  <p className="font-medium leading-tight truncate mt-1 text-muted-foreground">{r.name}</p>
+                  <CuveeMeta producer={r.producer} region={r.region} vintages={r.vintages} />
+                  {r.vetoNemesisName && (
+                    <p className="mt-1 text-[11px] text-destructive">
+                      Matches your Nemesis {r.vetoNemesisName}
+                      {r.vetoAxes.length > 0 ? ` — ${r.vetoAxes.join(", ")}` : ""}
+                    </p>
+                  )}
+                </div>
+                <div className="shrink-0 text-right">
+                  <span className="font-serif text-destructive text-sm uppercase tracking-wider">Avoid ✕</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {hidden > 0 && (
         <p className="mt-2 text-[11px] text-muted-foreground">+{hidden} more match these filters.</p>
       )}

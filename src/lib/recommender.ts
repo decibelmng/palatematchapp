@@ -46,6 +46,15 @@ export type RatedFp = BottleFp & {
   weight?: number;
   /** Marks this rated wine as a Canon anchor (drives explanation copy). */
   canon?: boolean;
+  /** Marks this rated wine as a Nemesis anchor (drives veto + explanation). */
+  nemesis?: boolean;
+};
+
+export type VetoReason = {
+  nemesis: RatedFp;
+  distance: number;
+  /** 1–2 axes contributing most to ω-distance. */
+  drivingAxes: FpKey[];
 };
 
 export type Recommendation = {
@@ -60,6 +69,9 @@ export type Recommendation = {
   evidence: number;
   /** "strong" | "moderate" | "exploratory" from M. */
   evidenceTier: "strong" | "moderate" | "exploratory";
+  /** True when the candidate sits inside a Nemesis's asymmetric veto radius. */
+  vetoed: boolean;
+  vetoReason: VetoReason | null;
 };
 
 // ────────── Config (single tunable object) ──────────
@@ -68,6 +80,8 @@ export const PRIOR_ALPHA = 0.5;
 export const BENCHMARK_WEIGHT = 3.0;
 /** Back-compat alias — old code imports CANON_WEIGHT. */
 export const CANON_WEIGHT = BENCHMARK_WEIGHT;
+/** Asymmetric veto: repulsion reaches 1.25× the attraction bandwidth. */
+export const NEMESIS_RADIUS_MULT = 1.25;
 export const H_FLOOR = 0.12;
 export const H_CAP = 0.35;
 export const H_FALLBACK = 0.20;
@@ -75,6 +89,7 @@ export const OMEGA_CLAMP: [number, number] = [0.25, 4.0];
 export const EVIDENCE_STRONG = 1.5;
 export const EVIDENCE_MODERATE = 0.5;
 const GLOBAL_PRIOR = 3.5;
+
 
 /**
  * White/sparkling/rosé have no meaningful tannin / dark-fruit signal — those
@@ -130,38 +145,28 @@ function learnOmega(rated: RatedFp[], type: WineType): OmegaFit {
   }
   if (pairs.length === 0) return { omega: uniform, active };
 
-  // Ridge target = 1 (uniform prior); λ capped at 1.0 so thin-data users can
-  // still see informative axes rise above uniform. NO Σω=A rescale — the
-  // distance formula d² = Σ ω(x−xᵢ)² / Σ ω is already scale-invariant in ω,
-  // so a rescale contributes nothing to distances and only imposes a zero-sum
-  // budget that traps informative axes below uniform when other axes park at
-  // the ridge fixed-point of 1.0.
+  // Per-axis independent relevance fit (Phase 2 spec correction). For each
+  // axis a in isolation:
+  //   ω_a = (Σ_pairs w·g·δ²_a + λ·1) / (Σ_pairs w·δ⁴_a + λ)
+  // where g = |sᵢ−sⱼ|/4, δ²_a = (xᵢₐ−xⱼₐ)², w = wᵢ·wⱼ, λ = min(10/n_pairs, 1).
+  // Fixed point: δ²_a = 0 for all pairs ⇒ num = den = λ ⇒ ω_a = 1.0 exactly
+  // (uninformative axes rest at prior). Correlated informative axes each get
+  // full credit for the variance they explain — joint-model coupling is
+  // intentionally dropped because it forces co-varying informative axes to
+  // share a budget and land below prior.
   const lambda = Math.min(10 / pairs.length, 1.0);
   const omega: Record<FpKey, number> = { ...uniform };
-
-  // Coordinate descent: for each axis a,
-  //   ω_a := (Σ w·δ_a·(g - Σ_{b≠a} ω_b·δ_b) + λ) / (Σ w·δ_a² + λ)
-  for (let iter = 0; iter < 25; iter++) {
-    let maxDelta = 0;
-    for (const a of active) {
-      let num = lambda; // λ · 1  (prior mean 1)
-      let den = lambda;
-      for (const p of pairs) {
-        let partial = p.g;
-        for (const b of active) {
-          if (b === a) continue;
-          partial -= omega[b] * p.d2[b];
-        }
-        const da = p.d2[a];
-        num += p.w * da * partial;
-        den += p.w * da * da;
-      }
-      const raw = den > 0 ? Math.max(0, num / den) : 1;
-      maxDelta = Math.max(maxDelta, Math.abs(raw - omega[a]));
-      omega[a] = raw;
+  for (const a of active) {
+    let num = lambda; // λ · 1
+    let den = lambda;
+    for (const p of pairs) {
+      const da = p.d2[a];
+      num += p.w * p.g * da;
+      den += p.w * da * da;
     }
-    if (maxDelta < 1e-4) break;
+    omega[a] = den > 0 ? Math.max(0, num / den) : 1;
   }
+
 
   // Clamp to [0.25, 4.0]. No renormalization.
   for (const k of active)
@@ -268,6 +273,12 @@ function scoreOne(cand: BottleFp, ctx: TypeCtx): Recommendation {
   let nearestByDist: RatedFp | null = null;
   let nearestDist = Infinity;
 
+  // Nemesis veto tracking: repulsion reaches NEMESIS_RADIUS_MULT · h.
+  let vetoNemesis: RatedFp | null = null;
+  let vetoDist = Infinity;
+  const nemesisRadius = h * NEMESIS_RADIUS_MULT;
+  const perAxisContribution: Record<string, number> = {};
+
   for (const r of rated) {
     const d = omegaDistance(cand.fp, r.fp, fit.omega, fit.active);
     const sim = Math.exp(-(d * d) / twoH2);
@@ -278,20 +289,38 @@ function scoreOne(cand: BottleFp, ctx: TypeCtx): Recommendation {
     if (sim > bestSim) bestSim = sim;
     if (k > bestK) { bestK = k; bestKAnchor = r; }
     if (d < nearestDist) { nearestDist = d; nearestByDist = r; }
+    if (r.nemesis && d < nemesisRadius && d < vetoDist) {
+      vetoDist = d;
+      vetoNemesis = r;
+      for (const a of fit.active) {
+        const diff = cand.fp[a] - r.fp[a];
+        perAxisContribution[a] = fit.omega[a] * diff * diff;
+      }
+    }
   }
 
   let predicted = (num + PRIOR_ALPHA * muPrior) / (M + PRIOR_ALPHA);
 
-  // Step 6: dislike guard — nearest anchor by ω-distance is a dislike we're
-  // sitting on top of. Cap so a lonely candidate glued to a 1★ can't average
-  // its way to a middling score.
-  if (nearestByDist && nearestByDist.stars <= 2 && nearestDist < h) {
+  // Step 6: dislike guard — nearest anchor by ω-distance is a plain-dislike
+  // we're sitting on top of. Cap so a lonely candidate glued to a 1★ can't
+  // average its way to a middling score. Skips when nearest is a Nemesis
+  // (that path is handled by the asymmetric veto below).
+  if (nearestByDist && !nearestByDist.nemesis && nearestByDist.stars <= 2 && nearestDist < h) {
     const cap = nearestByDist.stars + 0.5;
     if (predicted > cap) predicted = cap;
   }
 
   predicted = Math.min(5, Math.max(1, predicted));
   const tier = evidenceTier(M);
+
+  let vetoReason: VetoReason | null = null;
+  if (vetoNemesis) {
+    const ranked = Object.entries(perAxisContribution)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 2)
+      .map(([a]) => a as FpKey);
+    vetoReason = { nemesis: vetoNemesis, distance: vetoDist, drivingAxes: ranked };
+  }
 
   return {
     bottle: cand,
@@ -302,8 +331,11 @@ function scoreOne(cand: BottleFp, ctx: TypeCtx): Recommendation {
     confidence: M / (M + PRIOR_ALPHA),
     evidence: M,
     evidenceTier: tier,
+    vetoed: !!vetoNemesis,
+    vetoReason,
   };
 }
+
 
 // ────────── Public entry ──────────
 
@@ -335,8 +367,18 @@ export function recommend(
     results.push(scoreOne(b, ctx));
   }
 
-  return results.sort((a, b) => b.predicted - a.predicted);
+  // Sort: non-vetoed first (by predicted desc); vetoed all sink below.
+  // Within vetoed, sort by ascending veto distance (worst offender last-ish
+  // is fine; the group is just "avoid").
+  return results.sort((a, b) => {
+    if (a.vetoed !== b.vetoed) return a.vetoed ? 1 : -1;
+    if (a.vetoed && b.vetoed) {
+      return (a.vetoReason?.distance ?? 0) - (b.vetoReason?.distance ?? 0);
+    }
+    return b.predicted - a.predicted;
+  });
 }
+
 
 // ────────── Dev-only diagnostic exports ──────────
 // Tree-shaken out of production bundles: `process.env.NODE_ENV` is inlined
