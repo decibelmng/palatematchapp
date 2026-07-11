@@ -366,12 +366,14 @@ describe("Engine v2 — acceptance", () => {
 // ---------- computeCode() ----------
 
 describe("computeCode()", () => {
-  it("returns 'N' + 'loves both poles' when loved wines sit at both poles of an axis", () => {
+  it("returns 'X' + 'loves both poles' when ≥2 loved anchors sit at each pole and ≥6 rated wines exist", () => {
     const rows = [
       { stars: 5, values: { body: 0.05, fruit_char: 0.5, tannin: 0.5, acidity: 0.5, sweet: 0 } },
       { stars: 5, values: { body: 0.95, fruit_char: 0.5, tannin: 0.5, acidity: 0.5, sweet: 0 } },
       { stars: 5, values: { body: 0.08, fruit_char: 0.5, tannin: 0.5, acidity: 0.5, sweet: 0 } },
       { stars: 5, values: { body: 0.92, fruit_char: 0.5, tannin: 0.5, acidity: 0.5, sweet: 0 } },
+      { stars: 4, values: { body: 0.10, fruit_char: 0.5, tannin: 0.5, acidity: 0.5, sweet: 0 } },
+      { stars: 4, values: { body: 0.90, fruit_char: 0.5, tannin: 0.5, acidity: 0.5, sweet: 0 } },
     ];
     const { letters } = computeCode(rows, RED_AXES);
     const body = letters.find((l) => l.axis === "body")!;
@@ -379,6 +381,22 @@ describe("computeCode()", () => {
     expect(body.letter).toBe("X");
     expect(body.descriptor).toBe("loves both poles");
   });
+
+  it("does NOT render 'X' when only one loved anchor sits at the high pole (min-evidence gate)", () => {
+    // Mirrors the real 4-white case: 3 low-pole (0.1/0.2/0.4) + 1 high-pole (0.65)
+    const rows = [
+      { stars: 5, values: { body: 0.5, fruit_char: 0.5, tannin: 0.5, oak: 0.20, acidity: 0.5, sweet: 0 } },
+      { stars: 5, values: { body: 0.5, fruit_char: 0.5, tannin: 0.5, oak: 0.65, acidity: 0.5, sweet: 0 } },
+      { stars: 4, values: { body: 0.5, fruit_char: 0.5, tannin: 0.5, oak: 0.40, acidity: 0.5, sweet: 0 } },
+      { stars: 4, values: { body: 0.5, fruit_char: 0.5, tannin: 0.5, oak: 0.10, acidity: 0.5, sweet: 0 } },
+    ];
+    const { letters } = computeCode(rows, WHITE_AXES);
+    const oak = letters.find((l) => l.axis === "oak")!;
+    expect(oak.bimodal).toBe(false);
+    expect(oak.letter).not.toBe("X");
+  });
+
+
 
   it("locks Sweet to 'D' when all rated wines sit at the dry floor", () => {
     const rows = [
