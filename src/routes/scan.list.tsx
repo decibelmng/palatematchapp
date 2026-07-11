@@ -985,6 +985,7 @@ function ScanSection({
           {visible.map(({ ranked: r, isCatalog, greatValue, price_display }) => {
             const flag = groupActive ? null : flagFor(r);
             const g = groupActive && groupScores ? groupScores.get(r.bottle.id) ?? null : null;
+            const prodFam = producerLookup(producers, r.bottle.producer);
             return (
               <li key={r.bottle.id} className="py-4 flex items-start justify-between gap-3">
                 <div className="min-w-0">
