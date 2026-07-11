@@ -1,0 +1,1 @@
+UPDATE public.bottles SET type = 'rose' WHERE type = 'rosé';
