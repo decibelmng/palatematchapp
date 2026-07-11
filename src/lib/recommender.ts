@@ -43,13 +43,6 @@ export type Recommendation = {
 /** Fixed sample-weight multiplier applied to Canon anchors in the kernel regression. */
 export const CANON_WEIGHT = 3.0;
 
-export type Recommendation = {
-  bottle: BottleFp;
-  predicted: number;
-  nearest: RatedFp | null;
-  maxSimilarity: number;
-  confidence: number;
-};
 
 /**
  * A white/sparkling/rosé bottle has NO tannin and NO fruit_dark signal — those
