@@ -1,6 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Star, Wine, Pencil, ScanLine, MapPin } from "lucide-react";
+import { Star, Wine, Pencil, ScanLine, MapPin, Crown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyProfile } from "@/hooks/use-friends";
 import { ThemeToggle } from "./ThemeToggle";
@@ -77,6 +77,14 @@ export function AppShell({ children }: { children: ReactNode }) {
                 role="menu"
                 className="absolute right-0 mt-2 w-44 rounded-lg border border-border bg-card shadow-xl overflow-hidden z-40"
               >
+                <Link
+                  to="/canons"
+                  role="menuitem"
+                  className="flex items-center gap-2 px-3 py-2.5 text-sm text-foreground hover:bg-accent/60"
+                >
+                  <Crown size={14} strokeWidth={2.2} fill="currentColor" className="text-amber-600" />
+                  Canon Cellar
+                </Link>
                 <Link
                   to="/friends"
                   role="menuitem"

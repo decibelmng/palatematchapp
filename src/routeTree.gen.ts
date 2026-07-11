@@ -16,6 +16,7 @@ import { Route as PourRouteImport } from './routes/pour'
 import { Route as MyRatingsRouteImport } from './routes/my-ratings'
 import { Route as MatchesRouteImport } from './routes/matches'
 import { Route as FriendsRouteImport } from './routes/friends'
+import { Route as CanonsRouteImport } from './routes/canons'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ScanIndexRouteImport } from './routes/scan.index'
 import { Route as RestaurantsIndexRouteImport } from './routes/restaurants.index'
@@ -58,6 +59,11 @@ const MatchesRoute = MatchesRouteImport.update({
 const FriendsRoute = FriendsRouteImport.update({
   id: '/friends',
   path: '/friends',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CanonsRoute = CanonsRouteImport.update({
+  id: '/canons',
+  path: '/canons',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -103,6 +109,7 @@ const AddFriendUsernameRoute = AddFriendUsernameRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/canons': typeof CanonsRoute
   '/friends': typeof FriendsRoute
   '/matches': typeof MatchesRoute
   '/my-ratings': typeof MyRatingsRoute
@@ -120,6 +127,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/canons': typeof CanonsRoute
   '/friends': typeof FriendsRoute
   '/matches': typeof MatchesRoute
   '/my-ratings': typeof MyRatingsRoute
@@ -136,6 +144,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/canons': typeof CanonsRoute
   '/friends': typeof FriendsRoute
   '/matches': typeof MatchesRoute
   '/my-ratings': typeof MyRatingsRoute
@@ -155,6 +164,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/canons'
     | '/friends'
     | '/matches'
     | '/my-ratings'
@@ -172,6 +182,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/canons'
     | '/friends'
     | '/matches'
     | '/my-ratings'
@@ -187,6 +198,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/canons'
     | '/friends'
     | '/matches'
     | '/my-ratings'
@@ -205,6 +217,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CanonsRoute: typeof CanonsRoute
   FriendsRoute: typeof FriendsRoute
   MatchesRoute: typeof MatchesRoute
   MyRatingsRoute: typeof MyRatingsRoute
@@ -265,6 +278,13 @@ declare module '@tanstack/react-router' {
       path: '/friends'
       fullPath: '/friends'
       preLoaderRoute: typeof FriendsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/canons': {
+      id: '/canons'
+      path: '/canons'
+      fullPath: '/canons'
+      preLoaderRoute: typeof CanonsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -356,6 +376,7 @@ const ScanRouteWithChildren = ScanRoute._addFileChildren(ScanRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CanonsRoute: CanonsRoute,
   FriendsRoute: FriendsRoute,
   MatchesRoute: MatchesRoute,
   MyRatingsRoute: MyRatingsRoute,
