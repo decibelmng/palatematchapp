@@ -15,6 +15,7 @@ export type Tier1Match = {
   bottle: BottleRow;
   stars: number;
   isCanon: boolean;
+  isNemesis: boolean;
 };
 export type Tier2Match = {
   tier: 2;
@@ -25,8 +26,10 @@ export type Tier2Match = {
   avgStars: number;
   ratedVintages: number[];
   isCanon: boolean;
+  isNemesis: boolean;
 };
 export type CellarMatch = Tier1Match | Tier2Match;
+
 
 function normProducer(s: string | null | undefined): string {
   if (!s) return "";
@@ -50,8 +53,10 @@ export function computeCellarMemory(args: {
   const { readable, ratedBottles, ratings, canons } = args;
 
   const starsById = new Map(ratings.map((r) => [r.bottle_id, r.stars]));
-  const canonBottleIds = new Set(canons.map((c) => c.bottle_id));
+  const canonBottleIds = new Set(canons.filter((c) => c.tier === "canon").map((c) => c.bottle_id));
+  const nemesisBottleIds = new Set(canons.filter((c) => c.tier === "nemesis").map((c) => c.bottle_id));
   const bottlesById = new Map(ratedBottles.map((b) => [b.id, b]));
+
 
   // Aggregate rated bottles by cuvée for Tier 2 lookup.
   type CuveeAgg = { rep: BottleRow; totalStars: number; count: number; vintages: number[]; bottleIds: string[] };
