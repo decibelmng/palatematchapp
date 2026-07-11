@@ -383,7 +383,18 @@ function SectionView({ section, groupScores, groupActive, groupLoading, canonReg
                     <p className="mt-0.5 text-[11px] text-muted-foreground">Price: {r.price_display}</p>
                   )}
                   {g && <GroupBreakdown g={g} />}
-                  {!g && r.nearestCuvee && (
+                  {!g && r.nearestCuvee && r.nearestIsCanon && (
+                    <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-300 flex items-center gap-1">
+                      <CanonBadge size="sm" title="Nearest neighbour is a Canon anchor" />
+                      <span>
+                        Close match to your Canon
+                        {r.nearestCanonRegion ? <> <span className="text-foreground/80">{r.nearestCanonRegion}</span></> : null}
+                        {" — "}
+                        <span className="text-foreground/80">{r.nearestCuvee.name}</span>
+                      </span>
+                    </p>
+                  )}
+                  {!g && r.nearestCuvee && !r.nearestIsCanon && (
                     <p className="mt-1 text-[11px] text-muted-foreground">
                       like your {r.nearestCuvee.stars.toFixed(1)}★ <span className="text-foreground/80">{r.nearestCuvee.name}</span>
                     </p>
