@@ -101,10 +101,18 @@ function Matches() {
         if (ranked.length > 0) out.push({ type, mode: "fallback", nSameType: 0, items: ranked });
       } else {
         // Feed the recommender cuvée-aggregated rated rows and candidate cuvées.
-        const ratedFp: RatedFp[] = sameTypeRated.map((r) => ({
-          id: r.id, name: r.name, producer: r.producer, region: r.region,
-          type: r.type, fp: r.fp, stars: r.stars,
-        }));
+        // Cuvées that contain a Canon bottle carry CANON_WEIGHT + canon flag so
+        // their similarity mass dominates the kernel sum and "nearest" surfaces
+        // the Canon anchor in the reason line.
+        const ratedFp: RatedFp[] = sameTypeRated.map((r) => {
+          const isCanon = r.bottleIds.some((id) => canonBottleIds.has(id));
+          return {
+            id: r.id, name: r.name, producer: r.producer, region: r.region,
+            type: r.type, fp: r.fp, stars: r.stars,
+            weight: isCanon ? CANON_WEIGHT : 1,
+            canon: isCanon,
+          };
+        });
         const candFp: BottleFp[] = cands.map((c) => ({
           id: c.id, name: c.name, producer: c.producer, region: c.region,
           type: c.type, fp: c.fp,
@@ -120,7 +128,7 @@ function Matches() {
             // Down-weight uncalibrated (raw import default) cuvées so a
             // template bottle can't outrank a calibrated real match.
             const predicted = cuvee.raw ? r.predicted * 0.9 : r.predicted;
-            return { ...r, predicted, cuvee, nearestCuvee };
+            return { ...r, predicted, cuvee, nearestCuvee, nearestIsCanon: r.nearestIsCanon };
           })
           .filter((x): x is RankedCuvee => x !== null)
           .sort((a, b) => b.predicted - a.predicted);
@@ -131,7 +139,7 @@ function Matches() {
     void cuveeKey; void ratedCuveeByKey;
 
     return out;
-  }, [ratedBottles, ratings, pool]);
+  }, [ratedBottles, ratings, pool, canonBottleIds]);
 
   const nRated = ratings?.length ?? 0;
   const loading = !ratings || (ratedIds.length > 0 && !ratedBottles) || !pool;
