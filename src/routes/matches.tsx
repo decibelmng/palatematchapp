@@ -36,8 +36,8 @@ const TYPE_LABEL: Record<WineType, string> = {
 type RankedCuvee = Recommendation & { cuvee: CuveeCandidate; nearestCuvee: CuveeRated | null; nearestIsCanon: boolean };
 
 type Section =
-  | { type: WineType; mode: "personalized"; nSameType: number; items: RankedCuvee[] }
-  | { type: WineType; mode: "fallback"; nSameType: 0; items: CuveeCandidate[] };
+  | { type: WineType; mode: "personalized"; nSameType: number; items: RankedCuvee[]; ratedFp: RatedFp[] }
+  | { type: WineType; mode: "fallback"; nSameType: 0; items: CuveeCandidate[]; ratedFp: null };
 
 function vintageLabel(vs: number[]): string | null {
   if (vs.length === 0) return null;
