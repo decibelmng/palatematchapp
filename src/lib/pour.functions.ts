@@ -121,31 +121,40 @@ export async function computePourCandidatesFor(
   return attachRawFlag(supabase, projectRows((data ?? []) as any[]));
 }
 
-// Attach `raw` = refingerprinted_at IS NULL for each candidate row so the
-// recommender can down-weight uncalibrated template bottles. A transient
-// Data API failure here must NOT crash the whole pour request — fall back
-// to `raw = true` (the safe assumption) for any id we couldn't resolve.
+// Attach `raw` = "no calibrated fingerprint of any kind". A bottle is
+// calibrated if ANY of these is true:
+//   - source contains "LLM-derived calibrated fingerprint" (primary pass, ~93%)
+//   - fp_harmonized_at IS NOT NULL (harmonization pass, ~49%)
+//   - refingerprinted_at IS NOT NULL (cuvée-level refingerprint pass, <1%)
+// Only bottles missing all three are `raw` (template/import-defaults).
+// A transient Data API failure must NOT crash the pour request — fall back
+// to `raw = true` (the safe assumption) for any id we can't resolve.
 async function attachRawFlag(supabase: any, projected: any[]): Promise<any[]> {
   const ids = projected.map((r) => r.id as string).filter(Boolean);
-  const stampById = new Map<string, boolean>();
+  const rawById = new Map<string, boolean>();
   for (let i = 0; i < ids.length; i += 500) {
     const chunk = ids.slice(i, i + 500);
     try {
       const { data: srows, error: sErr } = await supabase
         .from("bottles")
-        .select("id,refingerprinted_at")
+        .select("id,source,refingerprinted_at,fp_harmonized_at")
         .in("id", chunk);
       if (sErr) {
         console.warn("[pour] attachRawFlag: query error, falling back", sErr.message);
         continue;
       }
-      for (const r of srows ?? []) stampById.set(r.id as string, !r.refingerprinted_at);
+      for (const r of srows ?? []) {
+        const calibrated =
+          !!r.refingerprinted_at ||
+          !!r.fp_harmonized_at ||
+          (typeof r.source === "string" && r.source.includes("LLM-derived calibrated fingerprint"));
+        rawById.set(r.id as string, !calibrated);
+      }
     } catch (e) {
       console.warn("[pour] attachRawFlag: fetch failed, falling back", (e as Error)?.message);
-      // Leave this chunk's ids unresolved; they'll default to raw=true below.
     }
   }
-  for (const r of projected) r.raw = stampById.get(r.id as string) ?? true;
+  for (const r of projected) r.raw = rawById.get(r.id as string) ?? true;
   return projected;
 }
 

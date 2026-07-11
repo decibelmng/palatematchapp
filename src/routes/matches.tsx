@@ -135,10 +135,15 @@ function Matches() {
             const cuvee = candByRepId.get(r.bottle.id);
             if (!cuvee) return null;
             const nearestCuvee = r.nearest ? ratedByRepId.get(r.nearest.id) ?? null : null;
-            // Down-weight uncalibrated (raw import default) cuvées so a
-            // template bottle can't outrank a calibrated real match.
-            const predicted = cuvee.raw ? r.predicted * 0.9 : r.predicted;
-            return { ...r, predicted, cuvee, nearestCuvee, nearestIsCanon: r.nearestIsCanon };
+            // Raw (uncalibrated) cuvées: their fingerprint is a template, so
+            // the predicted score AND the veto distance are both unreliable.
+            // Clear veto on raw (we can't trust either direction) and route
+            // them into a separate "Uncalibrated" section that has NO star
+            // prediction. Calibrated wines keep their engine score and veto.
+            if (cuvee.raw) {
+              return { ...r, cuvee, nearestCuvee, nearestIsCanon: r.nearestIsCanon, vetoed: false, vetoReason: null };
+            }
+            return { ...r, cuvee, nearestCuvee, nearestIsCanon: r.nearestIsCanon };
           })
           .filter((x): x is RankedCuvee => x !== null)
           // Preserve engine sort (vetoed sink to bottom, else predicted desc).
@@ -361,15 +366,30 @@ function SectionView({ section, groupScores, groupActive, groupLoading, canonReg
     }
     return out;
   }, [rows, effective, treatAsFallback]);
-  // Uncalibrated (raw import defaults) cuvées are held out of the visible top-10
-  // so a template bottle can't outrank calibrated real matches. Vetoed wines
-  // (inside a Nemesis radius) are ALSO excluded from the top-10 slice regardless
-  // of sort — they render in a separate "Avoid" section below and are never
-  // hidden.
-  const kept = filtered.filter((r) => !r.raw);
-  const visible = kept.filter((r) => !r.vetoed).slice(0, 10);
-  const vetoed = kept.filter((r) => r.vetoed);
-  const hidden = Math.max(0, kept.length - visible.length - vetoed.length);
+  // Split: calibrated wines rank normally (top 10 by predicted, vetoed → Avoid).
+  // Raw (uncalibrated / template-fingerprint) wines are NEVER ranked by predicted
+  // score — the template coordinates make predicted and M unreliable, so we hide
+  // the star and collapse them into a separate "Uncalibrated" section below the
+  // ranked list. Raw is also exempt from Nemesis veto (distance is unreliable
+  // in both directions), so no raw wine appears in Avoid either.
+  const calibrated = filtered.filter((r) => !r.raw);
+  const rawItems = filtered.filter((r) => r.raw);
+  const visible = calibrated.filter((r) => !r.vetoed).slice(0, 10);
+  const vetoed = calibrated.filter((r) => r.vetoed);
+  const hidden = Math.max(0, calibrated.length - visible.length - vetoed.length);
+  const [showRaw, setShowRaw] = useState(false);
+
+  // Dev-only diagnostic so we can chase render-count regressions without
+  // bringing back the ad-hoc console dumps. Silent in production.
+  if (typeof window !== "undefined" && (import.meta as any).env?.DEV) {
+    // eslint-disable-next-line no-console
+    console.debug(
+      `[matches:${section.type}] rows=${rows.length} filtered=${filtered.length}`,
+      `calibrated=${calibrated.length} raw=${rawItems.length}`,
+      `visible=${visible.length} vetoed=${vetoed.length} hidden=${hidden}`,
+      `groupActive=${groupActive} groupScoresSize=${groupScores?.size ?? "null"}`,
+    );
+  }
 
 
   return (
@@ -501,6 +521,50 @@ function SectionView({ section, groupScores, groupActive, groupLoading, canonReg
 
       {hidden > 0 && (
         <p className="mt-2 text-[11px] text-muted-foreground">+{hidden} more match these filters.</p>
+      )}
+
+      {rawItems.length > 0 && (
+        <div className="mt-6">
+          <button
+            type="button"
+            onClick={() => setShowRaw((v) => !v)}
+            className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground hover:text-foreground"
+          >
+            {showRaw ? "▾" : "▸"} Uncalibrated ({rawItems.length})
+          </button>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Template fingerprint — predicted score suppressed until the LLM calibration pass covers these.
+          </p>
+          {showRaw && (
+            <ul className="mt-2 divide-y divide-border/60">
+              {rawItems.slice(0, 25).map((r) => (
+                <li key={r.key} className="py-3 flex items-start justify-between gap-3 opacity-90">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <WineTypeBadge type={section.type} />
+                      <span className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-border bg-muted text-muted-foreground">
+                        template data
+                      </span>
+                    </div>
+                    <p className="font-medium leading-tight truncate mt-1">{r.name}</p>
+                    <CuveeMeta producer={r.producer} region={r.region} vintages={r.vintages} />
+                    {r.price_display && (
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">Price: {r.price_display}</p>
+                    )}
+                  </div>
+                  <div className="shrink-0 text-right">
+                    {r.criticScore !== null && (
+                      <span className="text-[11px] text-muted-foreground">{r.criticScore.toFixed(0)} critic</span>
+                    )}
+                  </div>
+                </li>
+              ))}
+              {rawItems.length > 25 && (
+                <li className="py-2 text-[11px] text-muted-foreground">+{rawItems.length - 25} more uncalibrated cuvées</li>
+              )}
+            </ul>
+          )}
+        </div>
       )}
     </section>
   );
