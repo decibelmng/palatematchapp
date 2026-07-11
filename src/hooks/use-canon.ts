@@ -18,6 +18,27 @@ export type CanonRow = {
   replaced_at: string | null;
 };
 
+function normalizeBenchmarkTier(tier: unknown): BenchmarkTier | null {
+  if (tier === "canon" || tier === "nemesis") return tier;
+  return null;
+}
+
+export function isCanonBenchmark(row: Pick<CanonRow, "tier">): boolean {
+  return row.tier === "canon";
+}
+
+export function isNemesisBenchmark(row: Pick<CanonRow, "tier">): boolean {
+  return row.tier === "nemesis";
+}
+
+export function findBenchmarkForBottle(
+  benchmarks: CanonRow[] | null | undefined,
+  bottleId: string,
+  tier: BenchmarkTier,
+): CanonRow | null {
+  return (benchmarks ?? []).find((c) => c.bottle_id === bottleId && c.tier === tier) ?? null;
+}
+
 // Normalize a bottle's wine type into the canon-scope value.
 export function canonScopeType(b: Pick<BottleRow, "type">): "red" | "white" | "rose" | "sparkling" | "dessert" {
   return bottleType(b as BottleRow);
@@ -38,8 +59,12 @@ export function useMyCanons() {
         .is("replaced_at", null)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      // Rows created before the tier column existed default to 'canon' at the DB layer.
-      return ((data ?? []) as any[]).map((r) => ({ ...r, tier: (r.tier ?? "canon") as BenchmarkTier }));
+      return ((data ?? []) as any[])
+        .map((r) => {
+          const normalizedTier = normalizeBenchmarkTier(r.tier);
+          return normalizedTier ? ({ ...r, tier: normalizedTier } as CanonRow) : null;
+        })
+        .filter((r): r is CanonRow => r !== null);
     },
   });
 }
@@ -120,7 +145,15 @@ function usePromoteBenchmark(tier: BenchmarkTier) {
       if (error) throw error;
       return data as CanonRow;
     },
-    onSuccess: () => {
+    onSuccess: (row, args) => {
+      const benchmark = { ...row, tier } satisfies CanonRow;
+      qc.setQueriesData<CanonRow[]>({ queryKey: ["canons"] }, (old) => {
+        if (!old) return [benchmark];
+        return [
+          benchmark,
+          ...old.filter((c) => c.id !== benchmark.id && c.id !== args.replace?.id),
+        ];
+      });
       qc.invalidateQueries({ queryKey: ["canons"] });
     },
   });
@@ -146,6 +179,7 @@ export function useDemoteCanon() {
       return canonId;
     },
     onSuccess: () => {
+      qc.setQueriesData<CanonRow[]>({ queryKey: ["canons"] }, (old) => old?.filter((c) => c.id !== canonId));
       qc.invalidateQueries({ queryKey: ["canons"] });
     },
   });

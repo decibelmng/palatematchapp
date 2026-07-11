@@ -78,7 +78,7 @@ async function loadMemberRatings(admin: any, userId: string): Promise<RatedFp[]>
   const nemesisBottleIds = new Set<string>();
   for (const r of (benches ?? []) as any[]) {
     if (r.tier === "nemesis") nemesisBottleIds.add(r.bottle_id);
-    else canonBottleIds.add(r.bottle_id);
+    else if (r.tier === "canon") canonBottleIds.add(r.bottle_id);
   }
 
   const raw: (RatedFp & { vintage: number | null; bottleIds?: string[] })[] = [];

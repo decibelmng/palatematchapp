@@ -5,6 +5,7 @@ import {
   canonScopeType,
   useCanonForScope,
   useDemoteCanon,
+  findBenchmarkForBottle,
   useMyCanons,
   usePromoteCanon,
   type CanonRow,
@@ -29,7 +30,7 @@ export function CanonAction({ bottle, stars, compact = false }: Props) {
   const demote = useDemoteCanon();
   const [dialog, setDialog] = useState<"idle" | "confirm" | "replace">("idle");
 
-  const myCanonForThis = (canons ?? []).find((c) => c.bottle_id === bottle.id) ?? null;
+  const myCanonForThis = findBenchmarkForBottle(canons, bottle.id, "canon");
   const isCanon = !!myCanonForThis;
   const region = (bottle.region ?? "").trim();
   const wineType = canonScopeType(bottle);

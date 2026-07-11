@@ -4,8 +4,7 @@ import { Crown, Skull } from "lucide-react";
 import { AuthGate } from "@/components/AuthGate";
 import { useMyCanons, useDemoteCanon, type CanonRow } from "@/hooks/use-canon";
 import { useBottlesByIds, type BottleRow } from "@/hooks/use-palate-data";
-import { CanonBadge } from "@/components/CanonBadge";
-import { NemesisBadge } from "@/components/NemesisBadge";
+import { BenchmarkTierBadge } from "@/components/BenchmarkTierBadge";
 import { WineTypeBadge } from "@/components/WineTypeBadge";
 import type { WineType } from "@/lib/recommender";
 
@@ -55,7 +54,7 @@ function CanonsPage() {
       if (c.tier === "nemesis") {
         (nemesisOut[c.wine_type] ??= []).push({ canon: c, bottle: b });
         nN++;
-      } else {
+      } else if (c.tier === "canon") {
         (canonOut[c.wine_type] ??= []).push({ canon: c, bottle: b });
         nC++;
       }
@@ -178,7 +177,7 @@ function TierSection({
           <li key={canon.id} className="py-4 flex items-start justify-between gap-3">
             <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                {tier === "canon" ? <CanonBadge /> : <NemesisBadge />}
+                <BenchmarkTierBadge tier={canon.tier} />
                 <WineTypeBadge type={bottle.type} />
                 <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{canon.region}</span>
               </div>
