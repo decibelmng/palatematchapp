@@ -13,6 +13,9 @@ import {
   bottleType,
   usePersistCode,
 } from "@/hooks/use-palate-data";
+import { useMyCanons } from "@/hooks/use-canon";
+import { CanonBadge } from "@/components/CanonBadge";
+import { Crown } from "lucide-react";
 import { useLandmarks } from "@/hooks/use-landmarks";
 import { cuveeKey } from "@/lib/cuvee";
 import { computeCode, describeCode, axesFor, type RatedBottle, type PaletteType } from "@/lib/palate";
