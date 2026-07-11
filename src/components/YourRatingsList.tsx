@@ -121,12 +121,14 @@ export function YourRatingsList() {
           const isResearched = rep?.source?.includes("LLM-researched") ?? false;
           const editing = editingId === c.id;
           const isCanon = c.bottleIds.some((id) => canonBottleIds.has(id));
+          const isNemesis = c.bottleIds.some((id) => nemesisBottleIds.has(id));
           return (
             <li key={c.cuvee} className="py-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="text-sm font-medium leading-tight truncate">{c.name}</p>
                   {isCanon && <CanonBadge />}
+                  {isNemesis && <NemesisBadge />}
                 </div>
                 <p className="text-xs text-muted-foreground truncate">
                   {[c.producer, c.region].filter(Boolean).join(" · ")}
