@@ -141,11 +141,39 @@ function BottleScan() {
 
   async function rateCandidate(c: BottleCandidate, stars: number) {
     if (!session) return;
-    await supabase.from("ratings").upsert(
-      { user_id: session.user.id, bottle_id: c.id, stars },
-      { onConflict: "user_id,bottle_id" },
-    );
+    // Route through the cascade RPC so rating a scanned bottle can never
+    // orphan an existing benchmark; useRate isn't wired here because scan
+    // has its own react-query lifecycle. Confirm inline if applicable.
+    const { data: canonRows } = await supabase
+      .from("canon_wines")
+      .select("tier,region")
+      .eq("user_id", session.user.id)
+      .eq("bottle_id", c.id)
+      .is("replaced_at", null)
+      .limit(1);
+    const active = canonRows?.[0] as { tier: "canon" | "nemesis"; region: string } | undefined;
+    if (active && (
+      (active.tier === "canon" && stars < 5) ||
+      (active.tier === "nemesis" && stars > 2)
+    )) {
+      const verb = active.tier === "canon"
+        ? `This is your Canon (${active.region}) — lowering the rating removes Canon status.`
+        : `This is your Nemesis (${active.region}) — raising the rating removes Nemesis status.`;
+      if (typeof window !== "undefined" && !window.confirm(`${verb}\n\nContinue and update ${c.name}?`)) {
+        return;
+      }
+    }
+    const { error } = await (supabase as any).rpc("save_rating_with_cascade", {
+      p_bottle_id: c.id,
+      p_stars: stars,
+    });
+    if (error) {
+      toast.error(error.message || `Couldn't rate ${c.name}`);
+      return;
+    }
     qc.invalidateQueries({ queryKey: ["ratings"] });
+    qc.invalidateQueries({ queryKey: ["canons"] });
+    qc.invalidateQueries({ queryKey: ["palate-version"] });
     toast.success(`Rated ${c.name} ${stars}★`);
   }
 

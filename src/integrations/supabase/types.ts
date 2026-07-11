@@ -557,6 +557,13 @@ export type Database = {
         Args: { p_batch_index: number; p_scan_id: string }
         Returns: undefined
       }
+      restore_rating_and_benchmark: {
+        Args: { p_bottle_id: string; p_stars: number; p_tier: string }
+        Returns: {
+          benchmark_id: string
+          palate_version: number
+        }[]
+      }
       rpc_pour_candidates: {
         Args: {
           excluded_ids?: string[]
@@ -592,6 +599,14 @@ export type Database = {
           tasting_note: string
           type: string
           vintage: number
+        }[]
+      }
+      save_rating_with_cascade: {
+        Args: { p_bottle_id: string; p_stars: number }
+        Returns: {
+          demoted_tier: string
+          palate_version: number
+          previous_stars: number
         }[]
       }
       search_bottles_fuzzy: {
