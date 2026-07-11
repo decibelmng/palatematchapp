@@ -5,12 +5,16 @@ import { useServerFn } from "@tanstack/react-start";
 import { ListControls } from "@/components/ListControls";
 import { DrinkingGroupSelector } from "@/components/DrinkingGroupSelector";
 import { WineTypeBadge } from "@/components/WineTypeBadge";
+import { LaneList } from "@/components/LaneList";
 import { useBottlesByIds, useRatings, bottleToFp, bottleType } from "@/hooks/use-palate-data";
+import { useMyCanons } from "@/hooks/use-canon";
 import { useGroupSelection, useGroupPredict, type GroupCandidateInput } from "@/hooks/use-friends";
-import { recommend, type BottleFp, type RatedFp, type WineType } from "@/lib/recommender";
+import { recommend, BENCHMARK_WEIGHT, type BottleFp, type RatedFp, type WineType } from "@/lib/recommender";
 import { aggregateRated } from "@/lib/cuvee";
 import { getRestaurantWinesFn } from "@/lib/restaurants.functions";
 import { applyControls, normalizePrice, isGreatValue, DEFAULT_CONTROLS, type Controls } from "@/lib/list-controls";
+import { buildLanes, applyGlobalCap, type LaneItem } from "@/lib/lanes";
+import { useMatchesLayout } from "@/hooks/use-layout-pref";
 import type { GroupScored } from "@/lib/group.functions";
 
 export const Route = createFileRoute("/restaurants/$id")({
