@@ -266,18 +266,19 @@ function CanonAnchors({
   scope, bottles, canons,
 }: {
   scope: PaletteType;
-  bottles: ReturnType<typeof useBottlesByIds>["data"] extends infer T ? (T extends undefined ? never : T) : never;
-  canons: NonNullable<ReturnType<typeof useMyCanons>["data"]>;
+  bottles: import("@/hooks/use-palate-data").BottleRow[];
+  canons: import("@/hooks/use-canon").CanonRow[];
 }) {
   const rows = useMemo(() => {
-    const list = (canons ?? []).map((c) => {
-      const b = (bottles ?? []).find((x) => x.id === c.bottle_id);
-      if (!b) return null;
-      const t = bottleType(b);
-      if (t !== scope) return null;
-      return { canon: c, bottle: b };
-    }).filter(Boolean) as { canon: typeof canons[number]; bottle: NonNullable<ReturnType<typeof bottles.find>> }[];
-    return list;
+    const byId = new Map(bottles.map((b) => [b.id, b]));
+    const out: { canon: (typeof canons)[number]; bottle: (typeof bottles)[number] }[] = [];
+    for (const c of canons) {
+      const b = byId.get(c.bottle_id);
+      if (!b) continue;
+      if (bottleType(b) !== scope) continue;
+      out.push({ canon: c, bottle: b });
+    }
+    return out;
   }, [bottles, canons, scope]);
 
   if (rows.length === 0) return null;
