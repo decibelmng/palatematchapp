@@ -178,7 +178,7 @@ export function useDemoteCanon() {
       if (error) throw error;
       return canonId;
     },
-    onSuccess: () => {
+    onSuccess: (canonId) => {
       qc.setQueriesData<CanonRow[]>({ queryKey: ["canons"] }, (old) => old?.filter((c) => c.id !== canonId));
       qc.invalidateQueries({ queryKey: ["canons"] });
     },
