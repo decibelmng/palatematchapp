@@ -25,6 +25,7 @@ export type Database = {
           country: string | null
           created_at: string
           critic_score: number | null
+          excluded_from_recs: boolean
           fp_acid: number
           fp_body: number
           fp_fresh: number
@@ -58,6 +59,7 @@ export type Database = {
           country?: string | null
           created_at?: string
           critic_score?: number | null
+          excluded_from_recs?: boolean
           fp_acid?: number
           fp_body?: number
           fp_fresh?: number
@@ -91,6 +93,7 @@ export type Database = {
           country?: string | null
           created_at?: string
           critic_score?: number | null
+          excluded_from_recs?: boolean
           fp_acid?: number
           fp_body?: number
           fp_fresh?: number
@@ -605,6 +608,7 @@ export type Database = {
           country: string | null
           created_at: string
           critic_score: number | null
+          excluded_from_recs: boolean
           fp_acid: number
           fp_body: number
           fp_fresh: number
