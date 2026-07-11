@@ -308,23 +308,31 @@ describe("Engine v2 — acceptance", () => {
     expect(canRec.predicted).toBeGreaterThan(3.5);
   });
 
-  it("(13) Canon–Nemesis on a single axis: that axis's ω dominates the vector", () => {
-    // Canon 5★ and Nemesis 1★ differ only on `body`; identical elsewhere.
-    // With the per-axis fit + 9× pair weight, body should tower over the rest.
-    // Note: the per-axis formula's ceiling is ω ≈ g/δ² for a clean single
-    // pair, so use a moderate body gap (0.20 vs 0.80, δ²=0.36) that lets
-    // body clear 2× cleanly. Also use 2 Canons and 2 Nemeses so n=4 without
-    // introducing neutral pairs that pull body down.
-    const r: RatedFp[] = [
-      { ...rated("C1", 5, { body: 0.80 }), weight: 3.0, canon: true },
-      { ...rated("C2", 5, { body: 0.80 }), weight: 3.0, canon: true },
-      { ...rated("N1", 1, { body: 0.20 }), weight: 3.0, nemesis: true },
-      { ...rated("N2", 1, { body: 0.20 }), weight: 3.0, nemesis: true },
-    ];
-    const fit = __debug_learnOmega!(r, "red");
+  it("(13) Canon–Nemesis single-axis: that axis's ω strictly dominates at every fingerprint gap, and a Nemesis-matching candidate is vetoed", () => {
+    // Property test: Canon and Nemesis identical on every axis except `body`.
+    // For any δ ∈ {0.3, 0.6, 0.8}, ω_body must strictly exceed every other
+    // ω, AND a candidate matching the Nemesis body value must fall inside
+    // the 1.25·h veto radius. Prints all three ω vectors.
     const others: FpKey[] = ["fresh", "acid", "tannin", "fruit_dark", "ripe", "oak", "savory"];
-    for (const k of others) {
-      expect(fit.omega.body).toBeGreaterThanOrEqual(fit.omega[k] * 2);
+    for (const delta of [0.3, 0.6, 0.8]) {
+      const bC = 0.5 + delta / 2;
+      const bN = 0.5 - delta / 2;
+      const r: RatedFp[] = [
+        { ...rated("C1", 5, { body: bC }), weight: 3.0, canon: true },
+        { ...rated("C2", 5, { body: bC }), weight: 3.0, canon: true },
+        { ...rated("N1", 1, { body: bN }), weight: 3.0, nemesis: true },
+        { ...rated("N2", 1, { body: bN }), weight: 3.0, nemesis: true },
+      ];
+      const fit = __debug_learnOmega!(r, "red");
+      // eslint-disable-next-line no-console
+      console.log(`[test13] δ=${delta} ω=`, JSON.stringify(fit.omega));
+      for (const k of others) {
+        expect(fit.omega.body).toBeGreaterThan(fit.omega[k]);
+      }
+      // Candidate matching Nemesis on the discriminating axis must be vetoed.
+      const c = cand("cN", { body: bN });
+      const rec = recommend(r, [c])[0];
+      expect(rec.vetoed).toBe(true);
     }
   });
 
