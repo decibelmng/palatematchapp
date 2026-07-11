@@ -114,30 +114,92 @@ export function useRatings() {
   });
 }
 
+/** Sentinel error thrown when the user cancels the cascade confirm dialog. */
+export class RateCanceledError extends Error {
+  constructor() { super("Rating change canceled"); this.name = "RateCanceledError"; }
+}
+
+type RateInput = {
+  bottleId: string;
+  stars: number | null;
+  /** Optional confirm hook: if the DB would demote a benchmark as a side effect
+   *  of this rating change, this is called with the tier + region + bottle name.
+   *  Return true to proceed, false to cancel. Defaults to window.confirm. */
+  onCascadeConfirm?: (info: { tier: "canon" | "nemesis"; region: string; bottleName: string }) => boolean | Promise<boolean>;
+};
+
+type RateResult = {
+  bottleId: string;
+  stars: number | null;
+  demotedTier: "canon" | "nemesis" | null;
+  previousStars: number | null;
+  palateVersion: number | null;
+};
+
 export function useRate() {
   const session = useSession();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ bottleId, stars }: { bottleId: string; stars: number | null }) => {
+    mutationFn: async ({ bottleId, stars, onCascadeConfirm }: RateInput): Promise<RateResult> => {
       if (!session) throw new Error("Not signed in");
-      if (stars === null) {
-        const { error } = await supabase.from("ratings").delete()
-          .eq("user_id", session.user.id).eq("bottle_id", bottleId);
-        if (error) throw error;
-        return { bottleId, stars };
-      } else {
-        const { error } = await supabase.from("ratings").upsert({
-          user_id: session.user.id, bottle_id: bottleId, stars,
-        }, { onConflict: "user_id,bottle_id" });
-        if (error) throw error;
-        return { bottleId, stars };
+
+      // Check whether this rating change would trigger a benchmark demote.
+      // Read canons snapshot from cache — freshness is guaranteed by
+      // palate_version keying (see useMyCanons).
+      const canons = qc.getQueriesData<{ bottle_id: string; tier: "canon" | "nemesis"; region: string }[]>({
+        queryKey: ["canons"],
+      })
+        .flatMap(([, data]) => (data ?? []))
+        .filter(Boolean);
+
+      const active = canons.find(
+        (c) => c.bottle_id === bottleId &&
+          (stars === null
+            || (c.tier === "canon" && stars < 5)
+            || (c.tier === "nemesis" && stars > 2)),
+      );
+
+      if (active) {
+        // Pull bottle name for the prompt from any cached bottles query.
+        const cachedBottles = qc.getQueriesData<BottleRow[]>({ queryKey: ["bottles"] })
+          .flatMap(([, data]) => (data ?? []))
+          .filter((b): b is BottleRow => !!b && b.id === bottleId);
+        const bottleName = cachedBottles[0]?.name ?? "this wine";
+
+        const confirmFn = onCascadeConfirm ?? (({ tier, region, bottleName }) => {
+          const verb = tier === "canon"
+            ? `This is your Canon (${region}) — lowering the rating removes Canon status.`
+            : `This is your Nemesis (${region}) — raising the rating removes Nemesis status.`;
+          return typeof window !== "undefined"
+            ? window.confirm(`${verb}\n\nContinue and update ${bottleName}?`)
+            : true;
+        });
+
+        const ok = await confirmFn({ tier: active.tier, region: active.region, bottleName });
+        if (!ok) throw new RateCanceledError();
       }
+
+      const { data, error } = await (supabase as any).rpc("save_rating_with_cascade", {
+        p_bottle_id: bottleId,
+        p_stars: stars,
+      });
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      return {
+        bottleId,
+        stars,
+        demotedTier: (row?.demoted_tier ?? null) as "canon" | "nemesis" | null,
+        previousStars: (row?.previous_stars ?? null) as number | null,
+        palateVersion: (row?.palate_version ?? null) as number | null,
+      };
     },
     onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: ["ratings"] });
       qc.invalidateQueries({ queryKey: ["palate-version"] });
-      // Self-healing: fire-and-forget cuvée re-fingerprint. The stamp in the
-      // DB is the natural once-ever guard; failures/skips are silent.
+      if (result?.demotedTier) {
+        qc.invalidateQueries({ queryKey: ["canons"] });
+      }
+      // Self-healing cuvée re-fingerprint (unchanged).
       if (result?.stars !== null) {
         refreshBottleFingerprint({ data: { bottle_id: result.bottleId } })
           .then((r) => {
@@ -147,6 +209,35 @@ export function useRate() {
           })
           .catch(() => {});
       }
+    },
+    onError: (err) => {
+      // Cancels are silent — everything else surfaces to the caller/toast.
+      if (err instanceof RateCanceledError) return;
+    },
+  });
+}
+
+/** Undo counterpart for a cascade demote: restores rating + benchmark atomically. */
+export function useRestoreRatingAndBenchmark() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (args: { bottleId: string; stars: number; tier: "canon" | "nemesis" | null }) => {
+      const { data, error } = await (supabase as any).rpc("restore_rating_and_benchmark", {
+        p_bottle_id: args.bottleId,
+        p_stars: args.stars,
+        p_tier: args.tier,
+      });
+      if (error) throw error;
+      const row = Array.isArray(data) ? data[0] : data;
+      return {
+        benchmarkId: (row?.benchmark_id ?? null) as string | null,
+        palateVersion: (row?.palate_version ?? null) as number | null,
+      };
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["ratings"] });
+      qc.invalidateQueries({ queryKey: ["canons"] });
+      qc.invalidateQueries({ queryKey: ["palate-version"] });
     },
   });
 }
