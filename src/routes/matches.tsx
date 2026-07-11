@@ -108,7 +108,7 @@ function Matches() {
           .filter((c) => c.critic_score !== null)
           .sort((a, b) => (b.critic_score ?? 0) - (a.critic_score ?? 0))
           .slice(0, 60);
-        if (ranked.length > 0) out.push({ type, mode: "fallback", nSameType: 0, items: ranked });
+        if (ranked.length > 0) out.push({ type, mode: "fallback", nSameType: 0, items: ranked, ratedFp: null });
       } else {
         // Feed the recommender cuvée-aggregated rated rows and candidate cuvées.
         // Cuvées that contain a Canon bottle carry CANON_WEIGHT + canon flag so
