@@ -245,7 +245,11 @@ type Row = Priced & {
   greatValue: boolean;
   confidence: number | null;
   raw: boolean;            // uncalibrated (import-defaults) cuvée — hide from top 10
+  vetoed: boolean;
+  vetoNemesisName: string | null;
+  vetoAxes: string[];
 };
+
 
 function toRows(section: Section, canonRegionByBottle: Map<string, string>): Row[] {
   if (section.mode === "personalized") {
@@ -273,11 +277,15 @@ function toRows(section: Section, canonRegionByBottle: Map<string, string>): Row
         greatValue: false,
         confidence: r.confidence,
         raw: r.cuvee.raw,
+        vetoed: r.vetoed,
+        vetoNemesisName: r.vetoReason?.nemesis.name ?? null,
+        vetoAxes: r.vetoReason?.drivingAxes ?? [],
       };
-      row.greatValue = isGreatValue(row);
+      row.greatValue = !row.vetoed && isGreatValue(row);
       return row;
     });
   }
+
   return section.items.map((c) => {
     const p = normalizePrice(c.price_band);
     return {
@@ -299,9 +307,13 @@ function toRows(section: Section, canonRegionByBottle: Map<string, string>): Row
       greatValue: false,
       confidence: null,
       raw: c.raw,
+      vetoed: false,
+      vetoNemesisName: null,
+      vetoAxes: [],
     };
   });
 }
+
 
 type SectionViewProps = {
   section: Section;
