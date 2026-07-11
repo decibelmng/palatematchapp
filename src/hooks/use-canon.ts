@@ -17,7 +17,7 @@ export type CanonRow = {
 
 // Normalize a bottle's wine type into the canon-scope value.
 export function canonScopeType(b: Pick<BottleRow, "type">): "red" | "white" | "rose" | "sparkling" | "dessert" {
-  return bottleType(b);
+  return bottleType(b as BottleRow);
 }
 
 /** Active canons for the signed-in user (replaced_at IS NULL). */
