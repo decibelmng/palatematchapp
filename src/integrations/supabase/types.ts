@@ -564,6 +564,22 @@ export type Database = {
           palate_version: number
         }[]
       }
+      rpc_fingerprint_reach: {
+        Args: {
+          fp_acid: number
+          fp_body: number
+          fp_fresh: number
+          fp_fruit_dark: number
+          fp_oak: number
+          fp_ripe: number
+          fp_savory: number
+          fp_tannin: number
+          h?: number
+          sample_size?: number
+          wine_type: string
+        }
+        Returns: number
+      }
       rpc_pour_candidates: {
         Args: {
           excluded_ids?: string[]
