@@ -76,10 +76,6 @@ describe("benchmark tier badges", () => {
       tasting_note: null,
       source: null,
       added_by: null,
-      created_at: "2026-07-11T00:00:00.000Z",
-      refingerprinted_at: null,
-      fp_harmonized_at: null,
-      fp_vec: null,
     };
 
     const html = renderToStaticMarkup(<CanonAction bottle={bottle} stars={1} />);
