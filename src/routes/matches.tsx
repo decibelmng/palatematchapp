@@ -12,6 +12,9 @@ import { aggregateRated, aggregateCandidates, cuveeKey, type CuveeCandidate, typ
 import { applyControls, normalizePrice, isGreatValue, DEFAULT_CONTROLS, type Controls, type Priced } from "@/lib/list-controls";
 import type { GroupScored } from "@/lib/group.functions";
 import { CanonBadge } from "@/components/CanonBadge";
+import { LaneList } from "@/components/LaneList";
+import { buildLanes, applyGlobalCap, type LaneItem } from "@/lib/lanes";
+import { useMatchesLayout, type MatchesLayout } from "@/hooks/use-layout-pref";
 
 export const Route = createFileRoute("/matches")({
   ssr: false,
