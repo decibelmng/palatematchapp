@@ -29,6 +29,7 @@ export function lettersFromCode(code: string, axes: AxisDef[]): LetterResult[] {
     if (ch === a.low)  return { ...base, letter: ch, descriptor: a.lowName,  resolved: true, value: 0.2, bimodal: false };
     if (ch === a.high) return { ...base, letter: ch, descriptor: a.highName, resolved: true, value: 0.8, bimodal: false };
     if (ch === "N")    return { ...base, letter: "N", descriptor: a.neutralName, resolved: true, value: 0.5, bimodal: false };
+    if (ch === "X")    return { ...base, letter: "X", descriptor: "loves both poles", resolved: true, value: 0.5, bimodal: true };
     return { ...base, letter: "·", descriptor: "—", resolved: false, value: null, bimodal: false };
   });
 }
