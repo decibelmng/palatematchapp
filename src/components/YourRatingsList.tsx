@@ -28,6 +28,8 @@ export function YourRatingsList() {
   const qc = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftNote, setDraftNote] = useState("");
+  const { data: canons } = useMyCanons();
+  const canonBottleIds = useMemo(() => new Set((canons ?? []).map((c) => c.bottle_id)), [canons]);
 
   const bottleById = useMemo(() => {
     const m = new Map<string, BottleRow>();
