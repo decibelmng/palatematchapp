@@ -109,6 +109,7 @@ function Scan() {
   const { data: ratings } = useRatings();
   const ratedIds = useMemo(() => (ratings ?? []).map((r) => r.bottle_id), [ratings]);
   const { data: ratedBottles } = useBottlesByIds(ratedIds);
+  const { data: myCanons } = useMyCanons();
 
   const createScan = useServerFn(createScanRecord);
   const runBatch = useServerFn(scanWineBatch);
