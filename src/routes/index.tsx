@@ -39,7 +39,7 @@ function Home() {
   const { data: bottles } = useBottlesByIds(ratedIds);
 
   const { data: canons } = useMyCanons();
-  const canonBottleIds = useMemo(() => new Set((canons ?? []).map((c) => c.bottle_id)), [canons]);
+  const canonBottleIds = useMemo(() => new Set((canons ?? []).filter((c) => c.tier === "canon").map((c) => c.bottle_id)), [canons]);
 
   // Palate letter code inputs (unchanged math). Canon-anchored bottles pass
   // canon:true so computeCode multiplies their sample weight by CANON_WEIGHT.
@@ -208,7 +208,7 @@ function Home() {
             <PalateBars axes={activeAxes} letters={active.letters} />
           </div>
 
-          <CanonAnchors scope={scope} bottles={bottles ?? []} canons={canons ?? []} />
+          <CanonAnchors scope={scope} bottles={bottles ?? []} canons={(canons ?? []).filter((c) => c.tier === "canon")} />
 
           <div className="mt-10 flex flex-wrap gap-2">
             <Link to="/rate" className="rounded-[14px] border-[0.5px] border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent shadow-[var(--pm-card-shadow)]">

@@ -137,7 +137,7 @@ export type Database = {
           region: string
           region_key?: string | null
           replaced_at?: string | null
-          tier?: string
+          tier: string
           user_id: string
           wine_type: string
         }

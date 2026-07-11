@@ -5,6 +5,7 @@ import { CanonAction } from "@/components/CanonAction";
 import { NemesisAction } from "@/components/NemesisAction";
 
 import { CanonBadge } from "@/components/CanonBadge";
+import { NemesisBadge } from "@/components/NemesisBadge";
 import { useMyCanons } from "@/hooks/use-canon";
 import { aggregateRated } from "@/lib/cuvee";
 import { useSession } from "@/hooks/use-session";
@@ -31,7 +32,8 @@ export function YourRatingsList() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftNote, setDraftNote] = useState("");
   const { data: canons } = useMyCanons();
-  const canonBottleIds = useMemo(() => new Set((canons ?? []).map((c) => c.bottle_id)), [canons]);
+  const canonBottleIds = useMemo(() => new Set((canons ?? []).filter((c) => c.tier === "canon").map((c) => c.bottle_id)), [canons]);
+  const nemesisBottleIds = useMemo(() => new Set((canons ?? []).filter((c) => c.tier === "nemesis").map((c) => c.bottle_id)), [canons]);
 
   const bottleById = useMemo(() => {
     const m = new Map<string, BottleRow>();
@@ -119,12 +121,14 @@ export function YourRatingsList() {
           const isResearched = rep?.source?.includes("LLM-researched") ?? false;
           const editing = editingId === c.id;
           const isCanon = c.bottleIds.some((id) => canonBottleIds.has(id));
+          const isNemesis = c.bottleIds.some((id) => nemesisBottleIds.has(id));
           return (
             <li key={c.cuvee} className="py-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2 flex-wrap">
                   <p className="text-sm font-medium leading-tight truncate">{c.name}</p>
                   {isCanon && <CanonBadge />}
+                  {isNemesis && <NemesisBadge />}
                 </div>
                 <p className="text-xs text-muted-foreground truncate">
                   {[c.producer, c.region].filter(Boolean).join(" · ")}
