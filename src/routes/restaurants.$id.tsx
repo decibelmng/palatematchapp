@@ -50,9 +50,19 @@ function RestaurantDetail() {
   const { data: ratings } = useRatings();
   const ratedIds = useMemo(() => (ratings ?? []).map((r) => r.bottle_id), [ratings]);
   const { data: ratedBottles } = useBottlesByIds(ratedIds);
+  const { data: canons } = useMyCanons();
+  const canonBottleIds = useMemo(
+    () => new Set((canons ?? []).filter((c) => c.tier === "canon").map((c) => c.bottle_id)),
+    [canons],
+  );
+  const nemesisBottleIds = useMemo(
+    () => new Set((canons ?? []).filter((c) => c.tier === "nemesis").map((c) => c.bottle_id)),
+    [canons],
+  );
 
   const group = useGroupSelection();
   const [controls, setControls] = useState<Controls>(DEFAULT_CONTROLS);
+  const [layout] = useMatchesLayout();
 
   // Predict per-user stars for every wine on this list.
   const enrichedByType = useMemo(() => {
@@ -63,7 +73,20 @@ function RestaurantDetail() {
       type: bottleType(b), fp: bottleToFp(b),
       stars: ratings!.find((r) => r.bottle_id === b.id)?.stars ?? 3,
     }));
-    const rated = aggregateRated(ratedRowsRaw);
+    const ratedCuvees = aggregateRated(ratedRowsRaw);
+    // Attach Canon / Nemesis flags + benchmark weight so lane clustering uses
+    // the same anchor set as /matches.
+    const rated: RatedFp[] = ratedCuvees.map((r) => {
+      const isCanon = r.bottleIds.some((id) => canonBottleIds.has(id));
+      const isNemesis = r.bottleIds.some((id) => nemesisBottleIds.has(id));
+      return {
+        id: r.id, name: r.name, producer: r.producer, region: r.region,
+        type: r.type, fp: r.fp, stars: r.stars,
+        weight: isCanon || isNemesis ? BENCHMARK_WEIGHT : 1,
+        canon: isCanon,
+        nemesis: isNemesis,
+      };
+    });
     const enoughRatings = ratedRowsRaw.length >= 3;
 
     // Freshness cutoff = the most-recent scan date on this restaurant.
@@ -85,10 +108,15 @@ function RestaurantDetail() {
         id: w.bottle.id, name: w.bottle.name, producer: w.bottle.producer,
         region: w.bottle.region, type, fp: bottleToFp(w.bottle),
       }));
-      let predByBottle = new Map<string, number>();
+      const recInfo = new Map<string, { predicted: number; nearestId: string | null; maxSimilarity: number; vetoed: boolean }>();
       if (enoughRatings) {
         const recs = recommend(rated, candFps, { restrictToRatedTypes: false });
-        for (const r of recs) predByBottle.set(r.bottle.id, r.predicted);
+        for (const r of recs) recInfo.set(r.bottle.id, {
+          predicted: r.predicted,
+          nearestId: r.nearest?.id ?? null,
+          maxSimilarity: r.maxSimilarity,
+          vetoed: r.vetoed,
+        });
       }
 
       const rows = wines.map((w) => {
@@ -98,7 +126,8 @@ function RestaurantDetail() {
         const isStale = mostRecent
           ? new Date(w.last_seen_at).getTime() < mostRecent.getTime() - 24 * 3600 * 1000
           : false;
-        const predicted = predByBottle.get(w.bottle.id) ?? null;
+        const info = recInfo.get(w.bottle.id);
+        const predicted = info?.predicted ?? null;
         const isCatalog = !(w.bottle.source ?? "").includes("unverified");
         const priced = {
           price_amount: price.amount,
@@ -106,11 +135,15 @@ function RestaurantDetail() {
           price_display: price.display,
           isCatalog,
           predicted: predicted ?? 0,
+          maxSimilarity: info?.maxSimilarity,
         };
         return {
           rw: w,
           bottle: w.bottle,
           predicted,
+          nearestId: info?.nearestId ?? null,
+          maxSimilarity: info?.maxSimilarity ?? 0,
+          vetoed: info?.vetoed ?? false,
           price_display: price.display,
           days,
           isStale,
@@ -120,11 +153,11 @@ function RestaurantDetail() {
         };
       });
 
-      return { type, rows, enoughRatings };
+      return { type, rows, enoughRatings, rated };
     });
 
     return sections;
-  }, [data, ratedBottles, ratings]);
+  }, [data, ratedBottles, ratings, canonBottleIds, nemesisBottleIds]);
 
   // Group scoring
   const candidatesForGroup: GroupCandidateInput[] = useMemo(() => {
