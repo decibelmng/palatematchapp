@@ -341,5 +341,17 @@ export function recommend(
   return results.sort((a, b) => b.predicted - a.predicted);
 }
 
-export const __debug_learnOmega = learnOmega;
-export const __debug_pickBandwidth = pickBandwidth;
+// ────────── Dev-only diagnostic exports ──────────
+// Tree-shaken out of production bundles: `process.env.NODE_ENV` is inlined
+// as "production" by Vite at build time, so `__DEV` folds to `false` and the
+// exports become `undefined` — the underlying functions have no other
+// consumers in the client graph, so bundlers drop them. Kept for the Nemesis
+// and Mutability phases (probe ω / h without shipping to production).
+const __DEV: boolean =
+  typeof process === "undefined" || process.env?.NODE_ENV !== "production";
+export const __debug_learnOmega: typeof learnOmega | undefined = __DEV
+  ? learnOmega
+  : undefined;
+export const __debug_pickBandwidth: typeof pickBandwidth | undefined = __DEV
+  ? pickBandwidth
+  : undefined;
