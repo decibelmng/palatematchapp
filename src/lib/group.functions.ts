@@ -62,7 +62,22 @@ async function loadMemberRatings(admin: any, userId: string): Promise<RatedFp[]>
   const byId = new Map(bottles.map((b) => [b.id, b]));
   const starsById = new Map(ratings.map((r: any) => [r.bottle_id, r.stars]));
 
-  const raw: (RatedFp & { vintage: number | null })[] = [];
+  // Load per-member benchmarks (canon + nemesis) so anchors can carry the
+  // asymmetric veto and heavier weight in the shared kernel path.
+  const { data: benches, error: bErr } = await admin
+    .from("canon_wines")
+    .select("bottle_id, tier")
+    .eq("user_id", userId)
+    .is("replaced_at", null);
+  if (bErr) throw new Error(bErr.message);
+  const canonBottleIds = new Set<string>();
+  const nemesisBottleIds = new Set<string>();
+  for (const r of (benches ?? []) as any[]) {
+    if (r.tier === "nemesis") nemesisBottleIds.add(r.bottle_id);
+    else canonBottleIds.add(r.bottle_id);
+  }
+
+  const raw: (RatedFp & { vintage: number | null; bottleIds?: string[] })[] = [];
   for (const [id, b] of byId) {
     const stars = starsById.get(id);
     if (typeof stars !== "number") continue;
@@ -82,11 +97,19 @@ async function loadMemberRatings(admin: any, userId: string): Promise<RatedFp[]>
     });
   }
   const agg = aggregateRated(raw);
-  return agg.map((c) => ({
-    id: c.id, name: c.name, producer: c.producer, region: c.region,
-    type: c.type, fp: c.fp, stars: c.stars,
-  }));
+  return agg.map((c) => {
+    const isCanon = c.bottleIds.some((id) => canonBottleIds.has(id));
+    const isNemesis = c.bottleIds.some((id) => nemesisBottleIds.has(id));
+    return {
+      id: c.id, name: c.name, producer: c.producer, region: c.region,
+      type: c.type, fp: c.fp, stars: c.stars,
+      weight: isCanon || isNemesis ? BENCHMARK_WEIGHT : 1,
+      canon: isCanon,
+      nemesis: isNemesis,
+    };
+  });
 }
+
 
 export const groupPredict = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
