@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "./use-session";
 import { bottleType, type BottleRow } from "./use-palate-data";
 
+export type BenchmarkTier = "canon" | "nemesis";
+
 export type CanonRow = {
   id: string;
   user_id: string;
@@ -11,6 +13,7 @@ export type CanonRow = {
   region: string;
   region_key: string;
   wine_type: string;
+  tier: BenchmarkTier;
   created_at: string;
   replaced_at: string | null;
 };
@@ -20,7 +23,7 @@ export function canonScopeType(b: Pick<BottleRow, "type">): "red" | "white" | "r
   return bottleType(b as BottleRow);
 }
 
-/** Active canons for the signed-in user (replaced_at IS NULL). */
+/** Active benchmarks (canon + nemesis) for the signed-in user. */
 export function useMyCanons() {
   const session = useSession();
   return useQuery({
@@ -35,27 +38,40 @@ export function useMyCanons() {
         .is("replaced_at", null)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return (data ?? []) as CanonRow[];
+      // Rows created before the tier column existed default to 'canon' at the DB layer.
+      return ((data ?? []) as any[]).map((r) => ({ ...r, tier: (r.tier ?? "canon") as BenchmarkTier }));
     },
   });
 }
 
-export function usePromoteCanon() {
+/** Convenience: only Canons. */
+export function useMyCanonsOnly() {
+  const { data, ...rest } = useMyCanons();
+  return { ...rest, data: (data ?? []).filter((c) => c.tier === "canon") };
+}
+
+/** Convenience: only Nemeses. */
+export function useMyNemeses() {
+  const { data, ...rest } = useMyCanons();
+  return { ...rest, data: (data ?? []).filter((c) => c.tier === "nemesis") };
+}
+
+function usePromoteBenchmark(tier: BenchmarkTier) {
   const session = useSession();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async (args: {
       bottle: BottleRow;
-      /** existing active canon for the same (region, type) if any — will be demoted */
+      /** existing active benchmark of THIS tier for the same (region, type), if any — will be demoted */
       replace?: CanonRow | null;
     }) => {
       if (!session) throw new Error("Not signed in");
       const uid = session.user.id;
       const region = (args.bottle.region ?? "").trim();
-      if (!region) throw new Error("Bottle has no region — cannot crown.");
+      if (!region) throw new Error(`Bottle has no region — cannot ${tier === "canon" ? "crown" : "mark as Nemesis"}.`);
       const wine_type = canonScopeType(args.bottle);
 
-      // Ensure a rating row exists (Canon requires the user to have rated it).
+      // Ensure a rating row exists AND satisfies the tier's star gate.
       const { data: ratingRow, error: rErr } = await supabase
         .from("ratings")
         .select("id,stars")
@@ -63,7 +79,13 @@ export function usePromoteCanon() {
         .eq("bottle_id", args.bottle.id)
         .maybeSingle();
       if (rErr) throw rErr;
-      if (!ratingRow) throw new Error("Rate this bottle before crowning it Canon.");
+      if (!ratingRow) throw new Error(`Rate this bottle before ${tier === "canon" ? "crowning" : "marking"} it.`);
+      if (tier === "canon" && ratingRow.stars < 5) {
+        throw new Error("Only 5★ wines can become a Canon.");
+      }
+      if (tier === "nemesis" && ratingRow.stars > 2) {
+        throw new Error("Only 1★ or 2★ wines can become a Nemesis.");
+      }
 
       if (args.replace) {
         const { error: dErr } = await (supabase as any)
@@ -81,6 +103,7 @@ export function usePromoteCanon() {
           bottle_id: args.bottle.id,
           region,
           wine_type,
+          tier,
         })
         .select()
         .single();
@@ -91,6 +114,14 @@ export function usePromoteCanon() {
       qc.invalidateQueries({ queryKey: ["canons"] });
     },
   });
+}
+
+export function usePromoteCanon() {
+  return usePromoteBenchmark("canon");
+}
+
+export function usePromoteNemesis() {
+  return usePromoteBenchmark("nemesis");
 }
 
 export function useDemoteCanon() {
@@ -110,12 +141,19 @@ export function useDemoteCanon() {
   });
 }
 
-/** Look up any active canon that would conflict with promoting this bottle. */
-export function useCanonForScope(bottle: BottleRow | null | undefined) {
+/** Same underlying demote path for a Nemesis row; kept as a named export for clarity at call sites. */
+export const useDemoteNemesis = useDemoteCanon;
+
+/** Look up any active benchmark of the given tier that would conflict with promoting this bottle. */
+export function useCanonForScope(bottle: BottleRow | null | undefined, tier: BenchmarkTier = "canon") {
   const { data: canons } = useMyCanons();
   if (!bottle || !canons) return null;
   const region = (bottle.region ?? "").trim().toLowerCase();
   if (!region) return null;
   const type = canonScopeType(bottle);
-  return canons.find((c) => c.region_key === region && c.wine_type === type) ?? null;
+  return canons.find((c) => c.tier === tier && c.region_key === region && c.wine_type === type) ?? null;
+}
+
+export function useNemesisForScope(bottle: BottleRow | null | undefined) {
+  return useCanonForScope(bottle, "nemesis");
 }
