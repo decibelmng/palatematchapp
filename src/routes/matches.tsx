@@ -7,7 +7,7 @@ import { DrinkingGroupSelector } from "@/components/DrinkingGroupSelector";
 import { usePourCandidates, useBottlesByIds, useRatings, bottleToFp, bottleType } from "@/hooks/use-palate-data";
 import { useMyCanons } from "@/hooks/use-canon";
 import { useGroupSelection, useGroupPredict, type GroupCandidateInput } from "@/hooks/use-friends";
-import { recommend, CANON_WEIGHT, type BottleFp, type RatedFp, type Recommendation, type WineType } from "@/lib/recommender";
+import { recommend, CANON_WEIGHT, BENCHMARK_WEIGHT, type BottleFp, type RatedFp, type Recommendation, type WineType } from "@/lib/recommender";
 import { aggregateRated, aggregateCandidates, cuveeKey, type CuveeCandidate, type CuveeRated } from "@/lib/cuvee";
 import { applyControls, normalizePrice, isGreatValue, DEFAULT_CONTROLS, type Controls, type Priced } from "@/lib/list-controls";
 import type { GroupScored } from "@/lib/group.functions";
@@ -52,12 +52,20 @@ function Matches() {
   const { data: ratedBottles } = useBottlesByIds(ratedIds);
   const { data: pool } = usePourCandidates();
   const { data: canons } = useMyCanons();
-  const canonBottleIds = useMemo(() => new Set((canons ?? []).map((c) => c.bottle_id)), [canons]);
+  const canonBottleIds = useMemo(
+    () => new Set((canons ?? []).filter((c) => c.tier === "canon").map((c) => c.bottle_id)),
+    [canons],
+  );
+  const nemesisBottleIds = useMemo(
+    () => new Set((canons ?? []).filter((c) => c.tier === "nemesis").map((c) => c.bottle_id)),
+    [canons],
+  );
   const canonRegionByBottle = useMemo(() => {
     const m = new Map<string, string>();
     for (const c of canons ?? []) m.set(c.bottle_id, c.region);
     return m;
   }, [canons]);
+
 
   const sections: Section[] = useMemo(() => {
     if (!ratings || !pool) return [];
