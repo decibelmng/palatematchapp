@@ -81,8 +81,9 @@ export function useBottlesByIds(ids: string[]) {
 
 export function usePourCandidates() {
   const session = useSession();
+  const { data: palateVersion } = usePalateVersion();
   return useQuery({
-    queryKey: ["pour-candidates", session?.user.id ?? null],
+    queryKey: ["pour-candidates", session?.user.id ?? null, palateVersion ?? 0],
     enabled: !!session,
     queryFn: async (): Promise<BottleRow[]> => {
       const { getPourCandidates } = await import("@/lib/pour.functions");
@@ -96,8 +97,9 @@ export function usePourCandidates() {
 
 export function useRatings() {
   const session = useSession();
+  const { data: palateVersion } = usePalateVersion();
   return useQuery({
-    queryKey: ["ratings", session?.user.id ?? null],
+    queryKey: ["ratings", session?.user.id ?? null, palateVersion ?? 0],
     enabled: !!session,
     queryFn: async () => {
       const { data, error } = await supabase
