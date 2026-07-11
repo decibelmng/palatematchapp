@@ -367,8 +367,18 @@ export function recommend(
     results.push(scoreOne(b, ctx));
   }
 
-  return results.sort((a, b) => b.predicted - a.predicted);
+  // Sort: non-vetoed first (by predicted desc); vetoed all sink below.
+  // Within vetoed, sort by ascending veto distance (worst offender last-ish
+  // is fine; the group is just "avoid").
+  return results.sort((a, b) => {
+    if (a.vetoed !== b.vetoed) return a.vetoed ? 1 : -1;
+    if (a.vetoed && b.vetoed) {
+      return (a.vetoReason?.distance ?? 0) - (b.vetoReason?.distance ?? 0);
+    }
+    return b.predicted - a.predicted;
+  });
 }
+
 
 // ────────── Dev-only diagnostic exports ──────────
 // Tree-shaken out of production bundles: `process.env.NODE_ENV` is inlined
