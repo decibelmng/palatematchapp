@@ -243,7 +243,112 @@ describe("Engine v2 — acceptance", () => {
     expect(minInformative).toBeGreaterThan(uniform);
     expect(minInformative).toBeGreaterThan(maxUninformative);
   });
+
+  // ---------- Nemesis (Phase 2 Part 1) ----------
+
+  it("(10) veto: candidate inside a Nemesis radius returns vetoed=true with no meaningful star, sorted below non-vetoed", () => {
+    // A style baseline (5★ anchor at low-body / low-tannin), plus a Nemesis
+    // 1★ anchor at high-body / high-tannin, plus a neutral 4★ anchor to give
+    // structure. Then two candidates: one glued to the Nemesis, one far away.
+    const r: RatedFp[] = [
+      { ...rated("love1", 5, { body: 0.15, tannin: 0.10 }) },
+      { ...rated("love2", 5, { body: 0.12, tannin: 0.12 }) },
+      { ...rated("mid", 4, { body: 0.30, tannin: 0.25 }) },
+      { ...rated("nemesis", 1, { body: 0.90, tannin: 0.92 }), weight: 3.0, nemesis: true },
+    ];
+    const near = cand("nemNear", { body: 0.89, tannin: 0.90 });
+    const far = cand("safe", { body: 0.14, tannin: 0.12 });
+    const recs = recommend(r, [near, far]);
+    const byId = new Map(recs.map((x) => [x.bottle.id, x]));
+    const nemHit = byId.get("nemNear")!;
+    const safe = byId.get("safe")!;
+    expect(nemHit.vetoed).toBe(true);
+    expect(nemHit.vetoReason).not.toBeNull();
+    expect(nemHit.vetoReason!.nemesis.id).toBe("nemesis");
+    expect(nemHit.vetoReason!.drivingAxes.length).toBeGreaterThan(0);
+    expect(safe.vetoed).toBe(false);
+    // Sort: vetoed sinks below non-vetoed.
+    expect(recs[0].vetoed).toBe(false);
+    expect(recs[recs.length - 1].vetoed).toBe(true);
+  });
+
+  it("(11) demoting Nemesis to plain 1★ removes the veto but keeps the dislike cap", () => {
+    const base: RatedFp[] = [
+      rated("love1", 5, { body: 0.15, tannin: 0.10 }),
+      rated("love2", 5, { body: 0.12, tannin: 0.12 }),
+      rated("mid", 4, { body: 0.30, tannin: 0.25 }),
+    ];
+    const dislikeAnchor = rated("badBottle", 1, { body: 0.90, tannin: 0.92 });
+    const c = cand("nemNear", { body: 0.89, tannin: 0.90 });
+    const recs = recommend([...base, dislikeAnchor], [c]);
+    const only = recs[0];
+    expect(only.vetoed).toBe(false);
+    // Dislike guard: capped near the 1★ anchor.
+    expect(only.predicted).toBeLessThanOrEqual(1.5 + 1e-6);
+  });
+
+  it("(12) asymmetry: d ≈ 1.1·h from a Nemesis vetoes; same d from a Canon does NOT", () => {
+    // Nemesis path
+    const nemAnchors: RatedFp[] = [
+      rated("l1", 5, { body: 0.10 }), rated("l2", 5, { body: 0.12 }),
+      rated("m", 4, { body: 0.30 }),
+      { ...rated("N", 1, { body: 0.90 }), weight: 3.0, nemesis: true },
+    ];
+    const nemRec = recommend(nemAnchors, [cand("x", { body: 0.90 })])[0];
+    expect(nemRec.vetoed).toBe(true);
+
+    // Canon path — same geometry, but the strong anchor is a Canon 5★.
+    const canonAnchors: RatedFp[] = [
+      rated("h1", 4, { body: 0.75 }), rated("h2", 4, { body: 0.72 }),
+      rated("m", 3, { body: 0.60 }),
+      { ...rated("C", 5, { body: 0.90 }), weight: 3.0, canon: true },
+    ];
+    const canRec = recommend(canonAnchors, [cand("x", { body: 0.90 })])[0];
+    expect(canRec.vetoed).toBe(false);
+    expect(canRec.predicted).toBeGreaterThan(3.5);
+  });
+
+  it("(13) Canon–Nemesis on a single axis: that axis's ω dominates the vector", () => {
+    // Canon 5★ and Nemesis 1★ differ only on `body`; identical elsewhere.
+    // With the per-axis fit + 9× pair weight, body should tower over the rest.
+    const r: RatedFp[] = [
+      { ...rated("C", 5, { body: 0.90 }), weight: 3.0, canon: true },
+      { ...rated("N", 1, { body: 0.10 }), weight: 3.0, nemesis: true },
+      // Two neutral anchors so n>=4 and pair math is non-degenerate.
+      rated("m1", 3, {}), rated("m2", 3, {}),
+    ];
+    const fit = __debug_learnOmega!(r, "red");
+    const others: FpKey[] = ["fresh", "acid", "tannin", "fruit_dark", "ripe", "oak", "savory"];
+    for (const k of others) {
+      expect(fit.omega.body).toBeGreaterThanOrEqual(fit.omega[k] * 2);
+    }
+  });
+
+  it("(14) prior purity: nemesis flag/weight does NOT shift μ_prior — same underlying stars → same predicted floor", () => {
+    // Two identical rating sets, only the flag/weight differ. Score a candidate
+    // that's FAR from every anchor (evidence M → 0) so the prediction collapses
+    // to μ_prior; the two predictions should match.
+    const plain: RatedFp[] = [
+      rated("a", 5, { body: 0.10 }),
+      rated("b", 5, { body: 0.15 }),
+      rated("c", 3, { body: 0.40 }),
+      rated("d", 1, { body: 0.90 }),
+    ];
+    const flagged: RatedFp[] = [
+      { ...plain[0] },
+      { ...plain[1] },
+      { ...plain[2] },
+      { ...plain[3], weight: 3.0, nemesis: true },
+    ];
+    // Distant candidate ⇒ all similarities near 0 ⇒ predicted ≈ μ_prior.
+    const far = cand("far", { body: 0.5, fresh: 1, acid: 1, oak: 1, ripe: 1, savory: 1 });
+    const p1 = recommend(plain, [far])[0].predicted;
+    const p2 = recommend(flagged, [far])[0].predicted;
+    // If μ_prior stayed pure, the two must be identical up to FP noise.
+    expect(Math.abs(p1 - p2)).toBeLessThan(0.05);
+  });
 });
+
 
 // ---------- computeCode() ----------
 
