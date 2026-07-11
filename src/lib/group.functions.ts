@@ -176,6 +176,7 @@ export const groupPredict = createServerFn({ method: "POST" })
     }));
 
     const perMemberRecs = new Map<string, Map<string, number>>();
+    const perMemberVetoed = new Map<string, Set<string>>();
     const sameTypeCount = new Map<string, Map<WineType, number>>();
     for (const uid of groupIds) {
       const rated = memberRatings.get(uid) ?? [];
@@ -183,26 +184,30 @@ export const groupPredict = createServerFn({ method: "POST" })
       for (const r of rated) byType.set(r.type, (byType.get(r.type) ?? 0) + 1);
       sameTypeCount.set(uid, byType);
 
-      // Run the recommender with restrictToRatedTypes:false so unknown-type
-      // candidates still get a neutral score (they'll be treated as
-      // "still learning" via the same-type count check below).
       const recs = rated.length > 0
         ? recommend(rated, candidates, { restrictToRatedTypes: false })
         : [];
       const map = new Map<string, number>();
-      for (const r of recs) map.set(r.bottle.id, r.predicted);
+      const vset = new Set<string>();
+      for (const r of recs) {
+        map.set(r.bottle.id, r.predicted);
+        if (r.vetoed) vset.add(r.bottle.id);
+      }
       perMemberRecs.set(uid, map);
+      perMemberVetoed.set(uid, vset);
     }
 
     // 5. Assemble per-candidate results, applying the "still learning" floor.
-    const out: GroupScored[] = candidates.map((cand) => {
+    const raw: GroupScored[] = candidates.map((cand) => {
+      const flaggedBy: string[] = [];
       const per: GroupPerPerson[] = groupIds.map((uid) => {
         const nSame = sameTypeCount.get(uid)?.get(cand.type) ?? 0;
         const stillLearning = nSame < 3;
-        const raw = perMemberRecs.get(uid)?.get(cand.id);
-        // No prediction possible (no ratings at all, or no same-type ratings): neutral 3.0.
-        const predicted = typeof raw === "number" && !Number.isNaN(raw) ? raw : 3.0;
+        const rawScore = perMemberRecs.get(uid)?.get(cand.id);
+        const predicted = typeof rawScore === "number" && !Number.isNaN(rawScore) ? rawScore : 3.0;
         const contributed = stillLearning ? Math.max(predicted, 3.0) : predicted;
+        const vetoed = perMemberVetoed.get(uid)?.has(cand.id) ?? false;
+        if (vetoed) flaggedBy.push(nameById.get(uid) ?? "friend");
         return {
           user_id: uid,
           display_name: nameById.get(uid) ?? "friend",
@@ -210,14 +215,22 @@ export const groupPredict = createServerFn({ method: "POST" })
           n_ratings_same_type: nSame,
           still_learning: stillLearning,
           contributed_min: contributed,
+          vetoed,
         };
       });
       const group_min = Math.min(...per.map((p) => p.contributed_min));
       const group_avg = per.reduce((s, p) => s + p.predicted, 0) / per.length;
-      return { candidate_id: cand.id, per_person: per, group_min, group_avg };
+      return {
+        candidate_id: cand.id, per_person: per, group_min, group_avg,
+        nemesis_flagged_by: flaggedBy,
+      };
     });
+
+    // Per spec: exclude vetoed candidates from group_min ranking entirely.
+    const out = raw.filter((r) => r.nemesis_flagged_by.length === 0);
 
     // Sort by group_min desc, tiebreak group_avg desc.
     out.sort((a, b) => (b.group_min - a.group_min) || (b.group_avg - a.group_avg));
     return out;
   });
+
