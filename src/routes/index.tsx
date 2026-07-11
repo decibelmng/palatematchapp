@@ -208,7 +208,7 @@ function Home() {
             <PalateBars axes={activeAxes} letters={active.letters} />
           </div>
 
-          <CanonAnchors scope={scope} bottles={bottles ?? []} canons={canons ?? []} />
+          <CanonAnchors scope={scope} bottles={bottles ?? []} canons={(canons ?? []).filter((c) => c.tier === "canon")} />
 
           <div className="mt-10 flex flex-wrap gap-2">
             <Link to="/rate" className="rounded-[14px] border-[0.5px] border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent shadow-[var(--pm-card-shadow)]">
