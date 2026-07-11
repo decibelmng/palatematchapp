@@ -273,6 +273,12 @@ function scoreOne(cand: BottleFp, ctx: TypeCtx): Recommendation {
   let nearestByDist: RatedFp | null = null;
   let nearestDist = Infinity;
 
+  // Nemesis veto tracking: repulsion reaches NEMESIS_RADIUS_MULT · h.
+  let vetoNemesis: RatedFp | null = null;
+  let vetoDist = Infinity;
+  const nemesisRadius = h * NEMESIS_RADIUS_MULT;
+  const perAxisContribution: Record<string, number> = {};
+
   for (const r of rated) {
     const d = omegaDistance(cand.fp, r.fp, fit.omega, fit.active);
     const sim = Math.exp(-(d * d) / twoH2);
@@ -283,20 +289,38 @@ function scoreOne(cand: BottleFp, ctx: TypeCtx): Recommendation {
     if (sim > bestSim) bestSim = sim;
     if (k > bestK) { bestK = k; bestKAnchor = r; }
     if (d < nearestDist) { nearestDist = d; nearestByDist = r; }
+    if (r.nemesis && d < nemesisRadius && d < vetoDist) {
+      vetoDist = d;
+      vetoNemesis = r;
+      for (const a of fit.active) {
+        const diff = cand.fp[a] - r.fp[a];
+        perAxisContribution[a] = fit.omega[a] * diff * diff;
+      }
+    }
   }
 
   let predicted = (num + PRIOR_ALPHA * muPrior) / (M + PRIOR_ALPHA);
 
-  // Step 6: dislike guard — nearest anchor by ω-distance is a dislike we're
-  // sitting on top of. Cap so a lonely candidate glued to a 1★ can't average
-  // its way to a middling score.
-  if (nearestByDist && nearestByDist.stars <= 2 && nearestDist < h) {
+  // Step 6: dislike guard — nearest anchor by ω-distance is a plain-dislike
+  // we're sitting on top of. Cap so a lonely candidate glued to a 1★ can't
+  // average its way to a middling score. Skips when nearest is a Nemesis
+  // (that path is handled by the asymmetric veto below).
+  if (nearestByDist && !nearestByDist.nemesis && nearestByDist.stars <= 2 && nearestDist < h) {
     const cap = nearestByDist.stars + 0.5;
     if (predicted > cap) predicted = cap;
   }
 
   predicted = Math.min(5, Math.max(1, predicted));
   const tier = evidenceTier(M);
+
+  let vetoReason: VetoReason | null = null;
+  if (vetoNemesis) {
+    const ranked = Object.entries(perAxisContribution)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 2)
+      .map(([a]) => a as FpKey);
+    vetoReason = { nemesis: vetoNemesis, distance: vetoDist, drivingAxes: ranked };
+  }
 
   return {
     bottle: cand,
@@ -307,8 +331,11 @@ function scoreOne(cand: BottleFp, ctx: TypeCtx): Recommendation {
     confidence: M / (M + PRIOR_ALPHA),
     evidence: M,
     evidenceTier: tier,
+    vetoed: !!vetoNemesis,
+    vetoReason,
   };
 }
+
 
 // ────────── Public entry ──────────
 
