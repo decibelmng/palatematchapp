@@ -62,7 +62,10 @@ export function useTopMatches(limit = 5): { data: TopMatch[]; loading: boolean; 
         merged.push({ ...r, cuvee, nearestCuvee: r.nearest ? ratedById.get(r.nearest.id) ?? null : null });
       }
     }
-    merged.sort((a, b) => b.predicted - a.predicted);
+    merged.sort((a, b) => {
+      if (b.predicted !== a.predicted) return b.predicted - a.predicted;
+      return (b.maxSimilarity ?? 0) - (a.maxSimilarity ?? 0);
+    });
     return merged.slice(0, limit);
   }, [ratings, ratedBottles, pool, limit]);
 
