@@ -15,7 +15,8 @@ import { styleNameFor } from "@/lib/lane-style";
 export type LaneItem<T> = {
   predicted: number;
   maxSimilarity: number;
-  nearest: RatedFp | null;
+  /** id of the nearest rated cuvée / anchor from the recommender pass. */
+  nearestId: string | null;
   vetoed: boolean;
   raw?: boolean;
   payload: T;
