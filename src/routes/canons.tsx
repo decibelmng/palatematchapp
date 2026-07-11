@@ -1,10 +1,11 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo } from "react";
-import { Crown } from "lucide-react";
+import { Crown, Skull } from "lucide-react";
 import { AuthGate } from "@/components/AuthGate";
 import { useMyCanons, useDemoteCanon, type CanonRow } from "@/hooks/use-canon";
 import { useBottlesByIds, type BottleRow } from "@/hooks/use-palate-data";
 import { CanonBadge } from "@/components/CanonBadge";
+import { NemesisBadge } from "@/components/NemesisBadge";
 import { WineTypeBadge } from "@/components/WineTypeBadge";
 import type { WineType } from "@/lib/recommender";
 
@@ -13,20 +14,29 @@ export const Route = createFileRoute("/canons")({
   head: () => ({
     meta: [
       { title: "Canon Cellar — Palate Match" },
-      { name: "description", content: "Your definitive benchmark wine for each region — the engine's true-north anchors." },
+      { name: "description", content: "Your benchmark wines: definitive loves (Canon) and dealbreakers (Nemesis) — the engine's true-north and never-again anchors." },
     ],
   }),
   component: () => <AuthGate><CanonsPage /></AuthGate>,
 });
 
 const TYPE_ORDER: WineType[] = ["red", "white", "sparkling", "rose", "dessert"];
-const TYPE_LABEL: Record<string, string> = {
+const CANON_TYPE_LABEL: Record<string, string> = {
   red: "Red Canons",
   white: "White Canons",
   sparkling: "Sparkling Canons",
   rose: "Rosé Canons",
   dessert: "Dessert Canons",
 };
+const NEMESIS_TYPE_LABEL: Record<string, string> = {
+  red: "Red Nemeses",
+  white: "White Nemeses",
+  sparkling: "Sparkling Nemeses",
+  rose: "Rosé Nemeses",
+  dessert: "Dessert Nemeses",
+};
+
+type Row = { canon: CanonRow; bottle: BottleRow };
 
 function CanonsPage() {
   const { data: canons, isLoading } = useMyCanons();
@@ -34,18 +44,26 @@ function CanonsPage() {
   const { data: bottles } = useBottlesByIds(bottleIds);
   const demote = useDemoteCanon();
 
-  const grouped = useMemo(() => {
+  const { canonGrouped, nemesisGrouped, totalCanons, totalNemeses } = useMemo(() => {
     const byId = new Map((bottles ?? []).map((b) => [b.id, b]));
-    const out: Record<string, { canon: CanonRow; bottle: BottleRow }[]> = {};
+    const canonOut: Record<string, Row[]> = {};
+    const nemesisOut: Record<string, Row[]> = {};
+    let nC = 0, nN = 0;
     for (const c of canons ?? []) {
       const b = byId.get(c.bottle_id);
       if (!b) continue;
-      (out[c.wine_type] ??= []).push({ canon: c, bottle: b });
+      if (c.tier === "nemesis") {
+        (nemesisOut[c.wine_type] ??= []).push({ canon: c, bottle: b });
+        nN++;
+      } else {
+        (canonOut[c.wine_type] ??= []).push({ canon: c, bottle: b });
+        nC++;
+      }
     }
-    return out;
+    return { canonGrouped: canonOut, nemesisGrouped: nemesisOut, totalCanons: nC, totalNemeses: nN };
   }, [canons, bottles]);
 
-  const totalCanons = canons?.length ?? 0;
+  const totalAll = (canons?.length ?? 0);
 
   return (
     <div className="pt-2">
@@ -55,19 +73,19 @@ function CanonsPage() {
         Your true north
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        The single benchmark wine you've crowned for each region &amp; type. The engine treats each as
-        a definitive match — no averaging, one anchor per region.
+        Benchmark wines you've crowned for each region &amp; type. Canons anchor your matches;
+        Nemeses steer the engine away from styles you don't want to see again.
       </p>
 
-      {isLoading && totalCanons === 0 ? (
+      {isLoading && totalAll === 0 ? (
         <p className="mt-8 text-sm text-muted-foreground">Loading…</p>
-      ) : totalCanons === 0 ? (
+      ) : totalAll === 0 ? (
         <div className="mt-8 rounded-xl border border-dashed border-border bg-card/40 p-6 text-center">
           <Crown size={28} strokeWidth={2.2} className="mx-auto text-amber-600/60" />
-          <p className="mt-3 font-serif text-lg">No Canons yet.</p>
+          <p className="mt-3 font-serif text-lg">No benchmarks yet.</p>
           <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
-            When a wine is <em>the one</em> for a region, crown it — the engine will use it as your
-            true north.
+            When a wine is <em>the one</em> for a region, crown it — or mark a 1–2★ bottle as your
+            Nemesis so the engine steers around it.
           </p>
           <Link
             to="/rate"
@@ -77,51 +95,55 @@ function CanonsPage() {
           </Link>
         </div>
       ) : (
-        <div className="mt-8 space-y-10">
-          {TYPE_ORDER.flatMap((t) => {
-            const rows = grouped[t] ?? [];
-            if (rows.length === 0) return [];
-            return [
-              <section key={t}>
-                <div className="flex items-baseline justify-between">
-                  <h2 className="font-serif text-xl">{TYPE_LABEL[t]}</h2>
-                  <span className="text-[11px] text-muted-foreground">{rows.length} region{rows.length === 1 ? "" : "s"}</span>
-                </div>
-                <ul className="mt-3 divide-y divide-border">
-                  {rows.map(({ canon, bottle }) => (
-                    <li key={canon.id} className="py-4 flex items-start justify-between gap-3">
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <CanonBadge />
-                          <WineTypeBadge type={bottle.type} />
-                          <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{canon.region}</span>
-                        </div>
-                        <p className="mt-1 font-medium leading-tight truncate">{bottle.name}</p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          {[bottle.producer, bottle.vintage].filter(Boolean).join(" · ")}
-                        </p>
-                        {bottle.tasting_note && (
-                          <p className="mt-1 text-[11px] italic text-muted-foreground line-clamp-2">"{bottle.tasting_note}"</p>
-                        )}
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (confirm(`Remove Canon status from ${bottle.name}?`)) {
-                            demote.mutate(canon.id);
-                          }
-                        }}
-                        className="shrink-0 text-[11px] text-muted-foreground hover:text-destructive underline underline-offset-2"
-                      >
-                        remove
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              </section>,
-            ];
-          })}
-        </div>
+        <>
+          {totalCanons > 0 && (
+            <div className="mt-8 space-y-10">
+              {TYPE_ORDER.flatMap((t) => {
+                const rows = canonGrouped[t] ?? [];
+                if (rows.length === 0) return [];
+                return [
+                  <TierSection
+                    key={`canon-${t}`}
+                    type={t}
+                    tier="canon"
+                    label={CANON_TYPE_LABEL[t]}
+                    rows={rows}
+                    onDemote={(id) => demote.mutate(id)}
+                  />,
+                ];
+              })}
+            </div>
+          )}
+
+          {totalNemeses > 0 && (
+            <div className="mt-14">
+              <div className="flex items-center gap-2">
+                <Skull size={20} strokeWidth={2.2} className="text-destructive" />
+                <h2 className="font-serif text-2xl">Nemesis List</h2>
+              </div>
+              <p className="mt-1 text-sm text-muted-foreground">
+                The engine avoids anything that shares this style — asymmetric veto radius, wider than
+                the attraction zone.
+              </p>
+              <div className="mt-6 space-y-10">
+                {TYPE_ORDER.flatMap((t) => {
+                  const rows = nemesisGrouped[t] ?? [];
+                  if (rows.length === 0) return [];
+                  return [
+                    <TierSection
+                      key={`nemesis-${t}`}
+                      type={t}
+                      tier="nemesis"
+                      label={NEMESIS_TYPE_LABEL[t]}
+                      rows={rows}
+                      onDemote={(id) => demote.mutate(id)}
+                    />,
+                  ];
+                })}
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       <div className="mt-10 flex flex-wrap gap-2">
@@ -135,3 +157,55 @@ function CanonsPage() {
     </div>
   );
 }
+
+function TierSection({
+  type, tier, label, rows, onDemote,
+}: {
+  type: WineType;
+  tier: "canon" | "nemesis";
+  label: string;
+  rows: Row[];
+  onDemote: (id: string) => void;
+}) {
+  return (
+    <section>
+      <div className="flex items-baseline justify-between">
+        <h2 className="font-serif text-xl">{label}</h2>
+        <span className="text-[11px] text-muted-foreground">{rows.length} region{rows.length === 1 ? "" : "s"}</span>
+      </div>
+      <ul className="mt-3 divide-y divide-border">
+        {rows.map(({ canon, bottle }) => (
+          <li key={canon.id} className="py-4 flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                {tier === "canon" ? <CanonBadge /> : <NemesisBadge />}
+                <WineTypeBadge type={bottle.type} />
+                <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{canon.region}</span>
+              </div>
+              <p className="mt-1 font-medium leading-tight truncate">{bottle.name}</p>
+              <p className="text-xs text-muted-foreground truncate">
+                {[bottle.producer, bottle.vintage].filter(Boolean).join(" · ")}
+              </p>
+              {bottle.tasting_note && (
+                <p className="mt-1 text-[11px] italic text-muted-foreground line-clamp-2">"{bottle.tasting_note}"</p>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const verb = tier === "canon" ? "Canon" : "Nemesis";
+                if (confirm(`Remove ${verb} status from ${bottle.name}?`)) {
+                  onDemote(canon.id);
+                }
+              }}
+              className="shrink-0 text-[11px] text-muted-foreground hover:text-destructive underline underline-offset-2"
+            >
+              remove
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+
