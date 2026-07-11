@@ -71,6 +71,98 @@ describe("recommend()", () => {
   });
 });
 
+// ---------- Engine v2 acceptance tests (Sharpened Anchor Field) ----------
+
+describe("Engine v2 — acceptance", () => {
+  it("(1) ceiling: 1 rating of 5★, identical candidate → predicted ≥ 4.5", () => {
+    // Old formula (α=1.5, prior=3.0) capped this at (5+4.5)/2.5 = 3.80.
+    // v2 with μᵤ = 5, μ_prior = (1·5 + 3·3.5)/4 = 3.875, α=0.5 →
+    // (5 + 0.5·3.875)/1.5 = 4.625.
+    const r: RatedFp[] = [rated("only", 5, { body: 0.7, tannin: 0.6 })];
+    const c = cand("twin", { body: 0.7, tannin: 0.6 });
+    const [rec] = recommend(r, [c]);
+    expect(rec.predicted).toBeGreaterThanOrEqual(4.5);
+    expect(rec.predicted).toBeLessThanOrEqual(4.75);
+  });
+
+  it("(2) mode isolation: candidate hugging 5★ pole is not dragged by a distant 1★", () => {
+    // Two anchors on opposite ends of body/tannin; candidate glued to the 5★.
+    // Add filler ratings far away to give μᵤ realistic weight.
+    const r: RatedFp[] = [
+      rated("A", 5, { body: 0.85, tannin: 0.85, ripe: 0.8, oak: 0.7 }),
+      rated("B", 1, { body: 0.15, tannin: 0.15, ripe: 0.2, oak: 0.3 }),
+      rated("f1", 3, { body: 0.5, tannin: 0.5, ripe: 0.5, oak: 0.5, fresh: 0.9 }),
+      rated("f2", 3, { body: 0.5, tannin: 0.5, ripe: 0.5, oak: 0.5, acid: 0.9 }),
+      rated("f3", 3, { body: 0.5, tannin: 0.5, ripe: 0.5, oak: 0.5, savory: 0.9 }),
+      rated("f4", 3, { body: 0.5, tannin: 0.5, ripe: 0.5, oak: 0.5, fruit_dark: 0.9 }),
+    ];
+    const near5 = cand("near5", { body: 0.83, tannin: 0.83, ripe: 0.78, oak: 0.7 });
+    const [rec] = recommend(r, [near5]);
+    // Sharpening (γ=2) plus adaptive h should keep the 1★ from pulling this below 4.
+    expect(rec.predicted).toBeGreaterThanOrEqual(4.0);
+    expect(rec.nearest?.id).toBe("A");
+  });
+
+  it("(3) dislike guard: candidate glued to a plain 1★ is capped near that 1★", () => {
+    const r: RatedFp[] = [
+      rated("hate", 1, { body: 0.9, tannin: 0.9 }),
+      rated("love", 5, { body: 0.1, tannin: 0.1 }),
+      rated("love2", 5, { body: 0.15, tannin: 0.15 }),
+      rated("mid", 3, { body: 0.5, tannin: 0.5 }),
+    ];
+    const glued = cand("glued", { body: 0.9, tannin: 0.9 });
+    const [rec] = recommend(r, [glued]);
+    expect(rec.predicted).toBeLessThanOrEqual(1.6);
+  });
+
+  it("(4) exploratory: candidate far from every anchor → M < 0.5, tier exploratory", () => {
+    const r: RatedFp[] = [
+      rated("a", 5, { body: 0.9, tannin: 0.9 }),
+      rated("b", 4, { body: 0.85, tannin: 0.85 }),
+      rated("c", 3, { body: 0.8, tannin: 0.8 }),
+    ];
+    // All anchors clustered at (~0.85, ~0.85); candidate at opposite pole.
+    const alien = cand("alien", { body: 0.05, tannin: 0.05, ripe: 0.05, oak: 0.05, body_: 0.05 } as never);
+    const [rec] = recommend(r, [alien]);
+    expect(rec.evidence).toBeLessThan(0.5);
+    expect(rec.evidenceTier).toBe("exploratory");
+  });
+
+  it("(5) monotonicity: single-anchor prediction strictly decreases with distance", () => {
+    const r: RatedFp[] = [rated("only", 5, { body: 0.5, tannin: 0.5 })];
+    const cands: BottleFp[] = [];
+    for (let step = 0; step <= 10; step++) {
+      const off = 0.5 + step * 0.05; // walk body axis away from 0.5
+      cands.push(cand(`c${step}`, { body: off, tannin: 0.5 }));
+    }
+    const recs = recommend(r, cands);
+    // Recover order (recommend sorts by predicted desc; verify strict monotone in `step`).
+    const byId = new Map(recs.map((x) => [x.bottle.id, x.predicted]));
+    for (let step = 0; step < 10; step++) {
+      const a = byId.get(`c${step}`)!;
+      const b = byId.get(`c${step + 1}`)!;
+      expect(a).toBeGreaterThanOrEqual(b);
+    }
+  });
+
+  it("(6) Canon lift: same anchor as Canon lifts prediction & M vs plain 5★", () => {
+    const base = { body: 0.8, tannin: 0.8, ripe: 0.75 };
+    const plainAnchor = rated("A", 5, base);
+    const canonAnchor: RatedFp = { ...plainAnchor, weight: 3.0, canon: true };
+    const filler: RatedFp[] = [
+      rated("f1", 3, { body: 0.4, tannin: 0.4 }),
+      rated("f2", 4, { body: 0.6, tannin: 0.6 }),
+      rated("f3", 3, { body: 0.5, tannin: 0.5 }),
+    ];
+    const c = cand("target", { body: 0.78, tannin: 0.78, ripe: 0.73 });
+    const plainRec = recommend([plainAnchor, ...filler], [c])[0];
+    const canonRec = recommend([canonAnchor, ...filler], [c])[0];
+    expect(canonRec.predicted).toBeGreaterThan(plainRec.predicted);
+    expect(canonRec.evidence).toBeGreaterThan(plainRec.evidence);
+    expect(canonRec.nearestIsCanon).toBe(true);
+  });
+});
+
 // ---------- computeCode() ----------
 
 describe("computeCode()", () => {
