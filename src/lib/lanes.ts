@@ -135,7 +135,7 @@ export function buildLanes<T>(
   const unassigned: LaneItem<T>[] = [];
   for (const item of items) {
     if (item.vetoed || item.raw) continue;
-    const nearId = item.nearest?.id;
+    const nearId = item.nearestId;
     if (!nearId) { unassigned.push(item); continue; }
     const clusterId = ratedIdToCluster.get(nearId);
     if (!clusterId) { unassigned.push(item); continue; }
