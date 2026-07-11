@@ -463,6 +463,42 @@ function SectionView({ section, groupScores, groupActive, groupLoading, canonReg
           })}
         </ul>
       )}
+      {vetoed.length > 0 && (
+        <div className="mt-6">
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] uppercase tracking-[0.18em] text-destructive">Avoid ✕</span>
+            <span className="text-[11px] text-muted-foreground">
+              {vetoed.length} bottle{vetoed.length === 1 ? "" : "s"} inside a Nemesis radius
+            </span>
+          </div>
+          <ul className="mt-2 divide-y divide-border/60">
+            {vetoed.map((r) => (
+              <li key={r.key} className="py-3 flex items-start justify-between gap-3 opacity-90">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <WineTypeBadge type={section.type} />
+                    <span className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-destructive/50 bg-destructive/10 text-destructive">
+                      avoid
+                    </span>
+                  </div>
+                  <p className="font-medium leading-tight truncate mt-1 text-muted-foreground">{r.name}</p>
+                  <CuveeMeta producer={r.producer} region={r.region} vintages={r.vintages} />
+                  {r.vetoNemesisName && (
+                    <p className="mt-1 text-[11px] text-destructive">
+                      Matches your Nemesis {r.vetoNemesisName}
+                      {r.vetoAxes.length > 0 ? ` — ${r.vetoAxes.join(", ")}` : ""}
+                    </p>
+                  )}
+                </div>
+                <div className="shrink-0 text-right">
+                  <span className="font-serif text-destructive text-sm uppercase tracking-wider">Avoid ✕</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {hidden > 0 && (
         <p className="mt-2 text-[11px] text-muted-foreground">+{hidden} more match these filters.</p>
       )}
