@@ -21,8 +21,17 @@ Grape exemplars (anchor; adjust for producer/vintage):
   Merlot-led Bolgheri / Super Tuscan: body 0.7–0.85, tannin 0.55–0.7, fruit_dark 0.75, ripe 0.7, oak 0.55–0.75, savory 0.35–0.5
   Pinot Noir (Burgundy): tannin 0.25–0.4, savory 0.5–0.75, fruit_dark 0.15, body 0.45, acid 0.75
   Syrah / Shiraz: tannin 0.6, savory N.Rhône 0.75 / New World 0.2, fruit_dark 0.85+
-  Chardonnay oaked: oak 0.7+, body 0.7+, acid 0.55
-  Chardonnay unoaked (Chablis): oak 0.05, body 0.45, acid 0.85, fresh 0.85
+  Chardonnay oaked (Napa reserve, Meursault, old-guard Langhe like Gaja Gaia&Rey / Pio Cesare Piodilei): oak 0.7+, body 0.7+, acid 0.55
+  Chardonnay unoaked/steely (Chablis, Alta Langa, modern small-producer Langhe like Rossj-Bass): oak 0.05-0.2, body 0.45-0.55, acid 0.75-0.85, fresh 0.75-0.85
+
+CRITICAL — grape×region priors do NOT override producer/cuvée style.
+Regions like Langhe/Piedmont Chardonnay, Bourgogne Blanc, and California
+Chardonnay are BIMODAL (barrique school AND stainless school coexist).
+Do not auto-apply barrique/oak to every wine from these regions. If the
+specific cuvée is unknown, weight AGAINST barrique for entry-tier and small
+producer bottlings; weight TOWARD barrique only for named single-vineyard
+reserves that clearly signal it. Same rule for Sauvignon Blanc (Sancerre
+crisp vs. Fumé/Graves oaked), Chenin (steely Vouvray vs. rich Savennières).
   Riesling (Mosel): acid 0.9, fresh 0.95, body 0.3, oak 0
   Sauvignon Blanc (Sancerre): acid 0.85, fresh 0.9, oak 0.05
   Champagne: acid 0.85, fresh 0.95, body 0.4, tannin 0
