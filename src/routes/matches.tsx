@@ -522,6 +522,50 @@ function SectionView({ section, groupScores, groupActive, groupLoading, canonReg
       {hidden > 0 && (
         <p className="mt-2 text-[11px] text-muted-foreground">+{hidden} more match these filters.</p>
       )}
+
+      {rawItems.length > 0 && (
+        <div className="mt-6">
+          <button
+            type="button"
+            onClick={() => setShowRaw((v) => !v)}
+            className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground hover:text-foreground"
+          >
+            {showRaw ? "▾" : "▸"} Uncalibrated ({rawItems.length})
+          </button>
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            Template fingerprint — predicted score suppressed until the LLM calibration pass covers these.
+          </p>
+          {showRaw && (
+            <ul className="mt-2 divide-y divide-border/60">
+              {rawItems.slice(0, 25).map((r) => (
+                <li key={r.key} className="py-3 flex items-start justify-between gap-3 opacity-90">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <WineTypeBadge type={section.type} />
+                      <span className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-border bg-muted text-muted-foreground">
+                        template data
+                      </span>
+                    </div>
+                    <p className="font-medium leading-tight truncate mt-1">{r.name}</p>
+                    <CuveeMeta producer={r.producer} region={r.region} vintages={r.vintages} />
+                    {r.price_display && (
+                      <p className="mt-0.5 text-[11px] text-muted-foreground">Price: {r.price_display}</p>
+                    )}
+                  </div>
+                  <div className="shrink-0 text-right">
+                    {r.criticScore !== null && (
+                      <span className="text-[11px] text-muted-foreground">{r.criticScore.toFixed(0)} critic</span>
+                    )}
+                  </div>
+                </li>
+              ))}
+              {rawItems.length > 25 && (
+                <li className="py-2 text-[11px] text-muted-foreground">+{rawItems.length - 25} more uncalibrated cuvées</li>
+              )}
+            </ul>
+          )}
+        </div>
+      )}
     </section>
   );
 }
