@@ -1,6 +1,9 @@
 import { useMemo, useState } from "react";
 import { useBottlesByIds, useRatings, useRate, bottleToFp, bottleType, type BottleRow } from "@/hooks/use-palate-data";
 import { StarTap } from "@/components/StarTap";
+import { CanonAction } from "@/components/CanonAction";
+import { CanonBadge } from "@/components/CanonBadge";
+import { useMyCanons } from "@/hooks/use-canon";
 import { aggregateRated } from "@/lib/cuvee";
 import { useSession } from "@/hooks/use-session";
 import { supabase } from "@/integrations/supabase/client";
@@ -25,6 +28,8 @@ export function YourRatingsList() {
   const qc = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftNote, setDraftNote] = useState("");
+  const { data: canons } = useMyCanons();
+  const canonBottleIds = useMemo(() => new Set((canons ?? []).map((c) => c.bottle_id)), [canons]);
 
   const bottleById = useMemo(() => {
     const m = new Map<string, BottleRow>();
@@ -111,10 +116,14 @@ export function YourRatingsList() {
           const isOwn = !!rep && !!session && rep.added_by === session.user.id;
           const isResearched = rep?.source?.includes("LLM-researched") ?? false;
           const editing = editingId === c.id;
+          const isCanon = c.bottleIds.some((id) => canonBottleIds.has(id));
           return (
             <li key={c.cuvee} className="py-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-medium leading-tight truncate">{c.name}</p>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-sm font-medium leading-tight truncate">{c.name}</p>
+                  {isCanon && <CanonBadge />}
+                </div>
                 <p className="text-xs text-muted-foreground truncate">
                   {[c.producer, c.region].filter(Boolean).join(" · ")}
                   {vl ? <span className="text-muted-foreground/80"> · {vl}</span> : null}
@@ -158,24 +167,27 @@ export function YourRatingsList() {
                   </div>
                 )}
               </div>
-              {aggregated ? (
-                <div className="shrink-0 flex items-center gap-3">
-                  <span className="font-serif text-primary">{c.stars.toFixed(1)}★</span>
-                  <button
-                    className="text-xs text-muted-foreground underline"
-                    onClick={() => {
-                      for (const id of c.bottleIds) rate.mutate({ bottleId: id, stars: null });
-                    }}
-                  >
-                    clear all
-                  </button>
-                </div>
-              ) : (
-                <StarTap
-                  value={c.stars}
-                  onChange={(s) => rate.mutate({ bottleId: c.bottleIds[0], stars: s })}
-                />
-              )}
+              <div className="shrink-0 flex flex-col items-end gap-1.5">
+                {aggregated ? (
+                  <div className="flex items-center gap-3">
+                    <span className="font-serif text-primary">{c.stars.toFixed(1)}★</span>
+                    <button
+                      className="text-xs text-muted-foreground underline"
+                      onClick={() => {
+                        for (const id of c.bottleIds) rate.mutate({ bottleId: id, stars: null });
+                      }}
+                    >
+                      clear all
+                    </button>
+                  </div>
+                ) : (
+                  <StarTap
+                    value={c.stars}
+                    onChange={(s) => rate.mutate({ bottleId: c.bottleIds[0], stars: s })}
+                  />
+                )}
+                {rep && <CanonAction bottle={rep} stars={c.stars} />}
+              </div>
             </li>
           );
         })}

@@ -13,6 +13,9 @@ import {
   bottleType,
   usePersistCode,
 } from "@/hooks/use-palate-data";
+import { useMyCanons } from "@/hooks/use-canon";
+import { CanonBadge } from "@/components/CanonBadge";
+import { Crown } from "lucide-react";
 import { useLandmarks } from "@/hooks/use-landmarks";
 import { cuveeKey } from "@/lib/cuvee";
 import { computeCode, describeCode, axesFor, type RatedBottle, type PaletteType } from "@/lib/palate";
@@ -35,7 +38,11 @@ function Home() {
   const ratedIds = useMemo(() => (ratings ?? []).map((r) => r.bottle_id), [ratings]);
   const { data: bottles } = useBottlesByIds(ratedIds);
 
-  // Palate letter code inputs (unchanged math)
+  const { data: canons } = useMyCanons();
+  const canonBottleIds = useMemo(() => new Set((canons ?? []).map((c) => c.bottle_id)), [canons]);
+
+  // Palate letter code inputs (unchanged math). Canon-anchored bottles pass
+  // canon:true so computeCode multiplies their sample weight by CANON_WEIGHT.
   const { redRated, whiteRated } = useMemo(() => {
     const byId = new Map((bottles ?? []).map((b) => [b.id, b]));
     const redRated: RatedBottle[] = [];
@@ -44,11 +51,12 @@ function Home() {
       const b = byId.get(r.bottle_id);
       if (!b) continue;
       const t = bottleType(b);
-      if (t === "red") redRated.push({ stars: r.stars, values: bottleToValues(b, "red") });
-      else if (t === "white") whiteRated.push({ stars: r.stars, values: bottleToValues(b, "white") });
+      const canon = canonBottleIds.has(b.id);
+      if (t === "red") redRated.push({ stars: r.stars, values: bottleToValues(b, "red"), canon });
+      else if (t === "white") whiteRated.push({ stars: r.stars, values: bottleToValues(b, "white"), canon });
     }
     return { redRated, whiteRated };
-  }, [bottles, ratings]);
+  }, [bottles, ratings, canonBottleIds]);
 
   const red = useMemo(() => computeCode(redRated, axesFor("red")), [redRated]);
   const white = useMemo(() => computeCode(whiteRated, axesFor("white")), [whiteRated]);
@@ -200,12 +208,17 @@ function Home() {
             <PalateBars axes={activeAxes} letters={active.letters} />
           </div>
 
+          <CanonAnchors scope={scope} bottles={bottles ?? []} canons={canons ?? []} />
+
           <div className="mt-10 flex flex-wrap gap-2">
             <Link to="/rate" className="rounded-[14px] border-[0.5px] border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent shadow-[var(--pm-card-shadow)]">
               Edit your ratings ({totalRated})
             </Link>
             <Link to="/rate" className="rounded-[14px] border-[0.5px] border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent shadow-[var(--pm-card-shadow)]">
               Rate more
+            </Link>
+            <Link to="/canons" className="rounded-[14px] border-[0.5px] border-amber-500/50 bg-amber-50/60 dark:bg-amber-950/30 text-amber-800 dark:text-amber-200 px-3 py-1.5 text-xs font-medium hover:bg-amber-100/70 shadow-[var(--pm-card-shadow)] inline-flex items-center gap-1">
+              <Crown size={12} strokeWidth={2.2} fill="currentColor" /> Canon Cellar
             </Link>
           </div>
         </>
@@ -245,6 +258,49 @@ function OnboardingBlock({ scope, n }: { scope: PaletteType; n: number }) {
           </li>
         ))}
       </ol>
+    </div>
+  );
+}
+
+function CanonAnchors({
+  scope, bottles, canons,
+}: {
+  scope: PaletteType;
+  bottles: import("@/hooks/use-palate-data").BottleRow[];
+  canons: import("@/hooks/use-canon").CanonRow[];
+}) {
+  const rows = useMemo(() => {
+    const byId = new Map(bottles.map((b) => [b.id, b]));
+    const out: { canon: (typeof canons)[number]; bottle: (typeof bottles)[number] }[] = [];
+    for (const c of canons) {
+      const b = byId.get(c.bottle_id);
+      if (!b) continue;
+      if (bottleType(b) !== scope) continue;
+      out.push({ canon: c, bottle: b });
+    }
+    return out;
+  }, [bottles, canons, scope]);
+
+  if (rows.length === 0) return null;
+
+  return (
+    <div className="mt-10">
+      <div className="flex items-center justify-between">
+        <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground flex items-center gap-1.5">
+          <Crown size={12} strokeWidth={2.2} fill="currentColor" className="text-amber-600" />
+          Canon anchors feeding this palate
+        </p>
+        <Link to="/canons" className="text-[11px] text-primary hover:underline">All canons →</Link>
+      </div>
+      <ul className="mt-3 space-y-1.5">
+        {rows.map(({ canon, bottle }) => (
+          <li key={canon.id} className="text-xs flex items-center gap-2">
+            <CanonBadge />
+            <span className="text-foreground/90 truncate">{bottle.name}</span>
+            <span className="text-muted-foreground">· {canon.region}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

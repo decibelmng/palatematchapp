@@ -5,11 +5,13 @@ import { WineTypeBadge } from "@/components/WineTypeBadge";
 import { ListControls } from "@/components/ListControls";
 import { DrinkingGroupSelector } from "@/components/DrinkingGroupSelector";
 import { usePourCandidates, useBottlesByIds, useRatings, bottleToFp, bottleType } from "@/hooks/use-palate-data";
+import { useMyCanons } from "@/hooks/use-canon";
 import { useGroupSelection, useGroupPredict, type GroupCandidateInput } from "@/hooks/use-friends";
-import { recommend, type BottleFp, type RatedFp, type Recommendation, type WineType } from "@/lib/recommender";
+import { recommend, CANON_WEIGHT, type BottleFp, type RatedFp, type Recommendation, type WineType } from "@/lib/recommender";
 import { aggregateRated, aggregateCandidates, cuveeKey, type CuveeCandidate, type CuveeRated } from "@/lib/cuvee";
 import { applyControls, normalizePrice, isGreatValue, DEFAULT_CONTROLS, type Controls, type Priced } from "@/lib/list-controls";
 import type { GroupScored } from "@/lib/group.functions";
+import { CanonBadge } from "@/components/CanonBadge";
 
 export const Route = createFileRoute("/matches")({
   ssr: false,
@@ -31,7 +33,7 @@ const TYPE_LABEL: Record<WineType, string> = {
   dessert: "Dessert wines for you",
 };
 
-type RankedCuvee = Recommendation & { cuvee: CuveeCandidate; nearestCuvee: CuveeRated | null };
+type RankedCuvee = Recommendation & { cuvee: CuveeCandidate; nearestCuvee: CuveeRated | null; nearestIsCanon: boolean };
 
 type Section =
   | { type: WineType; mode: "personalized"; nSameType: number; items: RankedCuvee[] }
@@ -49,6 +51,13 @@ function Matches() {
   const ratedIds = useMemo(() => (ratings ?? []).map((r) => r.bottle_id), [ratings]);
   const { data: ratedBottles } = useBottlesByIds(ratedIds);
   const { data: pool } = usePourCandidates();
+  const { data: canons } = useMyCanons();
+  const canonBottleIds = useMemo(() => new Set((canons ?? []).map((c) => c.bottle_id)), [canons]);
+  const canonRegionByBottle = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const c of canons ?? []) m.set(c.bottle_id, c.region);
+    return m;
+  }, [canons]);
 
   const sections: Section[] = useMemo(() => {
     if (!ratings || !pool) return [];
@@ -92,10 +101,18 @@ function Matches() {
         if (ranked.length > 0) out.push({ type, mode: "fallback", nSameType: 0, items: ranked });
       } else {
         // Feed the recommender cuvée-aggregated rated rows and candidate cuvées.
-        const ratedFp: RatedFp[] = sameTypeRated.map((r) => ({
-          id: r.id, name: r.name, producer: r.producer, region: r.region,
-          type: r.type, fp: r.fp, stars: r.stars,
-        }));
+        // Cuvées that contain a Canon bottle carry CANON_WEIGHT + canon flag so
+        // their similarity mass dominates the kernel sum and "nearest" surfaces
+        // the Canon anchor in the reason line.
+        const ratedFp: RatedFp[] = sameTypeRated.map((r) => {
+          const isCanon = r.bottleIds.some((id) => canonBottleIds.has(id));
+          return {
+            id: r.id, name: r.name, producer: r.producer, region: r.region,
+            type: r.type, fp: r.fp, stars: r.stars,
+            weight: isCanon ? CANON_WEIGHT : 1,
+            canon: isCanon,
+          };
+        });
         const candFp: BottleFp[] = cands.map((c) => ({
           id: c.id, name: c.name, producer: c.producer, region: c.region,
           type: c.type, fp: c.fp,
@@ -111,7 +128,7 @@ function Matches() {
             // Down-weight uncalibrated (raw import default) cuvées so a
             // template bottle can't outrank a calibrated real match.
             const predicted = cuvee.raw ? r.predicted * 0.9 : r.predicted;
-            return { ...r, predicted, cuvee, nearestCuvee };
+            return { ...r, predicted, cuvee, nearestCuvee, nearestIsCanon: r.nearestIsCanon };
           })
           .filter((x): x is RankedCuvee => x !== null)
           .sort((a, b) => b.predicted - a.predicted);
@@ -122,7 +139,7 @@ function Matches() {
     void cuveeKey; void ratedCuveeByKey;
 
     return out;
-  }, [ratedBottles, ratings, pool]);
+  }, [ratedBottles, ratings, pool, canonBottleIds]);
 
   const nRated = ratings?.length ?? 0;
   const loading = !ratings || (ratedIds.length > 0 && !ratedBottles) || !pool;
@@ -174,7 +191,7 @@ function Matches() {
             Go rate
           </Link>
           <div className="mt-8 space-y-10">
-            {sections.map((s) => <SectionView key={s.type} section={s} groupScores={groupScores} groupActive={group.friendIds.length > 0} groupLoading={groupPred.isFetching} />)}
+            {sections.map((s) => <SectionView key={s.type} section={s} groupScores={groupScores} groupActive={group.friendIds.length > 0} groupLoading={groupPred.isFetching} canonRegionByBottle={canonRegionByBottle} />)}
           </div>
         </div>
       ) : (
@@ -182,7 +199,7 @@ function Matches() {
           {sections.length === 0 && (
             <p className="text-sm text-muted-foreground">No unrated bottles in the catalogue yet.</p>
           )}
-          {sections.map((s) => <SectionView key={s.type} section={s} groupScores={groupScores} groupActive={group.friendIds.length > 0} groupLoading={groupPred.isFetching} />)}
+          {sections.map((s) => <SectionView key={s.type} section={s} groupScores={groupScores} groupActive={group.friendIds.length > 0} groupLoading={groupPred.isFetching} canonRegionByBottle={canonRegionByBottle} />)}
         </div>
       )}
     </div>
@@ -208,15 +225,20 @@ type Row = Priced & {
   vintages: number[];
   criticScore: number | null;
   nearestCuvee: CuveeRated | null;
+  nearestIsCanon: boolean;
+  nearestCanonRegion: string | null;
   greatValue: boolean;
   confidence: number | null;
   raw: boolean;            // uncalibrated (import-defaults) cuvée — hide from top 10
 };
 
-function toRows(section: Section): Row[] {
+function toRows(section: Section, canonRegionByBottle: Map<string, string>): Row[] {
   if (section.mode === "personalized") {
     return section.items.map((r) => {
       const p = normalizePrice(r.cuvee.price_band);
+      const canonRegion = r.nearestIsCanon && r.nearestCuvee
+        ? r.nearestCuvee.bottleIds.map((id) => canonRegionByBottle.get(id)).find(Boolean) ?? r.nearestCuvee.region ?? null
+        : null;
       const row: Row = {
         key: r.cuvee.cuvee,
         id: r.cuvee.id,
@@ -226,6 +248,8 @@ function toRows(section: Section): Row[] {
         vintages: r.cuvee.vintages,
         criticScore: r.cuvee.critic_score,
         nearestCuvee: r.nearestCuvee,
+        nearestIsCanon: r.nearestIsCanon,
+        nearestCanonRegion: canonRegion,
         price_amount: p.amount,
         price_band: p.band,
         price_display: p.display,
@@ -250,6 +274,8 @@ function toRows(section: Section): Row[] {
       vintages: c.vintages,
       criticScore: c.critic_score,
       nearestCuvee: null,
+      nearestIsCanon: false,
+      nearestCanonRegion: null,
       price_amount: p.amount,
       price_band: p.band,
       price_display: p.display,
@@ -267,9 +293,10 @@ type SectionViewProps = {
   groupScores: Map<string, GroupScored> | null;
   groupActive: boolean;
   groupLoading: boolean;
+  canonRegionByBottle: Map<string, string>;
 };
 
-function SectionView({ section, groupScores, groupActive, groupLoading }: SectionViewProps) {
+function SectionView({ section, groupScores, groupActive, groupLoading, canonRegionByBottle }: SectionViewProps) {
   const [controls, setControls] = useState<Controls>(DEFAULT_CONTROLS);
   const isFallback = section.mode === "fallback";
   const tag = isFallback
@@ -278,7 +305,7 @@ function SectionView({ section, groupScores, groupActive, groupLoading }: Sectio
     ? `Still learning — based on ${section.nSameType} cuvée${section.nSameType === 1 ? "" : "s"} you've rated`
     : null;
 
-  const baseRows = useMemo(() => toRows(section), [section]);
+  const baseRows = useMemo(() => toRows(section, canonRegionByBottle), [section, canonRegionByBottle]);
   // In group mode, replace `predicted` with the server-computed group_min so
   // the standard "best" / "value" sort and greatValue tag work unchanged.
   const rows: Row[] = useMemo(() => {
@@ -356,7 +383,18 @@ function SectionView({ section, groupScores, groupActive, groupLoading }: Sectio
                     <p className="mt-0.5 text-[11px] text-muted-foreground">Price: {r.price_display}</p>
                   )}
                   {g && <GroupBreakdown g={g} />}
-                  {!g && r.nearestCuvee && (
+                  {!g && r.nearestCuvee && r.nearestIsCanon && (
+                    <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-300 flex items-center gap-1">
+                      <CanonBadge size="sm" title="Nearest neighbour is a Canon anchor" />
+                      <span>
+                        Close match to your Canon
+                        {r.nearestCanonRegion ? <> <span className="text-foreground/80">{r.nearestCanonRegion}</span></> : null}
+                        {" — "}
+                        <span className="text-foreground/80">{r.nearestCuvee.name}</span>
+                      </span>
+                    </p>
+                  )}
+                  {!g && r.nearestCuvee && !r.nearestIsCanon && (
                     <p className="mt-1 text-[11px] text-muted-foreground">
                       like your {r.nearestCuvee.stars.toFixed(1)}★ <span className="text-foreground/80">{r.nearestCuvee.name}</span>
                     </p>

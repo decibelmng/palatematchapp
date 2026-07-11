@@ -23,15 +23,26 @@ export type BottleFp = {
   fp: Record<FpKey, number>;
 };
 
-export type RatedFp = BottleFp & { stars: number };
+export type RatedFp = BottleFp & {
+  stars: number;
+  /** Sample weight in the kernel regression (default 1.0). Canon wines pass CANON_WEIGHT. */
+  weight?: number;
+  /** True if this rated wine is a Canon anchor for its region. */
+  canon?: boolean;
+};
 
 export type Recommendation = {
   bottle: BottleFp;
   predicted: number;
   nearest: RatedFp | null;
+  nearestIsCanon: boolean;
   maxSimilarity: number;
   confidence: number;
 };
+
+/** Fixed sample-weight multiplier applied to Canon anchors in the kernel regression. */
+export const CANON_WEIGHT = 3.0;
+
 
 /**
  * A white/sparkling/rosé bottle has NO tannin and NO fruit_dark signal — those
@@ -99,7 +110,7 @@ function scoreCandidate(
   bandwidth: number,
   alpha: number,
   prior: number,
-): { predicted: number; nearest: RatedFp | null; maxSimilarity: number; confidence: number } | null {
+): { predicted: number; nearest: RatedFp | null; nearestIsCanon: boolean; maxSimilarity: number; confidence: number } | null {
   if (sameType.length === 0) return null;
   const twoBwSq = 2 * bandwidth * bandwidth;
   const used = active.filter((k) => axisApplies(k, candidate.type));
@@ -119,8 +130,11 @@ function scoreCandidate(
     if (wsum === 0) continue;
     d2 = d2 / wsum;
     const sim = Math.exp(-d2 / twoBwSq);
-    num += sim * r.stars;
-    den += sim;
+    // Per-sample weight: Canon wines carry CANON_WEIGHT so their similarity
+    // mass dominates the kernel sum; ordinary rated wines pass weight = 1.
+    const sw = r.weight ?? 1;
+    num += sim * sw * r.stars;
+    den += sim * sw;
     if (sim > bestAny) { bestAny = sim; nearestAny = r; }
     if (sim > best && r.stars >= 4) { best = sim; nearest = r; }
   }
@@ -130,7 +144,8 @@ function scoreCandidate(
   const alphaEff = alpha / (1 + den);
   const predicted = (num + alphaEff * prior) / (den + alphaEff);
   const confidence = den / (den + alphaEff);
-  return { predicted, nearest, maxSimilarity: Math.max(bestAny, 0), confidence };
+  const nearestIsCanon = !!nearest?.canon;
+  return { predicted, nearest, nearestIsCanon, maxSimilarity: Math.max(bestAny, 0), confidence };
 }
 
 

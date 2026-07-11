@@ -116,6 +116,57 @@ export type Database = {
         }
         Relationships: []
       }
+      canon_wines: {
+        Row: {
+          bottle_id: string
+          created_at: string
+          id: string
+          rating_id: string
+          region: string
+          region_key: string | null
+          replaced_at: string | null
+          user_id: string
+          wine_type: string
+        }
+        Insert: {
+          bottle_id: string
+          created_at?: string
+          id?: string
+          rating_id: string
+          region: string
+          region_key?: string | null
+          replaced_at?: string | null
+          user_id: string
+          wine_type: string
+        }
+        Update: {
+          bottle_id?: string
+          created_at?: string
+          id?: string
+          rating_id?: string
+          region?: string
+          region_key?: string | null
+          replaced_at?: string | null
+          user_id?: string
+          wine_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "canon_wines_bottle_id_fkey"
+            columns: ["bottle_id"]
+            isOneToOne: false
+            referencedRelation: "bottles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "canon_wines_rating_id_fkey"
+            columns: ["rating_id"]
+            isOneToOne: false
+            referencedRelation: "ratings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       friendships: {
         Row: {
           addressee_id: string
