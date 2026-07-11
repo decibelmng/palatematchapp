@@ -21,6 +21,9 @@ import { applyControls, normalizePrice, isGreatValue, DEFAULT_CONTROLS, type Con
 import type { GroupScored } from "@/lib/group.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useMyCanons } from "@/hooks/use-canon";
+import { computeCellarMemory, producerLookup } from "@/lib/cellar-memory";
+import { CellarMemorySection } from "@/components/CellarMemorySection";
 
 export const Route = createFileRoute("/scan/list")({
   ssr: false,
@@ -106,6 +109,7 @@ function Scan() {
   const { data: ratings } = useRatings();
   const ratedIds = useMemo(() => (ratings ?? []).map((r) => r.bottle_id), [ratings]);
   const { data: ratedBottles } = useBottlesByIds(ratedIds);
+  const { data: myCanons } = useMyCanons();
 
   const createScan = useServerFn(createScanRecord);
   const runBatch = useServerFn(scanWineBatch);
@@ -342,6 +346,18 @@ function Scan() {
     }));
   }, [ratedBottles, ratings]);
 
+  // Cellar-memory matches (Tier 1 exact / Tier 2 same cuvée). Recomputed
+  // whenever ratings or scanned wines change — so a wine rated AFTER the scan
+  // was saved will appear when the scan is reopened.
+  const cellar = useMemo(() => {
+    return computeCellarMemory({
+      readable,
+      ratedBottles: ratedBottles ?? [],
+      ratings: ratings ?? [],
+      canons: myCanons ?? [],
+    });
+  }, [readable, ratedBottles, ratings, myCanons]);
+
   const ranked: Ranked[] = useMemo(() => {
     if (readable.length === 0) return [];
     const candidates: BottleFp[] = readable.map((w, i) => ({
@@ -362,11 +378,24 @@ function Scan() {
     return recs.map((r) => ({ ...r, scanned: byId.get(r.bottle.id)! }));
   }, [readable, ratedRows]);
 
+  // Predictions keyed by scanned index (for Tier 2 hybrid card).
+  const predictionsByIndex = useMemo(() => {
+    const m = new Map<number, Recommendation>();
+    for (const r of ranked) {
+      const idx = Number(r.bottle.id.replace("scan-", ""));
+      if (!Number.isNaN(idx)) m.set(idx, r);
+    }
+    return m;
+  }, [ranked]);
+
   const enoughRatings = ratedRows.length >= 3;
 
   const grouped: { type: WineType; rows: ScanRow[] }[] = useMemo(() => {
     const buckets = new Map<WineType, ScanRow[]>();
     ranked.forEach((r, i) => {
+      const idx = Number(r.bottle.id.replace("scan-", ""));
+      // Skip anything already surfaced in cellar memory (both tiers).
+      if (cellar.byIndex.has(idx)) return;
       const t = (r.scanned.type ?? "red") as WineType;
       const p = normalizePrice(r.scanned.price ?? null);
       const isCatalog = r.scanned.fp_source === "catalog";
@@ -387,7 +416,7 @@ function Scan() {
     });
     const order: WineType[] = ["red", "white", "rose", "sparkling", "dessert"];
     return order.filter((t) => buckets.has(t)).map((t) => ({ type: t, rows: buckets.get(t)! }));
-  }, [ranked]);
+  }, [ranked, cellar]);
 
   const group = useGroupSelection();
   const groupCandidates: GroupCandidateInput[] = useMemo(() => {
@@ -629,6 +658,8 @@ function Scan() {
         <RestaurantAttribution scanId={scanLogId} />
       )}
 
+      <CellarMemorySection matches={cellar.matches} predictionsByIndex={predictionsByIndex} />
+
       {grouped.length > 0 && (
         <div className="mt-6">
           <DrinkingGroupSelector
@@ -652,6 +683,7 @@ function Scan() {
               groupScores={groupScores}
               groupActive={groupActive}
               groupLoading={groupPred.isFetching}
+              producers={cellar.producers}
             />
           ))}
         </div>
@@ -898,7 +930,7 @@ function RestaurantAttribution({ scanId }: { scanId: string }) {
 }
 
 function ScanSection({
-  type, rows, enoughRatings, flagFor, groupScores, groupActive, groupLoading,
+  type, rows, enoughRatings, flagFor, groupScores, groupActive, groupLoading, producers,
 }: {
   type: WineType;
   rows: ScanRow[];
@@ -907,6 +939,7 @@ function ScanSection({
   groupScores: Map<string, GroupScored> | null;
   groupActive: boolean;
   groupLoading: boolean;
+  producers: Map<string, { avg: number; n: number; name: string }>;
 }) {
   const [controls, setControls] = useState<Controls>(DEFAULT_CONTROLS);
 
@@ -952,6 +985,7 @@ function ScanSection({
           {visible.map(({ ranked: r, isCatalog, greatValue, price_display }) => {
             const flag = groupActive ? null : flagFor(r);
             const g = groupActive && groupScores ? groupScores.get(r.bottle.id) ?? null : null;
+            const prodFam = producerLookup(producers, r.bottle.producer);
             return (
               <li key={r.bottle.id} className="py-4 flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -967,6 +1001,14 @@ function ScanSection({
                     {greatValue && (
                       <span className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
                         great value
+                      </span>
+                    )}
+                    {prodFam && (
+                      <span
+                        className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-border bg-muted text-muted-foreground"
+                        title={`You've rated ${prodFam.n} wine${prodFam.n === 1 ? "" : "s"} from ${prodFam.name} (avg ${prodFam.avg.toFixed(1)}★)`}
+                      >
+                        producer you know · {prodFam.avg.toFixed(1)}★
                       </span>
                     )}
                   </div>
