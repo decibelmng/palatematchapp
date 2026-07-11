@@ -357,9 +357,10 @@ type SectionViewProps = {
   groupActive: boolean;
   groupLoading: boolean;
   canonRegionByBottle: Map<string, string>;
+  layout: MatchesLayout;
 };
 
-function SectionView({ section, groupScores, groupActive, groupLoading, canonRegionByBottle }: SectionViewProps) {
+function SectionView({ section, groupScores, groupActive, groupLoading, canonRegionByBottle, layout }: SectionViewProps) {
   const [controls, setControls] = useState<Controls>(DEFAULT_CONTROLS);
   const isFallback = section.mode === "fallback";
   const tag = isFallback
