@@ -321,6 +321,7 @@ function toRows(section: Section, canonRegionByBottle: Map<string, string>): Row
       vetoed: false,
       vetoNemesisName: null,
       vetoAxes: [],
+      nearestId: null,
     };
   });
 }
