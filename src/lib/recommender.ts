@@ -57,6 +57,17 @@ export type VetoReason = {
   drivingAxes: FpKey[];
 };
 
+export type ContestedReason = {
+  /** The nearby Nemesis whose basin was contested by a nearer love. */
+  nemesis: RatedFp;
+  /** ω-distance from candidate to that Nemesis. */
+  nemesisDistance: number;
+  /** The love-anchor (stars ≥ 4) that pulled the candidate out of the basin. */
+  nearestPositive: RatedFp;
+  /** ω-distance from candidate to nearestPositive. */
+  positiveDistance: number;
+};
+
 export type Recommendation = {
   bottle: BottleFp;
   predicted: number;
@@ -69,9 +80,18 @@ export type Recommendation = {
   evidence: number;
   /** "strong" | "moderate" | "exploratory" from M. */
   evidenceTier: "strong" | "moderate" | "exploratory";
-  /** True when the candidate sits inside a Nemesis's asymmetric veto radius. */
+  /**
+   * True when the candidate sits inside a Nemesis's asymmetric reach AND is
+   * closer to that Nemesis than to any love (stars ≥ 4). Basin rule.
+   */
   vetoed: boolean;
   vetoReason: VetoReason | null;
+  /**
+   * True when the candidate sits inside a Nemesis's asymmetric reach BUT is
+   * closer to a love — the contested zone. No veto, but flag for UI caution.
+   */
+  contested: boolean;
+  contestedReason: ContestedReason | null;
 };
 
 // ────────── Config (single tunable object) ──────────
@@ -273,9 +293,14 @@ function scoreOne(cand: BottleFp, ctx: TypeCtx): Recommendation {
   let nearestByDist: RatedFp | null = null;
   let nearestDist = Infinity;
 
-  // Nemesis veto tracking: repulsion reaches NEMESIS_RADIUS_MULT · h.
-  let vetoNemesis: RatedFp | null = null;
-  let vetoDist = Infinity;
+  // Nemesis reach tracking: repulsion reaches NEMESIS_RADIUS_MULT · h.
+  // BASIN RULE: a Nemesis inside its reach only vetoes when the candidate
+  // is closer to it than to any love (stars ≥ 4). Otherwise the candidate
+  // sits in the "contested zone" — no veto, but flagged for UI caution.
+  let nearNemesis: RatedFp | null = null;
+  let nearNemesisDist = Infinity;
+  let nearestPositive: RatedFp | null = null;
+  let nearestPositiveDist = Infinity;
   const nemesisRadius = h * NEMESIS_RADIUS_MULT;
   const perAxisContribution: Record<string, number> = {};
 
@@ -289,15 +314,23 @@ function scoreOne(cand: BottleFp, ctx: TypeCtx): Recommendation {
     if (sim > bestSim) bestSim = sim;
     if (k > bestK) { bestK = k; bestKAnchor = r; }
     if (d < nearestDist) { nearestDist = d; nearestByDist = r; }
-    if (r.nemesis && d < nemesisRadius && d < vetoDist) {
-      vetoDist = d;
-      vetoNemesis = r;
-      for (const a of fit.active) {
-        const diff = cand.fp[a] - r.fp[a];
-        perAxisContribution[a] = fit.omega[a] * diff * diff;
-      }
+    if (r.nemesis && d < nemesisRadius && d < nearNemesisDist) {
+      nearNemesisDist = d;
+      nearNemesis = r;
+    }
+    // Nearest positive anchor (love) — stars ≥ 4 and not a Nemesis.
+    if (!r.nemesis && r.stars >= 4 && d < nearestPositiveDist) {
+      nearestPositiveDist = d;
+      nearestPositive = r;
     }
   }
+
+  // Basin decision: veto only if the near-Nemesis is strictly closer than
+  // any love. Ties (or no love at all) → veto (a lonely candidate glued to
+  // the Nemesis with no positive nearby has nowhere else to belong).
+  const inNemesisReach = nearNemesis !== null;
+  const nemesisWinsBasin =
+    inNemesisReach && nearNemesisDist < nearestPositiveDist;
 
   let predicted = (num + PRIOR_ALPHA * muPrior) / (M + PRIOR_ALPHA);
 
@@ -314,12 +347,25 @@ function scoreOne(cand: BottleFp, ctx: TypeCtx): Recommendation {
   const tier = evidenceTier(M);
 
   let vetoReason: VetoReason | null = null;
-  if (vetoNemesis) {
+  let contestedReason: ContestedReason | null = null;
+  if (nemesisWinsBasin && nearNemesis) {
+    // Compute driving axes only on the veto path (small cost).
+    for (const a of fit.active) {
+      const diff = cand.fp[a] - nearNemesis.fp[a];
+      perAxisContribution[a] = fit.omega[a] * diff * diff;
+    }
     const ranked = Object.entries(perAxisContribution)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 2)
       .map(([a]) => a as FpKey);
-    vetoReason = { nemesis: vetoNemesis, distance: vetoDist, drivingAxes: ranked };
+    vetoReason = { nemesis: nearNemesis, distance: nearNemesisDist, drivingAxes: ranked };
+  } else if (inNemesisReach && nearNemesis && nearestPositive) {
+    contestedReason = {
+      nemesis: nearNemesis,
+      nemesisDistance: nearNemesisDist,
+      nearestPositive,
+      positiveDistance: nearestPositiveDist,
+    };
   }
 
   return {
@@ -331,8 +377,10 @@ function scoreOne(cand: BottleFp, ctx: TypeCtx): Recommendation {
     confidence: M / (M + PRIOR_ALPHA),
     evidence: M,
     evidenceTier: tier,
-    vetoed: !!vetoNemesis,
+    vetoed: !!vetoReason,
     vetoReason,
+    contested: !!contestedReason,
+    contestedReason,
   };
 }
 

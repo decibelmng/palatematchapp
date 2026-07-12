@@ -146,7 +146,7 @@ function Matches() {
             // them into a separate "Uncalibrated" section that has NO star
             // prediction. Calibrated wines keep their engine score and veto.
             if (cuvee.raw) {
-              return { ...r, cuvee, nearestCuvee, nearestIsCanon: r.nearestIsCanon, vetoed: false, vetoReason: null };
+              return { ...r, cuvee, nearestCuvee, nearestIsCanon: r.nearestIsCanon, vetoed: false, vetoReason: null, contested: false, contestedReason: null };
             }
             return { ...r, cuvee, nearestCuvee, nearestIsCanon: r.nearestIsCanon };
           })
@@ -279,6 +279,8 @@ type Row = Priced & {
   vetoed: boolean;
   vetoNemesisName: string | null;
   vetoAxes: string[];
+  contested: boolean;
+  contestedNemesisName: string | null;
   maxSimilarity?: number;
   nearestId: string | null;
 };
@@ -313,6 +315,8 @@ function toRows(section: Section, canonRegionByBottle: Map<string, string>): Row
         vetoed: r.vetoed,
         vetoNemesisName: r.vetoReason?.nemesis.name ?? null,
         vetoAxes: r.vetoReason?.drivingAxes ?? [],
+        contested: r.contested,
+        contestedNemesisName: r.contestedReason?.nemesis.name ?? null,
         maxSimilarity: r.maxSimilarity,
         nearestId: r.nearest?.id ?? null,
       };
@@ -345,6 +349,8 @@ function toRows(section: Section, canonRegionByBottle: Map<string, string>): Row
       vetoed: false,
       vetoNemesisName: null,
       vetoAxes: [],
+      contested: false,
+      contestedNemesisName: null,
       nearestId: null,
     };
   });
@@ -622,6 +628,14 @@ function MatchRow({
           {r.greatValue && (
             <span className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
               great value
+            </span>
+          )}
+          {r.contested && r.contestedNemesisName && (
+            <span
+              className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+              title="Inside your Nemesis's reach, but closer to a wine you love"
+            >
+              near your Nemesis {r.contestedNemesisName}
             </span>
           )}
         </div>
