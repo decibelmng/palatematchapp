@@ -14,6 +14,8 @@ import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { supabase } from "@/integrations/supabase/client";
 import { ThemeProvider, themeBootstrapScript } from "@/lib/theme";
+import { ConfirmDialogHost } from "@/components/confirm-dialog";
+
 
 function NotFoundComponent() {
   return (
@@ -101,7 +103,9 @@ function RootComponent() {
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
         <Outlet />
+        <ConfirmDialogHost />
         <Toaster position="bottom-center" closeButton richColors />
+
       </QueryClientProvider>
     </ThemeProvider>
   );

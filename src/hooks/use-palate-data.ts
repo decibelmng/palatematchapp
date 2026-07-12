@@ -7,6 +7,10 @@ import { recommend, type BottleFp, type FpKey, type RatedFp, type WineType } fro
 import { aggregateRated } from "@/lib/cuvee";
 import { refreshBottleFingerprint } from "@/lib/fingerprint-refresh.functions";
 import { usePalateVersion } from "./use-palate-version";
+import { confirmDialog } from "@/components/confirm-dialog";
+import { createElement, Fragment } from "react";
+
+
 
 
 export type BottleRow = {
@@ -234,10 +238,30 @@ export function useRate() {
           const verb = tier === "canon"
             ? `This is your Canon (${region}) — lowering the rating removes Canon status.`
             : `This is your Nemesis (${region}) — raising the rating removes Nemesis status.`;
-          return typeof window !== "undefined"
-            ? window.confirm(`${verb}\n\nContinue and update ${bottleName}?`)
-            : true;
+          return confirmDialog({
+            title: tier === "canon" ? "Remove Canon status?" : "Remove Nemesis status?",
+            description: createElement(
+              Fragment,
+              null,
+              createElement("p", null, verb),
+              createElement(
+                "p",
+                { className: "mt-3" },
+                "Continue and update ",
+                createElement(
+                  "span",
+                  { className: "font-semibold text-foreground" },
+                  bottleName,
+                ),
+                "?",
+              ),
+            ),
+            confirmLabel: "Continue",
+            destructive: true,
+          });
         });
+
+
 
         const ok = await confirmFn({ tier: active.tier, region: active.region, bottleName });
         if (!ok) throw new RateCanceledError();

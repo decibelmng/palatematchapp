@@ -1,6 +1,9 @@
 import { useCallback } from "react";
+import { createElement, Fragment } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { bottleToFp, bottleType, isCalibrated, type BottleRow } from "./use-palate-data";
+import { confirmDialog } from "@/components/confirm-dialog";
+
 
 /** Empirically re-calibrated after the parameter-shadowing bug fix in
  *  rpc_fingerprint_reach. At h=0.30 the pool cleanly separates:
@@ -70,28 +73,52 @@ export function useGenericWarning() {
   );
 
   /** True = safe to proceed (either not generic / uncalibrated, or user confirmed).
-   *  Non-blocking window.confirm — cancel = no write, no version bump. */
+   *  Styled AlertDialog — cancel = no write, no version bump. */
   const confirmIfGeneric = useCallback(
     async (bottle: BottleRow): Promise<boolean> => {
       const v = await evaluate(bottle);
       if (!v) return true;
-      if (typeof window === "undefined") return true;
+
+      const wineName = createElement(
+        "span",
+        { className: "font-semibold text-foreground" },
+        bottle.name,
+      );
 
       if (v.kind === "uncalibrated") {
-        return window.confirm(
-          "This wine doesn't have a calibrated fingerprint yet — as a benchmark " +
-          "it would anchor your palate to estimated data. Crown anyway?",
-        );
+        return confirmDialog({
+          title: "Uncalibrated fingerprint",
+          description: createElement(
+            Fragment,
+            null,
+            wineName,
+            " doesn't have a calibrated fingerprint yet — as a benchmark it would anchor your palate to estimated data. Crown anyway?",
+          ),
+          confirmLabel: "Crown anyway",
+        });
       }
       if (v.kind === "generic") {
         const pct = (v.reach * 100).toFixed(1);
         const thr = (v.threshold * 100).toFixed(1);
-        return window.confirm(
-          `This wine's profile looks generic in our catalog — ` +
-          `its recommendations may be unfocused. Crown anyway?\n\n` +
-          `(${pct}% of comparable wines sit within h=${v.h} of this fingerprint; ` +
-          `threshold ${thr}%)`,
-        );
+        return confirmDialog({
+          title: "Generic-looking profile",
+          description: createElement(
+            Fragment,
+            null,
+            createElement(
+              "p",
+              null,
+              wineName,
+              "'s profile looks generic in our catalog — its recommendations may be unfocused. Crown anyway?",
+            ),
+            createElement(
+              "p",
+              { className: "mt-3 text-xs" },
+              `(${pct}% of comparable wines sit within h=${v.h} of this fingerprint; threshold ${thr}%)`,
+            ),
+          ),
+          confirmLabel: "Crown anyway",
+        });
       }
       return true;
     },
@@ -100,3 +127,4 @@ export function useGenericWarning() {
 
   return { evaluate, confirmIfGeneric };
 }
+
