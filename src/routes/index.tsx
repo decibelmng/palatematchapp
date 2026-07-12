@@ -1,8 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState, useEffect } from "react";
+import { lazy, Suspense, useMemo, useState, useEffect } from "react";
 import { AuthGate } from "@/components/AuthGate";
 import { TasteMap, type LovedPoint } from "@/components/TasteMap";
 import { PalateBars } from "@/components/PalateBars";
+
+const TasteCube = lazy(() => import("@/components/TasteCube").then((m) => ({ default: m.TasteCube })));
+
+function detectWebGL(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const c = document.createElement("canvas");
+    return !!(c.getContext("webgl2") || c.getContext("webgl"));
+  } catch { return false; }
+}
 
 import { ShareCardDialog } from "@/components/ShareCardDialog";
 import { useMyProfile } from "@/hooks/use-friends";
