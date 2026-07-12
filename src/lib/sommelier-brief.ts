@@ -274,13 +274,14 @@ const OMEGA_DIRECTIONAL: Record<FpKey, { hi: string; lo: string; hiVsHi?: string
 const NEG_PHRASE: Record<FpKey, { hi: string; lo: string }> = {
   ripe:       { hi: "jammy, confected fruit-bombs", lo: "" },
   fruit_dark: { hi: "syrupy, over-extracted dark fruit", lo: "" },
-  tannin:     { hi: "drying tannin", lo: "" },
-  acid:       { hi: "searing acidity", lo: "flabby, low-acid" },
+  tannin:     { hi: "drying, aggressive tannin", lo: "" },
+  acid:       { hi: "searing acidity", lo: "flabby, low-acid wines" },
   oak:        { hi: "over-oaked, buttery character", lo: "" },
   body:       { hi: "heavy, ponderous body", lo: "" },
   savory:     { hi: "", lo: "" },
-  fresh:      { hi: "", lo: "tired, oxidative" },
+  fresh:      { hi: "", lo: "tired, oxidative bottles" },
 };
+
 
 
 
