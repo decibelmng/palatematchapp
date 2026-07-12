@@ -14,6 +14,7 @@ export type Tier1Match = {
   scanned: ResolvedWine;
   bottle: BottleRow;
   stars: number;
+  note: string | null;
   isCanon: boolean;
   isNemesis: boolean;
 };
@@ -47,12 +48,13 @@ export type CellarComputation = {
 export function computeCellarMemory(args: {
   readable: ResolvedWine[];
   ratedBottles: BottleRow[];
-  ratings: { bottle_id: string; stars: number }[];
+  ratings: { bottle_id: string; stars: number; note?: string | null }[];
   canons: CanonRow[];
 }): CellarComputation {
   const { readable, ratedBottles, ratings, canons } = args;
 
   const starsById = new Map(ratings.map((r) => [r.bottle_id, r.stars]));
+  const noteById = new Map(ratings.map((r) => [r.bottle_id, r.note ?? null]));
   const canonBottleIds = new Set(canons.filter((c) => c.tier === "canon").map((c) => c.bottle_id));
   const nemesisBottleIds = new Set(canons.filter((c) => c.tier === "nemesis").map((c) => c.bottle_id));
   const bottlesById = new Map(ratedBottles.map((b) => [b.id, b]));
@@ -114,8 +116,10 @@ export function computeCellarMemory(args: {
           scanned: w,
           bottle,
           stars: starsById.get(w.matched_bottle_id)!,
+          note: noteById.get(w.matched_bottle_id) ?? null,
           isCanon: canonBottleIds.has(w.matched_bottle_id),
           isNemesis: nemesisBottleIds.has(w.matched_bottle_id),
+
 
         };
         matches.push(m);

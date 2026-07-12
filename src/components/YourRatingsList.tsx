@@ -47,18 +47,27 @@ export function YourRatingsList() {
     return m;
   }, [ratings]);
 
+  const noteByBottle = useMemo(() => {
+    const m = new Map<string, string | null>();
+    for (const r of ratings ?? []) m.set(r.bottle_id, r.note ?? null);
+    return m;
+  }, [ratings]);
+
   async function saveNote(bottleId: string) {
+    if (!session) return;
     const note = draftNote.trim();
-    await supabase
-      .from("bottles")
-      .update({
-        tasting_note: note || null,
-        source: note ? "user-added; user tasting note" : "user-added; LLM-researched fingerprint",
-      })
-      .eq("id", bottleId);
+    const { error } = await supabase
+      .from("ratings")
+      .update({ note: note || null })
+      .eq("user_id", session.user.id)
+      .eq("bottle_id", bottleId);
+    if (error) {
+      console.error(error);
+      return;
+    }
     setEditingId(null);
     setDraftNote("");
-    qc.invalidateQueries({ queryKey: ["bottles"] });
+    qc.invalidateQueries({ queryKey: ["ratings"] });
   }
 
   function toggleExpanded(key: string) {
@@ -131,12 +140,11 @@ export function YourRatingsList() {
           const vl = vintageLabel(c.vintages);
           const aggregated = c.bottleIds.length > 1;
           const rep = bottleById.get(c.id);
-          const note = rep?.tasting_note ?? null;
-          const isOwn = !!rep && !!session && rep.added_by === session.user.id;
-          const editing = editingId === c.id;
+          const noteBottleId = aggregated ? null : c.bottleIds[0];
+          const note = noteBottleId ? noteByBottle.get(noteBottleId) ?? null : null;
+          const editing = editingId === (noteBottleId ?? "");
           const isExpanded = expanded.has(c.cuvee);
 
-          // Order child vintages newest-first, stable
           const children = aggregated
             ? [...c.bottleIds]
                 .map((id) => bottleById.get(id))
@@ -147,7 +155,6 @@ export function YourRatingsList() {
           return (
             <li key={c.cuvee} className="py-3">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-                {/* Text block — tap target for /wine/$id */}
                 <Link
                   to="/wine/$id"
                   params={{ id: c.id }}
@@ -170,7 +177,6 @@ export function YourRatingsList() {
                   )}
                 </Link>
 
-                {/* Stars + actions */}
                 <div className="shrink-0 flex flex-col items-start sm:items-end gap-1.5">
                   {aggregated ? (
                     <div className="flex items-center gap-2.5">
@@ -203,66 +209,96 @@ export function YourRatingsList() {
                 </div>
               </div>
 
-              {/* Catalog note — only for user-added bottles, muted + labeled */}
-              {isOwn && note && !editing && (
-                <div className="mt-2 rounded border-l-2 border-border pl-2 py-0.5">
-                  <p className="text-[9px] uppercase tracking-[0.15em] text-muted-foreground/80">
-                    Catalog note
-                  </p>
-                  <p className="text-[11px] text-muted-foreground leading-snug">{note}</p>
-                </div>
-              )}
-              {isOwn && !editing && (
-                <button
-                  className="mt-1 text-[10px] text-primary underline"
-                  onClick={() => { setEditingId(c.id); setDraftNote(note ?? ""); }}
-                >
-                  {note ? "edit catalog note" : "+ add catalog note"}
-                </button>
-              )}
-              {isOwn && editing && (
-                <div className="mt-1.5">
-                  <textarea
-                    value={draftNote}
-                    onChange={(e) => setDraftNote(e.target.value)}
-                    rows={2}
-                    placeholder="Catalog tasting note for this bottle…"
-                    className="w-full bg-input border border-border rounded-md px-2 py-1 text-xs"
-                  />
-                  <div className="flex gap-2 mt-1">
-                    <button onClick={() => setEditingId(null)} className="text-[10px] text-muted-foreground underline">cancel</button>
-                    <button onClick={() => saveNote(c.id)} className="text-[10px] text-primary underline font-medium">save</button>
-                  </div>
-                </div>
+              {/* User note — per-rating, editable on ANY rated wine (single-vintage rows only;
+                  aggregated groups render notes per-vintage in the expansion below). */}
+              {!aggregated && noteBottleId && (
+                <>
+                  {note && !editing && (
+                    <div className="mt-2 rounded border-l-2 border-primary/40 pl-2 py-0.5">
+                      <p className="text-[11px] italic text-muted-foreground leading-snug">"{note}"</p>
+                    </div>
+                  )}
+                  {!editing && (
+                    <button
+                      className="mt-1 text-[10px] text-primary underline"
+                      onClick={() => { setEditingId(noteBottleId); setDraftNote(note ?? ""); }}
+                    >
+                      {note ? "edit note" : "+ add your note"}
+                    </button>
+                  )}
+                  {editing && (
+                    <div className="mt-1.5">
+                      <textarea
+                        value={draftNote}
+                        onChange={(e) => setDraftNote(e.target.value)}
+                        rows={2}
+                        placeholder="Your tasting impression…"
+                        className="w-full bg-input border border-border rounded-md px-2 py-1 text-xs"
+                      />
+                      <div className="flex gap-2 mt-1">
+                        <button onClick={() => setEditingId(null)} className="text-[10px] text-muted-foreground underline">cancel</button>
+                        <button onClick={() => saveNote(noteBottleId)} className="text-[10px] text-primary underline font-medium">save</button>
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
 
-              {/* Expanded per-vintage children */}
               {aggregated && isExpanded && (
-                <ul className="mt-3 ml-3 pl-3 border-l border-border/60 space-y-2.5">
+                <ul className="mt-3 ml-3 pl-3 border-l border-border/60 space-y-3">
                   {children.map((child) => {
                     const childStars = starsByBottle.get(child.id) ?? null;
+                    const childNote = noteByBottle.get(child.id) ?? null;
+                    const childEditing = editingId === child.id;
                     return (
-                      <li
-                        key={child.id}
-                        className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <Link
-                          to="/wine/$id"
-                          params={{ id: child.id }}
-                          className="min-w-0 flex-1 text-xs text-foreground hover:underline"
-                        >
-                          <span className="font-medium">{child.vintage ?? "NV"}</span>
-                          <span className="text-muted-foreground"> · {child.name}</span>
-                        </Link>
-                        <div className="shrink-0 flex items-center gap-2 flex-wrap">
-                          <StarTap
-                            size="sm"
-                            value={childStars}
-                            onChange={(s) => rate.mutate({ bottleId: child.id, stars: s })}
-                          />
-                          <CanonAction bottle={child} stars={childStars} compact />
-                          <NemesisAction bottle={child} stars={childStars} compact />
+                      <li key={child.id} className="flex flex-col gap-1.5">
+                        <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
+                          <Link
+                            to="/wine/$id"
+                            params={{ id: child.id }}
+                            className="min-w-0 flex-1 text-xs text-foreground hover:underline"
+                          >
+                            <span className="font-medium">{child.vintage ?? "NV"}</span>
+                            <span className="text-muted-foreground"> · {child.name}</span>
+                          </Link>
+                          <div className="shrink-0 flex items-center gap-2 flex-wrap">
+                            <StarTap
+                              size="sm"
+                              value={childStars}
+                              onChange={(s) => rate.mutate({ bottleId: child.id, stars: s })}
+                            />
+                            <CanonAction bottle={child} stars={childStars} compact />
+                            <NemesisAction bottle={child} stars={childStars} compact />
+                          </div>
                         </div>
+                        {childNote && !childEditing && (
+                          <div className="rounded border-l-2 border-primary/40 pl-2 py-0.5">
+                            <p className="text-[11px] italic text-muted-foreground leading-snug">"{childNote}"</p>
+                          </div>
+                        )}
+                        {!childEditing && (
+                          <button
+                            className="text-[10px] text-primary underline self-start"
+                            onClick={() => { setEditingId(child.id); setDraftNote(childNote ?? ""); }}
+                          >
+                            {childNote ? "edit note" : "+ add your note"}
+                          </button>
+                        )}
+                        {childEditing && (
+                          <div>
+                            <textarea
+                              value={draftNote}
+                              onChange={(e) => setDraftNote(e.target.value)}
+                              rows={2}
+                              placeholder="Your tasting impression…"
+                              className="w-full bg-input border border-border rounded-md px-2 py-1 text-xs"
+                            />
+                            <div className="flex gap-2 mt-1">
+                              <button onClick={() => setEditingId(null)} className="text-[10px] text-muted-foreground underline">cancel</button>
+                              <button onClick={() => saveNote(child.id)} className="text-[10px] text-primary underline font-medium">save</button>
+                            </div>
+                          </div>
+                        )}
                       </li>
                     );
                   })}
