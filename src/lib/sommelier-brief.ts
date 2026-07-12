@@ -459,9 +459,16 @@ function omegaSentence(
   const omega = ctx.fit.omega;
   const active = ctx.fit.active;
   if (active.length < 2) return "";
-  const ranked = [...active].sort((a, b) => omega[b] - omega[a]);
-  const median = [...active].map((k) => omega[k]).sort((a, b) => a - b)[Math.floor(active.length / 2)];
-  if (omega[ranked[0]] <= median * 1.05) return "";
+  const median = [...active].map((k) => omega[k]).sort((a, b) => a - b)[Math.floor(active.length / 2)] || 1;
+  // Rank axes by combined signal: weighted deviation from midpoint. This
+  // stays stable when ω is flat (uniform ratings) — the axes the user
+  // sits FURTHEST from neutral still surface a directional intent.
+  const ranked = [...active].sort((a, b) => {
+    const scoreA = (omega[a] / median) * Math.abs(centroid[a] - 0.5);
+    const scoreB = (omega[b] / median) * Math.abs(centroid[b] - 0.5);
+    return scoreB - scoreA;
+  });
+
 
   // Nemesis centroid (if any) — used to steer "without X" phrasing.
   const nemFp: FpVec | null = nemeses.length
