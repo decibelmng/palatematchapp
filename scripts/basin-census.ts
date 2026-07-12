@@ -107,18 +107,27 @@ async function run(type: "red" | "white") {
 
   // Named acceptance targets (red only)
   if (type === "red") {
-    const targets = ["Masseto", "Caymus", "Quilceda", "Earthquake"];
+    const targets = [
+      { q: "Earthquake", producerLike: "michael david" },
+      { q: "Masseto" },
+      { q: "Caymus" },
+      { q: "Quilceda" },
+    ];
     console.log("\n--- Acceptance: named targets ---");
-    for (const q of targets) {
-      const hits = recs.filter((r) =>
-        r.bottle.name.toLowerCase().includes(q.toLowerCase()),
-      );
-      // Print first 3 matches per query
-      for (const r of hits.slice(0, 3)) {
+    for (const { q, producerLike } of targets) {
+      const hits = recs.filter((r) => {
+        const nm = r.bottle.name.toLowerCase();
+        const pr = (r.bottle.producer ?? "").toLowerCase();
+        if (!nm.includes(q.toLowerCase())) return false;
+        if (producerLike && !pr.includes(producerLike)) return false;
+        return true;
+      });
+      console.log(`[${q}] ${hits.length} matches`);
+      for (const r of hits.slice(0, 8)) {
         const cr = r.contestedReason;
         const vr = r.vetoReason;
         console.log(
-          `[${q}] ${r.bottle.name} — vetoed=${r.vetoed} contested=${r.contested}` +
+          `  ${r.bottle.name} — pred=${r.predicted.toFixed(2)} veto=${r.vetoed} contested=${r.contested}` +
             (vr ? ` d_nem=${vr.distance.toFixed(3)}` : "") +
             (cr
               ? ` d_nem=${cr.nemesisDistance.toFixed(3)} d_love=${cr.positiveDistance.toFixed(3)} → love=${cr.nearestPositive.name}`
