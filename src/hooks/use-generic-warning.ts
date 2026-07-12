@@ -1,6 +1,9 @@
 import { useCallback } from "react";
+import { createElement, Fragment } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { bottleToFp, bottleType, isCalibrated, type BottleRow } from "./use-palate-data";
+import { confirmDialog } from "@/components/confirm-dialog";
+
 
 /** Empirically re-calibrated after the parameter-shadowing bug fix in
  *  rpc_fingerprint_reach. At h=0.30 the pool cleanly separates:
