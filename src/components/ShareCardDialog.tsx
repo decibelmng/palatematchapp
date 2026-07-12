@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { PalateStar, lettersFromCode } from "./PalateStar";
 import { axesFor, type PaletteType } from "@/lib/palate";
+import { useSommelierBrief } from "@/hooks/use-sommelier-brief";
+import { SommelierBriefCard } from "./SommelierBriefCard";
 
 type Props = {
   open: boolean;
