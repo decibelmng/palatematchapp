@@ -615,17 +615,17 @@ export type Database = {
       }
       rpc_fingerprint_reach: {
         Args: {
-          fp_acid: number
-          fp_body: number
-          fp_fresh: number
-          fp_fruit_dark: number
-          fp_oak: number
-          fp_ripe: number
-          fp_savory: number
-          fp_tannin: number
-          h?: number
-          sample_size?: number
-          wine_type: string
+          p_fp_acid: number
+          p_fp_body: number
+          p_fp_fresh: number
+          p_fp_fruit_dark: number
+          p_fp_oak: number
+          p_fp_ripe: number
+          p_fp_savory: number
+          p_fp_tannin: number
+          p_h?: number
+          p_sample_size?: number
+          p_wine_type: string
         }
         Returns: number
       }
