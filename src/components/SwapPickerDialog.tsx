@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { X } from "lucide-react";
 import { toast } from "sonner";
 import { useEligibleSwapCandidates } from "@/hooks/use-swap-candidates";
@@ -33,6 +33,7 @@ export function SwapPickerDialog({
   const promote = tier === "canon" ? promoteCanon : promoteNemesis;
   const genericWarning = useGenericWarning();
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const pickInFlight = useRef(false);
 
   const { data: candidates, isLoading } = useEligibleSwapCandidates({
     tier,
@@ -48,17 +49,24 @@ export function SwapPickerDialog({
   const starHint = tier === "canon" ? "5★" : "1–2★";
 
   const handlePick = async (b: BottleRow) => {
+    if (pickInFlight.current || promote.isPending) return;
+    pickInFlight.current = true;
     setPendingId(b.id);
     try {
       const ok = await genericWarning.confirmIfGeneric(b);
-      if (!ok) { setPendingId(null); return; }
-      await promote.mutateAsync({ bottle: b });
+      if (!ok) return;
+      const result = await promote.mutateAsync({ bottle: b });
+      if (result.replaced_id === null) {
+        toast(`${tierLabel} already set to ${b.name}.`);
+        return;
+      }
       onSwapped(b, currentBottle);
       onClose();
     } catch (err) {
       const msg = (err as Error).message || `Couldn't swap ${tierLabel}`;
       toast.error(msg);
     } finally {
+      pickInFlight.current = false;
       setPendingId(null);
     }
   };
@@ -89,8 +97,11 @@ export function SwapPickerDialog({
           </div>
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => {
+              if (!pickInFlight.current && !promote.isPending) onClose();
+            }}
             aria-label="Close"
+            disabled={!!pendingId || promote.isPending}
             className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-accent"
           >
             <X size={18} />
