@@ -173,10 +173,10 @@ export function useRatings() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("ratings")
-        .select("bottle_id,stars")
+        .select("bottle_id,stars,note")
         .eq("user_id", session!.user.id);
       if (error) throw error;
-      return data ?? [];
+      return (data ?? []) as { bottle_id: string; stars: number; note: string | null }[];
     },
     staleTime: 10_000,
   });
