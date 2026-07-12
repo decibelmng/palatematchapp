@@ -1,11 +1,13 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "./use-session";
 import type { PaletteType } from "@/lib/palate";
-import type { FpKey, WineType } from "@/lib/recommender";
+import { recommend, type BottleFp, type FpKey, type RatedFp, type WineType } from "@/lib/recommender";
+import { aggregateRated } from "@/lib/cuvee";
 import { refreshBottleFingerprint } from "@/lib/fingerprint-refresh.functions";
 import { usePalateVersion } from "./use-palate-version";
+
 
 export type BottleRow = {
   id: string;
@@ -60,6 +62,67 @@ export function bottleToFp(b: BottleRow): Record<FpKey, number> {
     ripe: b.fp_ripe, oak: b.fp_oak, body: b.fp_body, savory: b.fp_savory,
   };
 }
+
+/** True when the bottle has calibrated fingerprint axes (not defaults). */
+export function isCalibrated(b: BottleRow | null | undefined): boolean {
+  if (!b) return false;
+  if ((b as { raw?: boolean }).raw) return false;
+  // Server gate is `fp_fresh IS NOT NULL`; client BottleRow types it as number,
+  // so we conservatively treat 0-vector as uncalibrated too.
+  const fp = bottleToFp(b);
+  return Object.values(fp).some((v) => Number.isFinite(v) && v !== 0);
+}
+
+/** Compute predicted stars for a candidate bottle from cached ratings + bottle rows.
+ *  Returns null when there's not enough context or the bottle isn't calibrated —
+ *  the dispute signal only fires against a real prediction. */
+export function predictForBottleFromCache(
+  qc: QueryClient,
+  userId: string,
+  target: BottleRow,
+): number | null {
+  if (!isCalibrated(target)) return null;
+  const ratings = qc
+    .getQueriesData<{ bottle_id: string; stars: number }[]>({ queryKey: ["ratings", userId] })
+    .flatMap(([, data]) => data ?? []);
+  if (ratings.length < 3) return null;
+
+  // Collect rated bottles from any cached bottles queries.
+  const allBottles = qc
+    .getQueriesData<BottleRow[]>({ queryKey: ["bottles"] })
+    .flatMap(([, data]) => data ?? []);
+  const bottleById = new Map<string, BottleRow>();
+  for (const b of allBottles) if (b?.id) bottleById.set(b.id, b);
+
+  const targetType = bottleType(target);
+  const sameType: RatedFp[] = [];
+  const rawSameType: (RatedFp & { vintage: number | null })[] = [];
+  for (const r of ratings) {
+    const b = bottleById.get(r.bottle_id);
+    if (!b) continue;
+    if (bottleType(b) !== targetType) continue;
+    if (!isCalibrated(b)) continue;
+    rawSameType.push({
+      id: b.id, name: b.name, producer: b.producer, region: b.region,
+      type: bottleType(b), vintage: b.vintage, fp: bottleToFp(b), stars: r.stars,
+    });
+  }
+  if (rawSameType.length === 0) return null;
+  const cuvees = aggregateRated(rawSameType);
+  for (const c of cuvees) {
+    sameType.push({
+      id: c.id, name: c.name, producer: c.producer, region: c.region,
+      type: c.type, fp: c.fp, stars: c.stars,
+    });
+  }
+  const cand: BottleFp = {
+    id: target.id, name: target.name, producer: target.producer, region: target.region,
+    type: targetType, fp: bottleToFp(target),
+  };
+  const [rec] = recommend(sameType, [cand]);
+  return rec?.predicted ?? null;
+}
+
 
 export function useBottlesByIds(ids: string[]) {
   const key = [...ids].sort().join(",");
@@ -180,11 +243,23 @@ export function useRate() {
         if (!ok) throw new RateCanceledError();
       }
 
+      // Predict against pre-rating palate state — this is the dispute signal.
+      // null when the target bottle isn't calibrated or we lack context.
+      const targetBottle = qc
+        .getQueriesData<BottleRow[]>({ queryKey: ["bottles"] })
+        .flatMap(([, data]) => data ?? [])
+        .find((b): b is BottleRow => !!b && b.id === bottleId) ?? null;
+      const predicted = targetBottle
+        ? predictForBottleFromCache(qc, session.user.id, targetBottle)
+        : null;
+
       const { data, error } = await (supabase as any).rpc("save_rating_with_cascade", {
         p_bottle_id: bottleId,
         p_stars: stars,
+        p_predicted: predicted,
       });
       if (error) throw error;
+
       const row = Array.isArray(data) ? data[0] : data;
       return {
         bottleId,
@@ -210,11 +285,20 @@ export function useRate() {
                 toast.error("No previous rating to restore.");
                 return;
               }
+              const undoTarget = qc
+                .getQueriesData<BottleRow[]>({ queryKey: ["bottles"] })
+                .flatMap(([, data]) => data ?? [])
+                .find((b): b is BottleRow => !!b && b.id === result.bottleId) ?? null;
+              const undoPredicted = undoTarget && session
+                ? predictForBottleFromCache(qc, session.user.id, undoTarget)
+                : null;
               const { error } = await (supabase as any).rpc("restore_rating_and_benchmark", {
                 p_bottle_id: result.bottleId,
                 p_stars: result.previousStars,
                 p_tier: result.demotedTier,
+                p_predicted: undoPredicted,
               });
+
               if (error) {
                 toast.error(error.message || "Couldn't undo.");
                 return;

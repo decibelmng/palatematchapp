@@ -163,10 +163,13 @@ function BottleScan() {
         return;
       }
     }
+    const predicted = predictedForCandidate(c);
     const { error } = await (supabase as any).rpc("save_rating_with_cascade", {
       p_bottle_id: c.id,
       p_stars: stars,
+      p_predicted: predicted,
     });
+
     if (error) {
       toast.error(error.message || `Couldn't rate ${c.name}`);
       return;
