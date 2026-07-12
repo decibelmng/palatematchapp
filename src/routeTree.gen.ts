@@ -20,6 +20,7 @@ import { Route as CanonsRouteImport } from './routes/canons'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ScanIndexRouteImport } from './routes/scan.index'
 import { Route as RestaurantsIndexRouteImport } from './routes/restaurants.index'
+import { Route as WineIdRouteImport } from './routes/wine.$id'
 import { Route as ScanListRouteImport } from './routes/scan.list'
 import { Route as ScanBottleRouteImport } from './routes/scan.bottle'
 import { Route as RestaurantsIdRouteImport } from './routes/restaurants.$id'
@@ -82,6 +83,11 @@ const RestaurantsIndexRoute = RestaurantsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => RestaurantsRoute,
 } as any)
+const WineIdRoute = WineIdRouteImport.update({
+  id: '/wine/$id',
+  path: '/wine/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ScanListRoute = ScanListRouteImport.update({
   id: '/list',
   path: '/list',
@@ -129,6 +135,7 @@ export interface FileRoutesByFullPath {
   '/restaurants/$id': typeof RestaurantsIdRoute
   '/scan/bottle': typeof ScanBottleRoute
   '/scan/list': typeof ScanListRoute
+  '/wine/$id': typeof WineIdRoute
   '/restaurants/': typeof RestaurantsIndexRoute
   '/scan/': typeof ScanIndexRoute
 }
@@ -146,6 +153,7 @@ export interface FileRoutesByTo {
   '/restaurants/$id': typeof RestaurantsIdRoute
   '/scan/bottle': typeof ScanBottleRoute
   '/scan/list': typeof ScanListRoute
+  '/wine/$id': typeof WineIdRoute
   '/restaurants': typeof RestaurantsIndexRoute
   '/scan': typeof ScanIndexRoute
 }
@@ -166,6 +174,7 @@ export interface FileRoutesById {
   '/restaurants/$id': typeof RestaurantsIdRoute
   '/scan/bottle': typeof ScanBottleRoute
   '/scan/list': typeof ScanListRoute
+  '/wine/$id': typeof WineIdRoute
   '/restaurants/': typeof RestaurantsIndexRoute
   '/scan/': typeof ScanIndexRoute
 }
@@ -187,6 +196,7 @@ export interface FileRouteTypes {
     | '/restaurants/$id'
     | '/scan/bottle'
     | '/scan/list'
+    | '/wine/$id'
     | '/restaurants/'
     | '/scan/'
   fileRoutesByTo: FileRoutesByTo
@@ -204,6 +214,7 @@ export interface FileRouteTypes {
     | '/restaurants/$id'
     | '/scan/bottle'
     | '/scan/list'
+    | '/wine/$id'
     | '/restaurants'
     | '/scan'
   id:
@@ -223,6 +234,7 @@ export interface FileRouteTypes {
     | '/restaurants/$id'
     | '/scan/bottle'
     | '/scan/list'
+    | '/wine/$id'
     | '/restaurants/'
     | '/scan/'
   fileRoutesById: FileRoutesById
@@ -240,6 +252,7 @@ export interface RootRouteChildren {
   AddFriendUsernameRoute: typeof AddFriendUsernameRoute
   AdminDataRoute: typeof AdminDataRoute
   AdminDisputesRoute: typeof AdminDisputesRoute
+  WineIdRoute: typeof WineIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -320,6 +333,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/restaurants/'
       preLoaderRoute: typeof RestaurantsIndexRouteImport
       parentRoute: typeof RestaurantsRoute
+    }
+    '/wine/$id': {
+      id: '/wine/$id'
+      path: '/wine/$id'
+      fullPath: '/wine/$id'
+      preLoaderRoute: typeof WineIdRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/scan/list': {
       id: '/scan/list'
@@ -407,6 +427,7 @@ const rootRouteChildren: RootRouteChildren = {
   AddFriendUsernameRoute: AddFriendUsernameRoute,
   AdminDataRoute: AdminDataRoute,
   AdminDisputesRoute: AdminDisputesRoute,
+  WineIdRoute: WineIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
