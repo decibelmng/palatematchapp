@@ -48,12 +48,13 @@ export type CellarComputation = {
 export function computeCellarMemory(args: {
   readable: ResolvedWine[];
   ratedBottles: BottleRow[];
-  ratings: { bottle_id: string; stars: number }[];
+  ratings: { bottle_id: string; stars: number; note?: string | null }[];
   canons: CanonRow[];
 }): CellarComputation {
   const { readable, ratedBottles, ratings, canons } = args;
 
   const starsById = new Map(ratings.map((r) => [r.bottle_id, r.stars]));
+  const noteById = new Map(ratings.map((r) => [r.bottle_id, r.note ?? null]));
   const canonBottleIds = new Set(canons.filter((c) => c.tier === "canon").map((c) => c.bottle_id));
   const nemesisBottleIds = new Set(canons.filter((c) => c.tier === "nemesis").map((c) => c.bottle_id));
   const bottlesById = new Map(ratedBottles.map((b) => [b.id, b]));
