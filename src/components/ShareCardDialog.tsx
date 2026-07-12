@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { PalateStar, lettersFromCode } from "./PalateStar";
 import { axesFor, type PaletteType } from "@/lib/palate";
+import { useSommelierBrief } from "@/hooks/use-sommelier-brief";
+import { SommelierBriefCard } from "./SommelierBriefCard";
 
 type Props = {
   open: boolean;
@@ -14,6 +16,7 @@ export function ShareCardDialog({ open, onClose, type, code, displayName }: Prop
   const cardRef = useRef<HTMLDivElement>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const letters = lettersFromCode(code, axesFor(type));
+  const brief = useSommelierBrief();
 
   useEffect(() => { if (!open) setMsg(null); }, [open]);
 
@@ -51,7 +54,7 @@ export function ShareCardDialog({ open, onClose, type, code, displayName }: Prop
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm rounded-2xl border border-border bg-card p-6"
+        className="w-full max-w-md rounded-2xl border border-border bg-card p-6 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div ref={cardRef} className="rounded-xl bg-background border border-border p-6 flex flex-col items-center text-center">
@@ -87,6 +90,10 @@ export function ShareCardDialog({ open, onClose, type, code, displayName }: Prop
           </button>
         </div>
         {msg && <p className="mt-2 text-xs text-muted-foreground text-center">{msg}</p>}
+
+        {brief.text && <SommelierBriefCard brief={brief} />}
+
+
         <button
           onClick={onClose}
           className="mt-3 w-full text-xs text-muted-foreground hover:text-foreground"

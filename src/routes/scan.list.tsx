@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { useMyCanons } from "@/hooks/use-canon";
 import { computeCellarMemory, producerLookup } from "@/lib/cellar-memory";
 import { CellarMemorySection } from "@/components/CellarMemorySection";
+import { SommelierBriefDialog } from "@/components/SommelierBriefDialog";
 
 export const Route = createFileRoute("/scan/list")({
   ssr: false,
@@ -120,6 +121,8 @@ function Scan() {
   const libraryRef = useRef<HTMLInputElement>(null);
   const [staged, setStaged] = useState<{ file: File; url: string }[]>([]);
   const [elapsed, setElapsed] = useState(0);
+  const [sommOpen, setSommOpen] = useState(false);
+
 
   // Scan session state
   const [scanId, setScanId] = useState<string | null>(null);
@@ -638,6 +641,20 @@ function Scan() {
         </div>
       )}
 
+      {totalWines > 0 && enoughRatings && (
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setSommOpen(true)}
+            className="text-[11px] uppercase text-muted-foreground hover:text-primary"
+            style={{ letterSpacing: "0.18em" }}
+          >
+            Show your palate to the somm →
+          </button>
+        </div>
+      )}
+
+
       {totalWines === 1 && (
         <div className="mt-3 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
           Only one wine read — was this a <span className="font-medium">single bottle</span>?
@@ -705,6 +722,8 @@ function Scan() {
         Long lists are read in parallel batches of 2 pages. Your photos and results are saved privately so a
         refresh, tab close, or dropped connection never loses a restaurant session.
       </p>
+
+      <SommelierBriefDialog open={sommOpen} onClose={() => setSommOpen(false)} />
     </div>
   );
 }
