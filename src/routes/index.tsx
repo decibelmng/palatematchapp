@@ -74,8 +74,7 @@ function Home() {
   const red = useMemo(() => computeCode(redRated, axesFor("red")), [redRated]);
   const white = useMemo(() => computeCode(whiteRated, axesFor("white")), [whiteRated]);
 
-
-
+  usePersistCode(red.code, white.code, ratings?.length ?? 0);
 
   const [scope, setScope] = useState<PaletteType>("red");
   useEffect(() => {
