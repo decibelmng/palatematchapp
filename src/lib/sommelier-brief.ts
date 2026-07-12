@@ -239,19 +239,33 @@ function clusterByFp(canons: BriefBenchmark[], ctx: TypeCtx): CanonCluster[] {
 
 // ────────── Vocabulary maps ──────────
 
-/** Fingerprint-axis → sommelier-facing "what matters most" phrase, keyed by
- *  the direction the user's LOVED palate sits, and contextualised against a
- *  Nemesis push in the OPPOSITE direction ("without X"). */
+/** "What matters most" phrases keyed by the direction the user's loved
+ *  centroid sits, contextualised against a Nemesis pushing further in
+ *  that same direction ("without X"). */
 const OMEGA_DIRECTIONAL: Record<FpKey, { hi: string; lo: string; hiVsHi?: string; loVsLo?: string }> = {
   fresh:      { hi: "freshness is non-negotiable", lo: "mature bottles over young ones" },
-  acid:       { hi: "acidity to keep things lifted", lo: "rounder, less searing acidity" },
-  tannin:     { hi: "structured tannin", lo: "silky tannin" },
+  acid:       { hi: "acidity to keep things lifted", lo: "rounder, less searing acidity", hiVsHi: "acidity without going searing" },
+  tannin:     { hi: "structured tannin", lo: "silky tannin", hiVsHi: "structure without drying tannin" },
   fruit_dark: { hi: "dark-fruited character", lo: "red-fruited lift" },
-  ripe:       { hi: "ripeness without jam", lo: "restraint over jammy ripeness" },
-  oak:        { hi: "polish from oak, not planks", lo: "restraint around oak" },
-  body:       { hi: "weight on the palate", lo: "lightness on the palate" },
+  ripe:       { hi: "ripeness without jam", lo: "restraint over jammy ripeness", hiVsHi: "ripeness without jam" },
+  oak:        { hi: "polish from oak, not planks", lo: "restraint around oak", hiVsHi: "oak that polishes, not planks" },
+  body:       { hi: "weight without heaviness", lo: "lightness on the palate", hiVsHi: "weight without heaviness" },
   savory:     { hi: "savory depth", lo: "fruit-driven wines" },
 };
+
+/** Hedonic NEGATIVE vocabulary for dealbreakers, per axis + direction.
+ *  Empty string → that direction isn't a meaningful complaint to voice. */
+const NEG_PHRASE: Record<FpKey, { hi: string; lo: string }> = {
+  ripe:       { hi: "jammy, confected fruit-bombs", lo: "" },
+  fruit_dark: { hi: "syrupy, over-extracted dark fruit", lo: "" },
+  tannin:     { hi: "drying tannin", lo: "" },
+  acid:       { hi: "searing acidity", lo: "flabby, low-acid" },
+  oak:        { hi: "over-oaked, buttery character", lo: "" },
+  body:       { hi: "heavy, ponderous body", lo: "" },
+  savory:     { hi: "", lo: "" },
+  fresh:      { hi: "", lo: "tired, oxidative" },
+};
+
 
 
 // ────────── Style-summary sentence ──────────
