@@ -90,6 +90,10 @@ export function ShareCardDialog({ open, onClose, type, code, displayName }: Prop
           </button>
         </div>
         {msg && <p className="mt-2 text-xs text-muted-foreground text-center">{msg}</p>}
+
+        {brief.text && <SommelierBriefCard brief={brief} />}
+
+
         <button
           onClick={onClose}
           className="mt-3 w-full text-xs text-muted-foreground hover:text-foreground"
