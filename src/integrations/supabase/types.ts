@@ -182,6 +182,7 @@ export type Database = {
           created_at: string
           delta: number
           id: string
+          note: string | null
           predicted: number
           stars: number
           updated_at: string
@@ -192,6 +193,7 @@ export type Database = {
           created_at?: string
           delta: number
           id?: string
+          note?: string | null
           predicted: number
           stars: number
           updated_at?: string
@@ -202,6 +204,7 @@ export type Database = {
           created_at?: string
           delta?: number
           id?: string
+          note?: string | null
           predicted?: number
           stars?: number
           updated_at?: string
@@ -294,6 +297,7 @@ export type Database = {
           bottle_id: string
           created_at: string
           id: string
+          note: string | null
           stars: number
           updated_at: string
           user_id: string
@@ -302,6 +306,7 @@ export type Database = {
           bottle_id: string
           created_at?: string
           id?: string
+          note?: string | null
           stars: number
           updated_at?: string
           user_id: string
@@ -310,6 +315,7 @@ export type Database = {
           bottle_id?: string
           created_at?: string
           id?: string
+          note?: string | null
           stars?: number
           updated_at?: string
           user_id?: string
