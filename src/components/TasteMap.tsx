@@ -26,10 +26,10 @@ type Props = {
 
 
 const VB = 400;
-const PAD_L = 44;
-const PAD_R = 20;
-const PAD_T = 24;
-const PAD_B = 40;
+const PAD_L = 56;
+const PAD_R = 56;
+const PAD_T = 28;
+const PAD_B = 32;
 const PLOT_W = VB - PAD_L - PAD_R;
 const PLOT_H = VB - PAD_T - PAD_B;
 
@@ -292,17 +292,21 @@ export function TasteMap({ type, landmarks, loved, others = [], canonIds, nemesi
           </g>
         )}
 
-        {/* Axis pole labels — anchored at each end of the plot edge */}
+        {/* Axis pole labels — placed at edge midpoints, horizontal */}
         <g fontSize="10" letterSpacing="1.6"
            fill="var(--color-muted-foreground)">
-          {/* X axis: Light (bottom-left) → Bold (bottom-right) */}
-          <text x={PAD_L} y={VB - 12} textAnchor="start">{corners.xLow.toUpperCase()}</text>
-          <text x={PAD_L + PLOT_W} y={VB - 12} textAnchor="end">{corners.xHigh.toUpperCase()}</text>
-          {/* Y axis: Fruit-forward (bottom of left edge) → yHigh (top of left edge) */}
-          <text transform={`translate(14 ${PAD_T + PLOT_H}) rotate(-90)`}
-            textAnchor="start">{corners.yLow.toUpperCase()}</text>
-          <text transform={`translate(14 ${PAD_T}) rotate(-90)`}
-            textAnchor="end">{corners.yHigh.toUpperCase()}</text>
+          <text x={PAD_L + PLOT_W / 2} y={PAD_T - 10} textAnchor="middle">
+            {corners.yHigh.toUpperCase()}
+          </text>
+          <text x={PAD_L + PLOT_W / 2} y={PAD_T + PLOT_H + 16} textAnchor="middle">
+            {corners.yLow.toUpperCase()}
+          </text>
+          <text x={PAD_L - 6} y={PAD_T + PLOT_H / 2} textAnchor="end" dominantBaseline="central">
+            {corners.xLow.toUpperCase()}
+          </text>
+          <text x={PAD_L + PLOT_W + 6} y={PAD_T + PLOT_H / 2} textAnchor="start" dominantBaseline="central">
+            {corners.xHigh.toUpperCase()}
+          </text>
         </g>
 
 
