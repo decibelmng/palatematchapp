@@ -7,6 +7,8 @@ import { recommend, type BottleFp, type FpKey, type RatedFp, type WineType } fro
 import { aggregateRated } from "@/lib/cuvee";
 import { refreshBottleFingerprint } from "@/lib/fingerprint-refresh.functions";
 import { usePalateVersion } from "./use-palate-version";
+import { confirmDialog } from "@/components/confirm-dialog";
+
 
 
 export type BottleRow = {
