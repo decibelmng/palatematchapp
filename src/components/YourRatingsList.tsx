@@ -47,18 +47,27 @@ export function YourRatingsList() {
     return m;
   }, [ratings]);
 
+  const noteByBottle = useMemo(() => {
+    const m = new Map<string, string | null>();
+    for (const r of ratings ?? []) m.set(r.bottle_id, r.note ?? null);
+    return m;
+  }, [ratings]);
+
   async function saveNote(bottleId: string) {
+    if (!session) return;
     const note = draftNote.trim();
-    await supabase
-      .from("bottles")
-      .update({
-        tasting_note: note || null,
-        source: note ? "user-added; user tasting note" : "user-added; LLM-researched fingerprint",
-      })
-      .eq("id", bottleId);
+    const { error } = await supabase
+      .from("ratings")
+      .update({ note: note || null })
+      .eq("user_id", session.user.id)
+      .eq("bottle_id", bottleId);
+    if (error) {
+      console.error(error);
+      return;
+    }
     setEditingId(null);
     setDraftNote("");
-    qc.invalidateQueries({ queryKey: ["bottles"] });
+    qc.invalidateQueries({ queryKey: ["ratings"] });
   }
 
   function toggleExpanded(key: string) {
