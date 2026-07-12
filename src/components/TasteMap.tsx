@@ -26,10 +26,10 @@ type Props = {
 
 
 const VB = 400;
-const PAD_L = 44;
-const PAD_R = 20;
-const PAD_T = 24;
-const PAD_B = 40;
+const PAD_L = 56;
+const PAD_R = 56;
+const PAD_T = 28;
+const PAD_B = 32;
 const PLOT_W = VB - PAD_L - PAD_R;
 const PLOT_H = VB - PAD_T - PAD_B;
 
