@@ -240,18 +240,27 @@ export function useRate() {
             : `This is your Nemesis (${region}) — raising the rating removes Nemesis status.`;
           return confirmDialog({
             title: tier === "canon" ? "Remove Canon status?" : "Remove Nemesis status?",
-            description: (
-              <>
-                <p>{verb}</p>
-                <p className="mt-3">
-                  Continue and update <span className="font-semibold text-foreground">{bottleName}</span>?
-                </p>
-              </>
+            description: createElement(
+              Fragment,
+              null,
+              createElement("p", null, verb),
+              createElement(
+                "p",
+                { className: "mt-3" },
+                "Continue and update ",
+                createElement(
+                  "span",
+                  { className: "font-semibold text-foreground" },
+                  bottleName,
+                ),
+                "?",
+              ),
             ),
             confirmLabel: "Continue",
             destructive: true,
           });
         });
+
 
 
         const ok = await confirmFn({ tier: active.tier, region: active.region, bottleName });
