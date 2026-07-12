@@ -4,7 +4,7 @@ import { recommend, type RatedFp, type BottleFp } from "../src/lib/recommender";
 
 const USER_ID = "e3c4104c-56e7-4b6b-a359-5dc063302951";
 const url = process.env.SUPABASE_URL!;
-const key = process.env.SUPABASE_PUBLISHABLE_KEY!;
+const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY!;
 const sb = createClient(url, key);
 
 const FP_COLS =
