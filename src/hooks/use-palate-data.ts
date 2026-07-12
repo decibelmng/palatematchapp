@@ -8,6 +8,8 @@ import { aggregateRated } from "@/lib/cuvee";
 import { refreshBottleFingerprint } from "@/lib/fingerprint-refresh.functions";
 import { usePalateVersion } from "./use-palate-version";
 import { confirmDialog } from "@/components/confirm-dialog";
+import { createElement, Fragment } from "react";
+
 
 
 
