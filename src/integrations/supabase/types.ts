@@ -28,6 +28,7 @@ export type Database = {
           excluded_from_recs: boolean
           fp_acid: number
           fp_body: number
+          fp_dispute_count: number
           fp_fresh: number
           fp_fruit_dark: number
           fp_harmonized_at: string | null
@@ -62,6 +63,7 @@ export type Database = {
           excluded_from_recs?: boolean
           fp_acid?: number
           fp_body?: number
+          fp_dispute_count?: number
           fp_fresh?: number
           fp_fruit_dark?: number
           fp_harmonized_at?: string | null
@@ -96,6 +98,7 @@ export type Database = {
           excluded_from_recs?: boolean
           fp_acid?: number
           fp_body?: number
+          fp_dispute_count?: number
           fp_fresh?: number
           fp_fruit_dark?: number
           fp_harmonized_at?: string | null
@@ -169,6 +172,47 @@ export type Database = {
             columns: ["rating_id"]
             isOneToOne: false
             referencedRelation: "ratings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fp_disputes: {
+        Row: {
+          bottle_id: string
+          created_at: string
+          delta: number
+          id: string
+          predicted: number
+          stars: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          bottle_id: string
+          created_at?: string
+          delta: number
+          id?: string
+          predicted: number
+          stars: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          bottle_id?: string
+          created_at?: string
+          delta?: number
+          id?: string
+          predicted?: number
+          stars?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fp_disputes_bottle_id_fkey"
+            columns: ["bottle_id"]
+            isOneToOne: false
+            referencedRelation: "bottles"
             referencedColumns: ["id"]
           },
         ]
@@ -558,7 +602,12 @@ export type Database = {
         Returns: undefined
       }
       restore_rating_and_benchmark: {
-        Args: { p_bottle_id: string; p_stars: number; p_tier: string }
+        Args: {
+          p_bottle_id: string
+          p_predicted?: number
+          p_stars: number
+          p_tier: string
+        }
         Returns: {
           benchmark_id: string
           palate_version: number
@@ -617,23 +666,8 @@ export type Database = {
           vintage: number
         }[]
       }
-      rpc_type_centroids: {
-        Args: never
-        Returns: {
-          acid: number
-          body: number
-          fresh: number
-          fruit_dark: number
-          n: number
-          oak: number
-          ripe: number
-          savory: number
-          tannin: number
-          type: string
-        }[]
-      }
       save_rating_with_cascade: {
-        Args: { p_bottle_id: string; p_stars: number }
+        Args: { p_bottle_id: string; p_predicted?: number; p_stars: number }
         Returns: {
           demoted_tier: string
           palate_version: number
@@ -660,6 +694,7 @@ export type Database = {
           excluded_from_recs: boolean
           fp_acid: number
           fp_body: number
+          fp_dispute_count: number
           fp_fresh: number
           fp_fruit_dark: number
           fp_harmonized_at: string | null
