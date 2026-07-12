@@ -93,6 +93,11 @@ function Tier1Card({ m }: { m: Extract<CellarMatch, { tier: 1 }> }) {
         >
           View in your ratings →
         </Link>
+        {m.note && (
+          <div className="mt-2 rounded border-l-2 border-primary/40 pl-2 py-0.5">
+            <p className="text-[11px] italic text-muted-foreground leading-snug">"{m.note}"</p>
+          </div>
+        )}
       </div>
       <div className="shrink-0 text-right">
         {m.isNemesis ? (

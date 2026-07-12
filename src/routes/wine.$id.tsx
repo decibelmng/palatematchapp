@@ -148,3 +148,61 @@ function WineDetail() {
     </div>
   );
 }
+
+function RatingNoteEditor({ bottleId, rated }: { bottleId: string; rated: boolean }) {
+  const session = useSession();
+  const qc = useQueryClient();
+  const { data: ratings } = useRatings();
+  const note = ratings?.find((r) => r.bottle_id === bottleId)?.note ?? null;
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+
+  if (!rated || !session) return null;
+
+  async function save() {
+    if (!session) return;
+    const value = draft.trim();
+    const { error } = await supabase
+      .from("ratings")
+      .update({ note: value || null })
+      .eq("user_id", session.user.id)
+      .eq("bottle_id", bottleId);
+    if (error) { console.error(error); return; }
+    setEditing(false);
+    setDraft("");
+    qc.invalidateQueries({ queryKey: ["ratings"] });
+  }
+
+  return (
+    <div className="mt-4">
+      <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Your note</p>
+      {note && !editing && (
+        <div className="mt-1 rounded border-l-2 border-primary/40 pl-3 py-1">
+          <p className="text-sm italic text-muted-foreground leading-snug">"{note}"</p>
+        </div>
+      )}
+      {!editing ? (
+        <button
+          className="mt-1.5 text-xs text-primary underline"
+          onClick={() => { setEditing(true); setDraft(note ?? ""); }}
+        >
+          {note ? "edit note" : "+ add your note"}
+        </button>
+      ) : (
+        <div className="mt-1.5">
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            rows={3}
+            placeholder="Your tasting impression…"
+            className="w-full bg-input border border-border rounded-md px-2 py-1 text-sm"
+          />
+          <div className="flex gap-3 mt-1.5">
+            <button onClick={() => setEditing(false)} className="text-xs text-muted-foreground underline">cancel</button>
+            <button onClick={save} className="text-xs text-primary underline font-medium">save</button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
