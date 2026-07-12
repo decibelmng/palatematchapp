@@ -390,23 +390,30 @@ function nemesisContrastPhrase(
   const omega = ctx?.fit.omega ?? null;
 
   type Cand = { axis: FpKey; dir: "hi" | "lo"; delta: number; weighted: number; phrase: string };
-  const cands: Cand[] = [];
+  const strong: Cand[] = [];
+  const any: Cand[] = [];
   for (const k of active) {
     const raw = n.fp[k] - centroid[k];
     const abs = Math.abs(raw);
-    if (abs < 0.14) continue; // must be meaningfully different, not noise
     const dir: "hi" | "lo" = raw > 0 ? "hi" : "lo";
     const phrase = NEG_PHRASE[k]?.[dir] ?? "";
     if (!phrase) continue;
     const w = omega ? omega[k] : 1;
-    cands.push({ axis: k, dir, delta: abs, weighted: abs * (w || 1), phrase });
+    const cand: Cand = { axis: k, dir, delta: abs, weighted: abs * (w || 1), phrase };
+    any.push(cand);
+    if (abs >= 0.12) strong.push(cand);
   }
+  // Prefer strongly-different axes; fall back to the top axis with any
+  // signal so every Nemesis renders at least one dealbreaker phrase.
+  const cands = strong.length > 0 ? strong : any;
   if (cands.length === 0) return null;
   cands.sort((a, b) => b.weighted - a.weighted);
 
   const hint = styleRegionHint(n);
   const [p1, p2] = cands;
-  const core = p2 ? `${p1.phrase} with ${p2.phrase}` : p1.phrase;
+  // Only join a second phrase when it's also strong AND distinct.
+  const useSecond = strong.length >= 2 && p2 && p2.phrase !== p1.phrase;
+  const core = useSecond ? `${p1.phrase} with ${p2.phrase}` : p1.phrase;
   return hint ? `${core} (e.g., ${hint})` : core;
 }
 
@@ -418,6 +425,9 @@ function dealbreakersSentence(
   if (nemeses.length === 0 || !centroid) return "";
   const phrases: string[] = [];
   const seen = new Set<string>();
+  // Cap at min(nemeses.length, 3) so every crowned Nemesis renders — the
+  // sommelier needs to hear every distinct "not this" the user has told us.
+  const cap = Math.min(nemeses.length, 3);
   for (const n of nemeses) {
     const p = nemesisContrastPhrase(n, centroid, ctx);
     if (!p) continue;
@@ -425,11 +435,12 @@ function dealbreakersSentence(
     if (seen.has(key)) continue;
     seen.add(key);
     phrases.push(p);
-    if (phrases.length === 2) break;
+    if (phrases.length === cap) break;
   }
   if (phrases.length === 0) return "";
   return `Please steer me away from: ${joinList(phrases)}.`;
 }
+
 
 // ────────── "What matters most" line ──────────
 
