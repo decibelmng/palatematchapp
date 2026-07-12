@@ -722,6 +722,8 @@ function Scan() {
         Long lists are read in parallel batches of 2 pages. Your photos and results are saved privately so a
         refresh, tab close, or dropped connection never loses a restaurant session.
       </p>
+
+      <SommelierBriefDialog open={sommOpen} onClose={() => setSommOpen(false)} />
     </div>
   );
 }
