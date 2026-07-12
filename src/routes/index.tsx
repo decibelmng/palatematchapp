@@ -15,11 +15,13 @@ function detectWebGL(): boolean {
 }
 
 import { ShareCardDialog } from "@/components/ShareCardDialog";
+import { SommelierBriefCard } from "@/components/SommelierBriefCard";
 import { useMyProfile } from "@/hooks/use-friends";
 import {
   useBottlesByIds,
   useRatings,
   bottleToValues,
+  bottleToFp,
   bottleType,
   usePersistCode,
 } from "@/hooks/use-palate-data";
@@ -29,6 +31,8 @@ import { Crown } from "lucide-react";
 import { useLandmarks } from "@/hooks/use-landmarks";
 import { cuveeKey } from "@/lib/cuvee";
 import { computeCode, describeCode, axesFor, type RatedBottle, type PaletteType } from "@/lib/palate";
+import { buildFullBrief, type BriefBenchmark, type TypeBriefInputs } from "@/lib/sommelier-brief";
+import type { RatedFp } from "@/lib/recommender";
 
 export const Route = createFileRoute("/")({
   ssr: false,
@@ -72,6 +76,71 @@ function Home() {
 
   const red = useMemo(() => computeCode(redRated, axesFor("red")), [redRated]);
   const white = useMemo(() => computeCode(whiteRated, axesFor("white")), [whiteRated]);
+
+  // Sommelier-brief inputs: RatedFp (all types) + Canon/Nemesis benchmarks
+  // enriched with fingerprint + display fields, joined against `bottles`.
+  const sommelierBrief = useMemo(() => {
+    const byId = new Map((bottles ?? []).map((b) => [b.id, b]));
+
+    const ratedFpAll: RatedFp[] = [];
+    for (const r of ratings ?? []) {
+      const b = byId.get(r.bottle_id);
+      if (!b) continue;
+      ratedFpAll.push({
+        id: b.id,
+        name: b.name,
+        producer: b.producer,
+        region: b.region,
+        type: bottleType(b),
+        fp: bottleToFp(b),
+        stars: r.stars,
+        canon: canonBottleIds.has(b.id),
+        nemesis: nemesisBottleIds.has(b.id),
+      });
+    }
+
+    const toBench = (rows: typeof canons): Record<"red" | "white", BriefBenchmark[]> => {
+      const out: Record<"red" | "white", BriefBenchmark[]> = { red: [], white: [] };
+      for (const c of rows ?? []) {
+        const b = byId.get(c.bottle_id);
+        if (!b) continue;
+        const t = bottleType(b);
+        if (t !== "red" && t !== "white") continue;
+        out[t].push({
+          id: c.id,
+          bottleId: c.bottle_id,
+          name: b.name,
+          producer: b.producer,
+          region: b.region,
+          fp: bottleToFp(b),
+          createdAt: c.created_at,
+        });
+      }
+      return out;
+    };
+
+    const canonRows = (canons ?? []).filter((c) => c.tier === "canon");
+    const nemesisRows = (canons ?? []).filter((c) => c.tier === "nemesis");
+    const canonsByType = toBench(canonRows);
+    const nemesesByType = toBench(nemesisRows);
+
+    const redInput: TypeBriefInputs | null = redRated.length > 0 ? {
+      type: "red",
+      rated: redRated,
+      ratedFp: ratedFpAll.filter((r) => r.type === "red"),
+      canons: canonsByType.red,
+      nemeses: nemesesByType.red,
+    } : null;
+    const whiteInput: TypeBriefInputs | null = whiteRated.length > 0 ? {
+      type: "white",
+      rated: whiteRated,
+      ratedFp: ratedFpAll.filter((r) => r.type === "white"),
+      canons: canonsByType.white,
+      nemeses: nemesesByType.white,
+    } : null;
+
+    return buildFullBrief({ red: redInput, white: whiteInput });
+  }, [bottles, ratings, canons, canonBottleIds, nemesisBottleIds, redRated, whiteRated]);
 
   usePersistCode(red.code, white.code, ratings?.length ?? 0);
 
@@ -205,6 +274,11 @@ function Home() {
         code={activeCode}
         displayName={myProfile?.display_name || myProfile?.username || ""}
       />
+
+      {/* For your sommelier — deterministic natural-language palate brief */}
+      {sommelierBrief.paragraphs.length > 0 && (
+        <SommelierBriefCard brief={sommelierBrief} />
+      )}
 
       {/* View toggle: 2D map vs 3D cube */}
       {hasWebGL && !onboarding && (
