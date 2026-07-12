@@ -24,6 +24,7 @@ import { toast } from "sonner";
 import { useMyCanons } from "@/hooks/use-canon";
 import { computeCellarMemory, producerLookup } from "@/lib/cellar-memory";
 import { CellarMemorySection } from "@/components/CellarMemorySection";
+import { SommelierBriefDialog } from "@/components/SommelierBriefDialog";
 
 export const Route = createFileRoute("/scan/list")({
   ssr: false,
