@@ -132,18 +132,21 @@ type Selected =
   | { kind: "landmark"; l: ResolvedLandmark }
   | null;
 
-export function TasteMap({ type, landmarks, loved, others = [], showOverlay, overlayText }: Props) {
+export function TasteMap({ type, landmarks, loved, others = [], canonIds, nemesisIds, showOverlay, overlayText }: Props) {
   const corners = type === "red"
     ? {
         tl: "Light & earthy",   tr: "Bold & earthy",
         bl: "Light & fruity",   br: "Bold & fruity",
-        xCap: "Light → Bold",   yCap: "Fruit-forward → Earthy",
+        xLow: "Light",          xHigh: "Bold",
+        yLow: "Fruit-forward",  yHigh: "Earthy",
       }
     : {
         tl: "Light & mineral",  tr: "Bold & mineral",
         bl: "Light & fruity",   br: "Bold & fruity",
-        xCap: "Light → Bold",   yCap: "Fruit-forward → Mineral & savory",
+        xLow: "Light",          xHigh: "Bold",
+        yLow: "Fruit-forward",  yHigh: "Mineral & savory",
       };
+
 
   const [selected, setSelected] = useState<Selected>(null);
   // Tier toggles: 5,4,2,1 on; 3 off by default.
