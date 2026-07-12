@@ -229,18 +229,24 @@ function Rate() {
               {list.map((b) => {
                 const v = ratingMap.get(b.id) ?? null;
                 return (
-                  <li key={b.id} className="py-3 flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium leading-tight truncate">{b.name}</p>
-                      <p className="text-xs text-muted-foreground truncate">
+                  <li key={b.id} className="py-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <Link
+                      to="/wine/$id"
+                      params={{ id: b.id }}
+                      className="min-w-0 flex-1 block group"
+                    >
+                      <p className="text-sm font-medium leading-snug line-clamp-2 break-words group-hover:underline">{b.name}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 break-words">
                         {[b.producer, b.region, b.grape, b.vintage].filter(Boolean).join(" · ")}
                       </p>
                       <div className="mt-1"><WineTypeBadge type={b.type} /></div>
+                    </Link>
+                    <div className="shrink-0">
+                      <StarTap
+                        value={v}
+                        onChange={(stars) => rate.mutate({ bottleId: b.id, stars })}
+                      />
                     </div>
-                    <StarTap
-                      value={v}
-                      onChange={(stars) => rate.mutate({ bottleId: b.id, stars })}
-                    />
                   </li>
                 );
               })}
