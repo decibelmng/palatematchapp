@@ -18,9 +18,12 @@ type Props = {
   landmarks: ResolvedLandmark[];
   loved: LovedPoint[];             // 4–5★, drives clusters + glow
   others?: LovedPoint[];           // 1–3★, display only (× or hollow dot)
+  canonIds?: Set<string>;          // bottleIds that are Canon benchmarks
+  nemesisIds?: Set<string>;        // bottleIds that are Nemesis benchmarks
   showOverlay?: boolean;
   overlayText?: string;
 };
+
 
 const VB = 400;
 const PAD_L = 44;
@@ -129,18 +132,21 @@ type Selected =
   | { kind: "landmark"; l: ResolvedLandmark }
   | null;
 
-export function TasteMap({ type, landmarks, loved, others = [], showOverlay, overlayText }: Props) {
+export function TasteMap({ type, landmarks, loved, others = [], canonIds, nemesisIds, showOverlay, overlayText }: Props) {
   const corners = type === "red"
     ? {
         tl: "Light & earthy",   tr: "Bold & earthy",
         bl: "Light & fruity",   br: "Bold & fruity",
-        xCap: "Light → Bold",   yCap: "Fruit-forward → Earthy",
+        xLow: "Light",          xHigh: "Bold",
+        yLow: "Fruit-forward",  yHigh: "Earthy",
       }
     : {
         tl: "Light & mineral",  tr: "Bold & mineral",
         bl: "Light & fruity",   br: "Bold & fruity",
-        xCap: "Light → Bold",   yCap: "Fruit-forward → Mineral & savory",
+        xLow: "Light",          xHigh: "Bold",
+        yLow: "Fruit-forward",  yHigh: "Mineral & savory",
       };
+
 
   const [selected, setSelected] = useState<Selected>(null);
   // Tier toggles: 5,4,2,1 on; 3 off by default.
@@ -286,14 +292,19 @@ export function TasteMap({ type, landmarks, loved, others = [], showOverlay, ove
           </g>
         )}
 
-        {/* Axis captions — always visible */}
-        <text x={PAD_L + PLOT_W / 2} y={VB - 12} textAnchor="middle"
-          fontSize="10" letterSpacing="2.2"
-          fill="var(--color-muted-foreground)">{corners.xCap.toUpperCase()}</text>
-        <text x={0} y={0}
-          transform={`translate(14 ${PAD_T + PLOT_H / 2}) rotate(-90)`}
-          textAnchor="middle" fontSize="10" letterSpacing="2.2"
-          fill="var(--color-muted-foreground)">{corners.yCap.toUpperCase()}</text>
+        {/* Axis pole labels — anchored at each end of the plot edge */}
+        <g fontSize="10" letterSpacing="1.6"
+           fill="var(--color-muted-foreground)">
+          {/* X axis: Light (bottom-left) → Bold (bottom-right) */}
+          <text x={PAD_L} y={VB - 12} textAnchor="start">{corners.xLow.toUpperCase()}</text>
+          <text x={PAD_L + PLOT_W} y={VB - 12} textAnchor="end">{corners.xHigh.toUpperCase()}</text>
+          {/* Y axis: Fruit-forward (bottom of left edge) → yHigh (top of left edge) */}
+          <text transform={`translate(14 ${PAD_T + PLOT_H}) rotate(-90)`}
+            textAnchor="start">{corners.yLow.toUpperCase()}</text>
+          <text transform={`translate(14 ${PAD_T}) rotate(-90)`}
+            textAnchor="end">{corners.yHigh.toUpperCase()}</text>
+        </g>
+
 
         {/* Rings (tier b) — dashed primary 15%, draw-in via stroke-dashoffset */}
         {clusters.map((cl, i) => {
@@ -344,12 +355,22 @@ export function TasteMap({ type, landmarks, loved, others = [], showOverlay, ove
           const px = toPx({ x, y });
           const r = p.stars >= 5 ? 8 : 6;
           const isSelected = selected?.kind === "loved" && selected.p.key === p.key;
+          const isCanon = !!(p.bottleId && canonIds?.has(p.bottleId));
+          const isNemesis = !!(p.bottleId && nemesisIds?.has(p.bottleId));
           return (
             <g key={p.key + i}
               onClick={(e) => { e.stopPropagation(); setSelected({ kind: "loved", p }); }}
               style={{ cursor: "pointer" }}>
               <circle cx={px.px} cy={px.py} r={12} fill="transparent" />
               <g className="pm-pop-in" style={{ ["--pm-delay" as string]: `${T_DOTS + i * T_DOT_STAGGER}ms` }}>
+                {isCanon && (
+                  <circle cx={px.px} cy={px.py} r={r + 3.5}
+                    fill="none" stroke="#d4a03a" strokeOpacity={0.9} strokeWidth={1.5} />
+                )}
+                {isNemesis && (
+                  <circle cx={px.px} cy={px.py} r={r + 3.5}
+                    fill="none" stroke="var(--color-destructive)" strokeOpacity={0.85} strokeWidth={1.5} />
+                )}
                 <circle
                   key={isSelected ? `sel-${pulseTick}` : `dot-${p.key}`}
                   cx={px.px} cy={px.py} r={r}
@@ -368,11 +389,21 @@ export function TasteMap({ type, landmarks, loved, others = [], showOverlay, ove
           if (!tierOn[tier]) return null;
           const px = toPx({ x, y });
           const isSelected = selected?.kind === "loved" && selected.p.key === p.key;
+          const isCanon = !!(p.bottleId && canonIds?.has(p.bottleId));
+          const isNemesis = !!(p.bottleId && nemesisIds?.has(p.bottleId));
           const onClick = (e: React.MouseEvent) => { e.stopPropagation(); setSelected({ kind: "loved", p }); };
           if (p.stars === 3) {
             return (
               <g key={`o-${p.key}-${i}`} onClick={onClick} style={{ cursor: "pointer" }}>
                 <circle cx={px.px} cy={px.py} r={12} fill="transparent" />
+                {isCanon && (
+                  <circle cx={px.px} cy={px.py} r={7.5}
+                    fill="none" stroke="#d4a03a" strokeOpacity={0.9} strokeWidth={1.25} />
+                )}
+                {isNemesis && (
+                  <circle cx={px.px} cy={px.py} r={7.5}
+                    fill="none" stroke="var(--color-destructive)" strokeOpacity={0.85} strokeWidth={1.25} />
+                )}
                 <circle cx={px.px} cy={px.py} r={4}
                   fill="none"
                   stroke="var(--color-muted-foreground)"
@@ -383,18 +414,33 @@ export function TasteMap({ type, landmarks, loved, others = [], showOverlay, ove
           }
           // × mark for 1–2★
           const s = 4.5; // half-length ~9px total
+          const strokeColor = isNemesis
+            ? "var(--color-destructive)"
+            : isCanon
+              ? "#d4a03a"
+              : "var(--color-muted-foreground)";
+          const strokeOp = isNemesis || isCanon ? 0.95 : (isSelected ? 0.9 : 0.55);
           return (
             <g key={`o-${p.key}-${i}`} onClick={onClick} style={{ cursor: "pointer" }}
-               stroke="var(--color-muted-foreground)"
-               strokeOpacity={isSelected ? 0.9 : 0.55}
-               strokeWidth={1.5}
+               stroke={strokeColor}
+               strokeOpacity={strokeOp}
+               strokeWidth={isNemesis || isCanon ? 1.75 : 1.5}
                strokeLinecap="round">
               <circle cx={px.px} cy={px.py} r={12} fill="transparent" stroke="none" />
+              {isCanon && (
+                <circle cx={px.px} cy={px.py} r={7.5}
+                  fill="none" stroke="#d4a03a" strokeOpacity={0.9} strokeWidth={1.25} />
+              )}
+              {isNemesis && (
+                <circle cx={px.px} cy={px.py} r={7.5}
+                  fill="none" stroke="var(--color-destructive)" strokeOpacity={0.85} strokeWidth={1.25} />
+              )}
               <line x1={px.px - s} y1={px.py - s} x2={px.px + s} y2={px.py + s} />
               <line x1={px.px - s} y1={px.py + s} x2={px.px + s} y2={px.py - s} />
             </g>
           );
         })}
+
 
         {showOverlay && (
           <g>
@@ -461,9 +507,25 @@ export function TasteMap({ type, landmarks, loved, others = [], showOverlay, ove
           Wines you avoid
         </span>
         <span className="inline-flex items-center gap-1.5">
+          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+            <circle cx="7" cy="7" r="6" fill="none" stroke="#d4a03a" strokeOpacity={0.9} strokeWidth={1.5} />
+            <circle cx="7" cy="7" r="2.5" fill="var(--color-primary)" />
+          </svg>
+          Canons
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+            <circle cx="7" cy="7" r="6" fill="none" stroke="var(--color-destructive)" strokeOpacity={0.85} strokeWidth={1.5} />
+            <line x1="4" y1="4" x2="10" y2="10" stroke="var(--color-destructive)" strokeOpacity={0.95} strokeWidth={1.75} strokeLinecap="round" />
+            <line x1="4" y1="10" x2="10" y2="4" stroke="var(--color-destructive)" strokeOpacity={0.95} strokeWidth={1.75} strokeLinecap="round" />
+          </svg>
+          Nemeses
+        </span>
+        <span className="inline-flex items-center gap-1.5">
           <span className="inline-block w-2.5 h-2.5 rounded-full border-[1.25px] border-muted-foreground bg-background" />
           Famous landmarks
         </span>
+
         <span className="inline-flex items-center gap-1.5">
           <svg width="20" height="8" viewBox="0 0 20 8" aria-hidden="true">
             <path d="M1 4 Q 10 -2 19 4" fill="none"
