@@ -103,7 +103,9 @@ function RootComponent() {
     <ThemeProvider>
       <QueryClientProvider client={queryClient}>
         <Outlet />
+        <ConfirmDialogHost />
         <Toaster position="bottom-center" closeButton richColors />
+
       </QueryClientProvider>
     </ThemeProvider>
   );
