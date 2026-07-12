@@ -308,6 +308,44 @@ describe("Engine v2 — acceptance", () => {
     expect(canRec.predicted).toBeGreaterThan(3.5);
   });
 
+  it("(12b) basin rule: candidate inside Nemesis reach but closer to a love is NOT vetoed, but IS contested", () => {
+    // Nemesis at body=0.90; a love at body=0.60 (positive anchor within
+    // reasonable distance); candidate at body=0.65 — inside the Nemesis
+    // radius under the fitted h, but closer to the love.
+    const r: RatedFp[] = [
+      rated("love_far", 5, { body: 0.10 }),
+      rated("love_mid", 5, { body: 0.60, tannin: 0.60 }),
+      rated("love_mid2", 5, { body: 0.62, tannin: 0.62 }),
+      rated("neu", 3, { body: 0.40 }),
+      { ...rated("N", 1, { body: 0.90, tannin: 0.90 }), weight: 3.0, nemesis: true },
+    ];
+    const c = cand("contested", { body: 0.68, tannin: 0.68 });
+    const rec = recommend(r, [c])[0];
+    expect(rec.vetoed).toBe(false);
+    expect(rec.contested).toBe(true);
+    expect(rec.contestedReason).not.toBeNull();
+    expect(rec.contestedReason!.nemesis.id).toBe("N");
+    expect(rec.contestedReason!.nearestPositive.stars).toBeGreaterThanOrEqual(4);
+    // The Nemesis's 1★ at 3× weight still drags predicted below what a
+    // naive love-only average would produce — but no hard veto.
+  });
+
+  it("(12c) basin rule regression: candidate inside Nemesis reach with NO love nearby remains vetoed", () => {
+    // Same shape as test (10) but framed as basin regression: nearest love
+    // (body=0.15) is far from candidate (body=0.20), and the Nemesis at
+    // (body=0.22) is right on top of it → veto wins basin.
+    const r: RatedFp[] = [
+      rated("l1", 5, { body: 0.80 }),
+      rated("l2", 5, { body: 0.85 }),
+      rated("m", 3, { body: 0.50 }),
+      { ...rated("N", 1, { body: 0.22 }), weight: 3.0, nemesis: true },
+    ];
+    const c = cand("nemNear", { body: 0.20 });
+    const rec = recommend(r, [c])[0];
+    expect(rec.vetoed).toBe(true);
+    expect(rec.vetoReason?.nemesis.id).toBe("N");
+  });
+
   it("(13) Canon–Nemesis single-axis: that axis's ω strictly dominates at every fingerprint gap, and a Nemesis-matching candidate is vetoed", () => {
     // Property test: Canon and Nemesis identical on every axis except `body`.
     // For any δ ∈ {0.3, 0.6, 0.8}, ω_body must strictly exceed every other

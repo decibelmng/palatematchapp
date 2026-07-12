@@ -370,7 +370,7 @@ function Scan() {
     }));
     if (ratedRows.length === 0) {
       return candidates.map((b, i) => ({
-        bottle: b, predicted: 0, nearest: null, nearestIsCanon: false, maxSimilarity: 0, confidence: 0, evidence: 0, evidenceTier: "exploratory" as const, vetoed: false, vetoReason: null, scanned: readable[i],
+        bottle: b, predicted: 0, nearest: null, nearestIsCanon: false, maxSimilarity: 0, confidence: 0, evidence: 0, evidenceTier: "exploratory" as const, vetoed: false, vetoReason: null, contested: false, contestedReason: null, scanned: readable[i],
       }));
     }
 

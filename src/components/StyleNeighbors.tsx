@@ -113,6 +113,8 @@ export function StyleNeighbors({ subjectBottleId, subjectStars }: Props) {
                 vetoed={n.vetoed}
                 vetoNemesisName={n.vetoReason?.nemesis.name ?? null}
                 vetoAxes={n.vetoReason?.drivingAxes ?? []}
+                contested={n.contested}
+                contestedNemesisName={n.contestedReason?.nemesis.name ?? null}
                 nearestIsCanon={n.nearestIsCanon}
                 type={subjectType}
                 muted={isWarning}
@@ -157,6 +159,7 @@ export function StyleNeighbors({ subjectBottleId, subjectStars }: Props) {
 
 function NeighborRow({
   cuvee, distance, similarity, predicted, vetoed, vetoNemesisName, vetoAxes,
+  contested, contestedNemesisName,
   nearestIsCanon, type, muted,
 }: {
   cuvee: { id: string; name: string; producer: string | null; region: string | null; vintages: number[] };
@@ -166,6 +169,8 @@ function NeighborRow({
   vetoed: boolean;
   vetoNemesisName: string | null;
   vetoAxes: string[];
+  contested: boolean;
+  contestedNemesisName: string | null;
   nearestIsCanon: boolean;
   type: "red" | "white" | "sparkling" | "rose" | "dessert";
   muted: boolean;
@@ -182,6 +187,14 @@ function NeighborRow({
           {vetoed && (
             <span className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-destructive/50 bg-destructive/10 text-destructive">
               avoid
+            </span>
+          )}
+          {!vetoed && contested && contestedNemesisName && (
+            <span
+              className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+              title="Inside your Nemesis's reach, but closer to a wine you love"
+            >
+              near your Nemesis {contestedNemesisName}
             </span>
           )}
           {!vetoed && nearestIsCanon && <CanonBadge size="sm" title="Nearest rated anchor is a Canon" />}
