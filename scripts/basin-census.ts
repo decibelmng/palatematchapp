@@ -107,22 +107,21 @@ async function run(type: "red" | "white") {
 
   // Named acceptance targets (red only)
   if (type === "red") {
+    console.log(`\ntotal recs=${recs.length}`);
+    const eq = recs.filter((r) => r.bottle.name.toLowerCase().startsWith("earthquake"));
+    console.log(`Earthquake* in recs = ${eq.length}`);
+    for (const r of eq.slice(0, 3)) console.log("  raw:", r.bottle.name, "|", r.bottle.producer);
+
     const targets = [
-      { q: "Earthquake", producerLike: "michael david" },
-      { q: "Masseto" },
-      { q: "Caymus" },
-      { q: "Quilceda" },
+      { q: "earthquake", label: "Earthquake" },
+      { q: "masseto", label: "Masseto" },
+      { q: "caymus", label: "Caymus" },
+      { q: "quilceda", label: "Quilceda" },
     ];
     console.log("\n--- Acceptance: named targets ---");
-    for (const { q, producerLike } of targets) {
-      const hits = recs.filter((r) => {
-        const nm = r.bottle.name.toLowerCase();
-        const pr = (r.bottle.producer ?? "").toLowerCase();
-        if (!nm.includes(q.toLowerCase())) return false;
-        if (producerLike && !pr.includes(producerLike)) return false;
-        return true;
-      });
-      console.log(`[${q}] ${hits.length} matches`);
+    for (const { q, label } of targets) {
+      const hits = recs.filter((r) => r.bottle.name.toLowerCase().includes(q));
+      console.log(`[${label}] ${hits.length} matches`);
       for (const r of hits.slice(0, 8)) {
         const cr = r.contestedReason;
         const vr = r.vetoReason;
