@@ -132,11 +132,12 @@ function WineDetail() {
         )}
       </div>
 
+      <RatingNoteEditor bottleId={bottle.id} rated={thisStars != null} />
+
       {bottle.tasting_note && (
-        <div className="mt-4 rounded border-l-2 border-primary/40 pl-3 py-1">
-          <p className="text-sm italic text-muted-foreground leading-snug">
-            "{bottle.tasting_note}"
-          </p>
+        <div className="mt-4 rounded border-l-2 border-border pl-3 py-1">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground/80">Catalog note</p>
+          <p className="text-sm text-muted-foreground leading-snug mt-0.5">{bottle.tasting_note}</p>
         </div>
       )}
 
