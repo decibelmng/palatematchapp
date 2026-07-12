@@ -54,7 +54,7 @@ export function ShareCardDialog({ open, onClose, type, code, displayName }: Prop
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm rounded-2xl border border-border bg-card p-6"
+        className="w-full max-w-md rounded-2xl border border-border bg-card p-6 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
         <div ref={cardRef} className="rounded-xl bg-background border border-border p-6 flex flex-col items-center text-center">
