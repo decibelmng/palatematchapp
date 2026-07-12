@@ -144,7 +144,7 @@ type CanonCluster = {
   centroid: FpVec;
 };
 
-function meanFp(items: BriefBenchmark[]): FpVec {
+function meanFp(items: { fp: FpVec }[]): FpVec {
   const out = {} as FpVec;
   for (const k of RAX) {
     let sum = 0;
@@ -154,14 +154,83 @@ function meanFp(items: BriefBenchmark[]): FpVec {
   return out;
 }
 
-function clusterCanons(canons: BriefBenchmark[], ctx: TypeCtx): CanonCluster[] {
+/** Cluster canons using the SAME grouping the /matches lane page produces:
+ *  union-find over ratedFp canons at ω-distance < h. Then map each cluster
+ *  root back to matching BriefBenchmark entries by id so the display prefers
+ *  the recency-ordered benchmark label. Falls back to BriefBenchmark-only
+ *  clustering when ratedFp canons are missing. */
+function clusterCanons(
+  canons: BriefBenchmark[],
+  ratedFp: RatedFp[],
+  ctx: TypeCtx,
+): CanonCluster[] {
+  const ratedCanons = ratedFp.filter((r) => r.canon);
+  if (ratedCanons.length === 0) {
+    // Fall back to clustering the BriefBenchmark list directly.
+    return clusterByFp(canons, ctx);
+  }
+
+  const n = ratedCanons.length;
+  const parent = Array.from({ length: n }, (_, i) => i);
+  const find = (x: number): number => (parent[x] === x ? x : (parent[x] = find(parent[x])));
+  const union = (a: number, b: number) => {
+    const ra = find(a), rb = find(b);
+    if (ra !== rb) parent[ra] = rb;
+  };
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      const d = distanceInContext(ratedCanons[i].fp, ratedCanons[j].fp, ctx);
+      if (d < ctx.h) union(i, j);
+    }
+  }
+  const groups = new Map<number, RatedFp[]>();
+  for (let i = 0; i < n; i++) {
+    const r = find(i);
+    const arr = groups.get(r) ?? [];
+    arr.push(ratedCanons[i]);
+    groups.set(r, arr);
+  }
+
+  // Build cluster skeletons from ratedFp groups (centroid = ratedFp mean).
+  type Skel = { centroidFp: FpVec; members: BriefBenchmark[] };
+  const skels: Skel[] = Array.from(groups.values()).map((group) => ({
+    centroidFp: meanFp(group),
+    members: [],
+  }));
+
+  // Assign each BriefBenchmark to the nearest ratedFp cluster by ω-distance.
+  for (const b of canons) {
+    let bestIdx = -1;
+    let bestD = Infinity;
+    for (let i = 0; i < skels.length; i++) {
+      const d = distanceInContext(b.fp, skels[i].centroidFp, ctx);
+      if (d < bestD) { bestD = d; bestIdx = i; }
+    }
+    if (bestIdx >= 0) skels[bestIdx].members.push(b);
+  }
+
+  const clusters: CanonCluster[] = [];
+  for (const s of skels) {
+    if (s.members.length === 0) continue;
+    // Label = most-recent benchmark (input canons list is recency-desc).
+    const label = s.members[0];
+    clusters.push({ label, members: s.members, centroid: s.centroidFp });
+  }
+  // If nothing matched (edge case), fall back to fp-only clustering so we
+  // never lose the benchmarks line entirely.
+  if (clusters.length === 0) return clusterByFp(canons, ctx);
+  return clusters;
+}
+
+
+/** BriefBenchmark-only fallback clustering. */
+function clusterByFp(canons: BriefBenchmark[], ctx: TypeCtx): CanonCluster[] {
   const n = canons.length;
   if (n === 0) return [];
   const parent = Array.from({ length: n }, (_, i) => i);
   const find = (x: number): number => (parent[x] === x ? x : (parent[x] = find(parent[x])));
   const union = (a: number, b: number) => {
-    const ra = find(a);
-    const rb = find(b);
+    const ra = find(a), rb = find(b);
     if (ra !== rb) parent[ra] = rb;
   };
   for (let i = 0; i < n; i++) {
@@ -178,7 +247,7 @@ function clusterCanons(canons: BriefBenchmark[], ctx: TypeCtx): CanonCluster[] {
     groups.set(r, arr);
   }
   return Array.from(groups.values()).map((members) => ({
-    label: members[0], // recency-desc → most recent is label
+    label: members[0],
     members,
     centroid: meanFp(members),
   }));
@@ -186,16 +255,18 @@ function clusterCanons(canons: BriefBenchmark[], ctx: TypeCtx): CanonCluster[] {
 
 // ────────── Vocabulary maps ──────────
 
-/** Fingerprint-axis → sommelier-facing "what matters most" phrase. */
-const OMEGA_PHRASE: Record<FpKey, string> = {
-  fresh: "freshness",
-  acid: "acidity",
-  tannin: "the texture of tannin",
-  fruit_dark: "dark vs. red fruit character",
-  ripe: "ripeness",
-  oak: "restraint around oak",
-  body: "weight on the palate",
-  savory: "savory vs. fruit-driven character",
+/** "What matters most" phrases keyed by the direction the user's loved
+ *  centroid sits, contextualised against a Nemesis pushing further in
+ *  that same direction ("without X"). */
+const OMEGA_DIRECTIONAL: Record<FpKey, { hi: string; lo: string; hiVsHi?: string; loVsLo?: string }> = {
+  fresh:      { hi: "freshness is non-negotiable", lo: "mature bottles over young ones" },
+  acid:       { hi: "acidity to keep things lifted", lo: "rounder, less searing acidity", hiVsHi: "acidity without going searing" },
+  tannin:     { hi: "structured tannin", lo: "silky tannin", hiVsHi: "structure without drying tannin" },
+  fruit_dark: { hi: "dark-fruited character", lo: "red-fruited lift" },
+  ripe:       { hi: "ripeness without jam", lo: "restraint over jammy ripeness", hiVsHi: "ripeness without jam" },
+  oak:        { hi: "polish from oak, not planks", lo: "restraint around oak", hiVsHi: "oak that polishes, not planks" },
+  body:       { hi: "weight without heaviness", lo: "lightness on the palate", hiVsHi: "weight without heaviness" },
+  savory:     { hi: "savory depth", lo: "fruit-driven wines" },
 };
 
 /** Hedonic NEGATIVE vocabulary for dealbreakers, per axis + direction.
@@ -210,6 +281,8 @@ const NEG_PHRASE: Record<FpKey, { hi: string; lo: string }> = {
   savory:     { hi: "", lo: "" },
   fresh:      { hi: "", lo: "tired, oxidative" },
 };
+
+
 
 // ────────── Style-summary sentence ──────────
 
@@ -359,17 +432,65 @@ function dealbreakersSentence(
 
 // ────────── "What matters most" line ──────────
 
-function omegaSentence(ctx: TypeCtx | null): string {
-  if (!ctx) return "";
+/** Directional phrase for one axis given the loved centroid and the
+ *  nemesis centroid on that axis. Uses "hiVsHi" / "loVsLo" variants when
+ *  the nemesis pushes further in the same direction the user already
+ *  loves — this is where "X without Y" phrasing lands. */
+function directionalPhrase(
+  axis: FpKey,
+  lovedVal: number,
+  nemesisVal: number | null,
+): string {
+  const dir: "hi" | "lo" = lovedVal >= 0.5 ? "hi" : "lo";
+  const table = OMEGA_DIRECTIONAL[axis];
+  if (nemesisVal !== null) {
+    if (dir === "hi" && nemesisVal >= lovedVal + 0.1 && table.hiVsHi) return table.hiVsHi;
+    if (dir === "lo" && nemesisVal <= lovedVal - 0.1 && table.loVsLo) return table.loVsLo;
+  }
+  return table[dir];
+}
+
+function omegaSentence(
+  ctx: TypeCtx | null,
+  centroid: FpVec | null,
+  nemeses: BriefBenchmark[],
+): string {
+  if (!ctx || !centroid) return "";
   const omega = ctx.fit.omega;
   const active = ctx.fit.active;
   if (active.length < 2) return "";
-  const ranked = [...active].sort((a, b) => omega[b] - omega[a]);
-  const median = [...active].map((k) => omega[k]).sort((a, b) => a - b)[Math.floor(active.length / 2)];
-  if (omega[ranked[0]] <= median * 1.05) return "";
-  const top = ranked.slice(0, 2).map((k) => OMEGA_PHRASE[k]);
-  return `What matters most to me: ${joinList(top)}.`;
+  const median = [...active].map((k) => omega[k]).sort((a, b) => a - b)[Math.floor(active.length / 2)] || 1;
+  // Rank axes by combined signal: weighted deviation from midpoint. This
+  // stays stable when ω is flat (uniform ratings) — the axes the user
+  // sits FURTHEST from neutral still surface a directional intent.
+  const ranked = [...active].sort((a, b) => {
+    const scoreA = (omega[a] / median) * Math.abs(centroid[a] - 0.5);
+    const scoreB = (omega[b] / median) * Math.abs(centroid[b] - 0.5);
+    return scoreB - scoreA;
+  });
+
+
+  // Nemesis centroid (if any) — used to steer "without X" phrasing.
+  const nemFp: FpVec | null = nemeses.length
+    ? meanFp(nemeses.map((n) => ({ fp: n.fp })))
+    : null;
+
+  const phrases: string[] = [];
+  const seen = new Set<string>();
+  for (const axis of ranked) {
+    const p = directionalPhrase(axis, centroid[axis], nemFp ? nemFp[axis] : null);
+    const key = p.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    phrases.push(p);
+    if (phrases.length === 2) break;
+  }
+  if (phrases.length === 0) return "";
+  // Word cap: keep the sentence ≤ ~18 words including the lead.
+  const sentence = `I want ${joinList(phrases)}.`;
+  return sentence;
 }
+
 
 // ────────── Public builders ──────────
 
@@ -386,7 +507,7 @@ export function buildTypeBrief(input: TypeBriefInputs, opts: BuildOpts = {}): Ty
 
   const { letters } = computeCode(rated, axesFor(type));
   const ctx = buildTypeContext(ratedFp, type === "red" ? "red" : "white");
-  const clusters = ctx ? clusterCanons(canons, ctx) : [];
+  const clusters = ctx ? clusterCanons(canons, ratedFp, ctx) : [];
   const centroid = lovedCentroid(ratedFp);
 
   const style = styleSummarySentence(type, clusters, ratedFp);
@@ -404,7 +525,8 @@ export function buildTypeBrief(input: TypeBriefInputs, opts: BuildOpts = {}): Ty
 
   const benches = benchmarksSentence(canons, clusters);
   const dealbreakers = dealbreakersSentence(nemeses, centroid, ctx);
-  const omega = omegaSentence(ctx);
+  const omega = omegaSentence(ctx, centroid, nemeses);
+
 
   const sentences = [style, orientation, benches, dealbreakers, omega]
     .map((s) => s.trim())

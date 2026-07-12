@@ -23,7 +23,7 @@ type AxisPhrase = { hi: string; lo: string };
 const AXIS_WORDS: Record<FpKey, AxisPhrase> = {
   fresh:      { hi: "Fresh",       lo: "Mature" },
   acid:       { hi: "Zippy",       lo: "Round" },
-  tannin:     { hi: "Structured",  lo: "Soft" },
+  tannin:     { hi: "Structured",  lo: "Silky" },
   fruit_dark: { hi: "Dark-fruited", lo: "Red-fruited" },
   ripe:       { hi: "Ripe",        lo: "Restrained" },
   oak:        { hi: "Oaked",       lo: "Unoaked" },
@@ -38,6 +38,9 @@ const PAIR_PHRASES: Record<string, string> = {
   "fresh:lo|savory:hi":      "Mature & savory",
   "fresh:lo|oak:hi":         "Mature & oaked",
   "acid:hi|body:lo":         "Silky & perfumed",
+  "acid:hi|tannin:lo":       "Silky & perfumed",
+  "tannin:lo|fruit_dark:lo": "Silky & red-fruited",
+  "tannin:lo|body:lo":       "Silky & light",
   "acid:hi|fresh:hi":        "Bright & lively",
   "ripe:hi|oak:hi":          "Rich & polished",
   "ripe:hi|fruit_dark:hi":   "Opulent & dark-fruited",
@@ -47,6 +50,7 @@ const PAIR_PHRASES: Record<string, string> = {
   "body:hi|oak:hi":          "Big & polished",
   "fruit_dark:lo|acid:hi":   "Red-fruited & bright",
 };
+
 
 function pairKey(a: FpKey, ad: Direction, b: FpKey, bd: Direction): string {
   const A = `${a}:${ad}`;

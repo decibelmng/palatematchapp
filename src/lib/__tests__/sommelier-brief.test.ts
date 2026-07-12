@@ -139,4 +139,63 @@ describe("buildTypeBrief — single-type user", () => {
     const full = buildFullBrief({ red, white });
     expect(full.wordCount).toBeLessThanOrEqual(120);
   });
+
+  it("Vosne (silky, high-acid) cluster never described as 'soft'", () => {
+    const rated: RatedBottle[] = [];
+    for (let i = 0; i < 6; i++) rated.push(ratedRed(5, { tannin: 0.2, fruit_char: 0.3, body: 0.35, acidity: 0.75 }, true));
+
+    const ratedFpAll: RatedFp[] = [];
+    for (let i = 0; i < 6; i++) ratedFpAll.push(ratedFp(`vosne-${i}`, 5, { tannin: 0.2, fruit_dark: 0.3, body: 0.35, acid: 0.75, fresh: 0.75 }, { canon: i === 0 }));
+
+    const canons: BriefBenchmark[] = [
+      bench("vosne-0", { tannin: 0.2, fruit_dark: 0.3, body: 0.35, acid: 0.75, fresh: 0.75 }, { name: "Vosne-Romanée VV", producer: "Alex Gambal", region: "Vosne-Romanée" }),
+    ];
+    const brief = buildTypeBrief({ type: "red", rated, ratedFp: ratedFpAll, canons, nemeses: [] });
+    expect(brief).not.toBeNull();
+    const t = brief!.text.toLowerCase();
+    expect(t).not.toContain("soft");
+    expect(t).toMatch(/silky|perfumed|red-fruited/);
+  });
+
+  it("emits one benchmark per style lane (up to cap of 5)", () => {
+    const rated: RatedBottle[] = [];
+    for (let i = 0; i < 4; i++) rated.push(ratedRed(5, { tannin: 0.2, fruit_char: 0.3, body: 0.35 }, true));
+    for (let i = 0; i < 4; i++) rated.push(ratedRed(5, { tannin: 0.75, fruit_char: 0.55, body: 0.65 }, true));
+    for (let i = 0; i < 4; i++) rated.push(ratedRed(5, { tannin: 0.9, fruit_char: 0.9, body: 0.95 }, true));
+
+    const ratedFpAll: RatedFp[] = [];
+    for (let i = 0; i < 4; i++) ratedFpAll.push(ratedFp(`pinot-${i}`, 5, { tannin: 0.2, fruit_dark: 0.3, body: 0.35, acid: 0.75 }, { canon: i === 0 }));
+    for (let i = 0; i < 4; i++) ratedFpAll.push(ratedFp(`bdx-${i}`, 5, { tannin: 0.75, fruit_dark: 0.55, body: 0.65, oak: 0.5 }, { canon: i === 0 }));
+    for (let i = 0; i < 4; i++) ratedFpAll.push(ratedFp(`napa-${i}`, 5, { tannin: 0.9, fruit_dark: 0.9, body: 0.95, oak: 0.8, ripe: 0.8 }, { canon: i === 0 }));
+
+    const canons: BriefBenchmark[] = [
+      bench("pinot-0", { tannin: 0.2, fruit_dark: 0.3, body: 0.35, acid: 0.75 }, { name: "Vosne-Romanée", producer: "Gambal", region: "Vosne" }),
+      bench("bdx-0", { tannin: 0.75, fruit_dark: 0.55, body: 0.65, oak: 0.5 }, { name: "Clos Fourtet", producer: "Clos Fourtet", region: "St-Émilion" }),
+      bench("napa-0", { tannin: 0.9, fruit_dark: 0.9, body: 0.95, oak: 0.8, ripe: 0.8 }, { name: "Hillside Select", producer: "Shafer", region: "Napa" }),
+    ];
+    const brief = buildTypeBrief({ type: "red", rated, ratedFp: ratedFpAll, canons, nemeses: [] });
+    expect(brief).not.toBeNull();
+    const t = brief!.text;
+    expect(t).toMatch(/Vosne/);
+    expect(t).toMatch(/Fourtet/);
+    expect(t).toMatch(/Shafer/);
+  });
+
+  it("omega line uses directional 'without X' phrasing when nemesis pushes further", () => {
+    const rated: RatedBottle[] = [];
+    for (let i = 0; i < 6; i++) rated.push(ratedRed(5, { tannin: 0.65, fruit_char: 0.6, body: 0.6, acidity: 0.6 }, true));
+    const ratedFpAll: RatedFp[] = [];
+    for (let i = 0; i < 6; i++) ratedFpAll.push(ratedFp(`r-${i}`, 5, { tannin: 0.65, fruit_dark: 0.6, body: 0.6, acid: 0.6, ripe: 0.6 }, { canon: i === 0 }));
+    const canons: BriefBenchmark[] = [
+      bench("c-1", { tannin: 0.65, fruit_dark: 0.6, body: 0.6, ripe: 0.6 }, { name: "Producer Wine", producer: "Producer", region: "Somewhere" }),
+    ];
+    const nemeses: BriefBenchmark[] = [
+      bench("n-1", { tannin: 0.75, fruit_dark: 0.95, body: 0.95, ripe: 0.95, oak: 0.8 }, { name: "Overripe Zin", producer: "Lodi", region: "Lodi" }),
+    ];
+    const brief = buildTypeBrief({ type: "red", rated, ratedFp: ratedFpAll, canons, nemeses });
+    expect(brief).not.toBeNull();
+    const t = brief!.text.toLowerCase();
+    expect(t).toMatch(/i want /);
+    expect(t).toMatch(/without/);
+  });
 });
