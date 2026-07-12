@@ -85,10 +85,16 @@ export function CanonAction({ bottle, stars, compact = false }: Props) {
           existing={dialog === "replace" ? conflicting : null}
           onCancel={() => setDialog("idle")}
           onConfirm={async () => {
-            const ok = await genericWarning.confirmIfGeneric(bottle);
-            if (!ok) { setDialog("idle"); return; }
-            await promote.mutateAsync({ bottle, replace: dialog === "replace" ? conflicting : null });
-            setDialog("idle");
+            try {
+              const ok = await genericWarning.confirmIfGeneric(bottle);
+              if (!ok) { setDialog("idle"); return; }
+              await promote.mutateAsync({ bottle, replace: dialog === "replace" ? conflicting : null });
+              setDialog("idle");
+            } catch (e) {
+              const msg = e instanceof Error ? e.message : String(e);
+              toast.error(msg || "Couldn't crown Canon");
+              setDialog("idle");
+            }
           }}
           pending={promote.isPending}
         />
