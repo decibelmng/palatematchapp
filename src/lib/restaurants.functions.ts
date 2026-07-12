@@ -25,8 +25,8 @@ function createPublicSupabaseFetch(supabaseKey: string): typeof fetch {
 }
 async function createPublicSupabase() {
   const { createClient } = await import("@supabase/supabase-js");
-  const url = process.env.SUPABASE_URL!;
-  const key = process.env.SUPABASE_PUBLISHABLE_KEY!;
+  const url = process.env.SUPABASE_URL || "https://xyxanewatmrekdqowqao.supabase.co";
+  const key = process.env.SUPABASE_PUBLISHABLE_KEY || "sb_publishable_uBdGKhTkSyYWE3SJQXa-PA_wAxapy9_";
   return createClient(url, key, {
     global: { fetch: createPublicSupabaseFetch(key) },
     auth: { storage: undefined, persistSession: false, autoRefreshToken: false },
