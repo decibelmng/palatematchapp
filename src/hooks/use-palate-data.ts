@@ -1,11 +1,13 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "./use-session";
 import type { PaletteType } from "@/lib/palate";
-import type { FpKey, WineType } from "@/lib/recommender";
+import { recommend, type BottleFp, type FpKey, type RatedFp, type WineType } from "@/lib/recommender";
+import { aggregateRated } from "@/lib/cuvee";
 import { refreshBottleFingerprint } from "@/lib/fingerprint-refresh.functions";
 import { usePalateVersion } from "./use-palate-version";
+
 
 export type BottleRow = {
   id: string;
