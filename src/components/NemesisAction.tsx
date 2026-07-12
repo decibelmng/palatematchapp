@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Skull } from "lucide-react";
+import { toast } from "sonner";
 import type { BottleRow } from "@/hooks/use-palate-data";
 import {
   canonScopeType,
