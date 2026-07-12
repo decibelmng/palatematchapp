@@ -4,6 +4,8 @@ import { OrbitControls, Billboard, Text, Line } from "@react-three/drei";
 import * as THREE from "three";
 import type { PaletteType } from "@/lib/palate";
 import type { LovedPoint } from "./TasteMap";
+import { styleNameFor, type FpVec } from "@/lib/lane-style";
+import type { FpKey } from "@/lib/recommender";
 
 type Props = {
   type: PaletteType;
@@ -29,45 +31,21 @@ type Preset = {
 function presetsFor(type: PaletteType): Preset[] {
   if (type === "red") {
     return [
-      {
-        key: "classic",
-        label: "Classic",
-        axes: ["body", "fruit", "tannin"],
-        labels: [["Light", "Bold"], ["Fruit-forward", "Earthy"], ["Silky", "Grippy"]],
-      },
-      {
-        key: "structure",
-        label: "Structure",
-        axes: ["tannin", "acidity", "body"],
-        labels: [["Silky", "Grippy"], ["Soft", "Zingy"], ["Light", "Bold"]],
-      },
-      {
-        key: "style",
-        label: "Style",
-        axes: ["body", "sweet", "ripe"],
-        labels: [["Light", "Bold"], ["Dry", "Sweet"], ["Fresh", "Ripe"]],
-      },
+      { key: "classic",   label: "Classic",   axes: ["body", "fruit", "tannin"],
+        labels: [["Light", "Bold"], ["Fruit-forward", "Earthy"], ["Silky", "Grippy"]] },
+      { key: "structure", label: "Structure", axes: ["tannin", "acidity", "body"],
+        labels: [["Silky", "Grippy"], ["Soft", "Zingy"], ["Light", "Bold"]] },
+      { key: "style",     label: "Style",     axes: ["body", "sweet", "ripe"],
+        labels: [["Light", "Bold"], ["Dry", "Sweet"], ["Fresh", "Ripe"]] },
     ];
   }
   return [
-    {
-      key: "classic",
-      label: "Classic",
-      axes: ["body", "fruit", "oak"],
-      labels: [["Light", "Bold"], ["Fruit-forward", "Mineral"], ["Unoaked", "Oaky"]],
-    },
-    {
-      key: "structure",
-      label: "Structure",
-      axes: ["oak", "acidity", "body"],
-      labels: [["Unoaked", "Oaky"], ["Soft", "Zingy"], ["Light", "Bold"]],
-    },
-    {
-      key: "style",
-      label: "Style",
-      axes: ["body", "sweet", "ripe"],
-      labels: [["Light", "Bold"], ["Dry", "Sweet"], ["Fresh", "Ripe"]],
-    },
+    { key: "classic",   label: "Classic",   axes: ["body", "fruit", "oak"],
+      labels: [["Light", "Bold"], ["Fruit-forward", "Mineral"], ["Unoaked", "Oaky"]] },
+    { key: "structure", label: "Structure", axes: ["oak", "acidity", "body"],
+      labels: [["Unoaked", "Oaky"], ["Soft", "Zingy"], ["Light", "Bold"]] },
+    { key: "style",     label: "Style",     axes: ["body", "sweet", "ripe"],
+      labels: [["Light", "Bold"], ["Dry", "Sweet"], ["Fresh", "Ripe"]] },
   ];
 }
 
@@ -101,35 +79,73 @@ type Selected =
   | null;
 
 const GOLD = "#d4a03a";
+const NEMESIS = "#c14a4a";
 
+// Cube half-extent = 1 (BoxGeometry(2,2,2)). Endpoint labels sit here.
+const LABEL_OUT = 1.15;
+
+// ---------- Depth-fade helper for billboarded text/materials ----------
+/** Given a camera and a world position, return a 0..1 opacity where the far
+ *  face (behind cube) → 0.4 and the near face → 1.0. */
+function fadeForDepth(camera: THREE.Camera, worldPos: THREE.Vector3): number {
+  const forward = new THREE.Vector3();
+  camera.getWorldDirection(forward);
+  const toPt = worldPos.clone().sub(camera.position);
+  const projected = toPt.dot(forward); // >0 in front of camera; larger = farther
+  // Cube spans roughly camera-to-target distance ± √3. Map to [0.4, 1.0].
+  // Use a symmetric window based on camera distance.
+  const camDist = camera.position.length();
+  const nearD = camDist - Math.SQRT2;
+  const farD  = camDist + Math.SQRT2;
+  const t = THREE.MathUtils.clamp((projected - nearD) / Math.max(0.001, farD - nearD), 0, 1);
+  // t=0 → nearest (opacity 1), t=1 → farthest (opacity 0.4)
+  return THREE.MathUtils.lerp(1.0, 0.4, t);
+}
+
+// ---------- Dot ----------
 function Dot({
-  p, x, y, z, isLoved, isSelected, isCanon, isNemesis, onSelect,
+  p, x, y, z, isLoved, isSelected, hasSelection, isCanon, isNemesis, onSelect,
 }: {
   p: LovedPoint;
   x: number; y: number; z: number;
   isLoved: boolean;
   isSelected: boolean;
+  hasSelection: boolean;
   isCanon: boolean;
   isNemesis: boolean;
   onSelect: (p: LovedPoint) => void;
 }) {
   const meshRef = useRef<THREE.Mesh>(null);
+  const matRef = useRef<THREE.MeshStandardMaterial>(null);
   const targetPos = useMemo(() => new THREE.Vector3(x, y, z), [x, y, z]);
+
+  // When a selection is active, dim non-selected by ~20%.
+  const dimFactor = hasSelection && !isSelected ? 0.8 : 1;
 
   useFrame(() => {
     const m = meshRef.current;
     if (!m) return;
     m.position.lerp(targetPos, 0.12);
+    if (matRef.current) {
+      const base = 1;
+      matRef.current.opacity = base * dimFactor;
+      matRef.current.transparent = dimFactor < 1;
+    }
   });
 
-  const baseR = isLoved
+  // Nemeses render at loved-ish size even if they came from `others`,
+  // so the red halo has a visible sphere underneath.
+  const visualLoved = isLoved || isNemesis;
+  const baseR = visualLoved
     ? (p.stars >= 5 ? 0.055 : 0.045)
     : 0.028;
-  const color = isLoved
-    ? GOLD
-    : (p.stars === 3 ? "#8a8078" : "#5a4a44");
+  const color = isNemesis
+    ? NEMESIS
+    : (isLoved
+        ? GOLD
+        : (p.stars === 3 ? "#8a8078" : "#5a4a44"));
 
-  const haloColor = isCanon ? GOLD : isNemesis ? "#c14a4a" : null;
+  const haloColor = isCanon ? GOLD : isNemesis ? NEMESIS : null;
 
   const stopProp = (e: ThreeEvent<PointerEvent>) => e.stopPropagation();
   const handleClick = (e: ThreeEvent<MouseEvent>) => {
@@ -146,9 +162,10 @@ function Dot({
       >
         <sphereGeometry args={[baseR, 20, 20]} />
         <meshStandardMaterial
+          ref={matRef}
           color={color}
           emissive={color}
-          emissiveIntensity={isLoved ? 0.35 : 0.05}
+          emissiveIntensity={visualLoved ? 0.35 : 0.05}
           roughness={0.4}
           metalness={0.1}
         />
@@ -167,7 +184,7 @@ function Dot({
       {isSelected && (
         <mesh position={targetPos}>
           <ringGeometry args={[baseR * 1.9, baseR * 2.15, 32]} />
-          <meshBasicMaterial color="#ffffff" transparent opacity={0.9} side={THREE.DoubleSide} />
+          <meshBasicMaterial color="#ffffff" transparent opacity={0.95} side={THREE.DoubleSide} />
         </mesh>
       )}
     </group>
@@ -178,25 +195,6 @@ function CubeEdges() {
   const geo = useMemo(() => new THREE.EdgesGeometry(new THREE.BoxGeometry(2, 2, 2)), []);
   const mat = useMemo(() => new THREE.LineBasicMaterial({ color: 0x9a8f86, transparent: true, opacity: 0.35 }), []);
   return <lineSegments geometry={geo} material={mat} />;
-}
-
-function AxisLabel({ position, text }: { position: [number, number, number]; text: string }) {
-  return (
-    <Billboard position={position} follow>
-      <Text
-        fontSize={0.09}
-        color="#7a6f66"
-        anchorX="center"
-        anchorY="middle"
-        letterSpacing={0.15}
-        outlineWidth={0.004}
-        outlineColor="#000"
-        outlineOpacity={0.3}
-      >
-        {text.toUpperCase()}
-      </Text>
-    </Billboard>
-  );
 }
 
 function AxisCrosshair() {
@@ -211,9 +209,172 @@ function AxisCrosshair() {
   );
 }
 
+// ---------- Axis endpoint label (billboarded, depth-faded) ----------
+function EndpointLabel({ position, text }: { position: [number, number, number]; text: string }) {
+  const textRef = useRef<React.ComponentRef<typeof Text>>(null);
+  const world = useMemo(() => new THREE.Vector3(...position), [position]);
+  useFrame(({ camera }) => {
+    const t = textRef.current;
+    if (!t) return;
+    const op = fadeForDepth(camera, world);
+    // drei Text exposes fillOpacity / outlineOpacity via material props
+    (t as unknown as { fillOpacity: number; outlineOpacity: number }).fillOpacity = op;
+    (t as unknown as { fillOpacity: number; outlineOpacity: number }).outlineOpacity = op * 0.3;
+  });
+  return (
+    <Billboard position={position} follow>
+      <Text
+        ref={textRef}
+        fontSize={0.09}
+        color="#7a6f66"
+        anchorX="center"
+        anchorY="middle"
+        letterSpacing={0.15}
+        outlineWidth={0.004}
+        outlineColor="#000"
+      >
+        {text.toUpperCase()}
+      </Text>
+    </Billboard>
+  );
+}
+
+// ---------- Mode clouds ----------
+type ClusterPoint = { p: LovedPoint; v: THREE.Vector3 };
+type Cloud = {
+  center: THREE.Vector3;
+  radius: number;
+  label: string;
+};
+
+const CLUSTER_MERGE_MAX = 0.9; // world-units (cube spans -1..1)
+const CLOUD_PAD = 0.14;
+const CLOUD_MIN_R = 0.22;
+
+function clusterCanons(canonPts: ClusterPoint[]): Array<{ members: ClusterPoint[] }> {
+  const n = canonPts.length;
+  if (n === 0) return [];
+  const D: number[][] = Array.from({ length: n }, () => new Array(n).fill(0));
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      D[i][j] = D[j][i] = canonPts[i].v.distanceTo(canonPts[j].v);
+    }
+  }
+  let clusters: { idx: number[]; diameter: number }[] = canonPts.map((_, i) => ({ idx: [i], diameter: 0 }));
+  const mergedDiam = (a: number[], b: number[]) => {
+    let d = 0;
+    for (const i of a) for (const j of b) if (D[i][j] > d) d = D[i][j];
+    return d;
+  };
+  while (clusters.length > 1) {
+    let bestI = -1, bestJ = -1, bestDiam = Infinity;
+    for (let i = 0; i < clusters.length; i++) {
+      for (let j = i + 1; j < clusters.length; j++) {
+        const cross = mergedDiam(clusters[i].idx, clusters[j].idx);
+        const merged = Math.max(clusters[i].diameter, clusters[j].diameter, cross);
+        if (merged < bestDiam) { bestDiam = merged; bestI = i; bestJ = j; }
+      }
+    }
+    if (bestDiam > CLUSTER_MERGE_MAX) break;
+    const m = { idx: [...clusters[bestI].idx, ...clusters[bestJ].idx], diameter: bestDiam };
+    clusters = clusters.filter((_, k) => k !== bestI && k !== bestJ);
+    clusters.push(m);
+  }
+  return clusters.map((c) => ({ members: c.idx.map((i) => canonPts[i]) }));
+}
+
+/** Map a LovedPoint's cube axes into a partial FpVec so styleNameFor works.
+ *  Only axes present on the point contribute; missing axes default to 0.5. */
+function fpFromLoved(p: LovedPoint): FpVec {
+  const centroid = 0.5;
+  const fp: Record<FpKey, number> = {
+    fresh: centroid,
+    acid: p.axAcidity ?? centroid,
+    tannin: p.axTannin ?? centroid,
+    fruit_dark: centroid,
+    // axFruit: low = fruit-forward, high = earthy/savory
+    ripe: p.axRipe ?? centroid,
+    oak: p.axOak ?? centroid,
+    body: p.axBody ?? centroid,
+    savory: p.axFruit ?? centroid,
+  };
+  return fp;
+}
+
+function laneStyleForCluster(members: ClusterPoint[], type: PaletteType): string {
+  const wineType = type === "red" ? "red" : "white";
+  // Average FpVec across canon members
+  const keys: FpKey[] = ["fresh", "acid", "tannin", "fruit_dark", "ripe", "oak", "body", "savory"];
+  const sum: Record<FpKey, number> = { fresh: 0, acid: 0, tannin: 0, fruit_dark: 0, ripe: 0, oak: 0, body: 0, savory: 0 };
+  for (const m of members) {
+    const fp = fpFromLoved(m.p);
+    for (const k of keys) sum[k] += fp[k];
+  }
+  const avg: FpVec = { fresh: 0, acid: 0, tannin: 0, fruit_dark: 0, ripe: 0, oak: 0, body: 0, savory: 0 };
+  for (const k of keys) avg[k] = sum[k] / members.length;
+  return styleNameFor(avg, wineType);
+}
+
+function ModeCloud({ cloud }: { cloud: Cloud }) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const matRef = useRef<THREE.MeshBasicMaterial>(null);
+  const textRef = useRef<React.ComponentRef<typeof Text>>(null);
+  // Label positioned at cloud edge, offset toward camera-tangent direction
+  const labelPos = useMemo(() => new THREE.Vector3(), []);
+
+  useFrame(({ camera }) => {
+    // Fade the cloud sphere slightly by depth so it doesn't blot near dots
+    if (matRef.current) {
+      const op = fadeForDepth(camera, cloud.center);
+      matRef.current.opacity = 0.06 * op + 0.02; // 2–8%
+    }
+    // Position label at the cloud edge, on the side away from cube center
+    const outward = cloud.center.clone().normalize();
+    if (outward.lengthSq() < 1e-6) outward.set(0, 1, 0);
+    labelPos.copy(cloud.center).addScaledVector(outward, cloud.radius);
+    if (textRef.current) {
+      (textRef.current as unknown as { position: THREE.Vector3 }).position.copy(labelPos);
+      const op = fadeForDepth(camera, labelPos);
+      (textRef.current as unknown as { fillOpacity: number; outlineOpacity: number }).fillOpacity = op;
+      (textRef.current as unknown as { fillOpacity: number; outlineOpacity: number }).outlineOpacity = op * 0.4;
+    }
+  });
+
+  return (
+    <group>
+      <mesh ref={meshRef} position={cloud.center}>
+        <sphereGeometry args={[cloud.radius, 24, 20]} />
+        <meshBasicMaterial
+          ref={matRef}
+          color={GOLD}
+          transparent
+          opacity={0.06}
+          depthWrite={false}
+        />
+      </mesh>
+      <Billboard follow>
+        <Text
+          ref={textRef}
+          fontSize={0.07}
+          color={GOLD}
+          anchorX="center"
+          anchorY="middle"
+          outlineWidth={0.003}
+          outlineColor="#000"
+          letterSpacing={0.05}
+        >
+          {cloud.label}
+        </Text>
+      </Billboard>
+    </group>
+  );
+}
+
+// ---------- Scene ----------
 function SceneContent({
-  loved, others, canonIds, nemesisIds, preset, selectedKey, onSelect, autoRotateEnabled, controlsRef,
+  type, loved, others, canonIds, nemesisIds, preset, selectedKey, onSelect, autoRotateEnabled, controlsRef,
 }: {
+  type: PaletteType;
   loved: LovedPoint[];
   others: LovedPoint[];
   canonIds?: Set<string>;
@@ -230,7 +391,6 @@ function SceneContent({
   useEffect(() => {
     controlsRef.current = {
       rotateY: (delta: number) => {
-        // Rotate camera around Y axis relative to target
         const target = orbitRef.current?.target ?? new THREE.Vector3();
         const offset = camera.position.clone().sub(target);
         const spherical = new THREE.Spherical().setFromVector3(offset);
@@ -251,14 +411,13 @@ function SceneContent({
         orbitRef.current?.update();
       },
       reset: () => {
-        camera.position.set(2.4, 1.6, 2.8);
+        camera.position.set(3.4, 2.2, 3.9);
         camera.lookAt(0, 0, 0);
         orbitRef.current?.update();
       },
     };
   }, [camera, controlsRef]);
 
-  // Cap pixel ratio
   useEffect(() => {
     gl.setPixelRatio(Math.min(window.devicePixelRatio, 2));
   }, [gl]);
@@ -277,6 +436,48 @@ function SceneContent({
     }));
   }, [loved, others, ax, ay, az]);
 
+  // ---- Compute mode clouds around Canon-led clusters ----
+  const clouds = useMemo<Cloud[]>(() => {
+    if (!canonIds || canonIds.size === 0) return [];
+    // Canon points (all sources — canons should be loved but include others too if present)
+    const canonPts: ClusterPoint[] = points
+      .filter(({ p }) => p.bottleId && canonIds.has(p.bottleId))
+      .map(({ p, x, y, z }) => ({ p, v: new THREE.Vector3(x, y, z) }));
+    if (canonPts.length === 0) return [];
+
+    const clusters = clusterCanons(canonPts);
+    // For each cluster, attract nearby LOVED (non-canon, non-nemesis) points within CLUSTER_MERGE_MAX/2
+    const attractR = CLUSTER_MERGE_MAX * 0.55;
+    const canonKeys = new Set(canonPts.map((c) => c.p.key));
+
+    return clusters.map(({ members }) => {
+      const canonCentroid = new THREE.Vector3();
+      for (const m of members) canonCentroid.add(m.v);
+      canonCentroid.divideScalar(members.length);
+
+      // Include nearby loved (not canon, not nemesis) to swell the cloud
+      const nearby: ClusterPoint[] = points
+        .filter(({ p, isLoved }) =>
+          isLoved &&
+          !canonKeys.has(p.key) &&
+          !(p.bottleId && nemesisIds?.has(p.bottleId))
+        )
+        .map(({ p, x, y, z }) => ({ p, v: new THREE.Vector3(x, y, z) }))
+        .filter(({ v }) => v.distanceTo(canonCentroid) <= attractR);
+
+      const all = [...members, ...nearby];
+      const centroid = new THREE.Vector3();
+      for (const m of all) centroid.add(m.v);
+      centroid.divideScalar(all.length);
+
+      const maxR = all.reduce((m, p) => Math.max(m, p.v.distanceTo(centroid)), 0);
+      const radius = Math.max(CLOUD_MIN_R, maxR + CLOUD_PAD);
+
+      const label = laneStyleForCluster(members, type);
+      return { center: centroid, radius, label };
+    });
+  }, [points, canonIds, nemesisIds, type]);
+
   return (
     <>
       <ambientLight intensity={0.6} />
@@ -286,13 +487,16 @@ function SceneContent({
       <CubeEdges />
       <AxisCrosshair />
 
-      {/* Pole labels — one per face center */}
-      <AxisLabel position={[-1.22, 0, 0]} text={lx[0]} />
-      <AxisLabel position={[ 1.22, 0, 0]} text={lx[1]} />
-      <AxisLabel position={[0, -1.22, 0]} text={ly[0]} />
-      <AxisLabel position={[0,  1.22, 0]} text={ly[1]} />
-      <AxisLabel position={[0, 0, -1.22]} text={lz[0]} />
-      <AxisLabel position={[0, 0,  1.22]} text={lz[1]} />
+      {/* Mode clouds — behind everything */}
+      {clouds.map((c, i) => <ModeCloud key={i} cloud={c} />)}
+
+      {/* Pole endpoint labels (billboarded, depth-faded) */}
+      <EndpointLabel position={[-LABEL_OUT, 0, 0]} text={lx[0]} />
+      <EndpointLabel position={[ LABEL_OUT, 0, 0]} text={lx[1]} />
+      <EndpointLabel position={[0, -LABEL_OUT, 0]} text={ly[0]} />
+      <EndpointLabel position={[0,  LABEL_OUT, 0]} text={ly[1]} />
+      <EndpointLabel position={[0, 0, -LABEL_OUT]} text={lz[0]} />
+      <EndpointLabel position={[0, 0,  LABEL_OUT]} text={lz[1]} />
 
       {points.map(({ p, isLoved, x, y, z }) => (
         <Dot
@@ -301,6 +505,7 @@ function SceneContent({
           x={x} y={y} z={z}
           isLoved={isLoved}
           isSelected={selectedKey === p.key}
+          hasSelection={selectedKey !== null}
           isCanon={!!(p.bottleId && canonIds?.has(p.bottleId))}
           isNemesis={!!(p.bottleId && nemesisIds?.has(p.bottleId))}
           onSelect={onSelect}
@@ -311,10 +516,10 @@ function SceneContent({
         ref={orbitRef}
         enablePan={false}
         enableZoom
-        minDistance={2.2}
-        maxDistance={6}
+        minDistance={4}
+        maxDistance={8}
         autoRotate={autoRotateEnabled}
-        autoRotateSpeed={0.7} // ~one revolution / 30s
+        autoRotateSpeed={0.7}
         dampingFactor={0.12}
         enableDamping
       />
@@ -330,10 +535,8 @@ export function TasteCube({
   const presets = useMemo(() => presetsFor(type), [type]);
   const preset = presets.find((p) => p.key === presetKey) ?? presets[0];
 
-  // Reset preset when wine type changes (axes differ).
-  useEffect(() => { setPresetKey("classic"); }, [type]);
+  useEffect(() => { setPresetKey("classic"); setSelected(null); }, [type]);
 
-  // Auto-rotate + idle logic
   const [autoRotate, setAutoRotate] = useState(true);
   const idleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const bumpIdle = () => {
@@ -343,7 +546,6 @@ export function TasteCube({
   };
   useEffect(() => () => { if (idleTimer.current) clearTimeout(idleTimer.current); }, []);
 
-  // Pause rendering when off-screen or tab hidden
   const wrapRef = useRef<HTMLDivElement>(null);
   const [visible, setVisible] = useState(true);
   useEffect(() => {
@@ -358,7 +560,6 @@ export function TasteCube({
 
   const controlsRef = useRef<{ rotateY: (d: number) => void; rotateX: (d: number) => void; reset: () => void } | null>(null);
 
-  // Keyboard arrows
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const step = (15 * Math.PI) / 180;
@@ -383,11 +584,14 @@ export function TasteCube({
       >
         <Canvas
           frameloop={visible ? "always" : "never"}
-          camera={{ position: [2.4, 1.6, 2.8], fov: 42 }}
+          // fov=36 + distance ~5.6 → cube diagonal (~1.73) + labels (±1.15)
+          // stay inside the viewport at every rotation.
+          camera={{ position: [3.4, 2.2, 3.9], fov: 36 }}
           onCreated={({ gl }) => { gl.setClearColor(0x000000, 0); }}
         >
           <Suspense fallback={null}>
             <SceneContent
+              type={type}
               loved={loved}
               others={others}
               canonIds={canonIds}
@@ -480,7 +684,7 @@ export function TasteCube({
           Wines you love
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="inline-block w-2.5 h-2.5 rounded-full bg-muted-foreground/40" />
+          <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: NEMESIS }} />
           Wines you avoid
         </span>
         <span className="inline-flex items-center gap-1.5">
@@ -490,6 +694,10 @@ export function TasteCube({
         <span className="inline-flex items-center gap-1.5">
           <span className="inline-block w-3 h-3 rounded-full border-2 border-destructive" />
           Nemeses
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="inline-block w-3 h-3 rounded-full" style={{ background: GOLD, opacity: 0.15 }} />
+          Style clouds
         </span>
       </div>
     </div>
