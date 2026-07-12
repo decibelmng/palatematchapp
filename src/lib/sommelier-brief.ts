@@ -144,7 +144,7 @@ type CanonCluster = {
   centroid: FpVec;
 };
 
-function meanFp(items: BriefBenchmark[]): FpVec {
+function meanFp(items: { fp: FpVec }[]): FpVec {
   const out = {} as FpVec;
   for (const k of RAX) {
     let sum = 0;
@@ -154,14 +154,67 @@ function meanFp(items: BriefBenchmark[]): FpVec {
   return out;
 }
 
-function clusterCanons(canons: BriefBenchmark[], ctx: TypeCtx): CanonCluster[] {
+/** Cluster canons using the SAME grouping the /matches lane page produces:
+ *  union-find over ratedFp canons at ω-distance < h. Then map each cluster
+ *  root back to matching BriefBenchmark entries by id so the display prefers
+ *  the recency-ordered benchmark label. Falls back to BriefBenchmark-only
+ *  clustering when ratedFp canons are missing. */
+function clusterCanons(
+  canons: BriefBenchmark[],
+  ratedFp: RatedFp[],
+  ctx: TypeCtx,
+): CanonCluster[] {
+  const ratedCanons = ratedFp.filter((r) => r.canon);
+  if (ratedCanons.length === 0) {
+    // Fall back to clustering the BriefBenchmark list directly.
+    return clusterByFp(canons, ctx);
+  }
+
+  const n = ratedCanons.length;
+  const parent = Array.from({ length: n }, (_, i) => i);
+  const find = (x: number): number => (parent[x] === x ? x : (parent[x] = find(parent[x])));
+  const union = (a: number, b: number) => {
+    const ra = find(a), rb = find(b);
+    if (ra !== rb) parent[ra] = rb;
+  };
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      const d = distanceInContext(ratedCanons[i].fp, ratedCanons[j].fp, ctx);
+      if (d < ctx.h) union(i, j);
+    }
+  }
+  const groups = new Map<number, RatedFp[]>();
+  for (let i = 0; i < n; i++) {
+    const r = find(i);
+    const arr = groups.get(r) ?? [];
+    arr.push(ratedCanons[i]);
+    groups.set(r, arr);
+  }
+
+  const byId = new Map(canons.map((b) => [b.id, b] as const));
+  const clusters: CanonCluster[] = [];
+  for (const group of groups.values()) {
+    const members: BriefBenchmark[] = [];
+    for (const r of group) {
+      const b = byId.get(r.id);
+      if (b) members.push(b);
+    }
+    if (members.length === 0) continue;
+    // Label = most-recent benchmark (input canons list is recency-desc).
+    const label = members[0];
+    clusters.push({ label, members, centroid: meanFp(group) });
+  }
+  return clusters;
+}
+
+/** BriefBenchmark-only fallback clustering. */
+function clusterByFp(canons: BriefBenchmark[], ctx: TypeCtx): CanonCluster[] {
   const n = canons.length;
   if (n === 0) return [];
   const parent = Array.from({ length: n }, (_, i) => i);
   const find = (x: number): number => (parent[x] === x ? x : (parent[x] = find(parent[x])));
   const union = (a: number, b: number) => {
-    const ra = find(a);
-    const rb = find(b);
+    const ra = find(a), rb = find(b);
     if (ra !== rb) parent[ra] = rb;
   };
   for (let i = 0; i < n; i++) {
@@ -178,7 +231,7 @@ function clusterCanons(canons: BriefBenchmark[], ctx: TypeCtx): CanonCluster[] {
     groups.set(r, arr);
   }
   return Array.from(groups.values()).map((members) => ({
-    label: members[0], // recency-desc → most recent is label
+    label: members[0],
     members,
     centroid: meanFp(members),
   }));
@@ -186,30 +239,20 @@ function clusterCanons(canons: BriefBenchmark[], ctx: TypeCtx): CanonCluster[] {
 
 // ────────── Vocabulary maps ──────────
 
-/** Fingerprint-axis → sommelier-facing "what matters most" phrase. */
-const OMEGA_PHRASE: Record<FpKey, string> = {
-  fresh: "freshness",
-  acid: "acidity",
-  tannin: "the texture of tannin",
-  fruit_dark: "dark vs. red fruit character",
-  ripe: "ripeness",
-  oak: "restraint around oak",
-  body: "weight on the palate",
-  savory: "savory vs. fruit-driven character",
+/** Fingerprint-axis → sommelier-facing "what matters most" phrase, keyed by
+ *  the direction the user's LOVED palate sits, and contextualised against a
+ *  Nemesis push in the OPPOSITE direction ("without X"). */
+const OMEGA_DIRECTIONAL: Record<FpKey, { hi: string; lo: string; hiVsHi?: string; loVsLo?: string }> = {
+  fresh:      { hi: "freshness is non-negotiable", lo: "mature bottles over young ones" },
+  acid:       { hi: "acidity to keep things lifted", lo: "rounder, less searing acidity" },
+  tannin:     { hi: "structured tannin", lo: "silky tannin" },
+  fruit_dark: { hi: "dark-fruited character", lo: "red-fruited lift" },
+  ripe:       { hi: "ripeness without jam", lo: "restraint over jammy ripeness" },
+  oak:        { hi: "polish from oak, not planks", lo: "restraint around oak" },
+  body:       { hi: "weight on the palate", lo: "lightness on the palate" },
+  savory:     { hi: "savory depth", lo: "fruit-driven wines" },
 };
 
-/** Hedonic NEGATIVE vocabulary for dealbreakers, per axis + direction.
- *  Empty string → that direction isn't a meaningful complaint to voice. */
-const NEG_PHRASE: Record<FpKey, { hi: string; lo: string }> = {
-  ripe:       { hi: "jammy, confected fruit-bombs", lo: "" },
-  fruit_dark: { hi: "syrupy, over-extracted dark fruit", lo: "" },
-  tannin:     { hi: "drying tannin", lo: "" },
-  acid:       { hi: "searing acidity", lo: "flabby, low-acid" },
-  oak:        { hi: "over-oaked, buttery character", lo: "" },
-  body:       { hi: "heavy, ponderous body", lo: "" },
-  savory:     { hi: "", lo: "" },
-  fresh:      { hi: "", lo: "tired, oxidative" },
-};
 
 // ────────── Style-summary sentence ──────────
 
