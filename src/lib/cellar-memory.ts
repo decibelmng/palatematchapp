@@ -14,6 +14,7 @@ export type Tier1Match = {
   scanned: ResolvedWine;
   bottle: BottleRow;
   stars: number;
+  note: string | null;
   isCanon: boolean;
   isNemesis: boolean;
 };

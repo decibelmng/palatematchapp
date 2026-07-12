@@ -1,5 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useSession } from "@/hooks/use-session";
 import { ArrowLeft } from "lucide-react";
 import { AuthGate } from "@/components/AuthGate";
 import { WineTypeBadge } from "@/components/WineTypeBadge";
