@@ -638,6 +638,20 @@ function Scan() {
         </div>
       )}
 
+      {totalWines > 0 && enoughRatings && (
+        <div className="mt-3">
+          <button
+            type="button"
+            onClick={() => setSommOpen(true)}
+            className="text-[11px] uppercase text-muted-foreground hover:text-primary"
+            style={{ letterSpacing: "0.18em" }}
+          >
+            Show your palate to the somm →
+          </button>
+        </div>
+      )}
+
+
       {totalWines === 1 && (
         <div className="mt-3 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
           Only one wine read — was this a <span className="font-medium">single bottle</span>?
