@@ -121,6 +121,8 @@ function Scan() {
   const libraryRef = useRef<HTMLInputElement>(null);
   const [staged, setStaged] = useState<{ file: File; url: string }[]>([]);
   const [elapsed, setElapsed] = useState(0);
+  const [sommOpen, setSommOpen] = useState(false);
+
 
   // Scan session state
   const [scanId, setScanId] = useState<string | null>(null);
