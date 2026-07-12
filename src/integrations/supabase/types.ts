@@ -607,6 +607,7 @@ export type Database = {
         Args: { p_batch_index: number; p_scan_id: string }
         Returns: undefined
       }
+      resolve_username_to_id: { Args: { p_username: string }; Returns: string }
       restore_rating_and_benchmark: {
         Args: {
           p_bottle_id: string
