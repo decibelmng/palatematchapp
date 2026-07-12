@@ -15,11 +15,13 @@ function detectWebGL(): boolean {
 }
 
 import { ShareCardDialog } from "@/components/ShareCardDialog";
+import { SommelierBriefCard } from "@/components/SommelierBriefCard";
 import { useMyProfile } from "@/hooks/use-friends";
 import {
   useBottlesByIds,
   useRatings,
   bottleToValues,
+  bottleToFp,
   bottleType,
   usePersistCode,
 } from "@/hooks/use-palate-data";
@@ -29,6 +31,8 @@ import { Crown } from "lucide-react";
 import { useLandmarks } from "@/hooks/use-landmarks";
 import { cuveeKey } from "@/lib/cuvee";
 import { computeCode, describeCode, axesFor, type RatedBottle, type PaletteType } from "@/lib/palate";
+import { buildFullBrief, type BriefBenchmark, type TypeBriefInputs } from "@/lib/sommelier-brief";
+import type { RatedFp } from "@/lib/recommender";
 
 export const Route = createFileRoute("/")({
   ssr: false,
