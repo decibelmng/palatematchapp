@@ -138,6 +138,26 @@ async function run(type: "red" | "white") {
       `  crit=${cs} · ${r.bottle.name} · ${r.bottle.producer ?? ""} · d_nem=${r.vetoReason!.distance.toFixed(3)} · nem=${r.vetoReason!.nemesis.name} · axes=${r.vetoReason!.drivingAxes.join(",")}`,
     );
   }
+
+  // Per-Nemesis contested/veto census
+  console.log("\n--- Per-Nemesis census ---");
+  const nemNames = rated.filter((r) => r.nemesis).map((r) => r.name);
+  for (const nn of nemNames) {
+    const v = vetoed.filter((r) => r.vetoReason?.nemesis.name === nn).length;
+    const c = contested.filter((r) => r.contestedReason?.nemesis.name === nn).length;
+    console.log(`  ${nn} — vetoed=${v} contested=${c}`);
+  }
+
+  console.log("\n--- Top 10 contested by predicted ---");
+  const topContested = [...contested]
+    .sort((a, b) => b.predicted - a.predicted)
+    .slice(0, 10);
+  for (const r of topContested) {
+    const cr = r.contestedReason!;
+    console.log(
+      `  pred=${r.predicted.toFixed(2)} · ${r.bottle.name} · ${r.bottle.producer ?? ""} · d_nem=${cr.nemesisDistance.toFixed(3)} d_love=${cr.positiveDistance.toFixed(3)} · nem=${cr.nemesis.name} · love=${cr.nearestPositive.name}`,
+    );
+  }
 }
 
 (async () => {
