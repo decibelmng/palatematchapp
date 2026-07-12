@@ -166,6 +166,8 @@ function Home() {
     return (localStorage.getItem("pm-map-view") as "2d" | "3d") || "2d";
   });
   useEffect(() => { try { localStorage.setItem("pm-map-view", view); } catch { /* ignore */ } }, [view]);
+
+  return (
     <div className="pt-2">
       <p className="text-[10px] uppercase text-muted-foreground" style={{ letterSpacing: "0.22em" }}>Your palates</p>
 
@@ -204,19 +206,57 @@ function Home() {
         displayName={myProfile?.display_name || myProfile?.username || ""}
       />
 
-      {/* Taste map */}
-      <div className="mt-10">
-        <TasteMap
-          type={scope}
-          landmarks={resolvedLandmarks}
-          loved={onboarding ? [] : lovedPoints}
-          others={onboarding ? [] : otherPoints}
-          canonIds={canonBottleIds}
-          nemesisIds={nemesisBottleIds}
-          showOverlay={onboarding}
-          overlayText="Where do you land?"
-        />
+      {/* View toggle: 2D map vs 3D cube */}
+      {hasWebGL && !onboarding && (
+        <div className="mt-6 flex items-center justify-center gap-1.5">
+          {(["2d", "3d"] as const).map((v) => {
+            const on = view === v;
+            return (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setView(v)}
+                aria-pressed={on}
+                className={`rounded-full border-[0.5px] px-3 py-0.5 text-[10px] uppercase transition ${
+                  on ? "border-primary bg-primary/10 text-foreground"
+                     : "border-border text-muted-foreground hover:bg-accent"
+                }`}
+                style={{ letterSpacing: "0.16em" }}
+              >
+                {v === "2d" ? "2D map" : "3D cube"}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Taste map / cube */}
+      <div className="mt-6">
+        {view === "3d" && hasWebGL && !onboarding ? (
+          <Suspense fallback={<div className="w-full max-w-[480px] mx-auto aspect-square rounded-[14px] border-[0.5px] border-border bg-card/40" />}>
+            <TasteCube
+              type={scope}
+              loved={lovedPoints}
+              others={otherPoints}
+              canonIds={canonBottleIds}
+              nemesisIds={nemesisBottleIds}
+            />
+          </Suspense>
+        ) : (
+          <TasteMap
+            type={scope}
+            landmarks={resolvedLandmarks}
+            loved={onboarding ? [] : lovedPoints}
+            others={onboarding ? [] : otherPoints}
+            canonIds={canonBottleIds}
+            nemesisIds={nemesisBottleIds}
+            showOverlay={onboarding}
+            overlayText="Where do you land?"
+          />
+        )}
       </div>
+
+
 
 
       {onboarding ? (
