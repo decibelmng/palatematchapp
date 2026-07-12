@@ -153,7 +153,7 @@ function Home() {
       </div>
 
       {canShare && (
-        <div className="mt-3 text-center">
+        <div className="mt-3 flex items-center justify-center gap-4">
           <button
             type="button"
             onClick={() => setShareOpen(true)}
@@ -162,6 +162,14 @@ function Home() {
           >
             Share your palate →
           </button>
+          <span aria-hidden="true" className="text-muted-foreground/40">·</span>
+          <Link
+            to="/matches"
+            className="text-[11px] uppercase text-muted-foreground hover:text-primary"
+            style={{ letterSpacing: "0.18em" }}
+          >
+            See your matches →
+          </Link>
         </div>
       )}
 
@@ -173,18 +181,6 @@ function Home() {
         displayName={myProfile?.display_name || myProfile?.username || ""}
       />
 
-      {canShare && (
-        <div className="mt-2 text-center">
-          <Link
-            to="/matches"
-            className="text-[11px] uppercase text-muted-foreground hover:text-primary"
-            style={{ letterSpacing: "0.18em" }}
-          >
-            See your matches →
-          </Link>
-        </div>
-      )}
-
       {/* Taste map */}
       <div className="mt-10">
         <TasteMap
@@ -192,10 +188,13 @@ function Home() {
           landmarks={resolvedLandmarks}
           loved={onboarding ? [] : lovedPoints}
           others={onboarding ? [] : otherPoints}
+          canonIds={canonBottleIds}
+          nemesisIds={nemesisBottleIds}
           showOverlay={onboarding}
           overlayText="Where do you land?"
         />
       </div>
+
 
       {onboarding ? (
         <OnboardingBlock scope={scope} n={activeRated.length} />
