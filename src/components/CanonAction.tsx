@@ -48,13 +48,26 @@ export function CanonAction({ bottle, stars, compact = false }: Props) {
   function onClick(e: React.MouseEvent) {
     e.stopPropagation();
     if (isCanon) {
-      if (confirm(`Remove Canon status from ${bottle.name}? It'll revert to its ${stars ?? 5}★ rating.`)) {
-        demote.mutate(myCanonForThis!.id);
-      }
+      void (async () => {
+        const ok = await confirmDialog({
+          title: "Remove Canon status?",
+          description: (
+            <>
+              Remove Canon status from{" "}
+              <span className="font-semibold text-foreground">{bottle.name}</span>?
+              It'll revert to its {stars ?? 5}★ rating.
+            </>
+          ),
+          confirmLabel: "Remove Canon",
+          destructive: true,
+        });
+        if (ok) demote.mutate(myCanonForThis!.id);
+      })();
       return;
     }
     setDialog(conflicting ? "replace" : "confirm");
   }
+
 
   const label = isCanon ? "Canon (tap to remove)" : "Make this my Canon";
   const btnClasses = compact
