@@ -13,6 +13,8 @@ import {
 } from "@/hooks/use-canon";
 import { useBottlesByIds } from "@/hooks/use-palate-data";
 import { useGenericWarning } from "@/hooks/use-generic-warning";
+import { confirmDialog } from "@/components/confirm-dialog";
+
 
 type Props = {
   bottle: BottleRow;
