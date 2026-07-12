@@ -18,9 +18,12 @@ type Props = {
   landmarks: ResolvedLandmark[];
   loved: LovedPoint[];             // 4–5★, drives clusters + glow
   others?: LovedPoint[];           // 1–3★, display only (× or hollow dot)
+  canonIds?: Set<string>;          // bottleIds that are Canon benchmarks
+  nemesisIds?: Set<string>;        // bottleIds that are Nemesis benchmarks
   showOverlay?: boolean;
   overlayText?: string;
 };
+
 
 const VB = 400;
 const PAD_L = 44;
