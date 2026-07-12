@@ -74,7 +74,9 @@ export function SwapPickerDialog({
   return (
     <div
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4"
-      onClick={onClose}
+        onClick={() => {
+          if (!pickInFlight.current && !promote.isPending) onClose();
+        }}
     >
       <div
         role="dialog"
@@ -128,7 +130,7 @@ export function SwapPickerDialog({
                   <li key={b.id}>
                     <button
                       type="button"
-                      disabled={isPending || promote.isPending}
+                        disabled={!!pendingId || promote.isPending}
                       onClick={() => handlePick(b)}
                       className="w-full text-left p-3 hover:bg-accent disabled:opacity-50 disabled:cursor-wait transition"
                     >
