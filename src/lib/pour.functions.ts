@@ -5,7 +5,7 @@ import type { WineType, FpKey, RatedFp } from "@/lib/recommender";
 
 // Same column set the client uses (BOTTLE_COLS in use-palate-data.ts).
 const BOTTLE_COLS =
-  "id,name,producer,region,grape,vintage,type,critic_score,price_band,fp_fresh,fp_acid,fp_tannin,fp_fruit_dark,fp_ripe,fp_oak,fp_body,fp_savory,ax_body,ax_fruit_char,ax_tannin,ax_acidity,ax_sweet,tasting_note,source,added_by";
+  "id,name,producer,region,grape,vintage,type,critic_score,price_band,fp_fresh,fp_acid,fp_tannin,fp_fruit_dark,fp_ripe,fp_oak,fp_body,fp_savory,ax_body,ax_fruit_char,ax_tannin,ax_acidity,ax_sweet,tasting_note,source";
 
 const LOVE_THRESHOLD = 4;
 const PER_LOVED = 40;

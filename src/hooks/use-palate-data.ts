@@ -27,13 +27,12 @@ export type BottleRow = {
   ax_body: number; ax_fruit_char: number; ax_tannin: number; ax_acidity: number; ax_sweet: number;
   tasting_note: string | null;
   source: string | null;
-  added_by: string | null;
   price_band: string | null;
   raw?: boolean;                    // true = no calibrated fingerprint (LLM/harmonized/refingerprinted all absent)
 };
 
 const BOTTLE_COLS =
-  "id,name,producer,region,grape,vintage,type,critic_score,price_band,fp_fresh,fp_acid,fp_tannin,fp_fruit_dark,fp_ripe,fp_oak,fp_body,fp_savory,ax_body,ax_fruit_char,ax_tannin,ax_acidity,ax_sweet,tasting_note,source,added_by";
+  "id,name,producer,region,grape,vintage,type,critic_score,price_band,fp_fresh,fp_acid,fp_tannin,fp_fruit_dark,fp_ripe,fp_oak,fp_body,fp_savory,ax_body,ax_fruit_char,ax_tannin,ax_acidity,ax_sweet,tasting_note,source";
 
 export function bottleType(b: BottleRow): WineType {
   const t = (b.type ?? "red").toLowerCase();
