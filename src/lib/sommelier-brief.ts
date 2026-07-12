@@ -416,17 +416,58 @@ function dealbreakersSentence(
 
 // ────────── "What matters most" line ──────────
 
-function omegaSentence(ctx: TypeCtx | null): string {
-  if (!ctx) return "";
+/** Directional phrase for one axis given the loved centroid and the
+ *  nemesis centroid on that axis. Uses "hiVsHi" / "loVsLo" variants when
+ *  the nemesis pushes further in the same direction the user already
+ *  loves — this is where "X without Y" phrasing lands. */
+function directionalPhrase(
+  axis: FpKey,
+  lovedVal: number,
+  nemesisVal: number | null,
+): string {
+  const dir: "hi" | "lo" = lovedVal >= 0.5 ? "hi" : "lo";
+  const table = OMEGA_DIRECTIONAL[axis];
+  if (nemesisVal !== null) {
+    if (dir === "hi" && nemesisVal >= lovedVal + 0.1 && table.hiVsHi) return table.hiVsHi;
+    if (dir === "lo" && nemesisVal <= lovedVal - 0.1 && table.loVsLo) return table.loVsLo;
+  }
+  return table[dir];
+}
+
+function omegaSentence(
+  ctx: TypeCtx | null,
+  centroid: FpVec | null,
+  nemeses: BriefBenchmark[],
+): string {
+  if (!ctx || !centroid) return "";
   const omega = ctx.fit.omega;
   const active = ctx.fit.active;
   if (active.length < 2) return "";
   const ranked = [...active].sort((a, b) => omega[b] - omega[a]);
   const median = [...active].map((k) => omega[k]).sort((a, b) => a - b)[Math.floor(active.length / 2)];
   if (omega[ranked[0]] <= median * 1.05) return "";
-  const top = ranked.slice(0, 2).map((k) => OMEGA_PHRASE[k]);
-  return `What matters most to me: ${joinList(top)}.`;
+
+  // Nemesis centroid (if any) — used to steer "without X" phrasing.
+  const nemFp: FpVec | null = nemeses.length
+    ? meanFp(nemeses.map((n) => ({ fp: n.fp })))
+    : null;
+
+  const phrases: string[] = [];
+  const seen = new Set<string>();
+  for (const axis of ranked) {
+    const p = directionalPhrase(axis, centroid[axis], nemFp ? nemFp[axis] : null);
+    const key = p.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    phrases.push(p);
+    if (phrases.length === 2) break;
+  }
+  if (phrases.length === 0) return "";
+  // Word cap: keep the sentence ≤ ~18 words including the lead.
+  const sentence = `I want ${joinList(phrases)}.`;
+  return sentence;
 }
+
 
 // ────────── Public builders ──────────
 
