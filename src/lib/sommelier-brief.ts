@@ -10,10 +10,11 @@ import {
   type RatedBottle,
   type LetterResult,
 } from "./palate";
-import { styleNameFor } from "./lane-style";
+import { styleNameFor, type FpVec } from "./lane-style";
 import {
   buildTypeContext,
   distanceInContext,
+  RAX,
   type FpKey,
   type RatedFp,
   type TypeCtx,
@@ -61,10 +62,11 @@ function words(s: string): number {
 }
 
 function joinList(items: string[]): string {
-  if (items.length === 0) return "";
-  if (items.length === 1) return items[0];
-  if (items.length === 2) return `${items[0]} and ${items[1]}`;
-  return `${items.slice(0, -1).join(", ")}, and ${items[items.length - 1]}`;
+  const xs = items.filter((s) => s && s.trim().length > 0);
+  if (xs.length === 0) return "";
+  if (xs.length === 1) return xs[0];
+  if (xs.length === 2) return `${xs[0]} and ${xs[1]}`;
+  return `${xs.slice(0, -1).join(", ")}, and ${xs[xs.length - 1]}`;
 }
 
 function typeLabel(type: PaletteType, plural = true): string {
@@ -72,22 +74,65 @@ function typeLabel(type: PaletteType, plural = true): string {
   return plural ? "Whites" : "White";
 }
 
+function capitalize(s: string): string {
+  const t = s.trimStart();
+  if (!t) return s;
+  return t[0].toUpperCase() + t.slice(1);
+}
+
+/** Clean whitespace artifacts: collapse runs of spaces, fix "  (" → " (",
+ *  fix " ," and " ." — cheap post-processor over final paragraphs. */
+function tidyWhitespace(s: string): string {
+  return s
+    .replace(/[ \t]+/g, " ")
+    .replace(/\s+([,.;:])/g, "$1")
+    .replace(/\(\s+/g, "(")
+    .replace(/\s+\)/g, ")");
+}
+
+/** Strip vintages/N.V. from a wine name so "Shafer Hillside Select 2016"
+ *  reads as "Shafer Hillside Select". */
+function stripVintage(name: string): string {
+  return name
+    .replace(/\b(19|20)\d{2}\b/g, "")
+    .replace(/\bN\.?V\.?\b/gi, "")
+    .replace(/\s{2,}/g, " ")
+    .trim();
+}
+
 function benchmarkDisplay(b: BriefBenchmark): string {
-  // "Producer Name" or bare name; trim to keep the brief tight.
   const producer = (b.producer ?? "").trim();
-  const name = (b.name ?? "").trim();
+  const name = stripVintage((b.name ?? "").trim());
+  const region = (b.region ?? "").trim();
+  // If the name is essentially just the producer, fall back to producer + region.
+  const nameLooksLikeProducer = name && producer && name.toLowerCase() === producer.toLowerCase();
+  if (nameLooksLikeProducer && region) return `${producer} ${region}`;
   if (producer && name && !name.toLowerCase().startsWith(producer.toLowerCase())) {
     return `${producer} ${name}`;
   }
-  return name || producer || "an unnamed wine";
+  return name || producer || (region ? `a ${region} wine` : "an unnamed wine");
 }
 
-/** Short region/producer hint for "think X" clauses. */
+/** Short region/producer hint for "think X" / "e.g., X" clauses. */
 function styleRegionHint(b: BriefBenchmark): string {
   const region = (b.region ?? "").trim();
   if (region) return region;
-  const producer = (b.producer ?? "").trim();
-  return producer;
+  return (b.producer ?? "").trim();
+}
+
+// ────────── Loved centroid ──────────
+
+/** Mean fingerprint across loved (≥4★) rated wines. Missing → null. */
+function lovedCentroid(ratedFp: RatedFp[]): FpVec | null {
+  const loved = ratedFp.filter((r) => r.stars >= 4);
+  if (loved.length === 0) return null;
+  const out = {} as FpVec;
+  for (const k of RAX) {
+    let sum = 0;
+    for (const r of loved) sum += r.fp[k];
+    out[k] = sum / loved.length;
+  }
+  return out;
 }
 
 // ────────── Canon clustering (mirrors lanes.ts logic) ──────────
@@ -95,12 +140,23 @@ function styleRegionHint(b: BriefBenchmark): string {
 type CanonCluster = {
   label: BriefBenchmark;
   members: BriefBenchmark[];
+  /** Cluster mean fingerprint (used for lane-style vocabulary). */
+  centroid: FpVec;
 };
+
+function meanFp(items: BriefBenchmark[]): FpVec {
+  const out = {} as FpVec;
+  for (const k of RAX) {
+    let sum = 0;
+    for (const m of items) sum += m.fp[k];
+    out[k] = items.length ? sum / items.length : 0.5;
+  }
+  return out;
+}
 
 function clusterCanons(canons: BriefBenchmark[], ctx: TypeCtx): CanonCluster[] {
   const n = canons.length;
   if (n === 0) return [];
-  // Union-find on ω-distance < h
   const parent = Array.from({ length: n }, (_, i) => i);
   const find = (x: number): number => (parent[x] === x ? x : (parent[x] = find(parent[x])));
   const union = (a: number, b: number) => {
@@ -121,16 +177,16 @@ function clusterCanons(canons: BriefBenchmark[], ctx: TypeCtx): CanonCluster[] {
     arr.push(canons[i]);
     groups.set(r, arr);
   }
-  // For each cluster, label = most-recent canon (canons already ordered desc)
   return Array.from(groups.values()).map((members) => ({
-    label: members[0],
+    label: members[0], // recency-desc → most recent is label
     members,
+    centroid: meanFp(members),
   }));
 }
 
 // ────────── Vocabulary maps ──────────
 
-/** Fingerprint-axis (FpKey) → sommelier-facing "what matters most" phrase. */
+/** Fingerprint-axis → sommelier-facing "what matters most" phrase. */
 const OMEGA_PHRASE: Record<FpKey, string> = {
   fresh: "freshness",
   acid: "acidity",
@@ -142,117 +198,99 @@ const OMEGA_PHRASE: Record<FpKey, string> = {
   savory: "savory vs. fruit-driven character",
 };
 
-/** Bimodal descriptor per palate-code axis (used when letter === "X"). */
-const BIMODAL_PHRASE: Record<string, string> = {
-  body: "both light and bold weights",
-  fruit_char: "both fruit-forward and earthy styles",
-  tannin: "both silky and grippy tannins",
-  oak: "both unoaked and oaked styles",
-  acidity: "both round and crisp acidities",
-  sweet: "both dry and sweet",
+/** Hedonic NEGATIVE vocabulary for dealbreakers, per axis + direction.
+ *  Empty string → that direction isn't a meaningful complaint to voice. */
+const NEG_PHRASE: Record<FpKey, { hi: string; lo: string }> = {
+  ripe:       { hi: "jammy, confected fruit-bombs", lo: "" },
+  fruit_dark: { hi: "syrupy, over-extracted dark fruit", lo: "" },
+  tannin:     { hi: "drying tannin", lo: "" },
+  acid:       { hi: "searing acidity", lo: "flabby, low-acid" },
+  oak:        { hi: "over-oaked, buttery character", lo: "" },
+  body:       { hi: "heavy, ponderous body", lo: "" },
+  savory:     { hi: "", lo: "" },
+  fresh:      { hi: "", lo: "tired, oxidative" },
 };
 
 // ────────── Style-summary sentence ──────────
 
-function pickCoreDescriptors(letters: LetterResult[], type: PaletteType): string[] {
-  // Non-bimodal, resolved descriptors for the "core" three axes:
-  // body, fruit_char, and the type's structural axis (tannin for red, oak for white).
-  const structural = type === "red" ? "tannin" : "oak";
-  const order = ["body", "fruit_char", structural];
-  const out: string[] = [];
-  for (const key of order) {
-    const l = letters.find((x) => x.axis === key);
-    if (!l || !l.resolved || l.bimodal) continue;
-    if (l.letter === "N") continue; // skip "balanced" filler
-    out.push(l.descriptor);
-  }
-  return out;
-}
-
-function orientationSentence(letters: LetterResult[]): string {
-  // Combine acidity + sweet into one short trailing clause.
+function orientationClauses(letters: LetterResult[]): string[] {
+  const clauses: string[] = [];
   const acidity = letters.find((l) => l.axis === "acidity");
   const sweet = letters.find((l) => l.axis === "sweet");
 
-  const acidClause = (() => {
-    if (!acidity?.resolved) return null;
-    if (acidity.bimodal) return "crisp and round acidity both work";
-    if (acidity.letter === "N") return "balanced acidity";
-    return acidity.letter === "C" ? "always with lift" : "on the rounder side";
-  })();
-
-  const sweetClause = (() => {
-    if (!sweet?.resolved) return null;
-    if (sweet.bimodal) return "dry or sweet both fine";
-    if (sweet.letter === "D") return "always dry";
-    if (sweet.letter === "W") return "off-dry to sweet welcome";
-    return "mostly dry";
-  })();
-
-  const parts = [acidClause, sweetClause].filter((x): x is string => !!x);
-  if (parts.length === 0) return "";
-  return parts.join("; ") + ".";
+  if (acidity?.resolved) {
+    if (acidity.bimodal) clauses.push("crisp and round acidity both work");
+    else if (acidity.letter === "C") clauses.push("always with lift");
+    else if (acidity.letter === "R") clauses.push("on the rounder side");
+  }
+  if (sweet?.resolved) {
+    if (sweet.bimodal) clauses.push("dry or sweet both fine");
+    else if (sweet.letter === "D") clauses.push("always dry");
+    else if (sweet.letter === "W") clauses.push("off-dry to sweet welcome");
+  }
+  return clauses;
 }
 
+/** Compose the "I love …" opener from cluster lane vocabulary (bimodal) or
+ *  from the loved-fingerprint centroid (single-mode). We NEVER read raw
+ *  B/F/G/S palate-code letters here — the lane vocabulary already accounts
+ *  for the full fingerprint, so "unoaked-steely" whites can't be labelled
+ *  "bold, fruit-forward" by accident. */
 function styleSummarySentence(
   type: PaletteType,
-  letters: LetterResult[],
   clusters: CanonCluster[],
+  ratedFp: RatedFp[],
 ): string {
-  const bimodalAxes = letters.filter((l) => l.resolved && l.bimodal);
-  const hasBimodal = bimodalAxes.length > 0;
-  const twoStyles = hasBimodal && clusters.length >= 2;
-
-  if (twoStyles) {
-    // Two Canon-anchored styles, one per cluster.
-    const pick = clusters.slice(0, 2).map((c) => {
-      const styleName = styleNameFor(c.label.fp, type === "red" ? "red" : "white");
-      const hint = styleRegionHint(c.label);
-      const styled = styleName.toLowerCase();
-      return hint ? `${styled} (think ${hint})` : styled;
-    });
-    return `I love two distinct styles — ${pick[0]} and ${pick[1]}.`;
+  if (clusters.length >= 2) {
+    const [a, b] = clusters;
+    const nameA = styleNameFor(a.centroid, type).toLowerCase();
+    const nameB = styleNameFor(b.centroid, type).toLowerCase();
+    const hintA = styleRegionHint(a.label);
+    const hintB = styleRegionHint(b.label);
+    const styledA = hintA ? `${nameA} (think ${hintA})` : nameA;
+    const styledB = hintB ? `${nameB} (think ${hintB})` : nameB;
+    return `I love two distinct styles — ${styledA} and ${styledB}.`;
   }
 
-  // Single-style shape: descriptors from body / fruit / structural axis.
-  const desc = pickCoreDescriptors(letters, type);
-  const bimodalTail = bimodalAxes.map((l) => BIMODAL_PHRASE[l.axis]).filter(Boolean);
-
-  if (desc.length === 0 && bimodalTail.length === 0) {
-    // Fall back to a bare canon reference if one exists.
-    if (clusters[0]) {
-      const styleName = styleNameFor(clusters[0].label.fp, type === "red" ? "red" : "white");
-      return `I gravitate to ${styleName.toLowerCase()}.`;
-    }
-    return "";
-  }
-
-  const leadParts: string[] = [];
-  if (desc.length > 0) leadParts.push(`I lean ${joinList(desc)}`);
-  for (const b of bimodalTail) leadParts.push(`I enjoy ${b}`);
-  return leadParts.join("; ") + ".";
+  // Single-mode: prefer the sole cluster centroid; else use loved centroid.
+  const centroid = clusters[0]?.centroid ?? lovedCentroid(ratedFp);
+  if (!centroid) return "";
+  const styleName = styleNameFor(centroid, type).toLowerCase();
+  const hint = clusters[0] ? styleRegionHint(clusters[0].label) : "";
+  return hint
+    ? `I lean toward ${styleName} wines (think ${hint}).`
+    : `I lean toward ${styleName} wines.`;
 }
 
 // ────────── Benchmarks line ──────────
 
-/** Pick up to 5 canons, prefer diversity when clusters > 1. */
+/** One benchmark per lane: take the label (most-recent canon) from each
+ *  cluster. When there are no clusters (e.g. ctx couldn't be built) fall
+ *  back to name-level dedupe of the raw canon list. */
 function selectBenchmarks(canons: BriefBenchmark[], clusters: CanonCluster[], limit = 5): BriefBenchmark[] {
-  if (canons.length <= limit) return canons;
-  if (clusters.length <= 1) return canons.slice(0, limit);
-  // Round-robin across clusters (each cluster already recency-ordered).
-  const buckets = clusters.map((c) => [...c.members]);
-  const out: BriefBenchmark[] = [];
-  while (out.length < limit) {
-    let progressed = false;
-    for (const bucket of buckets) {
+  const seen = new Set<string>();
+  const push = (arr: BriefBenchmark[], b: BriefBenchmark) => {
+    const key = benchmarkDisplay(b).toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    arr.push(b);
+  };
+
+  if (clusters.length > 0) {
+    // Sort clusters by size desc so the most-established lanes go first.
+    const sorted = [...clusters].sort((a, b) => b.members.length - a.members.length);
+    const out: BriefBenchmark[] = [];
+    for (const c of sorted) {
       if (out.length >= limit) break;
-      const next = bucket.shift();
-      if (next) {
-        out.push(next);
-        progressed = true;
-      }
+      push(out, c.label);
     }
-    if (!progressed) break;
+    return out;
+  }
+
+  const out: BriefBenchmark[] = [];
+  for (const c of canons) {
+    if (out.length >= limit) break;
+    push(out, c);
   }
   return out;
 }
@@ -264,27 +302,58 @@ function benchmarksSentence(canons: BriefBenchmark[], clusters: CanonCluster[]):
   return `Benchmarks I love: ${joinList(names)}.`;
 }
 
-// ────────── Dealbreakers line ──────────
+// ────────── Dealbreakers as contrasts ──────────
 
-function dealbreakerPhrase(n: BriefBenchmark, type: PaletteType): string {
-  const styleName = styleNameFor(n.fp, type === "red" ? "red" : "white").toLowerCase();
+/** For one nemesis, compute a phrase describing what it does differently
+ *  from the loved centroid, using hedonic negative vocabulary. Returns
+ *  null if no axis clears the "meaningfully different" threshold. */
+function nemesisContrastPhrase(
+  n: BriefBenchmark,
+  centroid: FpVec,
+  ctx: TypeCtx | null,
+): string | null {
+  const active = ctx?.fit.active ?? (RAX as readonly FpKey[]);
+  const omega = ctx?.fit.omega ?? null;
+
+  type Cand = { axis: FpKey; dir: "hi" | "lo"; delta: number; weighted: number; phrase: string };
+  const cands: Cand[] = [];
+  for (const k of active) {
+    const raw = n.fp[k] - centroid[k];
+    const abs = Math.abs(raw);
+    if (abs < 0.14) continue; // must be meaningfully different, not noise
+    const dir: "hi" | "lo" = raw > 0 ? "hi" : "lo";
+    const phrase = NEG_PHRASE[k]?.[dir] ?? "";
+    if (!phrase) continue;
+    const w = omega ? omega[k] : 1;
+    cands.push({ axis: k, dir, delta: abs, weighted: abs * (w || 1), phrase });
+  }
+  if (cands.length === 0) return null;
+  cands.sort((a, b) => b.weighted - a.weighted);
+
   const hint = styleRegionHint(n);
-  return hint ? `${styleName} (e.g., ${hint})` : styleName;
+  const [p1, p2] = cands;
+  const core = p2 ? `${p1.phrase} with ${p2.phrase}` : p1.phrase;
+  return hint ? `${core} (e.g., ${hint})` : core;
 }
 
-function dealbreakersSentence(nemeses: BriefBenchmark[], type: PaletteType): string {
-  if (nemeses.length === 0) return "";
-  // Dedupe phrases (two nemeses in the same style shouldn't repeat).
-  const seen = new Set<string>();
+function dealbreakersSentence(
+  nemeses: BriefBenchmark[],
+  centroid: FpVec | null,
+  ctx: TypeCtx | null,
+): string {
+  if (nemeses.length === 0 || !centroid) return "";
   const phrases: string[] = [];
+  const seen = new Set<string>();
   for (const n of nemeses) {
-    const p = dealbreakerPhrase(n, type);
-    const norm = p.toLowerCase();
-    if (seen.has(norm)) continue;
-    seen.add(norm);
+    const p = nemesisContrastPhrase(n, centroid, ctx);
+    if (!p) continue;
+    const key = p.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
     phrases.push(p);
     if (phrases.length === 2) break;
   }
+  if (phrases.length === 0) return "";
   return `Please steer me away from: ${joinList(phrases)}.`;
 }
 
@@ -296,7 +365,6 @@ function omegaSentence(ctx: TypeCtx | null): string {
   const active = ctx.fit.active;
   if (active.length < 2) return "";
   const ranked = [...active].sort((a, b) => omega[b] - omega[a]);
-  // Only surface it if the top axis meaningfully exceeds the median.
   const median = [...active].map((k) => omega[k]).sort((a, b) => a - b)[Math.floor(active.length / 2)];
   if (omega[ranked[0]] <= median * 1.05) return "";
   const top = ranked.slice(0, 2).map((k) => OMEGA_PHRASE[k]);
@@ -305,26 +373,47 @@ function omegaSentence(ctx: TypeCtx | null): string {
 
 // ────────── Public builders ──────────
 
+type BuildOpts = {
+  /** Phrases already emitted in a sibling paragraph — for cross-paragraph
+   *  dedupe of small orientation clauses like "always with lift". */
+  usedClauses?: Set<string>;
+};
+
 /** Build one type's brief, or null when insufficient data. */
-export function buildTypeBrief(input: TypeBriefInputs): TypeBrief | null {
+export function buildTypeBrief(input: TypeBriefInputs, opts: BuildOpts = {}): TypeBrief | null {
   const { type, rated, ratedFp, canons, nemeses } = input;
   if (rated.length < BRIEF_MIN_RATINGS) return null;
 
   const { letters } = computeCode(rated, axesFor(type));
   const ctx = buildTypeContext(ratedFp, type === "red" ? "red" : "white");
   const clusters = ctx ? clusterCanons(canons, ctx) : [];
+  const centroid = lovedCentroid(ratedFp);
 
-  const sentences = [
-    styleSummarySentence(type, letters, clusters),
-    orientationSentence(letters),
-    benchmarksSentence(canons, clusters),
-    dealbreakersSentence(nemeses, type),
-    omegaSentence(ctx),
-  ].filter((s) => s.trim().length > 0);
+  const style = styleSummarySentence(type, clusters, ratedFp);
+
+  // Orientation clauses — dedupe against sibling paragraph.
+  const rawClauses = orientationClauses(letters);
+  const kept: string[] = [];
+  for (const c of rawClauses) {
+    const key = c.toLowerCase();
+    if (opts.usedClauses?.has(key)) continue;
+    opts.usedClauses?.add(key);
+    kept.push(c);
+  }
+  const orientation = kept.length > 0 ? capitalize(kept.join("; ")) + "." : "";
+
+  const benches = benchmarksSentence(canons, clusters);
+  const dealbreakers = dealbreakersSentence(nemeses, centroid, ctx);
+  const omega = omegaSentence(ctx);
+
+  const sentences = [style, orientation, benches, dealbreakers, omega]
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
+    .map((s, i) => (i === 0 ? capitalize(s) : s));
 
   if (sentences.length === 0) return null;
 
-  const paragraph = `${typeLabel(type)}: ${sentences.join(" ")}`;
+  const paragraph = tidyWhitespace(`${typeLabel(type)}: ${sentences.join(" ")}`);
   return { type, text: paragraph, wordCount: words(paragraph) };
 }
 
@@ -342,16 +431,20 @@ export type FullBrief = {
   overBudget: boolean;
 };
 
-/** Assemble the full brief. Combines available types, appends the footer. */
+/** Assemble the full brief. Combines available types, appends the footer.
+ *  Small orientation clauses are deduped across paragraphs so a two-type
+ *  user with the same acidity preference doesn't see "always with lift"
+ *  twice. */
 export function buildFullBrief(input: FullBriefInputs): FullBrief {
   const maxWords = input.maxWords ?? 120;
   const paragraphs: TypeBrief[] = [];
+  const usedClauses = new Set<string>();
   if (input.red) {
-    const r = buildTypeBrief(input.red);
+    const r = buildTypeBrief(input.red, { usedClauses });
     if (r) paragraphs.push(r);
   }
   if (input.white) {
-    const w = buildTypeBrief(input.white);
+    const w = buildTypeBrief(input.white, { usedClauses });
     if (w) paragraphs.push(w);
   }
   const body = paragraphs.map((p) => p.text).join("\n\n");
