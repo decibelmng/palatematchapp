@@ -191,21 +191,37 @@ function clusterCanons(
     groups.set(r, arr);
   }
 
-  const byId = new Map(canons.map((b) => [b.id, b] as const));
-  const clusters: CanonCluster[] = [];
-  for (const group of groups.values()) {
-    const members: BriefBenchmark[] = [];
-    for (const r of group) {
-      const b = byId.get(r.id);
-      if (b) members.push(b);
+  // Build cluster skeletons from ratedFp groups (centroid = ratedFp mean).
+  type Skel = { centroidFp: FpVec; members: BriefBenchmark[] };
+  const skels: Skel[] = Array.from(groups.values()).map((group) => ({
+    centroidFp: meanFp(group),
+    members: [],
+  }));
+
+  // Assign each BriefBenchmark to the nearest ratedFp cluster by ω-distance.
+  for (const b of canons) {
+    let bestIdx = -1;
+    let bestD = Infinity;
+    for (let i = 0; i < skels.length; i++) {
+      const d = distanceInContext(b.fp, skels[i].centroidFp, ctx);
+      if (d < bestD) { bestD = d; bestIdx = i; }
     }
-    if (members.length === 0) continue;
-    // Label = most-recent benchmark (input canons list is recency-desc).
-    const label = members[0];
-    clusters.push({ label, members, centroid: meanFp(group) });
+    if (bestIdx >= 0) skels[bestIdx].members.push(b);
   }
+
+  const clusters: CanonCluster[] = [];
+  for (const s of skels) {
+    if (s.members.length === 0) continue;
+    // Label = most-recent benchmark (input canons list is recency-desc).
+    const label = s.members[0];
+    clusters.push({ label, members: s.members, centroid: s.centroidFp });
+  }
+  // If nothing matched (edge case), fall back to fp-only clustering so we
+  // never lose the benchmarks line entirely.
+  if (clusters.length === 0) return clusterByFp(canons, ctx);
   return clusters;
 }
+
 
 /** BriefBenchmark-only fallback clustering. */
 function clusterByFp(canons: BriefBenchmark[], ctx: TypeCtx): CanonCluster[] {
