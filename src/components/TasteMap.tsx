@@ -355,12 +355,22 @@ export function TasteMap({ type, landmarks, loved, others = [], canonIds, nemesi
           const px = toPx({ x, y });
           const r = p.stars >= 5 ? 8 : 6;
           const isSelected = selected?.kind === "loved" && selected.p.key === p.key;
+          const isCanon = !!(p.bottleId && canonIds?.has(p.bottleId));
+          const isNemesis = !!(p.bottleId && nemesisIds?.has(p.bottleId));
           return (
             <g key={p.key + i}
               onClick={(e) => { e.stopPropagation(); setSelected({ kind: "loved", p }); }}
               style={{ cursor: "pointer" }}>
               <circle cx={px.px} cy={px.py} r={12} fill="transparent" />
               <g className="pm-pop-in" style={{ ["--pm-delay" as string]: `${T_DOTS + i * T_DOT_STAGGER}ms` }}>
+                {isCanon && (
+                  <circle cx={px.px} cy={px.py} r={r + 3.5}
+                    fill="none" stroke="#d4a03a" strokeOpacity={0.9} strokeWidth={1.5} />
+                )}
+                {isNemesis && (
+                  <circle cx={px.px} cy={px.py} r={r + 3.5}
+                    fill="none" stroke="var(--color-destructive)" strokeOpacity={0.85} strokeWidth={1.5} />
+                )}
                 <circle
                   key={isSelected ? `sel-${pulseTick}` : `dot-${p.key}`}
                   cx={px.px} cy={px.py} r={r}
@@ -379,11 +389,21 @@ export function TasteMap({ type, landmarks, loved, others = [], canonIds, nemesi
           if (!tierOn[tier]) return null;
           const px = toPx({ x, y });
           const isSelected = selected?.kind === "loved" && selected.p.key === p.key;
+          const isCanon = !!(p.bottleId && canonIds?.has(p.bottleId));
+          const isNemesis = !!(p.bottleId && nemesisIds?.has(p.bottleId));
           const onClick = (e: React.MouseEvent) => { e.stopPropagation(); setSelected({ kind: "loved", p }); };
           if (p.stars === 3) {
             return (
               <g key={`o-${p.key}-${i}`} onClick={onClick} style={{ cursor: "pointer" }}>
                 <circle cx={px.px} cy={px.py} r={12} fill="transparent" />
+                {isCanon && (
+                  <circle cx={px.px} cy={px.py} r={7.5}
+                    fill="none" stroke="#d4a03a" strokeOpacity={0.9} strokeWidth={1.25} />
+                )}
+                {isNemesis && (
+                  <circle cx={px.px} cy={px.py} r={7.5}
+                    fill="none" stroke="var(--color-destructive)" strokeOpacity={0.85} strokeWidth={1.25} />
+                )}
                 <circle cx={px.px} cy={px.py} r={4}
                   fill="none"
                   stroke="var(--color-muted-foreground)"
@@ -394,18 +414,33 @@ export function TasteMap({ type, landmarks, loved, others = [], canonIds, nemesi
           }
           // × mark for 1–2★
           const s = 4.5; // half-length ~9px total
+          const strokeColor = isNemesis
+            ? "var(--color-destructive)"
+            : isCanon
+              ? "#d4a03a"
+              : "var(--color-muted-foreground)";
+          const strokeOp = isNemesis || isCanon ? 0.95 : (isSelected ? 0.9 : 0.55);
           return (
             <g key={`o-${p.key}-${i}`} onClick={onClick} style={{ cursor: "pointer" }}
-               stroke="var(--color-muted-foreground)"
-               strokeOpacity={isSelected ? 0.9 : 0.55}
-               strokeWidth={1.5}
+               stroke={strokeColor}
+               strokeOpacity={strokeOp}
+               strokeWidth={isNemesis || isCanon ? 1.75 : 1.5}
                strokeLinecap="round">
               <circle cx={px.px} cy={px.py} r={12} fill="transparent" stroke="none" />
+              {isCanon && (
+                <circle cx={px.px} cy={px.py} r={7.5}
+                  fill="none" stroke="#d4a03a" strokeOpacity={0.9} strokeWidth={1.25} />
+              )}
+              {isNemesis && (
+                <circle cx={px.px} cy={px.py} r={7.5}
+                  fill="none" stroke="var(--color-destructive)" strokeOpacity={0.85} strokeWidth={1.25} />
+              )}
               <line x1={px.px - s} y1={px.py - s} x2={px.px + s} y2={px.py + s} />
               <line x1={px.px - s} y1={px.py + s} x2={px.px + s} y2={px.py - s} />
             </g>
           );
         })}
+
 
         {showOverlay && (
           <g>
