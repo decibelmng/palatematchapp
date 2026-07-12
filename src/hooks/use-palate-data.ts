@@ -236,10 +236,21 @@ export function useRate() {
           const verb = tier === "canon"
             ? `This is your Canon (${region}) — lowering the rating removes Canon status.`
             : `This is your Nemesis (${region}) — raising the rating removes Nemesis status.`;
-          return typeof window !== "undefined"
-            ? window.confirm(`${verb}\n\nContinue and update ${bottleName}?`)
-            : true;
+          return confirmDialog({
+            title: tier === "canon" ? "Remove Canon status?" : "Remove Nemesis status?",
+            description: (
+              <>
+                <p>{verb}</p>
+                <p className="mt-3">
+                  Continue and update <span className="font-semibold text-foreground">{bottleName}</span>?
+                </p>
+              </>
+            ),
+            confirmLabel: "Continue",
+            destructive: true,
+          });
         });
+
 
         const ok = await confirmFn({ tier: active.tier, region: active.region, bottleName });
         if (!ok) throw new RateCanceledError();
