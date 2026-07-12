@@ -275,6 +275,11 @@ function Home() {
         displayName={myProfile?.display_name || myProfile?.username || ""}
       />
 
+      {/* For your sommelier — deterministic natural-language palate brief */}
+      {sommelierBrief.paragraphs.length > 0 && (
+        <SommelierBriefCard brief={sommelierBrief} />
+      )}
+
       {/* View toggle: 2D map vs 3D cube */}
       {hasWebGL && !onboarding && (
         <div className="mt-6 flex items-center justify-center gap-1.5">
