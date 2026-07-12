@@ -292,14 +292,19 @@ export function TasteMap({ type, landmarks, loved, others = [], canonIds, nemesi
           </g>
         )}
 
-        {/* Axis captions — always visible */}
-        <text x={PAD_L + PLOT_W / 2} y={VB - 12} textAnchor="middle"
-          fontSize="10" letterSpacing="2.2"
-          fill="var(--color-muted-foreground)">{corners.xCap.toUpperCase()}</text>
-        <text x={0} y={0}
-          transform={`translate(14 ${PAD_T + PLOT_H / 2}) rotate(-90)`}
-          textAnchor="middle" fontSize="10" letterSpacing="2.2"
-          fill="var(--color-muted-foreground)">{corners.yCap.toUpperCase()}</text>
+        {/* Axis pole labels — anchored at each end of the plot edge */}
+        <g fontSize="10" letterSpacing="1.6"
+           fill="var(--color-muted-foreground)">
+          {/* X axis: Light (bottom-left) → Bold (bottom-right) */}
+          <text x={PAD_L} y={VB - 12} textAnchor="start">{corners.xLow.toUpperCase()}</text>
+          <text x={PAD_L + PLOT_W} y={VB - 12} textAnchor="end">{corners.xHigh.toUpperCase()}</text>
+          {/* Y axis: Fruit-forward (bottom of left edge) → yHigh (top of left edge) */}
+          <text transform={`translate(14 ${PAD_T + PLOT_H}) rotate(-90)`}
+            textAnchor="start">{corners.yLow.toUpperCase()}</text>
+          <text transform={`translate(14 ${PAD_T}) rotate(-90)`}
+            textAnchor="end">{corners.yHigh.toUpperCase()}</text>
+        </g>
+
 
         {/* Rings (tier b) — dashed primary 15%, draw-in via stroke-dashoffset */}
         {clusters.map((cl, i) => {
