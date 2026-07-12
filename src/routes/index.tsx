@@ -1,8 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState, useEffect } from "react";
+import { lazy, Suspense, useMemo, useState, useEffect } from "react";
 import { AuthGate } from "@/components/AuthGate";
 import { TasteMap, type LovedPoint } from "@/components/TasteMap";
 import { PalateBars } from "@/components/PalateBars";
+
+const TasteCube = lazy(() => import("@/components/TasteCube").then((m) => ({ default: m.TasteCube })));
+
+function detectWebGL(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    const c = document.createElement("canvas");
+    return !!(c.getContext("webgl2") || c.getContext("webgl"));
+  } catch { return false; }
+}
 
 import { ShareCardDialog } from "@/components/ShareCardDialog";
 import { useMyProfile } from "@/hooks/use-friends";
@@ -98,6 +108,11 @@ function Home() {
         bottleId: b.id,
         axBody: b.ax_body,
         axFruit: b.ax_fruit_char,
+        axTannin: b.ax_tannin,
+        axOak: b.fp_oak,
+        axAcidity: b.ax_acidity,
+        axSweet: b.ax_sweet,
+        axRipe: b.fp_ripe,
         stars: r.stars,
         name: b.name,
         producer: b.producer,
@@ -128,6 +143,7 @@ function Home() {
       seen.set(key, {
         key, bottleId: b.id,
         axBody: b.ax_body, axFruit: b.ax_fruit_char,
+        axTannin: b.ax_tannin, axOak: b.fp_oak, axAcidity: b.ax_acidity, axSweet: b.ax_sweet, axRipe: b.fp_ripe,
         stars: r.stars, name: b.name, producer: b.producer, region: b.region,
       });
     }
@@ -141,6 +157,15 @@ function Home() {
   const [shareOpen, setShareOpen] = useState(false);
   const activeCode = scope === "red" ? red.code : white.code;
   const canShare = activeRated.length >= MIN_RATINGS;
+
+  // 2D / 3D toggle — persists, hidden entirely if WebGL unavailable.
+  const [hasWebGL, setHasWebGL] = useState(false);
+  useEffect(() => { setHasWebGL(detectWebGL()); }, []);
+  const [view, setView] = useState<"2d" | "3d">(() => {
+    if (typeof window === "undefined") return "2d";
+    return (localStorage.getItem("pm-map-view") as "2d" | "3d") || "2d";
+  });
+  useEffect(() => { try { localStorage.setItem("pm-map-view", view); } catch { /* ignore */ } }, [view]);
 
   return (
     <div className="pt-2">
@@ -181,19 +206,57 @@ function Home() {
         displayName={myProfile?.display_name || myProfile?.username || ""}
       />
 
-      {/* Taste map */}
-      <div className="mt-10">
-        <TasteMap
-          type={scope}
-          landmarks={resolvedLandmarks}
-          loved={onboarding ? [] : lovedPoints}
-          others={onboarding ? [] : otherPoints}
-          canonIds={canonBottleIds}
-          nemesisIds={nemesisBottleIds}
-          showOverlay={onboarding}
-          overlayText="Where do you land?"
-        />
+      {/* View toggle: 2D map vs 3D cube */}
+      {hasWebGL && !onboarding && (
+        <div className="mt-6 flex items-center justify-center gap-1.5">
+          {(["2d", "3d"] as const).map((v) => {
+            const on = view === v;
+            return (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setView(v)}
+                aria-pressed={on}
+                className={`rounded-full border-[0.5px] px-3 py-0.5 text-[10px] uppercase transition ${
+                  on ? "border-primary bg-primary/10 text-foreground"
+                     : "border-border text-muted-foreground hover:bg-accent"
+                }`}
+                style={{ letterSpacing: "0.16em" }}
+              >
+                {v === "2d" ? "2D map" : "3D cube"}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Taste map / cube */}
+      <div className="mt-6">
+        {view === "3d" && hasWebGL && !onboarding ? (
+          <Suspense fallback={<div className="w-full max-w-[480px] mx-auto aspect-square rounded-[14px] border-[0.5px] border-border bg-card/40" />}>
+            <TasteCube
+              type={scope}
+              loved={lovedPoints}
+              others={otherPoints}
+              canonIds={canonBottleIds}
+              nemesisIds={nemesisBottleIds}
+            />
+          </Suspense>
+        ) : (
+          <TasteMap
+            type={scope}
+            landmarks={resolvedLandmarks}
+            loved={onboarding ? [] : lovedPoints}
+            others={onboarding ? [] : otherPoints}
+            canonIds={canonBottleIds}
+            nemesisIds={nemesisBottleIds}
+            showOverlay={onboarding}
+            overlayText="Where do you land?"
+          />
+        )}
       </div>
+
+
 
 
       {onboarding ? (

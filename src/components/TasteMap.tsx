@@ -7,6 +7,12 @@ export type LovedPoint = {
   bottleId?: string;
   axBody: number;
   axFruit: number;
+  /** Optional extra axes for 3D cube view. All 0..1. */
+  axTannin?: number;
+  axOak?: number;
+  axAcidity?: number;
+  axSweet?: number;
+  axRipe?: number;
   stars: number;      // 1..5
   name: string;
   producer: string | null;
