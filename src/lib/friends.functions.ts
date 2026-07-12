@@ -106,14 +106,12 @@ export const sendFriendRequest = createServerFn({ method: "POST" })
 
     let targetId = data.user_id ?? null;
     if (!targetId && data.username) {
-      const { data: p, error } = await supabase
-        .from("profiles")
-        .select("id")
-        .eq("username", data.username.trim().toLowerCase())
-        .maybeSingle();
+      const { data: resolvedId, error } = await supabase.rpc("resolve_username_to_id", {
+        p_username: data.username.trim().toLowerCase(),
+      });
       if (error) throw new Error(error.message);
-      if (!p) throw new Error("No user with that username.");
-      targetId = p.id;
+      if (!resolvedId) throw new Error("No user with that username.");
+      targetId = resolvedId as string;
     }
     if (!targetId) throw new Error("Missing target user.");
     if (targetId === userId) throw new Error("You can't friend yourself.");
