@@ -52,13 +52,26 @@ export function NemesisAction({ bottle, stars, compact = false }: Props) {
   function onClick(e: React.MouseEvent) {
     e.stopPropagation();
     if (isNemesis) {
-      if (confirm(`Remove Nemesis status from ${bottle.name}? It'll revert to its ${stars ?? 1}★ rating.`)) {
-        demote.mutate(myNemesisForThis!.id);
-      }
+      void (async () => {
+        const ok = await confirmDialog({
+          title: "Remove Nemesis status?",
+          description: (
+            <>
+              Remove Nemesis status from{" "}
+              <span className="font-semibold text-foreground">{bottle.name}</span>?
+              It'll revert to its {stars ?? 1}★ rating.
+            </>
+          ),
+          confirmLabel: "Remove Nemesis",
+          destructive: true,
+        });
+        if (ok) demote.mutate(myNemesisForThis!.id);
+      })();
       return;
     }
     setDialog(conflicting ? "replace" : "confirm");
   }
+
 
   const label = isNemesis ? "Nemesis (tap to remove)" : "Mark as my Nemesis";
   const btnClasses = compact
