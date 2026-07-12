@@ -40,6 +40,8 @@ function Home() {
 
   const { data: canons } = useMyCanons();
   const canonBottleIds = useMemo(() => new Set((canons ?? []).filter((c) => c.tier === "canon").map((c) => c.bottle_id)), [canons]);
+  const nemesisBottleIds = useMemo(() => new Set((canons ?? []).filter((c) => c.tier === "nemesis").map((c) => c.bottle_id)), [canons]);
+
 
   // Palate letter code inputs (unchanged math). Canon-anchored bottles pass
   // canon:true so computeCode multiplies their sample weight by CANON_WEIGHT.
