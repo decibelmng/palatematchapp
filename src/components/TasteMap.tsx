@@ -507,9 +507,25 @@ export function TasteMap({ type, landmarks, loved, others = [], canonIds, nemesi
           Wines you avoid
         </span>
         <span className="inline-flex items-center gap-1.5">
+          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+            <circle cx="7" cy="7" r="6" fill="none" stroke="#d4a03a" strokeOpacity={0.9} strokeWidth={1.5} />
+            <circle cx="7" cy="7" r="2.5" fill="var(--color-primary)" />
+          </svg>
+          Canons
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+            <circle cx="7" cy="7" r="6" fill="none" stroke="var(--color-destructive)" strokeOpacity={0.85} strokeWidth={1.5} />
+            <line x1="4" y1="4" x2="10" y2="10" stroke="var(--color-destructive)" strokeOpacity={0.95} strokeWidth={1.75} strokeLinecap="round" />
+            <line x1="4" y1="10" x2="10" y2="4" stroke="var(--color-destructive)" strokeOpacity={0.95} strokeWidth={1.75} strokeLinecap="round" />
+          </svg>
+          Nemeses
+        </span>
+        <span className="inline-flex items-center gap-1.5">
           <span className="inline-block w-2.5 h-2.5 rounded-full border-[1.25px] border-muted-foreground bg-background" />
           Famous landmarks
         </span>
+
         <span className="inline-flex items-center gap-1.5">
           <svg width="20" height="8" viewBox="0 0 20 8" aria-hidden="true">
             <path d="M1 4 Q 10 -2 19 4" fill="none"
