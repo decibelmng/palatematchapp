@@ -63,6 +63,67 @@ export function bottleToFp(b: BottleRow): Record<FpKey, number> {
   };
 }
 
+/** True when the bottle has calibrated fingerprint axes (not defaults). */
+export function isCalibrated(b: BottleRow | null | undefined): boolean {
+  if (!b) return false;
+  if ((b as { raw?: boolean }).raw) return false;
+  // Server gate is `fp_fresh IS NOT NULL`; client BottleRow types it as number,
+  // so we conservatively treat 0-vector as uncalibrated too.
+  const fp = bottleToFp(b);
+  return Object.values(fp).some((v) => Number.isFinite(v) && v !== 0);
+}
+
+/** Compute predicted stars for a candidate bottle from cached ratings + bottle rows.
+ *  Returns null when there's not enough context or the bottle isn't calibrated —
+ *  the dispute signal only fires against a real prediction. */
+export function predictForBottleFromCache(
+  qc: QueryClient,
+  userId: string,
+  target: BottleRow,
+): number | null {
+  if (!isCalibrated(target)) return null;
+  const ratings = qc
+    .getQueriesData<{ bottle_id: string; stars: number }[]>({ queryKey: ["ratings", userId] })
+    .flatMap(([, data]) => data ?? []);
+  if (ratings.length < 3) return null;
+
+  // Collect rated bottles from any cached bottles queries.
+  const allBottles = qc
+    .getQueriesData<BottleRow[]>({ queryKey: ["bottles"] })
+    .flatMap(([, data]) => data ?? []);
+  const bottleById = new Map<string, BottleRow>();
+  for (const b of allBottles) if (b?.id) bottleById.set(b.id, b);
+
+  const targetType = bottleType(target);
+  const sameType: RatedFp[] = [];
+  const rawSameType: (RatedFp & { vintage: number | null })[] = [];
+  for (const r of ratings) {
+    const b = bottleById.get(r.bottle_id);
+    if (!b) continue;
+    if (bottleType(b) !== targetType) continue;
+    if (!isCalibrated(b)) continue;
+    rawSameType.push({
+      id: b.id, name: b.name, producer: b.producer, region: b.region,
+      type: bottleType(b), vintage: b.vintage, fp: bottleToFp(b), stars: r.stars,
+    });
+  }
+  if (rawSameType.length === 0) return null;
+  const cuvees = aggregateRated(rawSameType);
+  for (const c of cuvees) {
+    sameType.push({
+      id: c.id, name: c.name, producer: c.producer, region: c.region,
+      type: c.type, fp: c.fp, stars: c.stars,
+    });
+  }
+  const cand: BottleFp = {
+    id: target.id, name: target.name, producer: target.producer, region: target.region,
+    type: targetType, fp: bottleToFp(target),
+  };
+  const [rec] = recommend(sameType, [cand]);
+  return rec?.predicted ?? null;
+}
+
+
 export function useBottlesByIds(ids: string[]) {
   const key = [...ids].sort().join(",");
   return useQuery({
