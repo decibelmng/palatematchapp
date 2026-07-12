@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
+import { ChevronDown } from "lucide-react";
 import { useBottlesByIds, useRatings, useRate, bottleToFp, bottleType, type BottleRow } from "@/hooks/use-palate-data";
 import { StarTap } from "@/components/StarTap";
+import { StarDisplay } from "@/components/StarDisplay";
 import { CanonAction } from "@/components/CanonAction";
 import { NemesisAction } from "@/components/NemesisAction";
-
-
 import { BenchmarkTierBadges } from "@/components/BenchmarkTierBadge";
 import { useMyCanons } from "@/hooks/use-canon";
 import { aggregateRated } from "@/lib/cuvee";
@@ -32,6 +32,7 @@ export function YourRatingsList() {
   const qc = useQueryClient();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [draftNote, setDraftNote] = useState("");
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
   const { data: canons } = useMyCanons();
 
   const bottleById = useMemo(() => {
@@ -39,6 +40,12 @@ export function YourRatingsList() {
     for (const b of bottles ?? []) m.set(b.id, b);
     return m;
   }, [bottles]);
+
+  const starsByBottle = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of ratings ?? []) m.set(r.bottle_id, r.stars);
+    return m;
+  }, [ratings]);
 
   async function saveNote(bottleId: string) {
     const note = draftNote.trim();
@@ -52,6 +59,15 @@ export function YourRatingsList() {
     setEditingId(null);
     setDraftNote("");
     qc.invalidateQueries({ queryKey: ["bottles"] });
+  }
+
+  function toggleExpanded(key: string) {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
   }
 
   const rows = useMemo(() => {
@@ -117,88 +133,141 @@ export function YourRatingsList() {
           const rep = bottleById.get(c.id);
           const note = rep?.tasting_note ?? null;
           const isOwn = !!rep && !!session && rep.added_by === session.user.id;
-          const isResearched = rep?.source?.includes("LLM-researched") ?? false;
           const editing = editingId === c.id;
+          const isExpanded = expanded.has(c.cuvee);
+
+          // Order child vintages newest-first, stable
+          const children = aggregated
+            ? [...c.bottleIds]
+                .map((id) => bottleById.get(id))
+                .filter((b): b is BottleRow => !!b)
+                .sort((a, b) => (b.vintage ?? 0) - (a.vintage ?? 0))
+            : [];
+
           return (
-            <li key={c.cuvee} className="py-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Link
-                    to="/wine/$id"
-                    params={{ id: c.id }}
-                    className="text-sm font-medium leading-tight truncate hover:underline"
-                  >
-                    {c.name}
-                  </Link>
-                  <BenchmarkTierBadges benchmarks={canons ?? []} bottleIds={c.bottleIds} />
-                </div>
+            <li key={c.cuvee} className="py-3">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                {/* Text block — tap target for /wine/$id */}
+                <Link
+                  to="/wine/$id"
+                  params={{ id: c.id }}
+                  className="min-w-0 flex-1 block group"
+                >
+                  <div className="flex items-start gap-2 flex-wrap">
+                    <p className="text-sm font-medium leading-snug line-clamp-2 group-hover:underline break-words">
+                      {c.name}
+                    </p>
+                    <BenchmarkTierBadges benchmarks={canons ?? []} bottleIds={c.bottleIds} />
+                  </div>
 
-                <p className="text-xs text-muted-foreground truncate">
-                  {[c.producer, c.region].filter(Boolean).join(" · ")}
-                  {vl ? <span className="text-muted-foreground/80"> · {vl}</span> : null}
-                </p>
-                {aggregated && (
-                  <p className="text-[11px] text-muted-foreground/80 mt-0.5">
-                    avg of {c.bottleIds.length} ratings across vintages
+                  <p className="text-xs text-muted-foreground mt-0.5 break-words">
+                    {[c.producer, c.region].filter(Boolean).join(" · ")}
                   </p>
-                )}
-                {note && !editing && (
-                  <div className="mt-1.5 rounded border-l-2 border-primary/40 pl-2 py-0.5">
-                    {isResearched && (
-                      <p className="text-[9px] uppercase tracking-[0.15em] text-muted-foreground">
-                        researched estimate
-                      </p>
-                    )}
-                    <p className="text-[11px] italic text-muted-foreground leading-snug">"{note}"</p>
-                  </div>
-                )}
-                {isOwn && !editing && (
-                  <button
-                    className="mt-1 text-[10px] text-primary underline"
-                    onClick={() => { setEditingId(c.id); setDraftNote(note ?? ""); }}
-                  >
-                    {note ? "edit note" : "+ add your note"}
-                  </button>
-                )}
-                {editing && (
-                  <div className="mt-1.5">
-                    <textarea
-                      value={draftNote}
-                      onChange={(e) => setDraftNote(e.target.value)}
-                      rows={2}
-                      placeholder="Your tasting impression…"
-                      className="w-full bg-input border border-border rounded-md px-2 py-1 text-xs"
-                    />
-                    <div className="flex gap-2 mt-1">
-                      <button onClick={() => setEditingId(null)} className="text-[10px] text-muted-foreground underline">cancel</button>
-                      <button onClick={() => saveNote(c.id)} className="text-[10px] text-primary underline font-medium">save</button>
-                    </div>
-                  </div>
-                )}
-              </div>
-              <div className="shrink-0 flex flex-col items-end gap-1.5">
-                {aggregated ? (
-                  <div className="flex items-center gap-3">
-                    <span className="font-serif text-primary">{c.stars.toFixed(1)}★</span>
-                    <button
-                      className="text-xs text-muted-foreground underline"
-                      onClick={() => {
-                        for (const id of c.bottleIds) rate.mutate({ bottleId: id, stars: null });
-                      }}
-                    >
-                      clear all
-                    </button>
-                  </div>
-                ) : (
-                  <StarTap
-                    value={c.stars}
-                    onChange={(s) => rate.mutate({ bottleId: c.bottleIds[0], stars: s })}
-                  />
-                )}
-                {rep && <CanonAction bottle={rep} stars={c.stars} />}
-                {rep && <NemesisAction bottle={rep} stars={c.stars} />}
+                  {vl && (
+                    <p className="text-[11px] text-muted-foreground/80 mt-0.5 break-words">
+                      {aggregated ? `${vl}` : `Vintage ${vl}`}
+                    </p>
+                  )}
+                </Link>
 
+                {/* Stars + actions */}
+                <div className="shrink-0 flex flex-col items-start sm:items-end gap-1.5">
+                  {aggregated ? (
+                    <div className="flex items-center gap-2.5">
+                      <StarDisplay
+                        value={c.stars}
+                        ariaLabel={`Average ${c.stars.toFixed(1)} of 5 across ${c.bottleIds.length} vintages`}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => toggleExpanded(c.cuvee)}
+                        aria-expanded={isExpanded}
+                        aria-label={isExpanded ? "Hide vintages" : "Show vintages"}
+                        className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+                      >
+                        <span>{c.stars.toFixed(1)} · avg of {c.bottleIds.length} vintages</span>
+                        <ChevronDown
+                          size={14}
+                          className={`transition-transform ${isExpanded ? "rotate-180" : ""}`}
+                        />
+                      </button>
+                    </div>
+                  ) : (
+                    <StarTap
+                      value={c.stars}
+                      onChange={(s) => rate.mutate({ bottleId: c.bottleIds[0], stars: s })}
+                    />
+                  )}
+                  {!aggregated && rep && <CanonAction bottle={rep} stars={c.stars} />}
+                  {!aggregated && rep && <NemesisAction bottle={rep} stars={c.stars} />}
+                </div>
               </div>
+
+              {/* Catalog note — only for user-added bottles, muted + labeled */}
+              {isOwn && note && !editing && (
+                <div className="mt-2 rounded border-l-2 border-border pl-2 py-0.5">
+                  <p className="text-[9px] uppercase tracking-[0.15em] text-muted-foreground/80">
+                    Catalog note
+                  </p>
+                  <p className="text-[11px] text-muted-foreground leading-snug">{note}</p>
+                </div>
+              )}
+              {isOwn && !editing && (
+                <button
+                  className="mt-1 text-[10px] text-primary underline"
+                  onClick={() => { setEditingId(c.id); setDraftNote(note ?? ""); }}
+                >
+                  {note ? "edit catalog note" : "+ add catalog note"}
+                </button>
+              )}
+              {isOwn && editing && (
+                <div className="mt-1.5">
+                  <textarea
+                    value={draftNote}
+                    onChange={(e) => setDraftNote(e.target.value)}
+                    rows={2}
+                    placeholder="Catalog tasting note for this bottle…"
+                    className="w-full bg-input border border-border rounded-md px-2 py-1 text-xs"
+                  />
+                  <div className="flex gap-2 mt-1">
+                    <button onClick={() => setEditingId(null)} className="text-[10px] text-muted-foreground underline">cancel</button>
+                    <button onClick={() => saveNote(c.id)} className="text-[10px] text-primary underline font-medium">save</button>
+                  </div>
+                </div>
+              )}
+
+              {/* Expanded per-vintage children */}
+              {aggregated && isExpanded && (
+                <ul className="mt-3 ml-3 pl-3 border-l border-border/60 space-y-2.5">
+                  {children.map((child) => {
+                    const childStars = starsByBottle.get(child.id) ?? null;
+                    return (
+                      <li
+                        key={child.id}
+                        className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between"
+                      >
+                        <Link
+                          to="/wine/$id"
+                          params={{ id: child.id }}
+                          className="min-w-0 flex-1 text-xs text-foreground hover:underline"
+                        >
+                          <span className="font-medium">{child.vintage ?? "NV"}</span>
+                          <span className="text-muted-foreground"> · {child.name}</span>
+                        </Link>
+                        <div className="shrink-0 flex items-center gap-2 flex-wrap">
+                          <StarTap
+                            size="sm"
+                            value={childStars}
+                            onChange={(s) => rate.mutate({ bottleId: child.id, stars: s })}
+                          />
+                          <CanonAction bottle={child} stars={childStars} compact />
+                          <NemesisAction bottle={child} stars={childStars} compact />
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
             </li>
           );
         })}
