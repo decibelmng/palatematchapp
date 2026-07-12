@@ -4,7 +4,7 @@ import { recommend, type RatedFp, type BottleFp } from "../src/lib/recommender";
 
 const USER_ID = "e3c4104c-56e7-4b6b-a359-5dc063302951";
 const url = process.env.SUPABASE_URL!;
-const key = process.env.SUPABASE_PUBLISHABLE_KEY!;
+const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_PUBLISHABLE_KEY!;
 const sb = createClient(url, key);
 
 const FP_COLS =
@@ -107,18 +107,26 @@ async function run(type: "red" | "white") {
 
   // Named acceptance targets (red only)
   if (type === "red") {
-    const targets = ["Masseto", "Caymus", "Quilceda", "Earthquake"];
+    console.log(`\ntotal recs=${recs.length}`);
+    const eq = recs.filter((r) => r.bottle.name.toLowerCase().startsWith("earthquake"));
+    console.log(`Earthquake* in recs = ${eq.length}`);
+    for (const r of eq.slice(0, 3)) console.log("  raw:", r.bottle.name, "|", r.bottle.producer);
+
+    const targets = [
+      { q: "earthquake", label: "Earthquake" },
+      { q: "masseto", label: "Masseto" },
+      { q: "caymus", label: "Caymus" },
+      { q: "quilceda", label: "Quilceda" },
+    ];
     console.log("\n--- Acceptance: named targets ---");
-    for (const q of targets) {
-      const hits = recs.filter((r) =>
-        r.bottle.name.toLowerCase().includes(q.toLowerCase()),
-      );
-      // Print first 3 matches per query
-      for (const r of hits.slice(0, 3)) {
+    for (const { q, label } of targets) {
+      const hits = recs.filter((r) => r.bottle.name.toLowerCase().includes(q));
+      console.log(`[${label}] ${hits.length} matches`);
+      for (const r of hits.slice(0, 8)) {
         const cr = r.contestedReason;
         const vr = r.vetoReason;
         console.log(
-          `[${q}] ${r.bottle.name} — vetoed=${r.vetoed} contested=${r.contested}` +
+          `  ${r.bottle.name} — pred=${r.predicted.toFixed(2)} veto=${r.vetoed} contested=${r.contested}` +
             (vr ? ` d_nem=${vr.distance.toFixed(3)}` : "") +
             (cr
               ? ` d_nem=${cr.nemesisDistance.toFixed(3)} d_love=${cr.positiveDistance.toFixed(3)} → love=${cr.nearestPositive.name}`
@@ -136,6 +144,26 @@ async function run(type: "red" | "white") {
   for (const { r, cs } of rankedVetoed) {
     console.log(
       `  crit=${cs} · ${r.bottle.name} · ${r.bottle.producer ?? ""} · d_nem=${r.vetoReason!.distance.toFixed(3)} · nem=${r.vetoReason!.nemesis.name} · axes=${r.vetoReason!.drivingAxes.join(",")}`,
+    );
+  }
+
+  // Per-Nemesis contested/veto census
+  console.log("\n--- Per-Nemesis census ---");
+  const nemNames = rated.filter((r) => r.nemesis).map((r) => r.name);
+  for (const nn of nemNames) {
+    const v = vetoed.filter((r) => r.vetoReason?.nemesis.name === nn).length;
+    const c = contested.filter((r) => r.contestedReason?.nemesis.name === nn).length;
+    console.log(`  ${nn} — vetoed=${v} contested=${c}`);
+  }
+
+  console.log("\n--- Top 10 contested by predicted ---");
+  const topContested = [...contested]
+    .sort((a, b) => b.predicted - a.predicted)
+    .slice(0, 10);
+  for (const r of topContested) {
+    const cr = r.contestedReason!;
+    console.log(
+      `  pred=${r.predicted.toFixed(2)} · ${r.bottle.name} · ${r.bottle.producer ?? ""} · d_nem=${cr.nemesisDistance.toFixed(3)} d_love=${cr.positiveDistance.toFixed(3)} · nem=${cr.nemesis.name} · love=${cr.nearestPositive.name}`,
     );
   }
 }
