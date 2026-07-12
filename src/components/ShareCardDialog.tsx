@@ -16,6 +16,7 @@ export function ShareCardDialog({ open, onClose, type, code, displayName }: Prop
   const cardRef = useRef<HTMLDivElement>(null);
   const [msg, setMsg] = useState<string | null>(null);
   const letters = lettersFromCode(code, axesFor(type));
+  const brief = useSommelierBrief();
 
   useEffect(() => { if (!open) setMsg(null); }, [open]);
 
