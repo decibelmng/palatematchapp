@@ -158,7 +158,14 @@ function Home() {
   const activeCode = scope === "red" ? red.code : white.code;
   const canShare = activeRated.length >= MIN_RATINGS;
 
-  return (
+  // 2D / 3D toggle — persists, hidden entirely if WebGL unavailable.
+  const [hasWebGL, setHasWebGL] = useState(false);
+  useEffect(() => { setHasWebGL(detectWebGL()); }, []);
+  const [view, setView] = useState<"2d" | "3d">(() => {
+    if (typeof window === "undefined") return "2d";
+    return (localStorage.getItem("pm-map-view") as "2d" | "3d") || "2d";
+  });
+  useEffect(() => { try { localStorage.setItem("pm-map-view", view); } catch { /* ignore */ } }, [view]);
     <div className="pt-2">
       <p className="text-[10px] uppercase text-muted-foreground" style={{ letterSpacing: "0.22em" }}>Your palates</p>
 
