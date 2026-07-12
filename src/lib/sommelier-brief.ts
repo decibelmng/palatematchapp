@@ -484,7 +484,7 @@ export function buildTypeBrief(input: TypeBriefInputs, opts: BuildOpts = {}): Ty
 
   const { letters } = computeCode(rated, axesFor(type));
   const ctx = buildTypeContext(ratedFp, type === "red" ? "red" : "white");
-  const clusters = ctx ? clusterCanons(canons, ctx) : [];
+  const clusters = ctx ? clusterCanons(canons, ratedFp, ctx) : [];
   const centroid = lovedCentroid(ratedFp);
 
   const style = styleSummarySentence(type, clusters, ratedFp);
@@ -502,7 +502,8 @@ export function buildTypeBrief(input: TypeBriefInputs, opts: BuildOpts = {}): Ty
 
   const benches = benchmarksSentence(canons, clusters);
   const dealbreakers = dealbreakersSentence(nemeses, centroid, ctx);
-  const omega = omegaSentence(ctx);
+  const omega = omegaSentence(ctx, centroid, nemeses);
+
 
   const sentences = [style, orientation, benches, dealbreakers, omega]
     .map((s) => s.trim())
