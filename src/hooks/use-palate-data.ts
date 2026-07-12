@@ -285,11 +285,20 @@ export function useRate() {
                 toast.error("No previous rating to restore.");
                 return;
               }
+              const undoTarget = qc
+                .getQueriesData<BottleRow[]>({ queryKey: ["bottles"] })
+                .flatMap(([, data]) => data ?? [])
+                .find((b): b is BottleRow => !!b && b.id === result.bottleId) ?? null;
+              const undoPredicted = undoTarget && session
+                ? predictForBottleFromCache(qc, session.user.id, undoTarget)
+                : null;
               const { error } = await (supabase as any).rpc("restore_rating_and_benchmark", {
                 p_bottle_id: result.bottleId,
                 p_stars: result.previousStars,
                 p_tier: result.demotedTier,
+                p_predicted: undoPredicted,
               });
+
               if (error) {
                 toast.error(error.message || "Couldn't undo.");
                 return;
