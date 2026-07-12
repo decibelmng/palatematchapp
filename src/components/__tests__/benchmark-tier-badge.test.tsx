@@ -75,7 +75,6 @@ describe("benchmark tier badges", () => {
       ax_sweet: 0.5,
       tasting_note: null,
       source: null,
-      added_by: null,
     };
 
     const html = renderToStaticMarkup(<CanonAction bottle={bottle} stars={1} />);
