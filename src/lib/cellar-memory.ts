@@ -116,8 +116,10 @@ export function computeCellarMemory(args: {
           scanned: w,
           bottle,
           stars: starsById.get(w.matched_bottle_id)!,
+          note: noteById.get(w.matched_bottle_id) ?? null,
           isCanon: canonBottleIds.has(w.matched_bottle_id),
           isNemesis: nemesisBottleIds.has(w.matched_bottle_id),
+
 
         };
         matches.push(m);
