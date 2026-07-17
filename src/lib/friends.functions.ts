@@ -208,13 +208,15 @@ export const updateMyProfile = createServerFn({ method: "POST" })
     z.object({
       username: z.string().regex(/^[a-z0-9_]{3,24}$/i).optional(),
       display_name: z.string().max(60).optional(),
+      onboarding_stage: z.enum(["intro", "rate5", "done"]).optional(),
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const patch: { username?: string; display_name?: string } = {};
+    const patch: { username?: string; display_name?: string; onboarding_stage?: string } = {};
     if (data.username !== undefined) patch.username = data.username.toLowerCase();
     if (data.display_name !== undefined) patch.display_name = data.display_name;
+    if (data.onboarding_stage !== undefined) patch.onboarding_stage = data.onboarding_stage;
     if (Object.keys(patch).length === 0) return { ok: true };
     const { error } = await supabase.from("profiles").update(patch).eq("id", userId);
     if (error) {
@@ -232,7 +234,7 @@ export const getMyProfile = createServerFn({ method: "GET" })
     const { supabase, userId } = context;
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, username, display_name, palate_code_red, palate_code_white, n_rated, recent_groups")
+      .select("id, username, display_name, palate_code_red, palate_code_white, n_rated, recent_groups, onboarding_stage")
       .eq("id", userId)
       .maybeSingle();
     if (error) throw new Error(error.message);

@@ -16,6 +16,9 @@ function detectWebGL(): boolean {
 
 import { ShareCardDialog } from "@/components/ShareCardDialog";
 import { useMyProfile } from "@/hooks/use-friends";
+import { useOnboardingStage } from "@/hooks/use-onboarding";
+import { OnboardingIntro } from "@/components/OnboardingIntro";
+import { PalateReveal } from "@/components/PalateReveal";
 import {
   useBottlesByIds,
   useRatings,
@@ -87,6 +90,23 @@ function Home() {
   const activeRated = scope === "red" ? redRated : whiteRated;
   const totalRated = ratings?.length ?? 0;
   const onboarding = activeRated.length < MIN_RATINGS;
+
+  // ── Onboarding stage machine ─────────────────────────────────────────
+  // 'intro' → full welcome screen.
+  // 'rate5' → home with progress block until a palate crosses MIN_RATINGS.
+  // 'done'  → normal home.
+  // Reveal is a client-only one-shot when transitioning rate5 → done.
+  const { stage, isLoading: stageLoading, setStage } = useOnboardingStage();
+  const anyPalateReady = redRated.length >= MIN_RATINGS || whiteRated.length >= MIN_RATINGS;
+  const [showReveal, setShowReveal] = useState(false);
+  useEffect(() => {
+    if (stageLoading) return;
+    if (stage !== "done" && anyPalateReady) {
+      setShowReveal(true);
+      setStage("done").catch(() => { /* toast handled elsewhere */ });
+    }
+  }, [stage, stageLoading, anyPalateReady, setStage]);
+
 
   // Loved bottles (≥4★) of the active type, deduped by cuvée for the map.
   // Keep the highest star rating seen across the cuvée.
@@ -168,8 +188,22 @@ function Home() {
   });
   useEffect(() => { try { localStorage.setItem("pm-map-view", view); } catch { /* ignore */ } }, [view]);
 
+  // First-run intro: gate the entire home surface until the user starts rating.
+  // Skip only after profile has loaded so we don't flash the full home for
+  // a fresh signup.
+  if (!stageLoading && stage === "intro" && totalRated === 0) {
+    return <OnboardingIntro onStart={() => { setStage("rate5").catch(() => { /* noop */ }); }} />;
+  }
+
   return (
     <div className="pt-2">
+      {showReveal && (
+        <PalateReveal
+          code={activeCode}
+          type={scope}
+          onDismiss={() => setShowReveal(false)}
+        />
+      )}
       <p className="text-[10px] uppercase text-muted-foreground" style={{ letterSpacing: "0.22em" }}>Your palates</p>
 
       {/* Two-code header */}
