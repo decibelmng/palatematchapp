@@ -247,12 +247,76 @@ export type Database = {
         }
         Relationships: []
       }
+      price_observations: {
+        Row: {
+          bottle_id: string | null
+          created_at: string
+          currency: string
+          cuvee_key: string | null
+          id: string
+          menu_price: number
+          observed_at: string
+          raw_line: string | null
+          restaurant_id: string
+          scan_id: string | null
+          source: string
+          superseded: boolean
+          user_id: string
+        }
+        Insert: {
+          bottle_id?: string | null
+          created_at?: string
+          currency?: string
+          cuvee_key?: string | null
+          id?: string
+          menu_price: number
+          observed_at?: string
+          raw_line?: string | null
+          restaurant_id: string
+          scan_id?: string | null
+          source: string
+          superseded?: boolean
+          user_id?: string
+        }
+        Update: {
+          bottle_id?: string | null
+          created_at?: string
+          currency?: string
+          cuvee_key?: string | null
+          id?: string
+          menu_price?: number
+          observed_at?: string
+          raw_line?: string | null
+          restaurant_id?: string
+          scan_id?: string | null
+          source?: string
+          superseded?: boolean
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "price_observations_bottle_id_fkey"
+            columns: ["bottle_id"]
+            isOneToOne: false
+            referencedRelation: "bottles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "price_observations_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
           display_name: string | null
           id: string
           n_rated: number
+          onboarding_stage: string
           palate_code: string
           palate_code_red: string
           palate_code_white: string
@@ -267,6 +331,7 @@ export type Database = {
           display_name?: string | null
           id: string
           n_rated?: number
+          onboarding_stage?: string
           palate_code?: string
           palate_code_red?: string
           palate_code_white?: string
@@ -281,6 +346,7 @@ export type Database = {
           display_name?: string | null
           id?: string
           n_rated?: number
+          onboarding_stage?: string
           palate_code?: string
           palate_code_red?: string
           palate_code_white?: string
@@ -608,6 +674,22 @@ export type Database = {
         Returns: undefined
       }
       resolve_username_to_id: { Args: { p_username: string }; Returns: string }
+      restaurant_cuvee_history: {
+        Args: { p_cuvee_key: string; p_restaurant_id: string }
+        Returns: {
+          menu_price: number
+          observed_at: string
+          source: string
+        }[]
+      }
+      restaurant_price_stats: {
+        Args: { p_restaurant_id: string }
+        Returns: {
+          last_observed_at: string
+          median_menu_price: number
+          observation_count: number
+        }[]
+      }
       restore_rating_and_benchmark: {
         Args: {
           p_bottle_id: string

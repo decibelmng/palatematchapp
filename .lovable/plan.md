@@ -1,120 +1,95 @@
-# Phase 3 + Catalog Hygiene — build plan
+# Extreme Simplicity + Scan Price Intelligence
 
-Master spec: "Final Build Prompt — Phase 3 (Mutability & Trust) + Catalog Hygiene".
-Two workstreams, each split into independently shippable chunks with their
-own migration approval, tests, and rollback story. Execute one chunk per turn.
+Order matches your prompt. Appendix (A/B/C) folded into the right slots so nothing drops.
 
-## Sequencing rationale
+## Price Check coverage report (upfront)
 
-- **A1 first**: barrel-sample cleanup is the durable version of a hotfix
-  already partially shipped (ILIKE filter on canon promotion). Every later
-  chunk assumes `excluded_from_recs` is authoritative — B5 references it,
-  B1's `set_benchmark` needs to reject excluded rows. Landing A1 first
-  removes a foot-gun from all subsequent work.
-- **A3 next**: rose/rosé merge is a 2-statement migration + one type-scope
-  audit. Cheap, low-risk, unblocks correct type-partitioning in B1/B2.
-- **B1 then B2 together**: `set_benchmark` RPC (B1) and `palate_version` bump
-  (B2) MUST ship in the same migration — the RPC is the only place the
-  version bump belongs. Splitting them creates a race window where direct
-  writes can bypass version bumps. B3/B4 depend on this pair.
-- **B3, B4, B5 in parallel** after B1+B2: all three consume `set_benchmark`
-  and are UI-only on top of it. Can be one turn or three.
-- **B6 (dispute signal)** is orthogonal — new columns, new writes, new admin
-  view. Ship independently. `fp_dispute_count` column + trigger from rating
-  create/edit is the minimum useful shape.
-- **A2 (σ audit + California-Chardonnay sweep)** is a batch job, not app
-  code. Runs in one turn as a script + insert; produces a report + updates.
-  Independent of B1–B6. Best to run BEFORE B6 so the audit-produced list
-  seeds the disputed-fingerprints admin view with real cases.
-- **B7 acceptance tests**: written incrementally as each chunk lands, run as
-  a final gate. Not a separate turn.
+Catalog `bottles` has near-100% `price_band` coverage on all types (red 99.99%, white 99.99%, sparkling/rosé/dessert 100%). Granularity is 5-band ordinal (`$`–`$$$$$`) plus `unknown` (~5% of reds, ~6% of whites). Expected chip coverage per scan ≈ **catalog-match rate × 94–100%**; the honest bottleneck is bottle matching, not band coverage. Chip is suppressed silently when `price_band='unknown'`, when the wine is an unmatched community bottle, or when menu-price OCR failed.
 
-## Ordered chunks (each chunk = one turn, one migration if needed)
+## Part A — Boot fix (blocking, do first)
 
-1. **A1 — Barrel-sample full spec**
-   - Migration: `bottles.excluded_from_recs` (already exists — verify),
-     backfill via case-insensitive pattern match on 6 tokens, extend
-     `canon_wines_validate_tier()` trigger (already blocks excluded — verify
-     covers all tokens), report by type.
-   - App: audit all three recommendation pools (Matches, Pour-next, scan
-     candidates + Uncalibrated) actually filter `excluded_from_recs=false`
-     — remove any ILIKE-only hotfix code; scan text-match fallback to
-     parent cuvée (same producer, name minus sample token, vintage match).
-   - Merge-offer UI on `/canons` and `/rate` for rated excluded rows with
-     parent cuvée; accept moves rating + benchmark history atomically.
-   - Sweep report printed at end: rows flagged, ratings affected, merges
-     offered, benchmarks demoted (expect 0).
+- Root cause already found: the "Missing SUPABASE_URL/PUBLISHABLE_KEY" throw comes from server-side `requireSupabaseAuth`/publishable helpers reading unprefixed `process.env.*`. `start.ts` middleware fallback is already in — verify by hitting a protected serverFn from a fresh session on published site; if still failing, add same fallback inside `client.server.ts` guard and re-publish.
 
-2. **A3 — Type normalization**
-   - Migration: `UPDATE bottles SET type='rose' WHERE type='rosé';`
-   - Audit: every `where('type', ...)` and every palate-type switch — must
-     read `'rose'` never `'rosé'`.
+## Part 1 — First-run onboarding
 
-3. **A2 — σ flatness audit + California-Chardonnay sweep**
-   - Script: compute σ(fp_oak), σ(fp_ripe) per (grape,region) cell ≥5 wines,
-     print top-25 lowest-σ ranked by cell size.
-   - Re-fingerprint California Chardonnay (confirmed bimodal) with corrected
-     prompt; print before/after school split.
-   - Log Bourgogne Blanc / Sauvignon Blanc / Chenin σ into memory as
-     next-priority audits (do NOT sweep yet — user gates each cell).
+- New `src/routes/welcome.tsx`: 3-screen skippable intro (swipe/next), copy per spec, illustrated with existing `PalateStar` + a mocked ranked-list screenshot.
+- `AuthGate` unchanged for auth; after sign-up, a new `profiles.onboarding_stage` (`intro | rate5 | done`) drives the router: stage=`intro` → `/welcome`; stage=`rate5` → `/rate?mode=onboarding`; stage=`done` → home.
+- `rate.tsx` gains `?mode=onboarding`: hides notes, filters, benchmarks, cellar-memory; shows progress bar `n/5`; on 5th rating routes to `/welcome/reveal`.
+- `/welcome/reveal`: full-screen `PalateStar` with letter-flip animation, one plain-language line ("You lean silky, fresh and red-fruited…" via `styleNameFor`), two CTAs → `/scan` and `/matches`. Sets `onboarding_stage='done'`.
+- Returning users bypass welcome entirely (stage=done at signup migration time).
 
-4. **B1 + B2 — set_benchmark RPC + palate_version cascade** (single migration)
-   - `profiles.palate_version int not null default 0`.
-   - `set_benchmark(user_id, bottle_id, tier, action)` RPC with
-     `SECURITY DEFINER`, transactional replace, bumps `palate_version`,
-     rejects excluded rows, mirrors existing tier-star checks.
-   - Trigger on `ratings` insert/update/delete → bump `palate_version`.
-   - Response stamping: every recommend/pour/scan/lane server fn returns
-     `{ palate_version, ...data }`.
-   - Client query keys include `palate_version`; a fetch of the profile
-     invalidates the cache automatically when the number changes.
-   - ω/h caches recompute inside the mutation path (synchronous, ≤50 anchors).
+## Part 2 — Home + scanning
 
-5. **B3 — Swap / remove / undo UI**
-   - Always-visible Swap + Remove buttons on Canon Cellar cards.
-   - Swap picker (5★ for Canon, 1–2★ for Nemesis), region filter, calls
-     `set_benchmark`.
-   - 10-second undo snackbar; undo re-invokes `set_benchmark` with prior
-     state, bumps `palate_version` again.
+- `src/routes/index.tsx` collapsed to: palate-code cards (tap → existing depth), one primary Scan CTA (big tile), one secondary Matches. Move cube/lanes/brief teasers behind the palate-code tap (already the detail path).
+- Copy audit pass across `AppShell`, home, scan, matches: replace "Canon/Nemesis/evidence/ω/calibrated/fingerprint" at first level with "benchmark wine / dealbreaker / palate / signature". Detail views keep the technical terms with a one-line gloss.
+- `/scan` becomes a direct camera entry (single pre-prompt line); multi-page strip + Analyze already exists in `scan.list.tsx` — audit for a single Analyze button + server-side persistence (already scan_logs-backed).
+- **Results restructure** (`scan.list.tsx`):
+  - Pinned "From your cellar memory" (existing `CellarMemorySection`).
+  - "Order this" — top 3 by score with match chip, menu price, Price Check chip.
+  - "Also good" — remaining matches, compact.
+  - "Skip" — vetoed + poor matches, collapsed accordion, one-line reason from existing veto reasons.
+  - Unreadable/unmatched — collapsed at bottom with tap-to-fix.
+- All rows link `wine/$id`.
 
-6. **B4 — Rating-edit cascade**
-   - Editing a Canon <5★ triggers confirm dialog → demote + save atomically
-     via `set_benchmark` (action='demote-on-rating').
-   - Same for Nemesis >2★.
-   - Deleting a rated wine cascade-demotes any benchmark referencing it.
+## Part 3 — Price Check verdict
 
-7. **B5 — Crown-time generic-fingerprint warning**
-   - At `usePromoteBenchmark` submit, compute ω-distance from wine's fp to
-     type centroid; if `< h_type`, show non-blocking "Crown anyway?" dialog
-     with copy from spec.
-   - Excluded rows already hard-blocked (A1).
+- Pure module `src/lib/price-check.ts`: input `{ price_band, menu_price, currency, restaurant_stats? }` → `{ verdict: 'good'|'typical'|'steep'|null, reason }`. Constants: band midpoints (e.g. `$`=$18, `$$`=$40, `$$$`=$80, `$$$$`=$160, `$$$$$`=$300), markup band 2.0–3.2×, steep = >1.25× range top. Returns `null` on `unknown`/missing price/unmatched.
+- Chip component `PriceCheckChip.tsx` — amber "Steep", neutral "Typical", positive "Good price". Tone-only, no dollar retail exposed.
+- Tap-to-correct: inline editable menu price on each result row (existing OCR is per-wine already); commit calls new serverFn `updateScanWinePrice` which (a) updates `scan_logs.wines[i].price`, (b) writes a `user_corrected` `price_observations` row, (c) recomputes chip via query invalidation.
+- "Best value" sort added to `ListControls`: sort key = `predictedStars + verdictBoost` (good=+0.4, steep=−0.4).
+- Restaurant-aware refinement: when `restaurant_stats.observation_count >= 8`, blend median markup index into the range; add detail-view context copy.
 
-8. **B6 — Dispute signal v1**
-   - Migration: `bottles.fp_dispute_count int default 0`,
-     `fp_disputes` table (bottle_id, user_id, stars, predicted, delta, at).
-   - Trigger / server fn on rating insert/update: if
-     `|stars − predicted| ≥ 2.5` and bottle is calibrated, increment count
-     and insert dispute row.
-   - Admin route `/admin/disputes` (behind `has_role('admin')`) — sorted by
-     `count × Σ anchor_weight(disputer)`.
-   - NO auto-refingerprint. Human-triggered pass reuses today's
-     `user_dispute_signal` mechanism.
+## Part 4 — Backend: price_observations
 
-## Acceptance test matrix (B7)
+Migration (single call):
 
-Written per chunk, run as a final gate before closing the spec:
-- Swap atomicity (B1)
-- Cascade < 2s, palate_version stamped (B2)
-- Stale-read recompute on scan reopen (B2)
-- Rating-edit demote + delete cascade (B4)
-- Undo restores atomically (B3)
-- Centroid warning fires on centroid wine, skips off-centroid (B5)
-- Dispute increment fires at Δ≥2.5, skips Δ<2.5 (B6)
-- Barrel-sample scan resolves to parent; promotion rejected; merge offered (A1)
-- Lanes rebuild with new Canon header after swap (B3 + existing lanes code)
+```sql
+create table public.price_observations (
+  id uuid primary key default gen_random_uuid(),
+  restaurant_id uuid not null references public.restaurants(id) on delete cascade,
+  bottle_id uuid references public.bottles(id) on delete set null,
+  cuvee_key text,                    -- lower(producer||' '||name) fallback aggregation
+  raw_line text,
+  menu_price numeric(10,2) not null,
+  currency text not null default 'USD',
+  observed_at timestamptz not null default now(),
+  scan_id uuid references public.scan_logs(id) on delete set null,
+  user_id uuid not null default auth.uid(),
+  source text not null check (source in ('ocr','user_corrected')),
+  superseded boolean not null default false
+);
+grant select, insert, update on public.price_observations to authenticated;
+grant all on public.price_observations to service_role;
+alter table public.price_observations enable row level security;
+create policy "owner rw" on public.price_observations for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
+create index on public.price_observations (restaurant_id, cuvee_key, observed_at desc) where superseded = false;
+```
 
-## Out of scope (locked)
+Plus SECURITY DEFINER RPCs (no user-id params, uses `auth.uid()` only where writes need it; reads return aggregate-only):
+- `restaurant_price_stats(restaurant_id uuid) → { count, median_markup_index, last_observed_at }`
+- `restaurant_cuvee_history(restaurant_id uuid, cuvee_key text) → rows of {menu_price, observed_at}` (aggregate-only, no user_id column).
 
-- Server-side `group_predict` migration (deferred until friends ships)
-- Tracker-import path
-- Auto-suggest Nemesis candidates, mode clustering, per-region sub-models
+Write path:
+- On `attributeScanFn` (already writes to restaurants/restaurant_wines), also insert one `ocr` row per wine that has a numeric `menu_price_amount`.
+- Dedupe: within 30d, same `(restaurant_id, cuvee_key)` and same price → update `observed_at`; different price → insert new row and mark previous active row `superseded=true`.
+- `user_corrected` insert supersedes the same-scan `ocr` row.
+
+Restaurant page (`restaurants.$id.tsx`): show one-line honest summary from `restaurant_price_stats` when `count ≥ 8`; else silent.
+
+## Appendix fixes
+
+- **B (sommelier brief)**: (1) benchmark loop already clusters — bug is threshold; loosen so any lane with ≥1 canon emits its benchmark (cap 3/type); (2) sweep `hedonicNegatives` for adjective-only outputs and require a noun template; (3) drop the "top-2 nemesis contrasts" cap that hid Nebbiolo — render one contrast per crowned nemesis. Update `sommelier-brief.test.ts` fixtures accordingly.
+- **C (cube)**: (1) replace cloud-name source with `styleNameFor` (single vocab); (2) in `TasteCube.tsx` billboarded pole labels compute dot product with camera forward → fade to 15% when negative (far side); nudge caption offsets +0.06 along near-label axis; (3) cloud radius = `max(1.2 * maxAnchorDist, 0.12)` instead of raw `h`; add a rotation-sweep unit assertion in dev tools that nemeses fall outside.
+
+## Technical notes
+
+- New route files use `createFileRoute` under `src/routes/`.
+- All new serverFns use `.middleware([requireSupabaseAuth])`.
+- No engine/scoring changes; Price Check is a pure presentation module fed by catalog + observations.
+- `onboarding_stage` migration also backfills all existing profiles to `'done'` so acceptance-criterion #8 holds.
+- Tests: extend `sommelier-brief.test.ts` (B), add `price-check.test.ts`, add a `TasteCube` cloud-radius unit test.
+
+## Deferred (not in this cycle)
+
+- Live retail price APIs, restaurant-facing dashboards, paywall changes — per your out-of-scope list.
+- The 3-minute new-user timing acceptance will be reported after Part 1 lands (I'll walk a fresh account with the recorder and paste the split).
