@@ -188,8 +188,22 @@ function Home() {
   });
   useEffect(() => { try { localStorage.setItem("pm-map-view", view); } catch { /* ignore */ } }, [view]);
 
+  // First-run intro: gate the entire home surface until the user starts rating.
+  // Skip only after profile has loaded so we don't flash the full home for
+  // a fresh signup.
+  if (!stageLoading && stage === "intro" && totalRated === 0) {
+    return <OnboardingIntro onStart={() => { setStage("rate5").catch(() => { /* noop */ }); }} />;
+  }
+
   return (
     <div className="pt-2">
+      {showReveal && (
+        <PalateReveal
+          code={activeCode}
+          type={scope}
+          onDismiss={() => setShowReveal(false)}
+        />
+      )}
       <p className="text-[10px] uppercase text-muted-foreground" style={{ letterSpacing: "0.22em" }}>Your palates</p>
 
       {/* Two-code header */}
