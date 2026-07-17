@@ -91,6 +91,23 @@ function Home() {
   const totalRated = ratings?.length ?? 0;
   const onboarding = activeRated.length < MIN_RATINGS;
 
+  // ── Onboarding stage machine ─────────────────────────────────────────
+  // 'intro' → full welcome screen.
+  // 'rate5' → home with progress block until a palate crosses MIN_RATINGS.
+  // 'done'  → normal home.
+  // Reveal is a client-only one-shot when transitioning rate5 → done.
+  const { stage, isLoading: stageLoading, setStage } = useOnboardingStage();
+  const anyPalateReady = redRated.length >= MIN_RATINGS || whiteRated.length >= MIN_RATINGS;
+  const [showReveal, setShowReveal] = useState(false);
+  useEffect(() => {
+    if (stageLoading) return;
+    if (stage !== "done" && anyPalateReady) {
+      setShowReveal(true);
+      setStage("done").catch(() => { /* toast handled elsewhere */ });
+    }
+  }, [stage, stageLoading, anyPalateReady, setStage]);
+
+
   // Loved bottles (≥4★) of the active type, deduped by cuvée for the map.
   // Keep the highest star rating seen across the cuvée.
   const lovedPoints: LovedPoint[] = useMemo(() => {
