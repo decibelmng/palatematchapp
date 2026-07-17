@@ -16,6 +16,9 @@ function detectWebGL(): boolean {
 
 import { ShareCardDialog } from "@/components/ShareCardDialog";
 import { useMyProfile } from "@/hooks/use-friends";
+import { useOnboardingStage } from "@/hooks/use-onboarding";
+import { OnboardingIntro } from "@/components/OnboardingIntro";
+import { PalateReveal } from "@/components/PalateReveal";
 import {
   useBottlesByIds,
   useRatings,
