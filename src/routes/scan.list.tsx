@@ -398,6 +398,17 @@ function Scan() {
 
   const enoughRatings = ratedRows.length >= 3;
 
+  const matchedBottleIds = useMemo(
+    () => readable.map((w) => w.matched_bottle_id).filter((id): id is string => !!id),
+    [readable],
+  );
+  const { data: matchedBottleRows } = useBottlesByIds(matchedBottleIds);
+  const priceBandByBottleId = useMemo(() => {
+    const m = new Map<string, string | null>();
+    for (const b of matchedBottleRows ?? []) m.set(b.id, b.price_band);
+    return m;
+  }, [matchedBottleRows]);
+
   const grouped: { type: WineType; rows: ScanRow[] }[] = useMemo(() => {
     const buckets = new Map<WineType, ScanRow[]>();
     ranked.forEach((r, i) => {
@@ -407,6 +418,8 @@ function Scan() {
       const t = (r.scanned.type ?? "red") as WineType;
       const p = normalizePrice(r.scanned.price ?? null);
       const isCatalog = r.scanned.fp_source === "catalog";
+      const matchedId = r.scanned.matched_bottle_id;
+      const band = matchedId ? priceBandByBottleId.get(matchedId) ?? null : null;
       const row: ScanRow = {
         key: r.bottle.id + "-" + i,
         ranked: r,
@@ -417,6 +430,7 @@ function Scan() {
         price_display: p.display,
         predicted: r.predicted,
         greatValue: false,
+        verdict: priceVerdict(p.amount, band),
       };
       row.greatValue = isGreatValue(row);
       if (!buckets.has(t)) buckets.set(t, []);
@@ -424,7 +438,8 @@ function Scan() {
     });
     const order: WineType[] = ["red", "white", "rose", "sparkling", "dessert"];
     return order.filter((t) => buckets.has(t)).map((t) => ({ type: t, rows: buckets.get(t)! }));
-  }, [ranked, cellar]);
+  }, [ranked, cellar, priceBandByBottleId]);
+
 
   const group = useGroupSelection();
   const groupCandidates: GroupCandidateInput[] = useMemo(() => {
