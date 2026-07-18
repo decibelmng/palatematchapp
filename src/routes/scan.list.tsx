@@ -1021,10 +1021,16 @@ function ScanSection({
         <p className="mt-4 text-sm text-muted-foreground">No wines in this section match those filters.</p>
       ) : (
         <ul className="mt-3 divide-y divide-border">
-          {visible.map(({ ranked: r, isCatalog, greatValue, price_display }) => {
+          {visible.map(({ ranked: r, isCatalog, greatValue, price_display, verdict }) => {
             const flag = groupActive ? null : flagFor(r);
             const g = groupActive && groupScores ? groupScores.get(r.bottle.id) ?? null : null;
             const prodFam = producerLookup(producers, r.bottle.producer);
+            const verdictTone =
+              verdict?.tone === "good"
+                ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                : verdict?.tone === "warn"
+                ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                : "border-destructive/40 bg-destructive/10 text-destructive";
             return (
               <li key={r.bottle.id} className="py-4 flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -1042,6 +1048,14 @@ function ScanSection({
                         great value
                       </span>
                     )}
+                    {verdict && (
+                      <span
+                        className={`shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border ${verdictTone}`}
+                        title={`Menu price ≈ ${verdict.markup?.toFixed(2)}× typical retail for this bottle's price band`}
+                      >
+                        {verdict.label}
+                      </span>
+                    )}
                     {prodFam && (
                       <span
                         className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-border bg-muted text-muted-foreground"
@@ -1051,6 +1065,7 @@ function ScanSection({
                       </span>
                     )}
                   </div>
+
                   <p className="text-xs text-muted-foreground truncate">
                     {[r.bottle.region, r.scanned.grape, price_display].filter(Boolean).join(" · ")}
                   </p>
