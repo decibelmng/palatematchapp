@@ -24,6 +24,7 @@ import { Route as WineIdRouteImport } from './routes/wine.$id'
 import { Route as ScanListRouteImport } from './routes/scan.list'
 import { Route as ScanBottleRouteImport } from './routes/scan.bottle'
 import { Route as RestaurantsIdRouteImport } from './routes/restaurants.$id'
+import { Route as PalateTypeRouteImport } from './routes/palate.$type'
 import { Route as AdminDisputesRouteImport } from './routes/admin.disputes'
 import { Route as AdminDataRouteImport } from './routes/admin.data'
 import { Route as AddFriendUsernameRouteImport } from './routes/add-friend.$username'
@@ -103,6 +104,11 @@ const RestaurantsIdRoute = RestaurantsIdRouteImport.update({
   path: '/$id',
   getParentRoute: () => RestaurantsRoute,
 } as any)
+const PalateTypeRoute = PalateTypeRouteImport.update({
+  id: '/palate/$type',
+  path: '/palate/$type',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminDisputesRoute = AdminDisputesRouteImport.update({
   id: '/admin/disputes',
   path: '/admin/disputes',
@@ -132,6 +138,7 @@ export interface FileRoutesByFullPath {
   '/add-friend/$username': typeof AddFriendUsernameRoute
   '/admin/data': typeof AdminDataRoute
   '/admin/disputes': typeof AdminDisputesRoute
+  '/palate/$type': typeof PalateTypeRoute
   '/restaurants/$id': typeof RestaurantsIdRoute
   '/scan/bottle': typeof ScanBottleRoute
   '/scan/list': typeof ScanListRoute
@@ -150,6 +157,7 @@ export interface FileRoutesByTo {
   '/add-friend/$username': typeof AddFriendUsernameRoute
   '/admin/data': typeof AdminDataRoute
   '/admin/disputes': typeof AdminDisputesRoute
+  '/palate/$type': typeof PalateTypeRoute
   '/restaurants/$id': typeof RestaurantsIdRoute
   '/scan/bottle': typeof ScanBottleRoute
   '/scan/list': typeof ScanListRoute
@@ -171,6 +179,7 @@ export interface FileRoutesById {
   '/add-friend/$username': typeof AddFriendUsernameRoute
   '/admin/data': typeof AdminDataRoute
   '/admin/disputes': typeof AdminDisputesRoute
+  '/palate/$type': typeof PalateTypeRoute
   '/restaurants/$id': typeof RestaurantsIdRoute
   '/scan/bottle': typeof ScanBottleRoute
   '/scan/list': typeof ScanListRoute
@@ -193,6 +202,7 @@ export interface FileRouteTypes {
     | '/add-friend/$username'
     | '/admin/data'
     | '/admin/disputes'
+    | '/palate/$type'
     | '/restaurants/$id'
     | '/scan/bottle'
     | '/scan/list'
@@ -211,6 +221,7 @@ export interface FileRouteTypes {
     | '/add-friend/$username'
     | '/admin/data'
     | '/admin/disputes'
+    | '/palate/$type'
     | '/restaurants/$id'
     | '/scan/bottle'
     | '/scan/list'
@@ -231,6 +242,7 @@ export interface FileRouteTypes {
     | '/add-friend/$username'
     | '/admin/data'
     | '/admin/disputes'
+    | '/palate/$type'
     | '/restaurants/$id'
     | '/scan/bottle'
     | '/scan/list'
@@ -252,6 +264,7 @@ export interface RootRouteChildren {
   AddFriendUsernameRoute: typeof AddFriendUsernameRoute
   AdminDataRoute: typeof AdminDataRoute
   AdminDisputesRoute: typeof AdminDisputesRoute
+  PalateTypeRoute: typeof PalateTypeRoute
   WineIdRoute: typeof WineIdRoute
 }
 
@@ -362,6 +375,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RestaurantsIdRouteImport
       parentRoute: typeof RestaurantsRoute
     }
+    '/palate/$type': {
+      id: '/palate/$type'
+      path: '/palate/$type'
+      fullPath: '/palate/$type'
+      preLoaderRoute: typeof PalateTypeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/disputes': {
       id: '/admin/disputes'
       path: '/admin/disputes'
@@ -427,18 +447,9 @@ const rootRouteChildren: RootRouteChildren = {
   AddFriendUsernameRoute: AddFriendUsernameRoute,
   AdminDataRoute: AdminDataRoute,
   AdminDisputesRoute: AdminDisputesRoute,
+  PalateTypeRoute: PalateTypeRoute,
   WineIdRoute: WineIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
