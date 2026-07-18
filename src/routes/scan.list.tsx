@@ -25,6 +25,8 @@ import { useMyCanons } from "@/hooks/use-canon";
 import { computeCellarMemory, producerLookup } from "@/lib/cellar-memory";
 import { CellarMemorySection } from "@/components/CellarMemorySection";
 import { SommelierBriefDialog } from "@/components/SommelierBriefDialog";
+import { priceVerdict, type PriceVerdict } from "@/lib/price-verdict";
+
 
 export const Route = createFileRoute("/scan/list")({
   ssr: false,
@@ -59,7 +61,9 @@ type ScanRow = Priced & {
   type: WineType;
   isCatalog: boolean;
   greatValue: boolean;
+  verdict: PriceVerdict | null;
 };
+
 
 const TYPE_LABEL: Record<WineType, string> = {
   red: "Reds for you",
