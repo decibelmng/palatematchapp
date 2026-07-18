@@ -25,6 +25,8 @@ import { useMyCanons } from "@/hooks/use-canon";
 import { computeCellarMemory, producerLookup } from "@/lib/cellar-memory";
 import { CellarMemorySection } from "@/components/CellarMemorySection";
 import { SommelierBriefDialog } from "@/components/SommelierBriefDialog";
+import { priceVerdict, type PriceVerdict } from "@/lib/price-verdict";
+
 
 export const Route = createFileRoute("/scan/list")({
   ssr: false,
@@ -59,7 +61,9 @@ type ScanRow = Priced & {
   type: WineType;
   isCatalog: boolean;
   greatValue: boolean;
+  verdict: PriceVerdict | null;
 };
+
 
 const TYPE_LABEL: Record<WineType, string> = {
   red: "Reds for you",
@@ -394,6 +398,17 @@ function Scan() {
 
   const enoughRatings = ratedRows.length >= 3;
 
+  const matchedBottleIds = useMemo(
+    () => readable.map((w) => w.matched_bottle_id).filter((id): id is string => !!id),
+    [readable],
+  );
+  const { data: matchedBottleRows } = useBottlesByIds(matchedBottleIds);
+  const priceBandByBottleId = useMemo(() => {
+    const m = new Map<string, string | null>();
+    for (const b of matchedBottleRows ?? []) m.set(b.id, b.price_band);
+    return m;
+  }, [matchedBottleRows]);
+
   const grouped: { type: WineType; rows: ScanRow[] }[] = useMemo(() => {
     const buckets = new Map<WineType, ScanRow[]>();
     ranked.forEach((r, i) => {
@@ -403,6 +418,8 @@ function Scan() {
       const t = (r.scanned.type ?? "red") as WineType;
       const p = normalizePrice(r.scanned.price ?? null);
       const isCatalog = r.scanned.fp_source === "catalog";
+      const matchedId = r.scanned.matched_bottle_id;
+      const band = matchedId ? priceBandByBottleId.get(matchedId) ?? null : null;
       const row: ScanRow = {
         key: r.bottle.id + "-" + i,
         ranked: r,
@@ -413,6 +430,7 @@ function Scan() {
         price_display: p.display,
         predicted: r.predicted,
         greatValue: false,
+        verdict: priceVerdict(p.amount, band),
       };
       row.greatValue = isGreatValue(row);
       if (!buckets.has(t)) buckets.set(t, []);
@@ -420,7 +438,8 @@ function Scan() {
     });
     const order: WineType[] = ["red", "white", "rose", "sparkling", "dessert"];
     return order.filter((t) => buckets.has(t)).map((t) => ({ type: t, rows: buckets.get(t)! }));
-  }, [ranked, cellar]);
+  }, [ranked, cellar, priceBandByBottleId]);
+
 
   const group = useGroupSelection();
   const groupCandidates: GroupCandidateInput[] = useMemo(() => {
@@ -1002,10 +1021,16 @@ function ScanSection({
         <p className="mt-4 text-sm text-muted-foreground">No wines in this section match those filters.</p>
       ) : (
         <ul className="mt-3 divide-y divide-border">
-          {visible.map(({ ranked: r, isCatalog, greatValue, price_display }) => {
+          {visible.map(({ ranked: r, isCatalog, greatValue, price_display, verdict }) => {
             const flag = groupActive ? null : flagFor(r);
             const g = groupActive && groupScores ? groupScores.get(r.bottle.id) ?? null : null;
             const prodFam = producerLookup(producers, r.bottle.producer);
+            const verdictTone =
+              verdict?.tone === "good"
+                ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+                : verdict?.tone === "warn"
+                ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                : "border-destructive/40 bg-destructive/10 text-destructive";
             return (
               <li key={r.bottle.id} className="py-4 flex items-start justify-between gap-3">
                 <div className="min-w-0">
@@ -1023,6 +1048,14 @@ function ScanSection({
                         great value
                       </span>
                     )}
+                    {verdict && (
+                      <span
+                        className={`shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border ${verdictTone}`}
+                        title={`Menu price ≈ ${verdict.markup?.toFixed(2)}× typical retail for this bottle's price band`}
+                      >
+                        {verdict.label}
+                      </span>
+                    )}
                     {prodFam && (
                       <span
                         className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-border bg-muted text-muted-foreground"
@@ -1032,6 +1065,7 @@ function ScanSection({
                       </span>
                     )}
                   </div>
+
                   <p className="text-xs text-muted-foreground truncate">
                     {[r.bottle.region, r.scanned.grape, price_display].filter(Boolean).join(" · ")}
                   </p>
