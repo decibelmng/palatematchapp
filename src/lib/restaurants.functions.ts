@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { cuveeKey } from "@/lib/price-verdict";
+
 
 // Mirror the generated client's fetch: set apikey header and strip a
 // bearer-format Authorization for new-style sb_publishable_ keys, which are
@@ -219,6 +221,25 @@ export const attributeScanFn = createServerFn({ method: "POST" })
         });
       }
       upserted++;
+
+      // Record a point-in-time price observation so /restaurant/$id and
+      // future markup baselines can chart drift. Best-effort; failures
+      // never block the attribute flow.
+      if (amount && amount > 0) {
+        try {
+          await supabaseAdmin.from("price_observations").insert({
+            restaurant_id: data.restaurant_id,
+            bottle_id: bottleId,
+            cuvee_key: cuveeKey(w.producer, w.wine_name),
+            raw_line: priceStr,
+            menu_price: amount,
+            currency: "USD",
+            scan_id: scan.id,
+            user_id: userId,
+            source: "ocr",
+          });
+        } catch { /* observation is best-effort */ }
+      }
     }
 
     return {
@@ -228,6 +249,7 @@ export const attributeScanFn = createServerFn({ method: "POST" })
       createdBottles,
     };
   });
+
 
 // ============================================================================
 // List all restaurants (recent) and get one restaurant's wine graph.
