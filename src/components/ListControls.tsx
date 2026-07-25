@@ -24,6 +24,7 @@ export function ListControls({ value, onChange, idPrefix }: Props) {
   const filterCount =
     (value.sort !== "best" ? 1 : 0) +
     (value.price !== "all" ? 1 : 0) +
+    (value.wineType && value.wineType !== "all" ? 1 : 0) +
     (value.catalogOnly ? 1 : 0);
 
   useEffect(() => {
@@ -38,7 +39,8 @@ export function ListControls({ value, onChange, idPrefix }: Props) {
     };
   }, [open]);
 
-  const label = `${shortSort(value.sort)} · ${shortPrice(value.price)}${value.catalogOnly ? " · Catalog" : ""}`;
+  const typeLabel = WINE_TYPE_OPTIONS.find((o) => o.value === (value.wineType ?? "all"))?.label ?? "All types";
+  const label = `${shortSort(value.sort)} · ${typeLabel} · ${shortPrice(value.price)}${value.catalogOnly ? " · Catalog" : ""}`;
 
   return (
     <>
