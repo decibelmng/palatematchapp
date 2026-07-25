@@ -43,6 +43,8 @@ function AdminInspect() {
 
   const [selected, setSelected] = useState<string | null>(null);
   const [limit, setLimit] = useState(100);
+  const [status, setStatus] = useState<{ kind: "ok" | "err"; msg: string } | null>(null);
+  const [fallback, setFallback] = useState<string | null>(null);
 
   const tables = useQuery({
     queryKey: ["admin-inspect", "tables"],
@@ -79,7 +81,6 @@ function AdminInspect() {
     if (r.length === 0) return (cols.data ?? []).map((c) => c.column_name);
     const s = new Set<string>();
     for (const row of r) Object.keys(row ?? {}).forEach((k) => s.add(k));
-    // Prefer schema order when available.
     if (cols.data && cols.data.length) {
       const schemaOrder = cols.data.map((c) => c.column_name).filter((k) => s.has(k));
       const extras = Array.from(s).filter((k) => !schemaOrder.includes(k));
@@ -88,12 +89,61 @@ function AdminInspect() {
     return Array.from(s);
   }, [rows.data, cols.data]);
 
-  async function copyText(text: string, label: string) {
+  const inlineJSON = useMemo(
+    () => (rows.data ? JSON.stringify(rows.data, null, 2) : ""),
+    [rows.data],
+  );
+
+  function flash(kind: "ok" | "err", msg: string) {
+    setStatus({ kind, msg });
+    window.setTimeout(() => setStatus(null), 3500);
+  }
+
+  function legacyCopy(text: string): boolean {
     try {
-      await navigator.clipboard.writeText(text);
-      console.log(`[admin-inspect] copied ${label} (${text.length} chars)`);
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.top = "0";
+      ta.style.left = "0";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, text.length);
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+
+  async function copyPayload(kind: "json" | "csv") {
+    const data = rows.data;
+    if (!data) {
+      flash("err", "No rows loaded yet");
+      return;
+    }
+    const text = kind === "json" ? JSON.stringify(data, null, 2) : toCSV(data);
+    const n = data.length;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        flash("ok", `Copied ${n} rows as ${kind.toUpperCase()} (${text.length} chars)`);
+        setFallback(null);
+        return;
+      }
+      throw new Error("clipboard API unavailable");
     } catch (e) {
-      console.error(e);
+      console.error("[admin-inspect] clipboard failed", e);
+      if (legacyCopy(text)) {
+        flash("ok", `Copied ${n} rows as ${kind.toUpperCase()} (fallback)`);
+        setFallback(null);
+      } else {
+        setFallback(text);
+        flash("err", `Copy failed — select the text below and copy manually`);
+      }
     }
   }
 
@@ -164,20 +214,56 @@ function AdminInspect() {
                   />
                 </label>
                 <button
-                  onClick={() => copyText(JSON.stringify(rows.data ?? [], null, 2), "JSON")}
+                  onClick={() => copyPayload("json")}
                   disabled={!rows.data}
                   style={{ fontSize: 12, padding: "4px 8px", border: "1px solid #999", borderRadius: 4 }}
                 >
                   Copy as JSON
                 </button>
                 <button
-                  onClick={() => copyText(toCSV(rows.data ?? []), "CSV")}
+                  onClick={() => copyPayload("csv")}
                   disabled={!rows.data}
                   style={{ fontSize: 12, padding: "4px 8px", border: "1px solid #999", borderRadius: 4 }}
                 >
                   Copy as CSV
                 </button>
+                {status && (
+                  <span
+                    role="status"
+                    style={{
+                      fontSize: 12,
+                      padding: "3px 8px",
+                      borderRadius: 4,
+                      background: status.kind === "ok" ? "#e6f5ea" : "#fdecec",
+                      color: status.kind === "ok" ? "#186a3b" : "#a11a1a",
+                      border: "1px solid " + (status.kind === "ok" ? "#bfe3cc" : "#f2c2c2"),
+                    }}
+                  >
+                    {status.msg}
+                  </span>
+                )}
               </div>
+              {fallback !== null && (
+                <div style={{ marginTop: 8 }}>
+                  <div style={{ fontSize: 11, opacity: 0.75, marginBottom: 4 }}>
+                    Clipboard unavailable — select all and copy:
+                  </div>
+                  <textarea
+                    readOnly
+                    value={fallback}
+                    onFocus={(e) => e.currentTarget.select()}
+                    style={{
+                      width: "100%",
+                      minHeight: 120,
+                      fontFamily: "ui-monospace, monospace",
+                      fontSize: 11,
+                      padding: 8,
+                      border: "1px solid #f2c2c2",
+                      borderRadius: 6,
+                    }}
+                  />
+                </div>
+              )}
 
               <div style={{ marginTop: 12 }}>
                 <div style={{ fontSize: 12, fontWeight: 600, opacity: 0.7, marginBottom: 4 }}>
@@ -266,6 +352,42 @@ function AdminInspect() {
                     </table>
                   </div>
                 )}
+              </div>
+
+              <div style={{ marginTop: 16 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: 4,
+                  }}
+                >
+                  <div style={{ fontSize: 12, fontWeight: 600, opacity: 0.7 }}>
+                    Inline JSON ({rows.data?.length ?? 0} rows · {inlineJSON.length} chars)
+                  </div>
+                  <div style={{ fontSize: 11, opacity: 0.55 }}>
+                    Reliable copy path — click to select all
+                  </div>
+                </div>
+                <textarea
+                  readOnly
+                  value={inlineJSON}
+                  onFocus={(e) => e.currentTarget.select()}
+                  spellCheck={false}
+                  style={{
+                    width: "100%",
+                    minHeight: 240,
+                    maxHeight: 480,
+                    fontFamily: "ui-monospace, monospace",
+                    fontSize: 11,
+                    padding: 8,
+                    border: "1px solid #eee",
+                    borderRadius: 6,
+                    resize: "vertical",
+                    background: "#fafafa",
+                  }}
+                />
               </div>
             </>
           )}
