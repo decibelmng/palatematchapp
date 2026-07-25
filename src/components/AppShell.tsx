@@ -230,6 +230,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="max-w-xl mx-auto flex">
           {TABS.map(({ to, label, Icon }) => {
             const active = isActive(pathname, to);
+            const showDot = to === "/feed" && hasFreshActivity(feedLatestAt);
             return (
               <Link
                 key={to}
@@ -242,7 +243,15 @@ export function AppShell({ children }: { children: ReactNode }) {
                     : "text-muted-foreground hover:text-foreground border-transparent"
                 }`}
               >
-                <Icon size={18} strokeWidth={active ? 2.2 : 1.8} />
+                <span className="relative">
+                  <Icon size={18} strokeWidth={active ? 2.2 : 1.8} />
+                  {showDot && (
+                    <span
+                      aria-label="new activity"
+                      className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary ring-2 ring-background"
+                    />
+                  )}
+                </span>
                 {label}
               </Link>
             );
