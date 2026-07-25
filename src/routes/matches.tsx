@@ -354,6 +354,7 @@ function toRows(section: Section, canonRegionByBottle: Map<string, string>): Row
       contested: false,
       contestedNemesisName: null,
       nearestId: null,
+      fp: c.fp,
     };
   });
 }
