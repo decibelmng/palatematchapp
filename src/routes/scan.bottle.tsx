@@ -226,8 +226,43 @@ function BottleScan() {
     toast.success(`Rated ${c.name} ${stars}★`);
   }
 
-  const extracted = result?.extracted;
+  const rawExtracted = result?.extracted;
+  const extracted = editedRead ?? rawExtracted;
   const looksLikeMenu = result?.looks_like_menu === true;
+
+  // The resolution shown to the user is either the initial server-side
+  // resolution (from the raw read) or an override from re-resolving the
+  // edited read on confirm. Candidates only render once confirmed=true.
+  const resolution = override ?? (result ? {
+    candidates: result.candidates,
+    best_score: result.best_score,
+    match_quality: result.match_quality,
+    match_summary: result.match_summary,
+  } : null);
+
+  function readChanged(): boolean {
+    if (!rawExtracted || !editedRead) return false;
+    const norm = (v: string | null | undefined) => (v ?? "").trim().toLowerCase();
+    return (
+      norm(editedRead.producer)  !== norm(rawExtracted.producer)  ||
+      norm(editedRead.wine_name) !== norm(rawExtracted.wine_name) ||
+      norm(editedRead.region)    !== norm(rawExtracted.region)    ||
+      norm(editedRead.country)   !== norm(rawExtracted.country)   ||
+      norm(editedRead.grape)     !== norm(rawExtracted.grape)     ||
+      (editedRead.vintage ?? null) !== (rawExtracted.vintage ?? null) ||
+      (editedRead.type ?? null)    !== (rawExtracted.type ?? null)
+    );
+  }
+
+  function confirmRead() {
+    if (!editedRead) return;
+    if (readChanged()) {
+      resolveMut.mutate(editedRead);
+    } else {
+      setConfirmed(true);
+    }
+  }
+
 
   return (
     <div className="pt-2">
