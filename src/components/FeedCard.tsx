@@ -19,13 +19,10 @@ import {
   reasonForPrediction, calibrationPct, calibrationBand, confidenceCopy, relativeTime,
 } from "@/lib/feed-reason";
 import type { FeedItem } from "@/lib/feed.functions";
+import { displayNameFor, initialsFor as sharedInitials } from "@/lib/user-display";
 
 function initialsFor(name: string | null | undefined, fallback: string): string {
-  const n = (name ?? fallback ?? "").trim();
-  if (!n) return "•";
-  const parts = n.split(/\s+/);
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return sharedInitials({ display_name: name, username: fallback });
 }
 
 function StarsInline({ n }: { n: number }) {
