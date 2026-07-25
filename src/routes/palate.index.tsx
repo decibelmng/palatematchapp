@@ -20,8 +20,10 @@ import { TasteMap, type LovedPoint } from "@/components/TasteMap";
 import { SommBadge } from "@/components/profile/SommBadge";
 import { VisibilityControl } from "@/components/profile/VisibilityControl";
 import { ShareProfileButton } from "@/components/profile/ShareProfileButton";
+import { NameWithHandle } from "@/components/profile/NameWithHandle";
 import { GraduationCap, Settings2 } from "lucide-react";
 import { CalibrationMeter } from "@/components/CalibrationMeter";
+
 
 export const Route = createFileRoute("/palate/")({
   ssr: false,
@@ -171,11 +173,18 @@ function PalateHome() {
         )}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="font-serif text-[18px] leading-tight truncate">{displayName || "Palate Match"}</div>
+            {profile?.username ? (
+              <NameWithHandle
+                displayName={displayName || null}
+                username={profile.username}
+              />
+            ) : (
+              <div className="font-serif text-[18px] leading-tight truncate">{displayName || "Palate Match"}</div>
+            )}
             <SommBadge status={profile?.somm_status} role={profile?.somm_role} establishment={profile?.establishment} />
           </div>
-          {profile?.username && (
-            <div className="text-[11px] text-muted-foreground">@{profile.username}{memberSince ? ` · joined ${memberSince}` : ""}</div>
+          {memberSince && (
+            <div className="text-[11px] text-muted-foreground">joined {memberSince}</div>
           )}
         </div>
         {profile?.username && <ShareProfileButton username={profile.username} displayName={displayName} />}
@@ -185,13 +194,23 @@ function PalateHome() {
         <p className="mt-3 text-sm text-muted-foreground">{profile.bio}</p>
       )}
 
-      {/* Stats */}
+      {/* Stats — each tile links to the detailed list. */}
       <div className="mt-5 grid grid-cols-4 gap-2 rounded-[14px] border-[0.5px] border-border bg-card/60 p-3 text-center">
-        <Stat n={totalRated} label="Rated" />
-        <Stat n={canonsCount} label="Canons" />
-        <Stat n={nemesesCount} label="Nemeses" />
-        <Stat n={redRated.length + whiteRated.length} label="Scored" />
+        <Link to="/rate" aria-label="See wines you've rated" className="block rounded-md hover:bg-muted/40 py-1">
+          <Stat n={totalRated} label="Rated" />
+        </Link>
+        <Link to="/canons" hash="canons" aria-label="See your Canons" className="block rounded-md hover:bg-muted/40 py-1">
+          <Stat n={canonsCount} label="Canons" />
+        </Link>
+        <Link to="/canons" hash="nemeses" aria-label="See your Nemeses" className="block rounded-md hover:bg-muted/40 py-1">
+          <Stat n={nemesesCount} label="Nemeses" />
+        </Link>
+        <Link to="/palate/$type" params={{ type: scope }} aria-label="Open palate detail" className="block rounded-md hover:bg-muted/40 py-1">
+          <Stat n={redRated.length + whiteRated.length} label="Scored" />
+        </Link>
       </div>
+
+
 
       {/* Palate codes */}
       <div className="mt-5 grid grid-cols-2 gap-3">

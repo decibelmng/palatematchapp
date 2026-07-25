@@ -3,6 +3,7 @@ import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { getPublicProfile } from "@/lib/profile.functions";
 import { SommBadge } from "@/components/profile/SommBadge";
 import { FollowButton } from "@/components/profile/FollowButton";
+import { NameWithHandle } from "@/components/profile/NameWithHandle";
 import { useSession } from "@/hooks/use-session";
 import { ChevronLeft } from "lucide-react";
 
@@ -93,8 +94,13 @@ function PublicProfileRoute() {
             {(p.display_name?.[0] || p.username[0] || "?").toUpperCase()}
           </div>
         )}
-        <h1 className="mt-3 font-serif text-[22px] leading-snug">{p.display_name || p.username}</h1>
-        <p className="text-[11px] text-muted-foreground">@{p.username}</p>
+        <NameWithHandle
+          displayName={p.display_name}
+          username={p.username}
+          size="lg"
+          className="mt-3 inline-flex items-center gap-1 justify-center"
+        />
+
         <div className="mt-2 flex items-center justify-center gap-2">
           <SommBadge status={p.somm_status} role={p.somm_role} establishment={p.establishment} />
         </div>
