@@ -289,3 +289,66 @@ export const scanBottleLabel = createServerFn({ method: "POST" })
       looks_like_menu,
     };
   });
+
+
+// Confirm-first re-resolution: after the user edits any of the read
+// fields on the confirm screen, we re-run catalog match against the
+// corrected values. Vision is not called again — this is a pure
+// catalog lookup. Cheap; no scan_logs write (the original scan row
+// still carries the raw vision output).
+export const resolveBottleFromRead = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ read: Extracted }).parse(input),
+  )
+  .handler(async ({ data, context }): Promise<{
+    candidates: BottleCandidate[];
+    best_score: number;
+    match_quality: BottleScanResult["match_quality"];
+    match_summary: string;
+  }> => {
+    const extracted = data.read;
+    const { supabase } = context;
+
+    let candidates: BottleCandidate[] = [];
+    let bestScore = 0;
+    const q = [extracted.producer, extracted.wine_name, extracted.region]
+      .filter(Boolean).join(" ").trim();
+    if (q.length >= 3) {
+      const { data: rows } = await supabase.rpc("search_bottles_fuzzy", {
+        q,
+        type_variants: extracted.type ? [extracted.type as string] : undefined,
+        lim: 12,
+        threshold: 0.22,
+      });
+      const scored = ((rows ?? []) as any[])
+        .map((r) => ({ r, ...scoreWithReasons(extracted, r) }))
+        .filter((x) => x.score > 0)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 3);
+      candidates = scored.map(({ r, score: s, reasons }) => ({
+        id: r.id, name: r.name, producer: r.producer, region: r.region,
+        vintage: r.vintage, type: r.type, score: s, reasons,
+        fp: {
+          fresh: r.fp_fresh, acid: r.fp_acid, tannin: r.fp_tannin,
+          fruit_dark: r.fp_fruit_dark, ripe: r.fp_ripe, oak: r.fp_oak,
+          body: r.fp_body, savory: r.fp_savory,
+        },
+        tasting_note: r.tasting_note ?? null,
+      }));
+      bestScore = candidates[0]?.score ?? 0;
+    }
+
+    const match_quality: BottleScanResult["match_quality"] =
+      bestScore >= 0.85 ? "confident" : bestScore >= 0.6 ? "ambiguous" : "none";
+    const match_summary =
+      match_quality === "confident"
+        ? "Strong match — producer and label words line up with a catalog wine."
+        : match_quality === "ambiguous"
+        ? "Close, but not sure — a few label words match more than one wine in the catalog."
+        : candidates.length === 0
+        ? "No catalog wine overlapped enough with what's on the label."
+        : "Best candidate is below the confidence threshold.";
+
+    return { candidates, best_score: bestScore, match_quality, match_summary };
+  });
