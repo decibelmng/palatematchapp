@@ -778,4 +778,152 @@ function findExistingRating(
 }
 
 
+// ---------- Editable confirm screen (the make-or-break) ----------
+//
+// After vision reads the label, the human confirms or fixes each field
+// BEFORE anything resolves to a catalog wine or writes a rating.
+// Low-confidence fields (or empty fields) render with an amber ring so
+// the user knows what to double-check. The photo stays visible.
+
+function ConfirmReadCard({
+  read, rawConfidence, photoUrl, onChange, onConfirm, onNoneOfThese, busy,
+}: {
+  read: BottleExtract;
+  rawConfidence: "high" | "medium" | "low" | null | undefined;
+  photoUrl: string | null;
+  onChange: (patch: Partial<BottleExtract>) => void;
+  onConfirm: () => void;
+  onNoneOfThese: () => void;
+  busy: boolean;
+}) {
+  // Field is "low-confidence" when either (a) the whole read was flagged
+  // medium/low, or (b) the field itself is empty / null. In either case
+  // we want the human's eye on it.
+  const shaky = rawConfidence !== "high";
+  const highlight = (v: string | number | null | undefined) =>
+    (shaky || v == null || v === "")
+      ? "border-amber-500/60 bg-amber-500/5"
+      : "border-border bg-background";
+
+  const producerBlank = !read.producer?.trim();
+  const nameBlank = !read.wine_name?.trim();
+  const missingCore = producerBlank && nameBlank;
+
+  return (
+    <div className="rounded-lg border-2 border-primary/40 bg-card p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-primary">Confirm the read</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Check what we pulled off the label before we look it up. Amber fields may have been inferred.
+          </p>
+        </div>
+        {photoUrl && (
+          <img
+            src={photoUrl}
+            alt="Scanned label"
+            className="shrink-0 h-20 w-20 object-cover rounded-md border border-border"
+          />
+        )}
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <ConfirmField label="Producer" required value={read.producer ?? ""} highlightClass={highlight(read.producer)}
+          onChange={(v) => onChange({ producer: v || null })} placeholder="e.g. Château Margaux" />
+        <ConfirmField label="Cuvée / wine name" value={read.wine_name ?? ""} highlightClass={highlight(read.wine_name)}
+          onChange={(v) => onChange({ wine_name: v || null })} placeholder="Leave empty for producer-only labels" />
+        <ConfirmField label="Vintage" value={read.vintage != null ? String(read.vintage) : ""} highlightClass={highlight(read.vintage)}
+          onChange={(v) => {
+            const n = v.replace(/[^0-9]/g, "").slice(0, 4);
+            onChange({ vintage: n.length === 4 ? Number(n) : null });
+          }} placeholder="Ask, don't guess" inputMode="numeric" />
+        <ConfirmField label="Region / appellation" value={read.region ?? ""} highlightClass={highlight(read.region)}
+          onChange={(v) => onChange({ region: v || null })} placeholder="e.g. Margaux, Bordeaux" />
+        <ConfirmField label="Country" value={read.country ?? ""} highlightClass={highlight(read.country)}
+          onChange={(v) => onChange({ country: v || null })} placeholder="France" />
+        <ConfirmField label="Grape(s)" value={read.grape ?? ""} highlightClass={highlight(read.grape)}
+          onChange={(v) => onChange({ grape: v || null })} placeholder="Nebbiolo · often inferred" />
+        <div className="block">
+          <label className="block text-[11px] font-medium text-foreground mb-1.5">Type</label>
+          <select
+            value={read.type ?? "red"}
+            onChange={(e) => onChange({ type: e.target.value as BottleExtract["type"] })}
+            className={`w-full rounded-md border px-3 py-2 text-sm outline-none transition ${highlight(read.type)}`}
+          >
+            <option value="red">Red</option>
+            <option value="white">White</option>
+            <option value="rose">Rosé</option>
+            <option value="sparkling">Sparkling</option>
+            <option value="dessert">Dessert</option>
+          </select>
+        </div>
+      </div>
+
+      {read.vintage == null && (
+        <p className="mt-3 text-[11px] text-amber-700 dark:text-amber-400">
+          No vintage read — style shifts by year, so leaving this blank matches the wine but not the specific bottle.
+        </p>
+      )}
+
+      <div className="mt-4 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+        <p className="text-[11px] text-muted-foreground">
+          Nothing is saved until you confirm.
+        </p>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onNoneOfThese}
+            className="rounded-md border border-border bg-background px-3 py-2 text-xs font-medium hover:bg-accent"
+          >
+            Add as new bottle
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={busy || missingCore}
+            className="rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-semibold disabled:opacity-50"
+          >
+            {busy ? "Re-checking catalog…" : "Confirm & find in catalog →"}
+          </button>
+        </div>
+      </div>
+      {missingCore && (
+        <p className="mt-2 text-[11px] text-destructive">
+          At least a producer or wine name is required.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function ConfirmField({
+  label, value, onChange, placeholder, required, inputMode, highlightClass,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  required?: boolean;
+  inputMode?: "text" | "numeric";
+  highlightClass: string;
+}) {
+  return (
+    <div className="block">
+      <label className="block text-[11px] font-medium text-foreground mb-1.5">
+        {label}{required && <span className="text-destructive"> *</span>}
+      </label>
+      <input
+        type="text"
+        inputMode={inputMode}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className={`w-full rounded-md border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition ${highlightClass}`}
+      />
+    </div>
+  );
+}
+
+
+
 
