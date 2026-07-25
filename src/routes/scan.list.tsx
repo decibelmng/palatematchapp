@@ -26,6 +26,8 @@ import { computeCellarMemory, producerLookup } from "@/lib/cellar-memory";
 import { CellarMemorySection } from "@/components/CellarMemorySection";
 import { SommelierBriefDialog } from "@/components/SommelierBriefDialog";
 import { priceVerdict, type PriceVerdict } from "@/lib/price-verdict";
+import { FingerprintSpoke } from "@/components/FingerprintSpoke";
+
 
 
 export const Route = createFileRoute("/scan/list")({
@@ -126,6 +128,10 @@ function Scan() {
   const [staged, setStaged] = useState<{ file: File; url: string }[]>([]);
   const [elapsed, setElapsed] = useState(0);
   const [sommOpen, setSommOpen] = useState(false);
+  const [boosted, setBoosted] = useState(false);
+  const [detailFor, setDetailFor] = useState<ScanRow | null>(null);
+  const [controls, setControls] = useState<Controls>(DEFAULT_CONTROLS);
+
 
 
   // Scan session state
@@ -512,6 +518,73 @@ function Scan() {
   const failedBatches = batches.filter((b) => b.status === "failed");
   const anyBatchInFlight = batches.some((b) => b.status === "running" || b.status === "pending");
 
+  // ---------- Phase 3: unified decision surface ----------
+  // Flatten every type into a single decision list, apply group overlay,
+  // apply user filters (but NOT sort — hero always uses predicted-desc),
+  // then partition hero / rest / vetoed.
+  const allRowsFlat: ScanRow[] = useMemo(() => {
+    const flat = grouped.flatMap((g) => g.rows);
+    if (!groupActive || !groupScores) return flat;
+    return flat.map((r) => {
+      const g = groupScores.get(r.ranked.bottle.id);
+      if (!g) return r;
+      const next: ScanRow = { ...r, predicted: g.group_min };
+      next.greatValue = isGreatValue(next);
+      return next;
+    });
+  }, [grouped, groupActive, groupScores]);
+
+  // Filter (never sort) so hero remains the best predicted within constraints.
+  const filteredNoSort = useMemo(() => {
+    return applyControls(allRowsFlat, { ...controls, sort: "best" });
+  }, [allRowsFlat, controls]);
+
+  const sortedForList = useMemo(() => applyControls(allRowsFlat, controls), [allRowsFlat, controls]);
+
+  const heroes: ScanRow[] = useMemo(() => {
+    if (!enoughRatings) return [];
+    const eligible = filteredNoSort
+      .filter((r) => !r.ranked.vetoed)
+      .sort((a, b) => b.predicted - a.predicted);
+    if (eligible.length === 0) return [];
+    const top = eligible[0];
+    const out = [top];
+    if (eligible[1] && Math.abs(eligible[1].predicted - top.predicted) <= 0.1) out.push(eligible[1]);
+    return out;
+  }, [filteredNoSort, enoughRatings]);
+
+  const heroKeys = useMemo(() => new Set(heroes.map((h) => h.key)), [heroes]);
+  const restNonVeto = useMemo(
+    () => sortedForList.filter((r) => !r.ranked.vetoed && !heroKeys.has(r.key)),
+    [sortedForList, heroKeys],
+  );
+  const vetoedRows = useMemo(
+    () => sortedForList.filter((r) => r.ranked.vetoed),
+    [sortedForList],
+  );
+
+  // Estimate skeleton row count from in-flight batches (avg ~4 wines/page).
+  const pendingSkeletons = useMemo(() => {
+    const inflight = batches.filter((b) => b.status === "pending" || b.status === "running").length;
+    return Math.min(inflight * 4, 8);
+  }, [batches]);
+
+  const zeroStrong = enoughRatings && heroes.length > 0 && heroes[0].predicted < 4.0;
+  const readFailed = !isRunning && status !== "idle" && readable.length === 0 && !anyBatchInFlight;
+  const showDecisionSurface = enoughRatings && (readable.length > 0 || anyBatchInFlight);
+
+  // Phase 3 dev acceptance: no explore chrome on this route.
+  useEffect(() => {
+    if (typeof window === "undefined" || !import.meta.env.DEV) return;
+    const bans = ["TasteMap", "TasteCube", "palate-slider-editor"];
+    const found = bans.filter((s) => document.querySelector(`[data-component="${s}"]`));
+    if (found.length) console.warn("[phase3] forbidden chrome on /scan/list:", found);
+    // eslint-disable-next-line no-console
+    console.log("[phase3-scan] heroes:", heroes.length, "rest:", restNonVeto.length, "vetoed:", vetoedRows.length, "skeletons:", pendingSkeletons);
+  }, [heroes.length, restNonVeto.length, vetoedRows.length, pendingSkeletons]);
+
+
+
   return (
     <div className="pt-2">
       <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Scan a list</p>
@@ -652,79 +725,129 @@ function Scan() {
         </div>
       )}
 
-      {totalWines > 0 && (
-        <div className="mt-5 rounded-md border border-border bg-card/60 p-3 text-xs text-muted-foreground">
-          Read {totalWines} wine{totalWines > 1 ? "s" : ""} ·{" "}
-          <span className="text-foreground">{matchedCount} matched the catalog</span> · {estimatedCount} estimated
-          {unreadable.length > 0 ? ` · ${unreadable.length} unreadable` : ""}.
-        </div>
-      )}
+      {/* ============ PHASE 3: Restaurant decision surface ============ */}
+      {showDecisionSurface && (
+        <div
+          data-boost={boosted ? "on" : "off"}
+          className="scan-decision mt-6 bg-background pb-40"
+        >
+          {/* Group toggle (compact, affects scoring) */}
+          {grouped.length > 0 && (
+            <div className="mb-4">
+              <DrinkingGroupSelector
+                selectedIds={group.friendIds}
+                onToggle={group.toggle}
+                onClear={group.clear}
+                onSet={group.set}
+              />
+            </div>
+          )}
 
-      {totalWines > 0 && enoughRatings && (
-        <div className="mt-3">
-          <button
-            type="button"
-            onClick={() => setSommOpen(true)}
-            className="text-[11px] uppercase text-muted-foreground hover:text-primary"
-            style={{ letterSpacing: "0.18em" }}
-          >
-            Show your palate to the somm →
-          </button>
-        </div>
-      )}
+          {/* HERO(ES) */}
+          {heroes.length === 0 && anyBatchInFlight && (
+            <HeroSkeleton />
+          )}
+          {heroes.length > 0 && (
+            <div className="grid gap-3">
+              {heroes.map((h) => (
+                <HeroCard
+                  key={h.key}
+                  row={h}
+                  isTie={heroes.length > 1}
+                  zeroStrong={zeroStrong}
+                  onOpen={() => setDetailFor(h)}
+                />
+              ))}
+            </div>
+          )}
 
+          {/* THE REST */}
+          {(restNonVeto.length > 0 || vetoedRows.length > 0 || pendingSkeletons > 0) && (
+            <div className="mt-8">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                The rest of the list
+                {anyBatchInFlight && <span className="ml-2 normal-case tracking-normal text-muted-foreground">· still reading…</span>}
+              </p>
+              <ul className="mt-3 divide-y divide-border">
+                {restNonVeto.map((r) => (
+                  <ResultRow key={r.key} row={r} onOpen={() => setDetailFor(r)} />
+                ))}
+                {Array.from({ length: pendingSkeletons }).map((_, i) => (
+                  <SkeletonRow key={`sk-${i}`} />
+                ))}
+                {vetoedRows.map((r) => (
+                  <ResultRow key={r.key} row={r} onOpen={() => setDetailFor(r)} />
+                ))}
+              </ul>
+            </div>
+          )}
 
-      {totalWines === 1 && (
-        <div className="mt-3 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
-          Only one wine read — was this a <span className="font-medium">single bottle</span>?
-          <div className="mt-2">
-            <Link to="/scan/bottle" className="rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-xs font-medium">
-              Switch to bottle scan →
-            </Link>
+          {/* Zero-strong honest absence */}
+          {zeroStrong && (
+            <p className="mt-6 rounded-md border border-border bg-card/60 p-3 text-xs text-muted-foreground">
+              Nothing here is a strong match. Your closest is <span className="text-foreground">{heroes[0].ranked.bottle.name}</span> at {heroes[0].predicted.toFixed(1)}★.
+            </p>
+          )}
+
+          {/* Subordinate context */}
+          <div className="mt-8 space-y-4">
+            <CellarMemorySection matches={cellar.matches} predictionsByIndex={predictionsByIndex} />
+            {autoAttributedTo && (
+              <div className="rounded-md border border-primary/40 bg-primary/5 p-3 text-sm">
+                Added to <span className="font-medium">{autoAttributedTo}</span>.
+              </div>
+            )}
+            {scanLogId && totalWines > 0 && !autoAttributedTo && (
+              <RestaurantAttribution scanId={scanLogId} />
+            )}
+            {totalWines > 0 && (
+              <p className="text-[11px] text-muted-foreground">
+                Read {totalWines} wine{totalWines > 1 ? "s" : ""} · {matchedCount} matched · {estimatedCount} estimated
+                {unreadable.length > 0 ? ` · ${unreadable.length} unreadable` : ""}.
+              </p>
+            )}
+            {totalWines > 0 && (
+              <button
+                type="button"
+                onClick={() => setSommOpen(true)}
+                className="text-[11px] uppercase text-muted-foreground hover:text-primary"
+                style={{ letterSpacing: "0.18em" }}
+              >
+                Show your palate to the somm →
+              </button>
+            )}
           </div>
         </div>
       )}
 
-      {autoAttributedTo && (
-        <div className="mt-4 rounded-md border border-primary/40 bg-primary/5 p-3 text-sm">
-          Added to <span className="font-medium">{autoAttributedTo}</span>.
+      {readFailed && (
+        <div className="mt-6 rounded-md border border-border bg-card/60 p-4 text-sm">
+          <p className="text-foreground">Couldn't read that list.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Try again with more light, or hold the phone closer.</p>
+          <button
+            onClick={startOver}
+            className="mt-3 rounded-md bg-primary text-primary-foreground px-3 py-2 text-xs font-medium min-h-11"
+          >
+            Re-scan
+          </button>
         </div>
       )}
 
-      {scanLogId && totalWines > 0 && !autoAttributedTo && (
-        <RestaurantAttribution scanId={scanLogId} />
+      {/* Bottom thumb bar (thumb-zone actions only) */}
+      {showDecisionSurface && (
+        <ScanThumbBar
+          boosted={boosted}
+          onBoost={() => setBoosted((b) => !b)}
+          onRescan={startOver}
+          controls={controls}
+          setControls={setControls}
+        />
       )}
 
-      <CellarMemorySection matches={cellar.matches} predictionsByIndex={predictionsByIndex} />
+      {/* Detail sheet */}
+      <ScanDetailSheet row={detailFor} onClose={() => setDetailFor(null)} />
 
-      {grouped.length > 0 && (
-        <div className="mt-6">
-          <DrinkingGroupSelector
-            selectedIds={group.friendIds}
-            onToggle={group.toggle}
-            onClear={group.clear}
-            onSet={group.set}
-          />
-        </div>
-      )}
 
-      {grouped.length > 0 && (
-        <div className="mt-6 space-y-8">
-          {grouped.map((g) => (
-            <ScanSection
-              key={g.type}
-              type={g.type}
-              rows={g.rows}
-              enoughRatings={enoughRatings}
-              flagFor={flagFor}
-              groupScores={groupScores}
-              groupActive={groupActive}
-              groupLoading={groupPred.isFetching}
-              producers={cellar.producers}
-            />
-          ))}
-        </div>
-      )}
 
       {unreadable.length > 0 && (
         <div className="mt-8">
@@ -1118,3 +1241,276 @@ function ScanSection({
     </section>
   );
 }
+
+// ================= PHASE 3 COMPONENTS =================
+
+function priceLabel(row: ScanRow): string {
+  return row.price_display ?? "—";
+}
+
+function reasonLine(row: ScanRow): string {
+  const r = row.ranked;
+  if (r.vetoed) return "avoid — a nemesis lives here";
+  if (r.contested) return "close to a dealbreaker for you";
+  if (r.nearest) {
+    const words = r.nearest.name.split(/\s+/).filter(Boolean).slice(0, 3).join(" ");
+    return `like your ${r.nearest.stars}★ ${words}`;
+  }
+  if (r.predicted >= 4.3) return "your kind of wine";
+  if (r.predicted >= 3.8) return "strong match";
+  if (r.predicted <= 2.6) return "likely not your style";
+  return "";
+}
+
+function HeroCard({
+  row, isTie, zeroStrong, onOpen,
+}: {
+  row: ScanRow;
+  isTie: boolean;
+  zeroStrong: boolean;
+  onOpen: () => void;
+}) {
+  const score = row.predicted.toFixed(1);
+  const reason = reasonLine(row);
+  const price = priceLabel(row);
+  const nameId = `hero-${row.key}`;
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-labelledby={nameId}
+      className="scan-hero relative w-full text-left rounded-xl border border-[--accent-color] p-5 bg-[--surface] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[--accent-color]"
+      style={{ boxShadow: "0 0 0 1px var(--accent-color), 0 12px 40px -12px color-mix(in oklab, var(--accent-color) 40%, transparent)" }}
+    >
+      <p className="text-[11px] uppercase tracking-[0.22em] text-[--accent-color] font-medium">
+        {isTie ? "Top picks" : zeroStrong ? "Closest match" : "Top pick"}
+      </p>
+      <div className="mt-3 flex items-baseline gap-3">
+        <span
+          className="font-serif text-[--accent-color] leading-none"
+          style={{ fontSize: "48px", fontWeight: 600 }}
+        >
+          {score}
+        </span>
+        <span className="text-[--accent-color] text-2xl leading-none">★</span>
+      </div>
+      <p
+        id={nameId}
+        className="mt-3 text-foreground break-words"
+        style={{ fontSize: "22px", lineHeight: 1.2, fontWeight: 600 }}
+      >
+        {row.ranked.bottle.name}
+      </p>
+      {row.ranked.bottle.region && (
+        <p className="mt-1 text-xs text-muted-foreground">{row.ranked.bottle.region}</p>
+      )}
+      <p className="mt-3 text-sm text-foreground">
+        <span className="text-[--accent-color] font-medium">{price}</span>
+        {reason && <span className="text-muted-foreground"> · {reason}</span>}
+      </p>
+    </button>
+  );
+}
+
+function HeroSkeleton() {
+  return (
+    <div
+      aria-hidden
+      className="rounded-xl border border-[--accent-color]/40 p-5 bg-[--surface] animate-pulse"
+      style={{ minHeight: 160 }}
+    >
+      <div className="h-3 w-24 rounded bg-[--surface-2]" />
+      <div className="mt-4 h-12 w-24 rounded bg-[--surface-2]" />
+      <div className="mt-4 h-5 w-3/4 rounded bg-[--surface-2]" />
+      <div className="mt-2 h-4 w-1/2 rounded bg-[--surface-2]" />
+    </div>
+  );
+}
+
+function ResultRow({ row, onOpen }: { row: ScanRow; onOpen: () => void }) {
+  const r = row.ranked;
+  const score = r.predicted > 0 ? r.predicted.toFixed(1) : null;
+  const reason = reasonLine(row);
+  const price = priceLabel(row);
+  const edge = r.vetoed
+    ? "before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-[--crimson] before:content-['']"
+    : r.contested
+    ? "before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-[--amber] before:content-['']"
+    : "";
+  return (
+    <li className="list-none">
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-label={`Details for ${r.bottle.name}`}
+        className={`relative w-full text-left py-4 pl-4 pr-3 flex items-start gap-4 min-h-11 hover:bg-accent/40 transition-colors ${edge}`}
+      >
+        <div className="shrink-0 flex flex-col items-center justify-center w-14 h-14 rounded-xl border border-border bg-[--surface-2]">
+          {score ? (
+            <>
+              <span className="font-serif text-[--accent-color] leading-none" style={{ fontSize: "22px" }}>{score}</span>
+              <span className="mt-0.5 text-sm text-[--accent-color] leading-none">★</span>
+            </>
+          ) : (
+            <span className="text-[9px] uppercase tracking-wider text-muted-foreground">n/a</span>
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start gap-2">
+            {r.vetoed && (
+              <span className="shrink-0 mt-0.5 rounded-sm bg-[--crimson] text-white text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5">
+                Avoid
+              </span>
+            )}
+            <p
+              className="text-foreground break-words"
+              style={{
+                fontSize: "15px",
+                lineHeight: 1.35,
+                fontWeight: 500,
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+              }}
+            >
+              {r.bottle.name}
+            </p>
+          </div>
+          {reason && (
+            <p className={`mt-1 text-[11px] ${r.vetoed ? "text-[--crimson]" : "text-muted-foreground"}`}>{reason}</p>
+          )}
+        </div>
+        <div className="shrink-0 text-right pt-1">
+          <p className="text-sm text-foreground font-medium">{price}</p>
+          {row.greatValue && !r.vetoed && (
+            <p className="mt-0.5 flex items-center justify-end gap-1 text-[10px] text-[--value]">
+              <span aria-hidden className="inline-block w-1.5 h-1.5 rounded-full bg-[--value]" /> value
+            </p>
+          )}
+        </div>
+      </button>
+    </li>
+  );
+}
+
+function SkeletonRow() {
+  return (
+    <li className="list-none py-4 pl-4 pr-3 flex items-start gap-4 animate-pulse">
+      <div className="shrink-0 w-14 h-14 rounded-xl bg-[--surface-2]" />
+      <div className="flex-1 space-y-2">
+        <div className="h-4 w-3/4 rounded bg-[--surface-2]" />
+        <div className="h-3 w-1/3 rounded bg-[--surface-2]" />
+        <p className="text-[11px] text-muted-foreground italic">still reading…</p>
+      </div>
+      <div className="w-12 h-4 rounded bg-[--surface-2]" />
+    </li>
+  );
+}
+
+function ScanThumbBar({
+  boosted, onBoost, onRescan, controls, setControls,
+}: {
+  boosted: boolean;
+  onBoost: () => void;
+  onRescan: () => void;
+  controls: Controls;
+  setControls: (c: Controls) => void;
+}) {
+  return (
+    <div
+      className="fixed inset-x-0 z-30 px-4 pointer-events-none"
+      style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 88px)" }}
+    >
+      <div className="mx-auto max-w-md flex items-center justify-between gap-2 pointer-events-auto">
+        <button
+          type="button"
+          onClick={onRescan}
+          aria-label="Re-scan"
+          className="rounded-full border border-border bg-[--surface] px-4 py-3 text-sm font-medium min-h-11 min-w-11 shadow-lg"
+        >
+          ↻ Re-scan
+        </button>
+        <button
+          type="button"
+          onClick={onBoost}
+          aria-pressed={boosted}
+          aria-label="Toggle brightness boost"
+          className="rounded-full border border-border bg-[--surface] px-4 py-3 text-sm font-medium min-h-11 min-w-11 shadow-lg"
+        >
+          {boosted ? "☀ Boost on" : "☀ Boost"}
+        </button>
+        <ListControls value={controls} onChange={setControls} idPrefix="scan-decision" />
+      </div>
+    </div>
+  );
+}
+
+function ScanDetailSheet({ row, onClose }: { row: ScanRow | null; onClose: () => void }) {
+  useEffect(() => {
+    if (!row) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [row, onClose]);
+  if (!row) return null;
+  const r = row.ranked;
+  return (
+    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label={`Detail for ${r.bottle.name}`}>
+      <button
+        aria-label="Close detail"
+        onClick={onClose}
+        className="absolute inset-0 bg-black/60 motion-safe:animate-in motion-safe:fade-in"
+      />
+      <div
+        className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-[--surface] border-t border-border p-5 pb-8 motion-safe:animate-in motion-safe:slide-in-from-bottom max-h-[85vh] overflow-y-auto"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)" }}
+      >
+        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-border" aria-hidden />
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="font-serif text-[22px] leading-tight text-foreground break-words">{r.bottle.name}</p>
+            {r.bottle.region && <p className="mt-1 text-xs text-muted-foreground">{r.bottle.region}</p>}
+          </div>
+          <div className="shrink-0 text-right">
+            {r.predicted > 0 ? (
+              <>
+                <span className="font-serif text-[--accent-color] text-3xl leading-none">{r.predicted.toFixed(1)}</span>
+                <span className="text-[--accent-color] text-lg leading-none">★</span>
+              </>
+            ) : (
+              <span className="text-xs text-muted-foreground">no score</span>
+            )}
+          </div>
+        </div>
+        <p className="mt-3 text-sm">
+          <span className="text-[--accent-color] font-medium">{priceLabel(row)}</span>
+          {row.isCatalog ? <span className="ml-2 text-[10px] uppercase tracking-wider text-muted-foreground">catalog match</span>
+            : <span className="ml-2 text-[10px] uppercase tracking-wider text-muted-foreground">estimated</span>}
+        </p>
+        <div className="mt-5 flex items-center gap-4">
+          <FingerprintSpoke fp={r.bottle.fp} size={72} />
+          <div className="min-w-0 text-xs text-muted-foreground">
+            {r.nearest ? (
+              <p>
+                Closest to your{" "}
+                <span className="text-foreground">{r.nearest.stars}★ {r.nearest.name}</span>
+                {r.nearestIsCanon && <span className="ml-1 text-[--accent-color]">· Benchmark</span>}
+              </p>
+            ) : (
+              <p>No close neighbor in your rated wines yet.</p>
+            )}
+            {r.vetoed && r.vetoReason && (
+              <p className="mt-2 text-[--crimson]">Avoid — close to your nemesis {r.vetoReason.nemesis.name}</p>
+            )}
+            {!r.vetoed && r.contested && r.contestedReason && (
+              <p className="mt-2 text-[--amber]">Contested — near {r.contestedReason.nemesis.name}, but closer to your love {r.contestedReason.nearestPositive.name}</p>
+            )}
+
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
