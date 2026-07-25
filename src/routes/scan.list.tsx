@@ -723,79 +723,129 @@ function Scan() {
         </div>
       )}
 
-      {totalWines > 0 && (
-        <div className="mt-5 rounded-md border border-border bg-card/60 p-3 text-xs text-muted-foreground">
-          Read {totalWines} wine{totalWines > 1 ? "s" : ""} ·{" "}
-          <span className="text-foreground">{matchedCount} matched the catalog</span> · {estimatedCount} estimated
-          {unreadable.length > 0 ? ` · ${unreadable.length} unreadable` : ""}.
-        </div>
-      )}
+      {/* ============ PHASE 3: Restaurant decision surface ============ */}
+      {showDecisionSurface && (
+        <div
+          data-boost={boosted ? "on" : "off"}
+          className="scan-decision mt-6 bg-background pb-40"
+        >
+          {/* Group toggle (compact, affects scoring) */}
+          {grouped.length > 0 && (
+            <div className="mb-4">
+              <DrinkingGroupSelector
+                selectedIds={group.friendIds}
+                onToggle={group.toggle}
+                onClear={group.clear}
+                onSet={group.set}
+              />
+            </div>
+          )}
 
-      {totalWines > 0 && enoughRatings && (
-        <div className="mt-3">
-          <button
-            type="button"
-            onClick={() => setSommOpen(true)}
-            className="text-[11px] uppercase text-muted-foreground hover:text-primary"
-            style={{ letterSpacing: "0.18em" }}
-          >
-            Show your palate to the somm →
-          </button>
-        </div>
-      )}
+          {/* HERO(ES) */}
+          {heroes.length === 0 && anyBatchInFlight && (
+            <HeroSkeleton />
+          )}
+          {heroes.length > 0 && (
+            <div className="grid gap-3">
+              {heroes.map((h) => (
+                <HeroCard
+                  key={h.key}
+                  row={h}
+                  isTie={heroes.length > 1}
+                  zeroStrong={zeroStrong}
+                  onOpen={() => setDetailFor(h)}
+                />
+              ))}
+            </div>
+          )}
 
+          {/* THE REST */}
+          {(restNonVeto.length > 0 || vetoedRows.length > 0 || pendingSkeletons > 0) && (
+            <div className="mt-8">
+              <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+                The rest of the list
+                {anyBatchInFlight && <span className="ml-2 normal-case tracking-normal text-muted-foreground">· still reading…</span>}
+              </p>
+              <ul className="mt-3 divide-y divide-border">
+                {restNonVeto.map((r) => (
+                  <ResultRow key={r.key} row={r} onOpen={() => setDetailFor(r)} />
+                ))}
+                {Array.from({ length: pendingSkeletons }).map((_, i) => (
+                  <SkeletonRow key={`sk-${i}`} />
+                ))}
+                {vetoedRows.map((r) => (
+                  <ResultRow key={r.key} row={r} onOpen={() => setDetailFor(r)} />
+                ))}
+              </ul>
+            </div>
+          )}
 
-      {totalWines === 1 && (
-        <div className="mt-3 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
-          Only one wine read — was this a <span className="font-medium">single bottle</span>?
-          <div className="mt-2">
-            <Link to="/scan/bottle" className="rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-xs font-medium">
-              Switch to bottle scan →
-            </Link>
+          {/* Zero-strong honest absence */}
+          {zeroStrong && (
+            <p className="mt-6 rounded-md border border-border bg-card/60 p-3 text-xs text-muted-foreground">
+              Nothing here is a strong match. Your closest is <span className="text-foreground">{heroes[0].bottle?.name ?? heroes[0].ranked.bottle.name}</span> at {heroes[0].predicted.toFixed(1)}★.
+            </p>
+          )}
+
+          {/* Subordinate context */}
+          <div className="mt-8 space-y-4">
+            <CellarMemorySection matches={cellar.matches} predictionsByIndex={predictionsByIndex} />
+            {autoAttributedTo && (
+              <div className="rounded-md border border-primary/40 bg-primary/5 p-3 text-sm">
+                Added to <span className="font-medium">{autoAttributedTo}</span>.
+              </div>
+            )}
+            {scanLogId && totalWines > 0 && !autoAttributedTo && (
+              <RestaurantAttribution scanId={scanLogId} />
+            )}
+            {totalWines > 0 && (
+              <p className="text-[11px] text-muted-foreground">
+                Read {totalWines} wine{totalWines > 1 ? "s" : ""} · {matchedCount} matched · {estimatedCount} estimated
+                {unreadable.length > 0 ? ` · ${unreadable.length} unreadable` : ""}.
+              </p>
+            )}
+            {totalWines > 0 && (
+              <button
+                type="button"
+                onClick={() => setSommOpen(true)}
+                className="text-[11px] uppercase text-muted-foreground hover:text-primary"
+                style={{ letterSpacing: "0.18em" }}
+              >
+                Show your palate to the somm →
+              </button>
+            )}
           </div>
         </div>
       )}
 
-      {autoAttributedTo && (
-        <div className="mt-4 rounded-md border border-primary/40 bg-primary/5 p-3 text-sm">
-          Added to <span className="font-medium">{autoAttributedTo}</span>.
+      {readFailed && (
+        <div className="mt-6 rounded-md border border-border bg-card/60 p-4 text-sm">
+          <p className="text-foreground">Couldn't read that list.</p>
+          <p className="mt-1 text-xs text-muted-foreground">Try again with more light, or hold the phone closer.</p>
+          <button
+            onClick={startOver}
+            className="mt-3 rounded-md bg-primary text-primary-foreground px-3 py-2 text-xs font-medium min-h-11"
+          >
+            Re-scan
+          </button>
         </div>
       )}
 
-      {scanLogId && totalWines > 0 && !autoAttributedTo && (
-        <RestaurantAttribution scanId={scanLogId} />
+      {/* Bottom thumb bar (thumb-zone actions only) */}
+      {showDecisionSurface && (
+        <ScanThumbBar
+          boosted={boosted}
+          onBoost={() => setBoosted((b) => !b)}
+          onRescan={startOver}
+          controls={controls}
+          setControls={setControls}
+        />
       )}
 
-      <CellarMemorySection matches={cellar.matches} predictionsByIndex={predictionsByIndex} />
+      {/* Detail sheet */}
+      <ScanDetailSheet row={detailFor} onClose={() => setDetailFor(null)} />
 
-      {grouped.length > 0 && (
-        <div className="mt-6">
-          <DrinkingGroupSelector
-            selectedIds={group.friendIds}
-            onToggle={group.toggle}
-            onClear={group.clear}
-            onSet={group.set}
-          />
-        </div>
-      )}
 
-      {grouped.length > 0 && (
-        <div className="mt-6 space-y-8">
-          {grouped.map((g) => (
-            <ScanSection
-              key={g.type}
-              type={g.type}
-              rows={g.rows}
-              enoughRatings={enoughRatings}
-              flagFor={flagFor}
-              groupScores={groupScores}
-              groupActive={groupActive}
-              groupLoading={groupPred.isFetching}
-              producers={cellar.producers}
-            />
-          ))}
-        </div>
-      )}
 
       {unreadable.length > 0 && (
         <div className="mt-8">
