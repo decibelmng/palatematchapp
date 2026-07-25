@@ -450,19 +450,31 @@ function SectionView({ section, groupScores, groupActive, groupLoading, canonReg
   const useLanes = !!laneResult && laneResult.lanes.length > 0;
   const lanes = laneResult?.lanes ?? [];
 
-  // Dev-only diagnostic so we can chase render-count regressions without
-  // bringing back the ad-hoc console dumps. Silent in production.
-  if (typeof window !== "undefined" && (import.meta as any).env?.DEV) {
-    // eslint-disable-next-line no-console
-    console.debug(
-      `[matches:${section.type}] rows=${rows.length} filtered=${filtered.length}`,
-      `calibrated=${calibrated.length} raw=${rawItems.length}`,
-      `visible=${visible.length} vetoed=${vetoed.length} hidden=${hidden}`,
-      `groupActive=${groupActive} groupScoresSize=${groupScores?.size ?? "null"}`,
-      `useLanes=${useLanes} lanes=${lanes.length}`,
-    );
-  }
+  // Row → detail sheet
+  const [openRow, setOpenRow] = useState<Row | null>(null);
 
+  // Phase 2 acceptance logging (dev only)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const dev = (import.meta as { env?: { DEV?: boolean } }).env?.DEV;
+    if (!dev) return;
+    const cards = [...visible, ...vetoed];
+    const badgeCounts = cards.map((r) => {
+      let n = 0;
+      if (r.vetoed) n += 1; // AVOID pill
+      if (r.greatValue && !r.vetoed) n += 1; // value dot (counted as a flag)
+      // contested is a left-edge stripe, not a chip — not counted
+      return n;
+    });
+    const reasons = cards.slice(0, 10).map((r) => reasonLine(r));
+    // eslint-disable-next-line no-console
+    console.groupCollapsed(`[matches:${section.type}] Phase 2 acceptance`);
+    console.log("badges per card (max should be 1):", badgeCounts);
+    console.log("max badge count:", Math.max(0, ...badgeCounts));
+    console.log("reason samples:", reasons);
+    console.log("reason word counts:", reasons.map((s) => (s ? s.split(/\s+/).length : 0)));
+    console.groupEnd();
+  }, [visible, vetoed, section.type]);
 
   return (
     <section>
@@ -489,9 +501,9 @@ function SectionView({ section, groupScores, groupActive, groupLoading, canonReg
           renderRow={(r: Row) => (
             <MatchRow
               r={r}
-              type={section.type}
               g={groupActive && groupScores ? groupScores.get(r.id) ?? null : null}
               showFallbackScore={treatAsFallback && !(groupActive && groupScores?.get(r.id))}
+              onOpen={() => setOpenRow(r)}
             />
           )}
         />
@@ -502,7 +514,7 @@ function SectionView({ section, groupScores, groupActive, groupLoading, canonReg
             const showFallbackScore = treatAsFallback && !g;
             return (
               <li key={r.key}>
-                <MatchRow r={r} type={section.type} g={g} showFallbackScore={showFallbackScore} />
+                <MatchRow r={r} g={g} showFallbackScore={showFallbackScore} onOpen={() => setOpenRow(r)} />
               </li>
             );
           })}
@@ -518,26 +530,8 @@ function SectionView({ section, groupScores, groupActive, groupLoading, canonReg
           </div>
           <ul className="mt-2 divide-y divide-border/60">
             {vetoed.map((r) => (
-              <li key={r.key} className="py-3 flex items-start justify-between gap-3 opacity-90">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <WineTypeBadge type={section.type} />
-                    <span className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-destructive/50 bg-destructive/10 text-destructive">
-                      avoid
-                    </span>
-                  </div>
-                  <p className="font-medium leading-tight truncate mt-1 text-muted-foreground">{r.name}</p>
-                  <CuveeMeta producer={r.producer} region={r.region} vintages={r.vintages} />
-                  {r.vetoNemesisName && (
-                    <p className="mt-1 text-[11px] text-destructive">
-                      Matches your Nemesis {r.vetoNemesisName}
-                      {r.vetoAxes.length > 0 ? ` — ${r.vetoAxes.join(", ")}` : ""}
-                    </p>
-                  )}
-                </div>
-                <div className="shrink-0 text-right">
-                  <span className="font-serif text-destructive text-sm uppercase tracking-wider">Avoid ✕</span>
-                </div>
+              <li key={r.key}>
+                <MatchRow r={r} g={null} showFallbackScore={false} onOpen={() => setOpenRow(r)} />
               </li>
             ))}
           </ul>
@@ -553,7 +547,7 @@ function SectionView({ section, groupScores, groupActive, groupLoading, canonReg
           <button
             type="button"
             onClick={() => setShowRaw((v) => !v)}
-            className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground hover:text-foreground"
+            className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground hover:text-foreground min-h-11"
           >
             {showRaw ? "▾" : "▸"} Uncalibrated ({rawItems.length})
           </button>
@@ -563,25 +557,8 @@ function SectionView({ section, groupScores, groupActive, groupLoading, canonReg
           {showRaw && (
             <ul className="mt-2 divide-y divide-border/60">
               {rawItems.slice(0, 25).map((r) => (
-                <li key={r.key} className="py-3 flex items-start justify-between gap-3 opacity-90">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <WineTypeBadge type={section.type} />
-                      <span className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-border bg-muted text-muted-foreground">
-                        template data
-                      </span>
-                    </div>
-                    <p className="font-medium leading-tight truncate mt-1">{r.name}</p>
-                    <CuveeMeta producer={r.producer} region={r.region} vintages={r.vintages} />
-                    {r.price_display && (
-                      <p className="mt-0.5 text-[11px] text-muted-foreground">Price: {r.price_display}</p>
-                    )}
-                  </div>
-                  <div className="shrink-0 text-right">
-                    {r.criticScore !== null && (
-                      <span className="text-[11px] text-muted-foreground">{r.criticScore.toFixed(0)} critic</span>
-                    )}
-                  </div>
+                <li key={r.key}>
+                  <MatchRow r={r} g={null} showFallbackScore={false} uncalibrated onOpen={() => setOpenRow(r)} />
                 </li>
               ))}
               {rawItems.length > 25 && (
@@ -591,6 +568,8 @@ function SectionView({ section, groupScores, groupActive, groupLoading, canonReg
           )}
         </div>
       )}
+
+      <MatchDetailSheet row={openRow} type={section.type} onClose={() => setOpenRow(null)} />
     </section>
   );
 }
@@ -610,98 +589,251 @@ function GroupBreakdown({ g }: { g: GroupScored }) {
   );
 }
 
+// ── Reason line: ≤6 words, no raw appellation dumps ──────────────────
+function shortAnchor(producer: string | null, name: string | null): string {
+  const src = (producer || name || "").replace(/\s*\([^)]*\)\s*/g, "").trim();
+  if (!src) return "";
+  const words = src.split(/\s+/).filter(Boolean);
+  return words.slice(0, 2).join(" ");
+}
+function reasonLine(r: Row): string | null {
+  if (!r.nearestCuvee) return null;
+  const anchor = shortAnchor(r.nearestCuvee.producer, r.nearestCuvee.name);
+  if (!anchor) return null;
+  if (r.nearestIsCanon) return `like your Canon ${anchor}`;
+  return `like your ${r.nearestCuvee.stars.toFixed(1)}★ ${anchor}`;
+}
+
+// ── Match card (new anatomy) ─────────────────────────────────────────
 function MatchRow({
   r,
-  type,
   g,
   showFallbackScore,
+  uncalibrated,
+  onOpen,
 }: {
   r: Row;
-  type: WineType;
   g: GroupScored | null;
   showFallbackScore: boolean;
+  uncalibrated?: boolean;
+  onOpen: () => void;
 }) {
+  const score: string | null = uncalibrated
+    ? null
+    : g
+    ? g.group_min.toFixed(1)
+    : showFallbackScore
+    ? r.criticScore !== null
+      ? r.criticScore.toFixed(0)
+      : null
+    : r.predicted.toFixed(1)
+  ;
+  const scoreIsCritic = !uncalibrated && !g && showFallbackScore;
+  const strengthWord = !uncalibrated && !g && !showFallbackScore && typeof r.maxSimilarity === "number"
+    ? r.maxSimilarity >= 0.85 ? "strong"
+    : r.maxSimilarity >= 0.65 ? "close"
+    : r.maxSimilarity >= 0.45 ? "loose"
+    : "distant"
+    : null;
+
+  const edge = r.vetoed
+    ? "before:absolute before:inset-y-0 before:left-0 before:w-1.5 before:bg-destructive"
+    : r.contested
+    ? "before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-amber-500/80"
+    : "";
+  const reason = uncalibrated ? null : reasonLine(r);
+  const producerLine = [r.producer, r.region].filter(Boolean).join(" · ")
+    + (r.vintages.length > 0 ? " · " + (vintageLabel(r.vintages) ?? "") : "");
+
   return (
-    <div className="py-4 flex items-start justify-between gap-3">
-      <div className="min-w-0">
-        <div className="flex items-center gap-2 flex-wrap">
-          <WineTypeBadge type={type} />
-          <span className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-primary/40 bg-primary/10 text-primary">
-            catalog
-          </span>
-          {r.greatValue && (
-            <span className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={`Details for ${r.name}`}
+      className={`relative w-full text-left py-4 pl-4 pr-3 flex items-start gap-4 min-h-11 hover:bg-accent/40 transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary ${edge}`}
+    >
+      {/* Score chip — LEFT, hero */}
+      <div className="shrink-0 flex flex-col items-center justify-center w-14 h-14 rounded-xl border border-border bg-[--surface-2] text-center">
+        {score ? (
+          <>
+            <span className={`font-serif leading-none ${scoreIsCritic ? "text-muted-foreground text-lg" : "text-primary text-[22px]"}`}>{score}</span>
+            <span className={`mt-0.5 leading-none ${scoreIsCritic ? "text-[9px] uppercase tracking-wider text-muted-foreground" : "text-primary text-sm"}`}>
+              {scoreIsCritic ? "critic" : "★"}
+            </span>
+            {strengthWord && (
+              <span className="mt-0.5 text-[8px] uppercase tracking-wider text-muted-foreground leading-none">{strengthWord}</span>
+            )}
+          </>
+        ) : (
+          <span className="text-[9px] uppercase tracking-wider text-muted-foreground">n/a</span>
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="min-w-0 flex-1">
+        <p
+          className={`font-medium text-[15px] leading-snug break-words ${r.vetoed ? "text-muted-foreground line-through decoration-destructive/60" : "text-foreground"}`}
+          style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}
+        >
+          {r.name}
+        </p>
+        <p className="mt-0.5 text-[12px] text-muted-foreground truncate">{producerLine}</p>
+        <div className="mt-1 flex items-center gap-2 text-[12px]">
+          {r.price_display && <span className="text-foreground/80">{r.price_display}</span>}
+          {r.greatValue && !r.vetoed && (
+            <span className="inline-flex items-center gap-1 text-[--color-value] text-[11px]" title="Great value">
+              <span aria-hidden className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
               great value
             </span>
           )}
-          {r.contested && r.contestedNemesisName && (
-            <span
-              className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-300"
-              title="Inside your Nemesis's reach, but closer to a wine you love"
-            >
-              near your Nemesis {r.contestedNemesisName}
+          {r.vetoed && (
+            <span className="inline-flex items-center rounded-full bg-destructive text-destructive-foreground px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider">
+              Avoid
             </span>
           )}
         </div>
-        <p className="font-medium leading-tight truncate mt-1">{r.name}</p>
-        <CuveeMeta producer={r.producer} region={r.region} vintages={r.vintages} />
-        {r.price_display && (
-          <p className="mt-0.5 text-[11px] text-muted-foreground">Price: {r.price_display}</p>
+        {reason && !r.vetoed && (
+          <p className="mt-1 text-[12px] text-muted-foreground">{reason}</p>
+        )}
+        {r.vetoed && r.vetoNemesisName && (
+          <p className="mt-1 text-[12px] text-destructive">near your Nemesis {shortAnchor(null, r.vetoNemesisName)}</p>
         )}
         {g && <GroupBreakdown g={g} />}
-        {!g && r.nearestCuvee && r.nearestIsCanon && (
-          <p className="mt-1 text-[11px] text-amber-700 dark:text-amber-300 flex items-center gap-1">
-            <CanonBadge size="sm" title="Nearest neighbour is a Canon anchor" />
-            <span>
-              Close match to your Canon
-              {r.nearestCanonRegion ? <> <span className="text-foreground/80">{r.nearestCanonRegion}</span></> : null}
-              {" — "}
-              <span className="text-foreground/80">{r.nearestCuvee.name}</span>
-            </span>
-          </p>
-        )}
-        {!g && r.nearestCuvee && !r.nearestIsCanon && (
-          <p className="mt-1 text-[11px] text-muted-foreground">
-            like your {r.nearestCuvee.stars.toFixed(1)}★ <span className="text-foreground/80">{r.nearestCuvee.name}</span>
-          </p>
-        )}
       </div>
-      <div className="shrink-0 text-right">
-        {g ? (
-          <>
-            <span className="font-serif text-primary text-xl">{g.group_min.toFixed(1)}</span>
-            <span className="text-primary text-sm">★</span>
-            <p className="text-[10px] text-muted-foreground">avg {g.group_avg.toFixed(1)}</p>
-          </>
-        ) : showFallbackScore ? (
-          r.criticScore !== null && (
-            <>
-              <span className="font-serif text-muted-foreground text-base">{r.criticScore.toFixed(0)}</span>
-              <span className="text-muted-foreground text-xs"> critic</span>
-            </>
-          )
-        ) : (
-          <>
-            <span className="font-serif text-primary text-xl">{r.predicted.toFixed(1)}</span>
-            <span className="text-primary text-sm">★</span>
-            {typeof r.maxSimilarity === "number" && (
-              <p
-                className="mt-0.5 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-border bg-muted text-muted-foreground"
-                title={`Similarity to nearest anchor: ${(r.maxSimilarity * 100).toFixed(0)}%`}
-              >
-                {r.maxSimilarity >= 0.85 ? "strong match"
-                  : r.maxSimilarity >= 0.65 ? "close match"
-                  : r.maxSimilarity >= 0.45 ? "loose match"
-                  : "distant match"}
-              </p>
+    </button>
+  );
+}
+
+// ── Detail bottom sheet ──────────────────────────────────────────────
+function MatchDetailSheet({
+  row,
+  type,
+  onClose,
+}: {
+  row: Row | null;
+  type: WineType;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    if (!row) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [row, onClose]);
+  if (!row) return null;
+  const scorePct = typeof row.maxSimilarity === "number"
+    ? `${(row.maxSimilarity * 100).toFixed(0)}%`
+    : null;
+
+  return (
+    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label={row.name}>
+      <div className="absolute inset-0 bg-black/60" onClick={onClose} />
+      <div
+        className="absolute inset-x-0 bottom-0 max-h-[85vh] overflow-y-auto rounded-t-2xl border-t border-border bg-card shadow-2xl"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 1rem)" }}
+      >
+        <div className="mx-auto mt-2 h-1 w-10 rounded-full bg-border" aria-hidden />
+        <div className="flex items-start justify-between px-5 pt-3 pb-2 gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <WineTypeBadge type={type} />
+              {row.vetoed && (
+                <span className="inline-flex items-center rounded-full bg-destructive text-destructive-foreground px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider">
+                  Avoid
+                </span>
+              )}
+              {!row.vetoed && row.contested && (
+                <span className="inline-flex items-center rounded-full border border-amber-500/60 bg-amber-500/10 text-amber-700 dark:text-amber-300 px-2 py-0.5 text-[10px] uppercase tracking-wider">
+                  Contested
+                </span>
+              )}
+            </div>
+            <h3 className="mt-2 font-serif text-xl leading-snug">{row.name}</h3>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {[row.producer, row.region].filter(Boolean).join(" · ")}
+              {row.vintages.length > 0 ? ` · ${vintageLabel(row.vintages)}` : ""}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="min-h-11 min-w-11 -mr-2 rounded-md text-muted-foreground hover:text-foreground"
+          >✕</button>
+        </div>
+
+        <div className="px-5 py-3 grid grid-cols-2 gap-4 border-t border-border">
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Predicted</p>
+            <p className="mt-1 font-serif text-2xl text-primary">
+              {row.predicted > 0 ? `${row.predicted.toFixed(1)}★` : "—"}
+            </p>
+            {scorePct && (
+              <p className="text-[11px] text-muted-foreground">Similarity {scorePct}</p>
             )}
-            {r.confidence !== null && r.confidence < 0.35 && (
-              <p className="mt-0.5 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-border bg-muted text-muted-foreground">
-                low match data
-              </p>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Price</p>
+            <p className="mt-1 text-lg">{row.price_display ?? "—"}</p>
+            {row.criticScore !== null && (
+              <p className="text-[11px] text-muted-foreground">Critic {row.criticScore.toFixed(0)}</p>
             )}
-          </>
+          </div>
+        </div>
+
+        <div className="px-5 py-3 border-t border-border">
+          <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Fingerprint</p>
+          <div className="mt-2 flex items-center gap-4">
+            <FingerprintSpoke fp={row.fp} size={96} />
+            <div className="text-[12px] text-muted-foreground">
+              8-axis style read. Bigger polygon = more of that trait.
+            </div>
+          </div>
+        </div>
+
+        {row.nearestCuvee && (
+          <div className="px-5 py-3 border-t border-border">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Nearest anchor</p>
+            <div className="mt-2 flex items-start gap-2">
+              {row.nearestIsCanon && <CanonBadge size="sm" title="Canon anchor" />}
+              <div className="text-sm">
+                <p className="text-foreground">{row.nearestCuvee.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  your {row.nearestCuvee.stars.toFixed(1)}★
+                  {row.nearestIsCanon ? " · Canon" : ""}
+                  {row.nearestCanonRegion ? ` · ${row.nearestCanonRegion}` : row.nearestCuvee.region ? ` · ${row.nearestCuvee.region}` : ""}
+                </p>
+              </div>
+            </div>
+          </div>
         )}
+
+        {(row.vetoed || row.contested) && (row.vetoNemesisName || row.contestedNemesisName) && (
+          <div className="px-5 py-3 border-t border-border">
+            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Why this flag</p>
+            <p className="mt-1 text-sm">
+              {row.vetoed
+                ? <>Inside <span className="text-destructive font-medium">{row.vetoNemesisName}</span>'s Nemesis radius{row.vetoAxes.length > 0 ? ` — ${row.vetoAxes.join(", ")}` : ""}.</>
+                : <>Inside <span className="text-amber-700 dark:text-amber-300">{row.contestedNemesisName}</span>'s reach — but closer to a wine you love.</>
+              }
+            </p>
+          </div>
+        )}
+
+        <div className="px-5 pt-3 pb-2 border-t border-border">
+          <Link
+            to="/wine/$id"
+            params={{ id: row.id }}
+            className="inline-flex items-center justify-center w-full min-h-11 rounded-xl bg-primary text-primary-foreground text-sm font-semibold"
+          >
+            Open full wine detail →
+          </Link>
+        </div>
       </div>
     </div>
   );
