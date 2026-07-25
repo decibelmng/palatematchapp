@@ -9,80 +9,29 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TonightRouteImport } from './routes/tonight'
-import { Route as ShortlistRouteImport } from './routes/shortlist'
-import { Route as ShelfRouteImport } from './routes/shelf'
-import { Route as SearchRouteImport } from './routes/search'
 import { Route as ScanRouteImport } from './routes/scan'
-import { Route as RestaurantsRouteImport } from './routes/restaurants'
 import { Route as RateRouteImport } from './routes/rate'
-import { Route as PourRouteImport } from './routes/pour'
-import { Route as MyRatingsRouteImport } from './routes/my-ratings'
-import { Route as MatchesRouteImport } from './routes/matches'
 import { Route as FriendsRouteImport } from './routes/friends'
 import { Route as CanonsRouteImport } from './routes/canons'
 import { Route as AuditRouteImport } from './routes/audit'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ScanIndexRouteImport } from './routes/scan.index'
-import { Route as RestaurantsIndexRouteImport } from './routes/restaurants.index'
 import { Route as PalateIndexRouteImport } from './routes/palate.index'
 import { Route as WineIdRouteImport } from './routes/wine.$id'
 import { Route as ScanListRouteImport } from './routes/scan.list'
 import { Route as ScanBottleRouteImport } from './routes/scan.bottle'
-import { Route as RestaurantsIdRouteImport } from './routes/restaurants.$id'
 import { Route as PalateTypeRouteImport } from './routes/palate.$type'
 import { Route as AdminDisputesRouteImport } from './routes/admin.disputes'
 import { Route as AdminDataRouteImport } from './routes/admin.data'
 import { Route as AddFriendUsernameRouteImport } from './routes/add-friend.$username'
 
-const TonightRoute = TonightRouteImport.update({
-  id: '/tonight',
-  path: '/tonight',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ShortlistRoute = ShortlistRouteImport.update({
-  id: '/shortlist',
-  path: '/shortlist',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ShelfRoute = ShelfRouteImport.update({
-  id: '/shelf',
-  path: '/shelf',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const SearchRoute = SearchRouteImport.update({
-  id: '/search',
-  path: '/search',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ScanRoute = ScanRouteImport.update({
   id: '/scan',
   path: '/scan',
   getParentRoute: () => rootRouteImport,
 } as any)
-const RestaurantsRoute = RestaurantsRouteImport.update({
-  id: '/restaurants',
-  path: '/restaurants',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const RateRoute = RateRouteImport.update({
   id: '/rate',
   path: '/rate',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PourRoute = PourRouteImport.update({
-  id: '/pour',
-  path: '/pour',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MyRatingsRoute = MyRatingsRouteImport.update({
-  id: '/my-ratings',
-  path: '/my-ratings',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MatchesRoute = MatchesRouteImport.update({
-  id: '/matches',
-  path: '/matches',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FriendsRoute = FriendsRouteImport.update({
@@ -105,16 +54,6 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ScanIndexRoute = ScanIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => ScanRoute,
-} as any)
-const RestaurantsIndexRoute = RestaurantsIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => RestaurantsRoute,
-} as any)
 const PalateIndexRoute = PalateIndexRouteImport.update({
   id: '/palate/',
   path: '/palate/',
@@ -134,11 +73,6 @@ const ScanBottleRoute = ScanBottleRouteImport.update({
   id: '/bottle',
   path: '/bottle',
   getParentRoute: () => ScanRoute,
-} as any)
-const RestaurantsIdRoute = RestaurantsIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => RestaurantsRoute,
 } as any)
 const PalateTypeRoute = PalateTypeRouteImport.update({
   id: '/palate/$type',
@@ -166,52 +100,32 @@ export interface FileRoutesByFullPath {
   '/audit': typeof AuditRoute
   '/canons': typeof CanonsRoute
   '/friends': typeof FriendsRoute
-  '/matches': typeof MatchesRoute
-  '/my-ratings': typeof MyRatingsRoute
-  '/pour': typeof PourRoute
   '/rate': typeof RateRoute
-  '/restaurants': typeof RestaurantsRouteWithChildren
   '/scan': typeof ScanRouteWithChildren
-  '/search': typeof SearchRoute
-  '/shelf': typeof ShelfRoute
-  '/shortlist': typeof ShortlistRoute
-  '/tonight': typeof TonightRoute
   '/add-friend/$username': typeof AddFriendUsernameRoute
   '/admin/data': typeof AdminDataRoute
   '/admin/disputes': typeof AdminDisputesRoute
   '/palate/$type': typeof PalateTypeRoute
-  '/restaurants/$id': typeof RestaurantsIdRoute
   '/scan/bottle': typeof ScanBottleRoute
   '/scan/list': typeof ScanListRoute
   '/wine/$id': typeof WineIdRoute
   '/palate/': typeof PalateIndexRoute
-  '/restaurants/': typeof RestaurantsIndexRoute
-  '/scan/': typeof ScanIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/audit': typeof AuditRoute
   '/canons': typeof CanonsRoute
   '/friends': typeof FriendsRoute
-  '/matches': typeof MatchesRoute
-  '/my-ratings': typeof MyRatingsRoute
-  '/pour': typeof PourRoute
   '/rate': typeof RateRoute
-  '/search': typeof SearchRoute
-  '/shelf': typeof ShelfRoute
-  '/shortlist': typeof ShortlistRoute
-  '/tonight': typeof TonightRoute
+  '/scan': typeof ScanRouteWithChildren
   '/add-friend/$username': typeof AddFriendUsernameRoute
   '/admin/data': typeof AdminDataRoute
   '/admin/disputes': typeof AdminDisputesRoute
   '/palate/$type': typeof PalateTypeRoute
-  '/restaurants/$id': typeof RestaurantsIdRoute
   '/scan/bottle': typeof ScanBottleRoute
   '/scan/list': typeof ScanListRoute
   '/wine/$id': typeof WineIdRoute
   '/palate': typeof PalateIndexRoute
-  '/restaurants': typeof RestaurantsIndexRoute
-  '/scan': typeof ScanIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -219,27 +133,16 @@ export interface FileRoutesById {
   '/audit': typeof AuditRoute
   '/canons': typeof CanonsRoute
   '/friends': typeof FriendsRoute
-  '/matches': typeof MatchesRoute
-  '/my-ratings': typeof MyRatingsRoute
-  '/pour': typeof PourRoute
   '/rate': typeof RateRoute
-  '/restaurants': typeof RestaurantsRouteWithChildren
   '/scan': typeof ScanRouteWithChildren
-  '/search': typeof SearchRoute
-  '/shelf': typeof ShelfRoute
-  '/shortlist': typeof ShortlistRoute
-  '/tonight': typeof TonightRoute
   '/add-friend/$username': typeof AddFriendUsernameRoute
   '/admin/data': typeof AdminDataRoute
   '/admin/disputes': typeof AdminDisputesRoute
   '/palate/$type': typeof PalateTypeRoute
-  '/restaurants/$id': typeof RestaurantsIdRoute
   '/scan/bottle': typeof ScanBottleRoute
   '/scan/list': typeof ScanListRoute
   '/wine/$id': typeof WineIdRoute
   '/palate/': typeof PalateIndexRoute
-  '/restaurants/': typeof RestaurantsIndexRoute
-  '/scan/': typeof ScanIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -248,79 +151,48 @@ export interface FileRouteTypes {
     | '/audit'
     | '/canons'
     | '/friends'
-    | '/matches'
-    | '/my-ratings'
-    | '/pour'
     | '/rate'
-    | '/restaurants'
     | '/scan'
-    | '/search'
-    | '/shelf'
-    | '/shortlist'
-    | '/tonight'
     | '/add-friend/$username'
     | '/admin/data'
     | '/admin/disputes'
     | '/palate/$type'
-    | '/restaurants/$id'
     | '/scan/bottle'
     | '/scan/list'
     | '/wine/$id'
     | '/palate/'
-    | '/restaurants/'
-    | '/scan/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/audit'
     | '/canons'
     | '/friends'
-    | '/matches'
-    | '/my-ratings'
-    | '/pour'
     | '/rate'
-    | '/search'
-    | '/shelf'
-    | '/shortlist'
-    | '/tonight'
+    | '/scan'
     | '/add-friend/$username'
     | '/admin/data'
     | '/admin/disputes'
     | '/palate/$type'
-    | '/restaurants/$id'
     | '/scan/bottle'
     | '/scan/list'
     | '/wine/$id'
     | '/palate'
-    | '/restaurants'
-    | '/scan'
   id:
     | '__root__'
     | '/'
     | '/audit'
     | '/canons'
     | '/friends'
-    | '/matches'
-    | '/my-ratings'
-    | '/pour'
     | '/rate'
-    | '/restaurants'
     | '/scan'
-    | '/search'
-    | '/shelf'
-    | '/shortlist'
-    | '/tonight'
     | '/add-friend/$username'
     | '/admin/data'
     | '/admin/disputes'
     | '/palate/$type'
-    | '/restaurants/$id'
     | '/scan/bottle'
     | '/scan/list'
     | '/wine/$id'
     | '/palate/'
-    | '/restaurants/'
-    | '/scan/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -328,16 +200,8 @@ export interface RootRouteChildren {
   AuditRoute: typeof AuditRoute
   CanonsRoute: typeof CanonsRoute
   FriendsRoute: typeof FriendsRoute
-  MatchesRoute: typeof MatchesRoute
-  MyRatingsRoute: typeof MyRatingsRoute
-  PourRoute: typeof PourRoute
   RateRoute: typeof RateRoute
-  RestaurantsRoute: typeof RestaurantsRouteWithChildren
   ScanRoute: typeof ScanRouteWithChildren
-  SearchRoute: typeof SearchRoute
-  ShelfRoute: typeof ShelfRoute
-  ShortlistRoute: typeof ShortlistRoute
-  TonightRoute: typeof TonightRoute
   AddFriendUsernameRoute: typeof AddFriendUsernameRoute
   AdminDataRoute: typeof AdminDataRoute
   AdminDisputesRoute: typeof AdminDisputesRoute
@@ -348,34 +212,6 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/tonight': {
-      id: '/tonight'
-      path: '/tonight'
-      fullPath: '/tonight'
-      preLoaderRoute: typeof TonightRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/shortlist': {
-      id: '/shortlist'
-      path: '/shortlist'
-      fullPath: '/shortlist'
-      preLoaderRoute: typeof ShortlistRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/shelf': {
-      id: '/shelf'
-      path: '/shelf'
-      fullPath: '/shelf'
-      preLoaderRoute: typeof ShelfRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/search': {
-      id: '/search'
-      path: '/search'
-      fullPath: '/search'
-      preLoaderRoute: typeof SearchRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/scan': {
       id: '/scan'
       path: '/scan'
@@ -383,39 +219,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ScanRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/restaurants': {
-      id: '/restaurants'
-      path: '/restaurants'
-      fullPath: '/restaurants'
-      preLoaderRoute: typeof RestaurantsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/rate': {
       id: '/rate'
       path: '/rate'
       fullPath: '/rate'
       preLoaderRoute: typeof RateRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/pour': {
-      id: '/pour'
-      path: '/pour'
-      fullPath: '/pour'
-      preLoaderRoute: typeof PourRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/my-ratings': {
-      id: '/my-ratings'
-      path: '/my-ratings'
-      fullPath: '/my-ratings'
-      preLoaderRoute: typeof MyRatingsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/matches': {
-      id: '/matches'
-      path: '/matches'
-      fullPath: '/matches'
-      preLoaderRoute: typeof MatchesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/friends': {
@@ -446,20 +254,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/scan/': {
-      id: '/scan/'
-      path: '/'
-      fullPath: '/scan/'
-      preLoaderRoute: typeof ScanIndexRouteImport
-      parentRoute: typeof ScanRoute
-    }
-    '/restaurants/': {
-      id: '/restaurants/'
-      path: '/'
-      fullPath: '/restaurants/'
-      preLoaderRoute: typeof RestaurantsIndexRouteImport
-      parentRoute: typeof RestaurantsRoute
-    }
     '/palate/': {
       id: '/palate/'
       path: '/palate'
@@ -487,13 +281,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/scan/bottle'
       preLoaderRoute: typeof ScanBottleRouteImport
       parentRoute: typeof ScanRoute
-    }
-    '/restaurants/$id': {
-      id: '/restaurants/$id'
-      path: '/$id'
-      fullPath: '/restaurants/$id'
-      preLoaderRoute: typeof RestaurantsIdRouteImport
-      parentRoute: typeof RestaurantsRoute
     }
     '/palate/$type': {
       id: '/palate/$type'
@@ -526,30 +313,14 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface RestaurantsRouteChildren {
-  RestaurantsIdRoute: typeof RestaurantsIdRoute
-  RestaurantsIndexRoute: typeof RestaurantsIndexRoute
-}
-
-const RestaurantsRouteChildren: RestaurantsRouteChildren = {
-  RestaurantsIdRoute: RestaurantsIdRoute,
-  RestaurantsIndexRoute: RestaurantsIndexRoute,
-}
-
-const RestaurantsRouteWithChildren = RestaurantsRoute._addFileChildren(
-  RestaurantsRouteChildren,
-)
-
 interface ScanRouteChildren {
   ScanBottleRoute: typeof ScanBottleRoute
   ScanListRoute: typeof ScanListRoute
-  ScanIndexRoute: typeof ScanIndexRoute
 }
 
 const ScanRouteChildren: ScanRouteChildren = {
   ScanBottleRoute: ScanBottleRoute,
   ScanListRoute: ScanListRoute,
-  ScanIndexRoute: ScanIndexRoute,
 }
 
 const ScanRouteWithChildren = ScanRoute._addFileChildren(ScanRouteChildren)
@@ -559,16 +330,8 @@ const rootRouteChildren: RootRouteChildren = {
   AuditRoute: AuditRoute,
   CanonsRoute: CanonsRoute,
   FriendsRoute: FriendsRoute,
-  MatchesRoute: MatchesRoute,
-  MyRatingsRoute: MyRatingsRoute,
-  PourRoute: PourRoute,
   RateRoute: RateRoute,
-  RestaurantsRoute: RestaurantsRouteWithChildren,
   ScanRoute: ScanRouteWithChildren,
-  SearchRoute: SearchRoute,
-  ShelfRoute: ShelfRoute,
-  ShortlistRoute: ShortlistRoute,
-  TonightRoute: TonightRoute,
   AddFriendUsernameRoute: AddFriendUsernameRoute,
   AdminDataRoute: AdminDataRoute,
   AdminDisputesRoute: AdminDisputesRoute,

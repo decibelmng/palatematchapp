@@ -138,16 +138,16 @@ function Rate() {
           </p>
           <div className="flex gap-3">
             <Link
-              to="/"
+              to="/palate"
               className="text-xs font-medium text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
             >
               Your palate
             </Link>
             <Link
-              to="/matches"
+              to="/"
               className="text-xs font-semibold text-primary hover:opacity-80"
             >
-              Matches →
+              Scan a list →
             </Link>
           </div>
         </div>

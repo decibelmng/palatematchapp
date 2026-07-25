@@ -1,15 +1,14 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { Home as HomeIcon, Star, Pencil, MapPin, Crown, Moon, Sun } from "lucide-react";
+import { ScanLine, Pencil, Star, Crown, Moon, Sun } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyProfile } from "@/hooks/use-friends";
 import { useTheme } from "@/lib/theme";
 
 const TABS = [
-  { to: "/", label: "Home", Icon: HomeIcon },
-  { to: "/palate", label: "Palate", Icon: Star },
+  { to: "/", label: "Scan", Icon: ScanLine },
   { to: "/rate", label: "Rate", Icon: Pencil },
-  { to: "/restaurants", label: "Restaurants", Icon: MapPin },
+  { to: "/palate", label: "Palate", Icon: Star },
 ] as const;
 
 type TabTo = (typeof TABS)[number]["to"];
