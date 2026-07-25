@@ -256,3 +256,17 @@
   .pm-pulse      { animation: pm-pulse 260ms ease-out both; transform-box: fill-box; transform-origin: center; }
 }
 
+
+/* Phase 3 — Restaurant decision surface (scan result) */
+.scan-decision {
+  /* True-black default when in dark theme; otherwise inherits normal bg */
+}
+.scan-decision[data-boost="on"] {
+  --text: #FFFFFF;
+  --text-muted: #E8DED0;
+  --foreground: #FFFFFF;
+  --muted-foreground: #E8DED0;
+}
+.scan-decision[data-boost="on"] .scan-hero { font-weight: 600; }
+.scan-decision[data-boost="on"] p,
+.scan-decision[data-boost="on"] span { font-weight: 500; }
