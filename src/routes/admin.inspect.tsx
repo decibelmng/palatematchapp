@@ -397,3 +397,50 @@ const cellHead: React.CSSProperties = {
   whiteSpace: "nowrap",
 };
 const cell: React.CSSProperties = { padding: "4px 8px" };
+
+function CopyButton({
+  label,
+  copied,
+  disabled,
+  onClick,
+}: {
+  label: string;
+  copied: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-live="polite"
+      style={{
+        fontSize: 12,
+        padding: "4px 10px",
+        border: "1px solid " + (copied ? "#186a3b" : "#999"),
+        borderRadius: 4,
+        background: copied ? "#e6f5ea" : "#fff",
+        color: copied ? "#186a3b" : "inherit",
+        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.5 : 1,
+        transition: "background 120ms, border-color 120ms, color 120ms",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        minWidth: 108,
+        justifyContent: "center",
+        fontWeight: copied ? 600 : 400,
+      }}
+    >
+      {copied ? (
+        <>
+          <span aria-hidden="true">✓</span>
+          <span>Copied</span>
+        </>
+      ) : (
+        label
+      )}
+    </button>
+  );
+}
