@@ -116,8 +116,21 @@ function BottleScan() {
       }));
       const image_paths = prepared.map((p) => p.storagePath).filter((p): p is string => !!p);
       const images = prepared.map(({ image_base64, media_type }) => ({ image_base64, media_type }));
-      return await scan({ data: { images, image_paths } });
+      return await recognizer.recognizeBottle({ images, image_paths });
     },
+    onSuccess: (r) => {
+      // Seed the editable confirm form from the raw read; require an
+      // explicit confirm before any candidate is presented for rating.
+      setEditedRead(r.extracted);
+      setConfirmed(false);
+      setOverride(null);
+    },
+  });
+
+  const resolveMut = useMutation({
+    mutationFn: async (read: BottleExtract) => resolveFn({ data: { read } }),
+    onSuccess: (r) => { setOverride(r); setConfirmed(true); },
+    onError: (e: Error) => { toast.error(e.message || "Couldn't re-check the catalog."); },
   });
 
   useEffect(() => {
@@ -142,6 +155,7 @@ function BottleScan() {
     }
     if (inputEl) inputEl.value = "";
     mutation.reset();
+    setEditedRead(null); setConfirmed(false); setOverride(null);
     // Auto-kick the scan on the first photo so users don't have to hunt
     // for a second button. Subsequent adds (e.g. adding a back label)
     // still require an explicit "Identify" tap.
@@ -155,6 +169,7 @@ function BottleScan() {
     if (back) URL.revokeObjectURL(back.url);
     setFront(null); setBack(null);
     mutation.reset();
+    setEditedRead(null); setConfirmed(false); setOverride(null);
   }
 
   const result = mutation.data ?? null;
