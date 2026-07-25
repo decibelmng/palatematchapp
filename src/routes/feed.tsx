@@ -145,7 +145,7 @@ function FriendsSection() {
           <span className="text-[10px] text-muted-foreground truncate max-w-full">Add</span>
         </Link>
         {friends.map((f) => {
-          const name = f.other.display_name || f.other.username;
+          const name = displayNameFor(f.other);
           return (
             <Link
               key={f.id}
