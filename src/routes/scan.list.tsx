@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { ScanLine, ArrowRight, Image as ImageIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -608,8 +609,7 @@ function Scan() {
       <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Scan a list</p>
       <h1 className="font-serif text-3xl mt-2">Photograph a wine list</h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        I'll read every wine on the list and rank them by predicted stars for your palate. Add as many
-        photos as the list has pages (up to 8). Long lists are read in parallel — you'll see progress per page pair.
+        I'll read every wine on the list and rank them by predicted stars for your palate.
       </p>
 
       {showResumeBanner && (
@@ -650,31 +650,43 @@ function Scan() {
         onChange={(e) => onPick(e.target.files, e.currentTarget)} />
       <input ref={libraryRef} type="file" accept="image/*" multiple className="hidden"
         onChange={(e) => onPick(e.target.files, e.currentTarget)} />
-      <div
-        data-testid="scan-entry-boxes"
-        className="mt-5 grid grid-cols-2 gap-3"
+
+      {/* PRIMARY: Scan a wine list — matches Rate tab's "Scan a bottle" hero */}
+      <button
+        type="button"
+        onClick={() => cameraRef.current?.click()}
+        disabled={isRunning || staged.length >= 8}
+        data-testid="scan-entry-camera"
+        aria-label="Scan a wine list with your camera"
+        className="mt-5 block w-full text-left rounded-[16px] border-2 border-primary/60 bg-gradient-to-br from-primary/15 via-card to-card p-4 shadow-[var(--pm-card-shadow)] hover:border-primary transition disabled:opacity-60"
       >
-        <button
-          type="button"
-          onClick={() => cameraRef.current?.click()}
-          disabled={isRunning || staged.length >= 8}
-          data-testid="scan-entry-camera"
-          className="w-full h-24 rounded-xl border border-border bg-card px-4 py-3 text-sm font-medium disabled:opacity-60 flex flex-col items-center justify-center gap-1"
-        >
-          <span aria-hidden className="text-lg leading-none">📷</span>
-          <span>Take a photo</span>
-        </button>
-        <button
-          type="button"
-          onClick={() => libraryRef.current?.click()}
-          disabled={isRunning || staged.length >= 8}
-          data-testid="scan-entry-library"
-          className="w-full h-24 rounded-xl border border-border bg-card px-4 py-3 text-sm font-medium disabled:opacity-60 flex flex-col items-center justify-center gap-1"
-        >
-          <span aria-hidden className="text-lg leading-none">🖼️</span>
-          <span>Upload photos</span>
-        </button>
-      </div>
+        <div className="flex items-center gap-3">
+          <div className="shrink-0 h-12 w-12 rounded-xl bg-primary/20 text-primary flex items-center justify-center">
+            <ScanLine size={24} strokeWidth={1.8} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <h3 className="font-serif text-[20px] leading-tight text-foreground">
+              Scan a wine list
+            </h3>
+            <p className="mt-0.5 text-[12px] text-muted-foreground">
+              Point the camera at the list — I'll rank every bottle.
+            </p>
+          </div>
+          <ArrowRight className="shrink-0 text-primary" size={18} />
+        </div>
+      </button>
+
+      {/* SECONDARY: upload existing photos */}
+      <button
+        type="button"
+        onClick={() => libraryRef.current?.click()}
+        disabled={isRunning || staged.length >= 8}
+        data-testid="scan-entry-library"
+        className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground disabled:opacity-60"
+      >
+        <ImageIcon size={14} /> Upload photos instead (up to 8 pages)
+      </button>
+
       {(staged.length > 0 || (scanId && !isRunning)) && (
         <div className="mt-3 flex flex-wrap gap-3">
           {staged.length > 0 && (
