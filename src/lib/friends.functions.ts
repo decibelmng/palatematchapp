@@ -240,7 +240,7 @@ export const getMyProfile = createServerFn({ method: "GET" })
     const { supabase, userId } = context;
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, username, display_name, palate_code_red, palate_code_white, n_rated, recent_groups, onboarding_stage, visibility, avatar_url, bio, somm_status, somm_role, establishment, verified_at, created_at")
+      .select("id, username, display_name, palate_code_red, palate_code_white, n_rated, recent_groups, onboarding_stage, visibility, avatar_url, bio, somm_status, somm_role, establishment, verified_at, created_at, scan_unlock_seen")
       .eq("id", userId)
       .maybeSingle();
     if (error) throw new Error(error.message);
