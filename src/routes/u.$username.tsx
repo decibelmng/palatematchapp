@@ -1,11 +1,18 @@
 import { createFileRoute, notFound, Link } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
+import type { ReactNode } from "react";
 import { getPublicProfile } from "@/lib/profile.functions";
 import { SommBadge } from "@/components/profile/SommBadge";
 import { FollowButton } from "@/components/profile/FollowButton";
 import { NameWithHandle } from "@/components/profile/NameWithHandle";
 import { useSession } from "@/hooks/use-session";
+import { AppShell } from "@/components/AppShell";
 import { ChevronLeft } from "lucide-react";
+
+function ProfileFrame({ children, withShell }: { children: ReactNode; withShell: boolean }) {
+  if (withShell) return <AppShell>{children}</AppShell>;
+  return <>{children}</>;
+}
 
 type PublicProfile = {
   id: string;
