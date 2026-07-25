@@ -6,6 +6,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyProfile } from "@/hooks/use-friends";
+import { useLastSeenPing } from "@/hooks/use-last-seen";
 import { markScanUnlockSeen } from "@/lib/friends.functions";
 import { useTheme } from "@/lib/theme";
 import { useRatingsCount, UNLOCK_THRESHOLD } from "@/components/UnlockMeter";
@@ -76,6 +77,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const { data: profile } = useMyProfile();
+  useLastSeenPing((profile as { id?: string } | undefined)?.id);
   const { theme, toggle } = useTheme();
   const initials = initialsFor(
     (profile as { display_name?: string | null; username?: string | null } | undefined)?.display_name

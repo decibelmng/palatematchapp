@@ -565,6 +565,7 @@ export type Database = {
           display_name: string | null
           establishment: string | null
           id: string
+          last_seen_at: string | null
           n_rated: number
           onboarding_stage: string
           palate_code: string
@@ -590,6 +591,7 @@ export type Database = {
           display_name?: string | null
           establishment?: string | null
           id: string
+          last_seen_at?: string | null
           n_rated?: number
           onboarding_stage?: string
           palate_code?: string
@@ -615,6 +617,7 @@ export type Database = {
           display_name?: string | null
           establishment?: string | null
           id?: string
+          last_seen_at?: string | null
           n_rated?: number
           onboarding_stage?: string
           palate_code?: string
@@ -1060,6 +1063,13 @@ export type Database = {
           reason: string
         }[]
       }
+      admin_daily_active_users: {
+        Args: { p_days?: number }
+        Returns: {
+          day: string
+          users: number
+        }[]
+      }
       admin_fp_drift: {
         Args: never
         Returns: {
@@ -1124,6 +1134,30 @@ export type Database = {
         Args: never
         Returns: {
           table_name: string
+        }[]
+      }
+      admin_usage_summary: {
+        Args: never
+        Returns: {
+          active_24h: number
+          active_30d: number
+          active_7d: number
+          median_ratings_per_user: number
+          new_this_week: number
+          total_users: number
+        }[]
+      }
+      admin_user_list: {
+        Args: { p_limit?: number; p_offset?: number }
+        Returns: {
+          created_at: string
+          display_name: string
+          id: string
+          last_seen_at: string
+          ratings_count: number
+          scans_count: number
+          username: string
+          wishlist_count: number
         }[]
       }
       are_friends: { Args: { _a: string; _b: string }; Returns: boolean }
