@@ -185,7 +185,11 @@ function AdminInspect() {
               return (
                 <button
                   key={t.table_name}
-                  onClick={() => setSelected(t.table_name)}
+                  onClick={() => {
+                    setSelected(t.table_name);
+                    setGroupCol("");
+                    setGroupRun(null);
+                  }}
                   style={{
                     textAlign: "left",
                     padding: "6px 8px",
