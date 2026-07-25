@@ -283,6 +283,7 @@ type Row = Priced & {
   contestedNemesisName: string | null;
   maxSimilarity?: number;
   nearestId: string | null;
+  fp: BottleFp["fp"];
 };
 
 
