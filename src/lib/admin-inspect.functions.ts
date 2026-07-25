@@ -71,3 +71,35 @@ export const adminGetRows = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
     return rows ?? [];
   });
+
+export const adminGroupCount = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { table: string; column: string }) => {
+    const ident = /^[a-z_][a-z0-9_]*$/i;
+    if (!input || typeof input.table !== "string" || !ident.test(input.table)) {
+      throw new Error("Invalid table name");
+    }
+    if (typeof input.column !== "string" || !ident.test(input.column)) {
+      throw new Error("Invalid column name");
+    }
+    return { table: input.table, column: input.column };
+  })
+  .handler(async ({ context, data }) => {
+    await assertAdmin(context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    // Cross-check against admin_table_list / admin_table_columns before the RPC.
+    const { data: tables, error: tErr } = await supabaseAdmin.rpc("admin_table_list");
+    if (tErr) throw new Error(tErr.message);
+    const tableOk = ((tables ?? []) as { table_name: string }[]).some((r) => r.table_name === data.table);
+    if (!tableOk) throw new Error("Unknown table");
+    const { data: cols, error: cErr } = await supabaseAdmin.rpc("admin_table_columns", { p_table: data.table });
+    if (cErr) throw new Error(cErr.message);
+    const colOk = ((cols ?? []) as { column_name: string }[]).some((r) => r.column_name === data.column);
+    if (!colOk) throw new Error("Unknown column");
+    const { data: rows, error } = await supabaseAdmin.rpc("admin_group_count", {
+      p_table: data.table,
+      p_column: data.column,
+    });
+    if (error) throw new Error(error.message);
+    return (rows ?? []) as { value: string | null; n: number }[];
+  });
