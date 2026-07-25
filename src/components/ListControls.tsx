@@ -106,6 +106,29 @@ export function ListControls({ value, onChange, idPrefix }: Props) {
               </fieldset>
 
               <fieldset>
+                <legend className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Wine type</legend>
+                <div className="flex flex-wrap gap-2">
+                  {WINE_TYPE_OPTIONS.map((o) => {
+                    const active = (value.wineType ?? "all") === o.value;
+                    return (
+                      <button
+                        key={o.value}
+                        type="button"
+                        onClick={() => onChange({ ...value, wineType: o.value })}
+                        className={`min-h-11 rounded-full border px-4 text-sm font-medium ${
+                          active
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-card text-foreground hover:bg-accent"
+                        }`}
+                      >
+                        {o.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </fieldset>
+
+              <fieldset>
                 <legend className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Price</legend>
                 <div className="flex flex-wrap gap-2">
                   {PRICE_BAND_OPTIONS.map((o) => {
