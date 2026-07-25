@@ -357,7 +357,7 @@ function BottleScan() {
               read={editedRead}
               rawConfidence={rawExtracted?.confidence ?? null}
               photoUrl={front?.url ?? back?.url ?? null}
-              onChange={(patch) => setEditedRead({ ...editedRead, ...patch })}
+              onChange={(patch: Partial<BottleExtract>) => setEditedRead({ ...editedRead, ...patch })}
               onConfirm={confirmRead}
               onNoneOfThese={() => setShowAdd(true)}
               busy={resolveMut.isPending}
