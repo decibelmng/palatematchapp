@@ -43,6 +43,8 @@ function AdminInspect() {
 
   const [selected, setSelected] = useState<string | null>(null);
   const [limit, setLimit] = useState(100);
+  const [status, setStatus] = useState<{ kind: "ok" | "err"; msg: string } | null>(null);
+  const [fallback, setFallback] = useState<string | null>(null);
 
   const tables = useQuery({
     queryKey: ["admin-inspect", "tables"],
@@ -79,7 +81,6 @@ function AdminInspect() {
     if (r.length === 0) return (cols.data ?? []).map((c) => c.column_name);
     const s = new Set<string>();
     for (const row of r) Object.keys(row ?? {}).forEach((k) => s.add(k));
-    // Prefer schema order when available.
     if (cols.data && cols.data.length) {
       const schemaOrder = cols.data.map((c) => c.column_name).filter((k) => s.has(k));
       const extras = Array.from(s).filter((k) => !schemaOrder.includes(k));
@@ -88,12 +89,61 @@ function AdminInspect() {
     return Array.from(s);
   }, [rows.data, cols.data]);
 
-  async function copyText(text: string, label: string) {
+  const inlineJSON = useMemo(
+    () => (rows.data ? JSON.stringify(rows.data, null, 2) : ""),
+    [rows.data],
+  );
+
+  function flash(kind: "ok" | "err", msg: string) {
+    setStatus({ kind, msg });
+    window.setTimeout(() => setStatus(null), 3500);
+  }
+
+  function legacyCopy(text: string): boolean {
     try {
-      await navigator.clipboard.writeText(text);
-      console.log(`[admin-inspect] copied ${label} (${text.length} chars)`);
+      const ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.top = "0";
+      ta.style.left = "0";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      ta.setSelectionRange(0, text.length);
+      const ok = document.execCommand("copy");
+      document.body.removeChild(ta);
+      return ok;
+    } catch {
+      return false;
+    }
+  }
+
+  async function copyPayload(kind: "json" | "csv") {
+    const data = rows.data;
+    if (!data) {
+      flash("err", "No rows loaded yet");
+      return;
+    }
+    const text = kind === "json" ? JSON.stringify(data, null, 2) : toCSV(data);
+    const n = data.length;
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        flash("ok", `Copied ${n} rows as ${kind.toUpperCase()} (${text.length} chars)`);
+        setFallback(null);
+        return;
+      }
+      throw new Error("clipboard API unavailable");
     } catch (e) {
-      console.error(e);
+      console.error("[admin-inspect] clipboard failed", e);
+      if (legacyCopy(text)) {
+        flash("ok", `Copied ${n} rows as ${kind.toUpperCase()} (fallback)`);
+        setFallback(null);
+      } else {
+        setFallback(text);
+        flash("err", `Copy failed — select the text below and copy manually`);
+      }
     }
   }
 
