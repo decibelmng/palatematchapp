@@ -240,12 +240,29 @@ export const getMyProfile = createServerFn({ method: "GET" })
     const { supabase, userId } = context;
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, username, display_name, palate_code_red, palate_code_white, n_rated, recent_groups, onboarding_stage, visibility, avatar_url, bio, somm_status, somm_role, establishment, verified_at, created_at")
+      .select("id, username, display_name, palate_code_red, palate_code_white, n_rated, recent_groups, onboarding_stage, visibility, avatar_url, bio, somm_status, somm_role, establishment, verified_at, created_at, scan_unlock_seen")
       .eq("id", userId)
       .maybeSingle();
     if (error) throw new Error(error.message);
     return data;
   });
+
+// -------- Mark the "Scan unlocked" celebration as seen (one-shot, per user) --------
+
+export const markScanUnlockSeen = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { error } = await supabase
+      .from("profiles")
+      .update({ scan_unlock_seen: true })
+      .eq("id", userId)
+      .eq("scan_unlock_seen", false);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+
 
 // -------- Recent drinking groups (persisted on the profile) --------
 

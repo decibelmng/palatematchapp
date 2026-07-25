@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS scan_unlock_seen boolean NOT NULL DEFAULT false;
