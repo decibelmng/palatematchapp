@@ -772,7 +772,7 @@ function Scan() {
               </p>
               <ul className="mt-3 divide-y divide-border">
                 {restNonVeto.map((r) => (
-                  <ResultRow key={r.key} row={r} currentStars={ratings?.find((x) => x.bottle_id === r.ranked.bottle.id)?.stars ?? null} onOpen={() => setDetailFor(r)} />
+                  <ResultRow key={r.key} row={r} currentStars={r.ranked.scanned.matched_bottle_id ? (ratings?.find((x) => x.bottle_id === r.ranked.scanned.matched_bottle_id)?.stars ?? null) : null} onOpen={() => setDetailFor(r)} />
                 ))}
                 {Array.from({ length: pendingSkeletons }).map((_, i) => (
                   <SkeletonRow key={`sk-${i}`} />
