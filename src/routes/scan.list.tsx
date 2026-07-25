@@ -1332,7 +1332,7 @@ function HeroCard({
               {
                 onSuccess: () => toast.success(`Rated ${stars}★`),
                 onError: (e) => {
-                  const msg = e instanceof Error ? e.message : String(e);
+                  const msg = (e as any)?.message ?? (typeof e === "string" ? e : "Couldn't save rating");
                   if (!/canceled/i.test(msg)) toast.error(msg || "Couldn't save rating");
                 },
               },
@@ -1426,7 +1426,7 @@ function ResultRow({ row, currentStars, onOpen }: { row: ScanRow; currentStars: 
                   {
                     onSuccess: () => toast.success(`Rated ${stars}★`),
                     onError: (e) => {
-                      const msg = e instanceof Error ? e.message : String(e);
+                      const msg = (e as any)?.message ?? (typeof e === "string" ? e : "Couldn't save rating");
                       if (!/canceled/i.test(msg)) toast.error(msg || "Couldn't save rating");
                     },
                   },
@@ -1563,7 +1563,7 @@ function ScanDetailSheet({ row, onClose }: { row: ScanRow | null; onClose: () =>
                 {
                   onSuccess: () => toast.success(`Rated ${stars}★`),
                   onError: (e) => {
-                    const msg = e instanceof Error ? e.message : String(e);
+                    const msg = (e as any)?.message ?? (typeof e === "string" ? e : "Couldn't save rating");
                     if (!/canceled/i.test(msg)) toast.error(msg || "Couldn't save rating");
                   },
                 },
