@@ -1418,23 +1418,27 @@ function ResultRow({ row, currentStars, onOpen }: { row: ScanRow; currentStars: 
             <p className={`mt-1 text-[11px] ${r.vetoed ? "text-[--crimson]" : "text-muted-foreground"}`}>{reason}</p>
           )}
           <div className="mt-2" onClick={(e) => e.stopPropagation()}>
-            <StarTap
-              value={currentStars}
-              size="sm"
-              onChange={(stars) => {
-                if (stars == null || stars === currentStars) return;
-                rate.mutate(
-                  { bottleId: r.bottle.id, stars },
-                  {
-                    onSuccess: () => toast.success(`Rated ${stars}★`),
-                    onError: (e) => {
-                      const msg = (e as any)?.message ?? (typeof e === "string" ? e : "Couldn't save rating");
-                      if (!/canceled/i.test(msg)) toast.error(msg || "Couldn't save rating");
+            {r.scanned.matched_bottle_id ? (
+              <StarTap
+                value={currentStars}
+                size="sm"
+                onChange={(stars) => {
+                  if (stars == null || stars === currentStars) return;
+                  rate.mutate(
+                    { bottleId: r.scanned.matched_bottle_id!, stars },
+                    {
+                      onSuccess: () => toast.success(`Rated ${stars}★`),
+                      onError: (e) => {
+                        const msg = (e as any)?.message ?? (typeof e === "string" ? e : "Couldn't save rating");
+                        if (!/canceled/i.test(msg)) toast.error(msg || "Couldn't save rating");
+                      },
                     },
-                  },
-                );
-              }}
-            />
+                  );
+                }}
+              />
+            ) : (
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Estimated — no catalog match to rate</p>
+            )}
           </div>
         </div>
         <div className="shrink-0 text-right pt-1">
