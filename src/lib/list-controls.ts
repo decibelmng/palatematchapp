@@ -3,6 +3,7 @@
 
 export type SortMode = "best" | "price_asc" | "price_desc" | "value" | "confident";
 export type PriceBand = "all" | "cheap" | "mid" | "pricey" | "lux" | "unknown";
+export type WineTypeFilter = "all" | "red" | "white" | "rose" | "sparkling" | "dessert";
 
 export const SORT_OPTIONS: { value: SortMode; label: string }[] = [
   { value: "best", label: "Best match" },
@@ -21,15 +22,26 @@ export const PRICE_BAND_OPTIONS: { value: PriceBand; label: string }[] = [
   { value: "unknown", label: "Price unknown" },
 ];
 
+export const WINE_TYPE_OPTIONS: { value: WineTypeFilter; label: string }[] = [
+  { value: "all", label: "All types" },
+  { value: "red", label: "Red" },
+  { value: "white", label: "White" },
+  { value: "rose", label: "Rosé" },
+  { value: "sparkling", label: "Sparkling" },
+  { value: "dessert", label: "Dessert" },
+];
+
 export type Controls = {
   sort: SortMode;
   price: PriceBand;
+  wineType: WineTypeFilter;
   catalogOnly: boolean;
 };
 
 export const DEFAULT_CONTROLS: Controls = {
   sort: "best",
   price: "all",
+  wineType: "all",
   catalogOnly: false,
 };
 
