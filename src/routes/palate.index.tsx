@@ -21,6 +21,7 @@ import { SommBadge } from "@/components/profile/SommBadge";
 import { VisibilityControl } from "@/components/profile/VisibilityControl";
 import { ShareProfileButton } from "@/components/profile/ShareProfileButton";
 import { GraduationCap, Settings2 } from "lucide-react";
+import { CalibrationMeter } from "@/components/CalibrationMeter";
 
 export const Route = createFileRoute("/palate/")({
   ssr: false,
