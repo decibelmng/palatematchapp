@@ -743,17 +743,8 @@ function Scan() {
           data-boost={boosted ? "on" : "off"}
           className="scan-decision mt-6 bg-background pb-40"
         >
-          {/* Group toggle (compact, affects scoring) */}
-          {grouped.length > 0 && (
-            <div className="mb-4">
-              <DrinkingGroupSelector
-                selectedIds={group.friendIds}
-                onToggle={group.toggle}
-                onClear={group.clear}
-                onSet={group.set}
-              />
-            </div>
-          )}
+          {/* Group toggle lives in the setup flow above; results screen honors it silently. */}
+
 
           {/* HERO(ES) */}
           {heroes.length === 0 && anyBatchInFlight && (
