@@ -306,6 +306,96 @@ function AdminInspect() {
 
               <div style={{ marginTop: 16 }}>
                 <div style={{ fontSize: 12, fontWeight: 600, opacity: 0.7, marginBottom: 4 }}>
+                  Group &amp; count
+                </div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                  <select
+                    value={groupCol}
+                    onChange={(e) => setGroupCol(e.target.value)}
+                    style={{ fontSize: 12, padding: "4px 6px", border: "1px solid #ccc", borderRadius: 4 }}
+                  >
+                    <option value="">Select a column…</option>
+                    {(cols.data ?? []).map((c) => (
+                      <option key={c.column_name} value={c.column_name}>
+                        {c.column_name} ({c.data_type})
+                      </option>
+                    ))}
+                  </select>
+                  <button
+                    type="button"
+                    disabled={!selected || !groupCol || group.isFetching}
+                    onClick={() => setGroupRun({ table: selected!, column: groupCol })}
+                    style={{
+                      fontSize: 12,
+                      padding: "4px 10px",
+                      border: "1px solid #333",
+                      borderRadius: 4,
+                      background: "#fff",
+                      cursor: !selected || !groupCol ? "not-allowed" : "pointer",
+                      opacity: !selected || !groupCol ? 0.5 : 1,
+                    }}
+                  >
+                    {group.isFetching ? "Running…" : "Run count"}
+                  </button>
+                  {groupRun && (
+                    <span style={{ fontSize: 11, opacity: 0.6, fontFamily: "ui-monospace, monospace" }}>
+                      SELECT {groupRun.column} AS value, COUNT(*) FROM {groupRun.table} GROUP BY {groupRun.column} ORDER BY n DESC
+                    </span>
+                  )}
+                </div>
+                {group.error && (
+                  <div style={{ color: "#c33", fontSize: 12, marginTop: 6 }}>
+                    {(group.error as Error).message}
+                  </div>
+                )}
+                {group.data && (
+                  <div
+                    style={{
+                      marginTop: 8,
+                      maxHeight: 320,
+                      overflow: "auto",
+                      border: "1px solid #eee",
+                      borderRadius: 6,
+                      fontSize: 12,
+                      fontFamily: "ui-monospace, monospace",
+                    }}
+                  >
+                    <table style={{ width: "100%", borderCollapse: "collapse" }}>
+                      <thead style={{ position: "sticky", top: 0, background: "#fafafa" }}>
+                        <tr>
+                          <th style={cellHead}>value</th>
+                          <th style={{ ...cellHead, textAlign: "right" }}>n</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {group.data.map((r, i) => (
+                          <tr key={i} style={{ borderTop: "1px solid #f0f0f0" }}>
+                            <td style={cell}>
+                              {r.value === null || r.value === "" ? (
+                                <span style={{ opacity: 0.45 }}>∅ (null / empty)</span>
+                              ) : (
+                                String(r.value)
+                              )}
+                            </td>
+                            <td style={{ ...cell, textAlign: "right" }}>{Number(r.n).toLocaleString()}</td>
+                          </tr>
+                        ))}
+                        {group.data.length === 0 && (
+                          <tr>
+                            <td style={cell} colSpan={2}>
+                              <span style={{ opacity: 0.5 }}>No rows.</span>
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+
+              <div style={{ marginTop: 16 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, opacity: 0.7, marginBottom: 4 }}>
                   Sample rows ({rows.data?.length ?? 0})
                 </div>
                 {rows.isLoading && <div style={{ opacity: 0.5, fontSize: 13 }}>Loading rows…</div>}
