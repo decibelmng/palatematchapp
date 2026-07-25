@@ -276,6 +276,72 @@ export type Database = {
           },
         ]
       }
+      fp_consensus_candidates: {
+        Row: {
+          axis: string
+          bottle_id: string
+          created_at: string
+          eligible: boolean
+          id: string
+          mean_residual: number
+          n_palate_codes: number
+          n_raters: number
+          prior_value: number
+          proposed_value: number
+          reason: string | null
+          run_id: string
+          sign_consistency: number
+          written_observation_id: string | null
+        }
+        Insert: {
+          axis: string
+          bottle_id: string
+          created_at?: string
+          eligible: boolean
+          id?: string
+          mean_residual: number
+          n_palate_codes: number
+          n_raters: number
+          prior_value: number
+          proposed_value: number
+          reason?: string | null
+          run_id: string
+          sign_consistency: number
+          written_observation_id?: string | null
+        }
+        Update: {
+          axis?: string
+          bottle_id?: string
+          created_at?: string
+          eligible?: boolean
+          id?: string
+          mean_residual?: number
+          n_palate_codes?: number
+          n_raters?: number
+          prior_value?: number
+          proposed_value?: number
+          reason?: string | null
+          run_id?: string
+          sign_consistency?: number
+          written_observation_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fp_consensus_candidates_bottle_id_fkey"
+            columns: ["bottle_id"]
+            isOneToOne: false
+            referencedRelation: "bottles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fp_consensus_candidates_written_observation_id_fkey"
+            columns: ["written_observation_id"]
+            isOneToOne: false
+            referencedRelation: "fp_observations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fp_disputes: {
         Row: {
           bottle_id: string
@@ -814,6 +880,56 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_consensus_gate_status: {
+        Args: never
+        Returns: {
+          distinct_users: number
+          global_pass: boolean
+          min_ratings: number
+          min_users: number
+          total_ratings: number
+        }[]
+      }
+      admin_consensus_scan: {
+        Args: {
+          p_min_palates?: number
+          p_min_raters?: number
+          p_sign_consistency?: number
+          p_step?: number
+          p_surprise?: number
+          p_write?: boolean
+        }
+        Returns: {
+          axes_evaluated: number
+          bottles_eligible: number
+          global_pass: boolean
+          observations_written: number
+          run_id: string
+        }[]
+      }
+      admin_consensus_validate: {
+        Args: { p_observation_id: string }
+        Returns: {
+          axis: string
+          bottle_id: string
+          err_prior: number
+          err_shadow: number
+          n_test: number
+          observation_id: string
+          promoted: boolean
+          reason: string
+        }[]
+      }
+      admin_fp_drift: {
+        Args: never
+        Returns: {
+          drift_max: number
+          drift_p95: number
+          drift_sum: number
+          n_bottles: number
+          n_moved: number
+        }[]
+      }
       admin_fp_prior_stats: {
         Args: never
         Returns: {
