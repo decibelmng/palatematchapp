@@ -1,6 +1,34 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { cuveeKey } from "@/lib/price-verdict";
+
+// ---------- Price + format parsing helpers ----------
+
+/** Extract numeric price (USD-ish). Returns null when nothing parses. */
+export function parsePriceAmount(s: string | null | undefined): number | null {
+  if (!s) return null;
+  const m = s.match(/(\d[\d.,]*)/);
+  if (!m) return null;
+  const n = Number(m[1].replace(/,/g, "").replace(/\.(?=\d{3}\b)/g, ""));
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/** Infer bottle/glass/half from OCR line cues. Defaults to bottle. */
+export function inferFormat(raw: string | null | undefined): "bottle" | "glass" | "half" {
+  const s = (raw ?? "").toLowerCase();
+  if (/\bhalf\b|\b375\s?ml\b/.test(s)) return "half";
+  if (/\bgl\b|\bglass\b|\bby[- ]the[- ]glass\b|\bbtg\b/.test(s)) return "glass";
+  return "bottle";
+}
+
+/** Best-effort composed "raw line" from parsed fields; preserved for later re-resolution. */
+export function composeRawLine(w: {
+  producer?: string | null; wine_name?: string | null; vintage?: number | null; price?: string | null;
+}): string {
+  return [w.producer, w.wine_name, w.vintage, w.price].filter(Boolean).join(" ").trim();
+}
+
 
 const FpSchema = z.object({
   fresh: z.number(), acid: z.number(), tannin: z.number(), fruit_dark: z.number(),
