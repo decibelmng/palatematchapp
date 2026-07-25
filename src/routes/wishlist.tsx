@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Star, X } from "lucide-react";
-import { AppShell } from "@/components/AppShell";
 import { AuthGate } from "@/components/AuthGate";
 import { useWishlist, useRemoveFromWishlist } from "@/hooks/use-wishlist";
 import { useRatings, useBottlesByIds, bottleToFp, bottleType } from "@/hooks/use-palate-data";
@@ -25,12 +24,11 @@ export const Route = createFileRoute("/wishlist")({
 function WishlistPage() {
   return (
     <AuthGate>
-      <AppShell>
-        <WishlistContent />
-      </AppShell>
+      <WishlistContent />
     </AuthGate>
   );
 }
+
 
 type Row = WishlistItem & { predicted: number | null };
 
