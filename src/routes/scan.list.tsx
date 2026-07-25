@@ -1239,3 +1239,275 @@ function ScanSection({
     </section>
   );
 }
+
+// ================= PHASE 3 COMPONENTS =================
+
+function priceLabel(row: ScanRow): string {
+  return row.price_display ?? "—";
+}
+
+function reasonLine(row: ScanRow): string {
+  const r = row.ranked;
+  if (r.vetoed) return "avoid — a nemesis lives here";
+  if (r.contested) return "close to a dealbreaker for you";
+  if (r.nearest) {
+    const words = r.nearest.name.split(/\s+/).filter(Boolean).slice(0, 3).join(" ");
+    return `like your ${r.nearest.stars}★ ${words}`;
+  }
+  if (r.predicted >= 4.3) return "your kind of wine";
+  if (r.predicted >= 3.8) return "strong match";
+  if (r.predicted <= 2.6) return "likely not your style";
+  return "";
+}
+
+function HeroCard({
+  row, isTie, zeroStrong, onOpen,
+}: {
+  row: ScanRow;
+  isTie: boolean;
+  zeroStrong: boolean;
+  onOpen: () => void;
+}) {
+  const score = row.predicted.toFixed(1);
+  const reason = reasonLine(row);
+  const price = priceLabel(row);
+  const nameId = `hero-${row.key}`;
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-labelledby={nameId}
+      className="scan-hero relative w-full text-left rounded-xl border border-[--accent-color] p-5 bg-[--surface] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[--accent-color]"
+      style={{ boxShadow: "0 0 0 1px var(--accent-color), 0 12px 40px -12px color-mix(in oklab, var(--accent-color) 40%, transparent)" }}
+    >
+      <p className="text-[11px] uppercase tracking-[0.22em] text-[--accent-color] font-medium">
+        {isTie ? "Top picks" : zeroStrong ? "Closest match" : "Top pick"}
+      </p>
+      <div className="mt-3 flex items-baseline gap-3">
+        <span
+          className="font-serif text-[--accent-color] leading-none"
+          style={{ fontSize: "48px", fontWeight: 600 }}
+        >
+          {score}
+        </span>
+        <span className="text-[--accent-color] text-2xl leading-none">★</span>
+      </div>
+      <p
+        id={nameId}
+        className="mt-3 text-foreground break-words"
+        style={{ fontSize: "22px", lineHeight: 1.2, fontWeight: 600 }}
+      >
+        {row.ranked.bottle.name}
+      </p>
+      {row.ranked.bottle.region && (
+        <p className="mt-1 text-xs text-muted-foreground">{row.ranked.bottle.region}</p>
+      )}
+      <p className="mt-3 text-sm text-foreground">
+        <span className="text-[--accent-color] font-medium">{price}</span>
+        {reason && <span className="text-muted-foreground"> · {reason}</span>}
+      </p>
+    </button>
+  );
+}
+
+function HeroSkeleton() {
+  return (
+    <div
+      aria-hidden
+      className="rounded-xl border border-[--accent-color]/40 p-5 bg-[--surface] animate-pulse"
+      style={{ minHeight: 160 }}
+    >
+      <div className="h-3 w-24 rounded bg-[--surface-2]" />
+      <div className="mt-4 h-12 w-24 rounded bg-[--surface-2]" />
+      <div className="mt-4 h-5 w-3/4 rounded bg-[--surface-2]" />
+      <div className="mt-2 h-4 w-1/2 rounded bg-[--surface-2]" />
+    </div>
+  );
+}
+
+function ResultRow({ row, onOpen }: { row: ScanRow; onOpen: () => void }) {
+  const r = row.ranked;
+  const score = r.predicted > 0 ? r.predicted.toFixed(1) : null;
+  const reason = reasonLine(row);
+  const price = priceLabel(row);
+  const edge = r.vetoed
+    ? "before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-[--crimson] before:content-['']"
+    : r.contested
+    ? "before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-[--amber] before:content-['']"
+    : "";
+  return (
+    <li className="list-none">
+      <button
+        type="button"
+        onClick={onOpen}
+        aria-label={`Details for ${r.bottle.name}`}
+        className={`relative w-full text-left py-4 pl-4 pr-3 flex items-start gap-4 min-h-11 hover:bg-accent/40 transition-colors ${edge}`}
+      >
+        <div className="shrink-0 flex flex-col items-center justify-center w-14 h-14 rounded-xl border border-border bg-[--surface-2]">
+          {score ? (
+            <>
+              <span className="font-serif text-[--accent-color] leading-none" style={{ fontSize: "22px" }}>{score}</span>
+              <span className="mt-0.5 text-sm text-[--accent-color] leading-none">★</span>
+            </>
+          ) : (
+            <span className="text-[9px] uppercase tracking-wider text-muted-foreground">n/a</span>
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start gap-2">
+            {r.vetoed && (
+              <span className="shrink-0 mt-0.5 rounded-sm bg-[--crimson] text-white text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5">
+                Avoid
+              </span>
+            )}
+            <p
+              className="text-foreground break-words"
+              style={{
+                fontSize: "15px",
+                lineHeight: 1.35,
+                fontWeight: 500,
+                display: "-webkit-box",
+                WebkitLineClamp: 2,
+                WebkitBoxOrient: "vertical",
+                overflow: "hidden",
+              }}
+            >
+              {r.bottle.name}
+            </p>
+          </div>
+          {reason && (
+            <p className={`mt-1 text-[11px] ${r.vetoed ? "text-[--crimson]" : "text-muted-foreground"}`}>{reason}</p>
+          )}
+        </div>
+        <div className="shrink-0 text-right pt-1">
+          <p className="text-sm text-foreground font-medium">{price}</p>
+          {row.greatValue && !r.vetoed && (
+            <p className="mt-0.5 flex items-center justify-end gap-1 text-[10px] text-[--value]">
+              <span aria-hidden className="inline-block w-1.5 h-1.5 rounded-full bg-[--value]" /> value
+            </p>
+          )}
+        </div>
+      </button>
+    </li>
+  );
+}
+
+function SkeletonRow() {
+  return (
+    <li className="list-none py-4 pl-4 pr-3 flex items-start gap-4 animate-pulse">
+      <div className="shrink-0 w-14 h-14 rounded-xl bg-[--surface-2]" />
+      <div className="flex-1 space-y-2">
+        <div className="h-4 w-3/4 rounded bg-[--surface-2]" />
+        <div className="h-3 w-1/3 rounded bg-[--surface-2]" />
+        <p className="text-[11px] text-muted-foreground italic">still reading…</p>
+      </div>
+      <div className="w-12 h-4 rounded bg-[--surface-2]" />
+    </li>
+  );
+}
+
+function ScanThumbBar({
+  boosted, onBoost, onRescan, controls, setControls,
+}: {
+  boosted: boolean;
+  onBoost: () => void;
+  onRescan: () => void;
+  controls: Controls;
+  setControls: (c: Controls) => void;
+}) {
+  return (
+    <div
+      className="fixed inset-x-0 z-30 px-4 pointer-events-none"
+      style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 88px)" }}
+    >
+      <div className="mx-auto max-w-md flex items-center justify-between gap-2 pointer-events-auto">
+        <button
+          type="button"
+          onClick={onRescan}
+          aria-label="Re-scan"
+          className="rounded-full border border-border bg-[--surface] px-4 py-3 text-sm font-medium min-h-11 min-w-11 shadow-lg"
+        >
+          ↻ Re-scan
+        </button>
+        <button
+          type="button"
+          onClick={onBoost}
+          aria-pressed={boosted}
+          aria-label="Toggle brightness boost"
+          className="rounded-full border border-border bg-[--surface] px-4 py-3 text-sm font-medium min-h-11 min-w-11 shadow-lg"
+        >
+          {boosted ? "☀ Boost on" : "☀ Boost"}
+        </button>
+        <ListControls value={controls} onChange={setControls} idPrefix="scan-decision" />
+      </div>
+    </div>
+  );
+}
+
+function ScanDetailSheet({ row, onClose }: { row: ScanRow | null; onClose: () => void }) {
+  useEffect(() => {
+    if (!row) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [row, onClose]);
+  if (!row) return null;
+  const r = row.ranked;
+  return (
+    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label={`Detail for ${r.bottle.name}`}>
+      <button
+        aria-label="Close detail"
+        onClick={onClose}
+        className="absolute inset-0 bg-black/60 motion-safe:animate-in motion-safe:fade-in"
+      />
+      <div
+        className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-[--surface] border-t border-border p-5 pb-8 motion-safe:animate-in motion-safe:slide-in-from-bottom max-h-[85vh] overflow-y-auto"
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)" }}
+      >
+        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-border" aria-hidden />
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <p className="font-serif text-[22px] leading-tight text-foreground break-words">{r.bottle.name}</p>
+            {r.bottle.region && <p className="mt-1 text-xs text-muted-foreground">{r.bottle.region}</p>}
+          </div>
+          <div className="shrink-0 text-right">
+            {r.predicted > 0 ? (
+              <>
+                <span className="font-serif text-[--accent-color] text-3xl leading-none">{r.predicted.toFixed(1)}</span>
+                <span className="text-[--accent-color] text-lg leading-none">★</span>
+              </>
+            ) : (
+              <span className="text-xs text-muted-foreground">no score</span>
+            )}
+          </div>
+        </div>
+        <p className="mt-3 text-sm">
+          <span className="text-[--accent-color] font-medium">{priceLabel(row)}</span>
+          {row.isCatalog ? <span className="ml-2 text-[10px] uppercase tracking-wider text-muted-foreground">catalog match</span>
+            : <span className="ml-2 text-[10px] uppercase tracking-wider text-muted-foreground">estimated</span>}
+        </p>
+        <div className="mt-5 flex items-center gap-4">
+          <FingerprintSpoke fp={r.bottle.fp} size={72} />
+          <div className="min-w-0 text-xs text-muted-foreground">
+            {r.nearest ? (
+              <p>
+                Closest to your{" "}
+                <span className="text-foreground">{r.nearest.stars}★ {r.nearest.name}</span>
+                {r.nearestIsCanon && <span className="ml-1 text-[--accent-color]">· Benchmark</span>}
+              </p>
+            ) : (
+              <p>No close neighbor in your rated wines yet.</p>
+            )}
+            {r.vetoed && r.vetoReason && (
+              <p className="mt-2 text-[--crimson]">Avoid — {r.vetoReason}</p>
+            )}
+            {!r.vetoed && r.contested && r.contestedReason && (
+              <p className="mt-2 text-[--amber]">Contested — {r.contestedReason}</p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
