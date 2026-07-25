@@ -646,31 +646,50 @@ function Scan() {
         </div>
       )}
 
-      <div className="mt-5 flex flex-wrap gap-3">
-        <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden"
-          onChange={(e) => onPick(e.target.files, e.currentTarget)} />
-        <input ref={libraryRef} type="file" accept="image/*" multiple className="hidden"
-          onChange={(e) => onPick(e.target.files, e.currentTarget)} />
-        <button onClick={() => cameraRef.current?.click()} disabled={isRunning || staged.length >= 8}
-          className="rounded-md border border-border bg-card px-4 py-2.5 text-sm font-medium disabled:opacity-60">
-          Take a photo
+      <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden"
+        onChange={(e) => onPick(e.target.files, e.currentTarget)} />
+      <input ref={libraryRef} type="file" accept="image/*" multiple className="hidden"
+        onChange={(e) => onPick(e.target.files, e.currentTarget)} />
+      <div
+        data-testid="scan-entry-boxes"
+        className="mt-5 grid grid-cols-2 gap-3"
+      >
+        <button
+          type="button"
+          onClick={() => cameraRef.current?.click()}
+          disabled={isRunning || staged.length >= 8}
+          data-testid="scan-entry-camera"
+          className="w-full h-24 rounded-xl border border-border bg-card px-4 py-3 text-sm font-medium disabled:opacity-60 flex flex-col items-center justify-center gap-1"
+        >
+          <span aria-hidden className="text-lg leading-none">📷</span>
+          <span>Take a photo</span>
         </button>
-        <button onClick={() => libraryRef.current?.click()} disabled={isRunning || staged.length >= 8}
-          className="rounded-md border border-border bg-card px-4 py-2.5 text-sm font-medium disabled:opacity-60">
-          Upload photos
+        <button
+          type="button"
+          onClick={() => libraryRef.current?.click()}
+          disabled={isRunning || staged.length >= 8}
+          data-testid="scan-entry-library"
+          className="w-full h-24 rounded-xl border border-border bg-card px-4 py-3 text-sm font-medium disabled:opacity-60 flex flex-col items-center justify-center gap-1"
+        >
+          <span aria-hidden className="text-lg leading-none">🖼️</span>
+          <span>Upload photos</span>
         </button>
-        {staged.length > 0 && (
-          <button onClick={submit} disabled={isRunning}
-            className="rounded-md bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium disabled:opacity-60">
-            {isRunning ? "Reading…" : `Scan ${staged.length} photo${staged.length > 1 ? "s" : ""}`}
-          </button>
-        )}
-        {(staged.length > 0 || scanId) && !isRunning && (
-          <button onClick={startOver} className="rounded-md border border-border bg-card px-4 py-2.5 text-sm font-medium">
-            Start over
-          </button>
-        )}
       </div>
+      {(staged.length > 0 || (scanId && !isRunning)) && (
+        <div className="mt-3 flex flex-wrap gap-3">
+          {staged.length > 0 && (
+            <button onClick={submit} disabled={isRunning}
+              className="rounded-md bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium disabled:opacity-60">
+              {isRunning ? "Reading…" : `Scan ${staged.length} photo${staged.length > 1 ? "s" : ""}`}
+            </button>
+          )}
+          {(staged.length > 0 || scanId) && !isRunning && (
+            <button onClick={startOver} className="rounded-md border border-border bg-card px-4 py-2.5 text-sm font-medium">
+              Start over
+            </button>
+          )}
+        </div>
+      )}
 
       {staged.length > 0 && (
         <div className="mt-4 flex flex-wrap gap-2">
