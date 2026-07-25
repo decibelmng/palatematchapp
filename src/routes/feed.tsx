@@ -109,7 +109,7 @@ function FriendsSection() {
             <li key={f.id} className="flex items-center justify-between gap-2 px-3 py-2">
               <div className="min-w-0">
                 <p className="text-[10px] uppercase text-primary tracking-wider">Request</p>
-                <p className="text-sm font-medium truncate">{f.other.display_name || f.other.username}</p>
+                <p className="text-sm font-medium truncate">{displayNameFor(f.other)}</p>
               </div>
               <div className="flex gap-1.5">
                 <button
