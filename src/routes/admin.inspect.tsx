@@ -353,6 +353,42 @@ function AdminInspect() {
                   </div>
                 )}
               </div>
+
+              <div style={{ marginTop: 16 }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    marginBottom: 4,
+                  }}
+                >
+                  <div style={{ fontSize: 12, fontWeight: 600, opacity: 0.7 }}>
+                    Inline JSON ({rows.data?.length ?? 0} rows · {inlineJSON.length} chars)
+                  </div>
+                  <div style={{ fontSize: 11, opacity: 0.55 }}>
+                    Reliable copy path — click to select all
+                  </div>
+                </div>
+                <textarea
+                  readOnly
+                  value={inlineJSON}
+                  onFocus={(e) => e.currentTarget.select()}
+                  spellCheck={false}
+                  style={{
+                    width: "100%",
+                    minHeight: 240,
+                    maxHeight: 480,
+                    fontFamily: "ui-monospace, monospace",
+                    fontSize: 11,
+                    padding: 8,
+                    border: "1px solid #eee",
+                    borderRadius: 6,
+                    resize: "vertical",
+                    background: "#fafafa",
+                  }}
+                />
+              </div>
             </>
           )}
         </div>
