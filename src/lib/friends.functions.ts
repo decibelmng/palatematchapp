@@ -216,7 +216,7 @@ export const updateMyProfile = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const patch: Record<string, unknown> = {};
+    const patch: Partial<{ username: string; display_name: string; onboarding_stage: string; visibility: string; avatar_url: string | null; bio: string | null }> = {};
     if (data.username !== undefined) patch.username = data.username.toLowerCase();
     if (data.display_name !== undefined) patch.display_name = data.display_name;
     if (data.onboarding_stage !== undefined) patch.onboarding_stage = data.onboarding_stage;
