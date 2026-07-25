@@ -320,6 +320,7 @@ function toRows(section: Section, canonRegionByBottle: Map<string, string>): Row
         contestedNemesisName: r.contestedReason?.nemesis.name ?? null,
         maxSimilarity: r.maxSimilarity,
         nearestId: r.nearest?.id ?? null,
+        fp: r.cuvee.fp,
       };
       row.greatValue = !row.vetoed && isGreatValue(row);
       return row;
