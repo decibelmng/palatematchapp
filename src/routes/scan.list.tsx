@@ -618,6 +618,17 @@ function Scan() {
         disabled={isRunning || !!scanId}
       />
 
+      {!scanId && !isRunning && (
+        <div className="mt-4">
+          <DrinkingGroupSelector
+            selectedIds={group.friendIds}
+            onToggle={group.toggle}
+            onClear={group.clear}
+            onSet={group.set}
+          />
+        </div>
+      )}
+
       <div className="mt-5 flex flex-wrap gap-3">
         <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden"
           onChange={(e) => onPick(e.target.files, e.currentTarget)} />
@@ -732,17 +743,8 @@ function Scan() {
           data-boost={boosted ? "on" : "off"}
           className="scan-decision mt-6 bg-background pb-40"
         >
-          {/* Group toggle (compact, affects scoring) */}
-          {grouped.length > 0 && (
-            <div className="mb-4">
-              <DrinkingGroupSelector
-                selectedIds={group.friendIds}
-                onToggle={group.toggle}
-                onClear={group.clear}
-                onSet={group.set}
-              />
-            </div>
-          )}
+          {/* Group toggle lives in the setup flow above; results screen honors it silently. */}
+
 
           {/* HERO(ES) */}
           {heroes.length === 0 && anyBatchInFlight && (
@@ -1477,30 +1479,43 @@ function ScanThumbBar({
   controls: Controls;
   setControls: (c: Controls) => void;
 }) {
+  // Solid toolbar docked directly above the AppShell tab bar (~64px tall).
+  // Full-width, opaque background, no floating pills. Content behind it
+  // scrolls but does not show through (see .scan-decision pb-40).
   return (
     <div
-      className="fixed inset-x-0 z-30 px-4 pointer-events-none"
-      style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 88px)" }}
+      className="fixed inset-x-0 z-30 border-t border-border bg-background"
+      style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 64px)" }}
+      role="toolbar"
+      aria-label="Scan result actions"
     >
-      <div className="mx-auto max-w-md flex items-center justify-between gap-2 pointer-events-auto">
+      <div className="mx-auto max-w-xl flex items-center gap-2 px-4 py-2">
         <button
           type="button"
           onClick={onRescan}
           aria-label="Re-scan"
-          className="rounded-full border border-border bg-[--surface] px-4 py-3 text-sm font-medium min-h-11 min-w-11 shadow-lg"
+          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-card text-foreground text-sm font-medium min-h-11 px-3 whitespace-nowrap overflow-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:bg-accent"
         >
-          ↻ Re-scan
+          <span aria-hidden>↻</span>
+          <span className="truncate">Re-scan</span>
         </button>
         <button
           type="button"
           onClick={onBoost}
           aria-pressed={boosted}
-          aria-label="Toggle brightness boost"
-          className="rounded-full border border-border bg-[--surface] px-4 py-3 text-sm font-medium min-h-11 min-w-11 shadow-lg"
+          aria-label={boosted ? "Turn brightness boost off" : "Turn brightness boost on"}
+          className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border text-sm font-medium min-h-11 px-3 whitespace-nowrap overflow-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
+            boosted
+              ? "border-primary bg-primary text-primary-foreground"
+              : "border-border bg-card text-foreground active:bg-accent"
+          }`}
         >
-          {boosted ? "☀ Boost on" : "☀ Boost"}
+          <span aria-hidden>☀</span>
+          <span className="truncate">{boosted ? "Boost on" : "Boost"}</span>
         </button>
-        <ListControls value={controls} onChange={setControls} idPrefix="scan-decision" />
+        <div className="flex-1 [&>div]:mt-0 [&>div]:justify-stretch [&_button]:w-full [&_button]:justify-center">
+          <ListControls value={controls} onChange={setControls} idPrefix="scan-decision" />
+        </div>
       </div>
     </div>
   );
