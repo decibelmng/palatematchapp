@@ -109,17 +109,24 @@
    DARK THEME
    --------------------------------------------------------------- */
 [data-theme="dark"] {
-  --bg: #1b0f15;
-  --surface: #261720;
-  --surface-2: #2f1d27;
-  --border-color: #48303c;
-  --text: #f4e9e3;
-  --text-muted: #b99fa9;
-  --accent-color: #cda552;
-  --good: #8aa17a;
-  --bad: #9c3744;
+  /* Phase 1 tokens: near-black surfaces (maroon only as accent/fill),
+     warm off-white text at ≥7:1, gold/crimson/amber/value for meaning. */
+  --bg: #0A0808;
+  --surface: #171012;
+  --surface-2: #241619;
+  --border-color: #3A2A2E;
+  --text: #F2ECE3;
+  --text-muted: #C7BBA9;
+  --text-tertiary: #A2937F;
+  --accent-color: #E8C87E;   /* gold */
+  --gold-dim: #8A7448;
+  --crimson: #E5484D;
+  --amber: #E0A458;
+  --value: #6FBF9A;
+  --good: var(--value);
+  --bad: var(--crimson);
 
-  --axis-body: #cda552;
+  --axis-body: #E8C87E;
   --axis-fruit: #cf7d8e;
   --axis-tannin: #5fb0a0;
   --axis-oak: #d9a85f;
@@ -140,18 +147,29 @@
   --muted-foreground: var(--text-muted);
   --accent: var(--surface-2);
   --accent-foreground: var(--text);
-  --destructive: var(--bad);
+  --destructive: var(--crimson);
   --destructive-foreground: #ffffff;
   --border: var(--border-color);
   --input: var(--surface-2);
-  --input-strong: #0e0509;
-  --input-strong-border: #f4e9e3;
+  --input-strong: #0A0808;
+  --input-strong-border: #F2ECE3;
   --ring: var(--accent-color);
 
   --gold-soft: color-mix(in oklab, var(--accent-color) 55%, transparent);
   --wine: #3a1820;
   --vignette-1: color-mix(in oklab, var(--wine) 50%, transparent);
   --vignette-2: color-mix(in oklab, var(--accent-color) 6%, transparent);
+
+  --color-tertiary-foreground: var(--text-tertiary);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 @layer base {
