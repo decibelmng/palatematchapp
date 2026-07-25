@@ -112,34 +112,21 @@ function Home() {
       <Link
         to="/scan/list"
         data-testid="scan-hero"
-        className="mt-4 block rounded-[18px] border-2 border-primary/60 bg-gradient-to-br from-primary/15 via-card to-card p-6 shadow-[var(--pm-card-shadow)] hover:border-primary transition min-h-[240px]"
+        className="mt-4 block rounded-[16px] border-2 border-primary/60 bg-gradient-to-br from-primary/15 via-card to-card p-4 shadow-[var(--pm-card-shadow)] hover:border-primary transition"
       >
-        <div className="flex items-start gap-4">
-          <div className="shrink-0 h-16 w-16 rounded-2xl bg-primary/20 text-primary flex items-center justify-center">
-            <ScanLine size={36} strokeWidth={1.8} />
+        <div className="flex items-center gap-3">
+          <div className="shrink-0 h-12 w-12 rounded-xl bg-primary/20 text-primary flex items-center justify-center">
+            <ScanLine size={24} strokeWidth={1.8} />
           </div>
           <div className="flex-1 min-w-0">
-            <p
-              className="text-[10px] uppercase text-primary"
-              style={{ letterSpacing: "0.22em" }}
-            >
-              Get the best bottle
-            </p>
-            <h1 className="mt-2 font-serif text-[28px] leading-[1.1] text-foreground">
+            <h1 className="font-serif text-[20px] leading-tight text-foreground">
               Scan a wine list
             </h1>
-            <p className="mt-2 text-[13px] text-muted-foreground">
-              Point the camera. We'll rank every bottle to your palate in seconds.
+            <p className="mt-0.5 text-[12px] text-muted-foreground">
+              {hasRecent ? "Resume your last scan →" : "Rank every bottle to your palate."}
             </p>
-            <span className="mt-4 inline-flex items-center gap-1 text-[12px] font-semibold uppercase tracking-wider text-primary">
-              Open camera →
-            </span>
-            {hasRecent && (
-              <p className="mt-4 pt-3 border-t border-border/60 text-[11px] text-muted-foreground">
-                Resume your last scan →
-              </p>
-            )}
           </div>
+          <ArrowRight className="shrink-0 text-primary" size={18} />
         </div>
       </Link>
     </div>

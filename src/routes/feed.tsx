@@ -1,10 +1,16 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { UserPlus, Check, X } from "lucide-react";
 import { AuthGate } from "@/components/AuthGate";
 import { FeedCard } from "@/components/FeedCard";
 import { useFriendsFeed, useFeedActivity, markFeedSeen } from "@/hooks/use-feed";
-import { useAcceptedFriends } from "@/hooks/use-friends";
-import { UserPlus } from "lucide-react";
+import {
+  useAcceptedFriends,
+  useFriendships,
+  useUserSearch,
+  useSendFriendRequest,
+  useRespondFriendship,
+} from "@/hooks/use-friends";
 
 export const Route = createFileRoute("/feed")({
   head: () => ({
@@ -36,9 +42,16 @@ function initials(name: string | null | undefined, username: string) {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-function FriendsStrip() {
-  const { data: friends = [], isLoading } = useAcceptedFriends();
-  if (isLoading) return null;
+function FriendsSection() {
+  const { data: friends = [] } = useAcceptedFriends();
+  const { data: all = [] } = useFriendships();
+  const incoming = all.filter((f) => f.status === "pending" && f.direction === "incoming");
+  const respond = useRespondFriendship();
+
+  const [q, setQ] = useState("");
+  const search = useUserSearch(q);
+  const send = useSendFriendRequest();
+
   return (
     <section aria-labelledby="friends-strip" className="rounded-[14px] border-[0.5px] border-border bg-card/60 p-3">
       <div className="flex items-baseline justify-between">
@@ -46,9 +59,77 @@ function FriendsStrip() {
           Friends
         </h2>
         <Link to="/friends" className="text-[11px] text-primary hover:underline">
-          Find friends →
+          Manage →
         </Link>
       </div>
+
+      {/* Inline search */}
+      <div className="mt-3">
+        <input
+          type="search"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Find friends by username or name…"
+          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
+        />
+        {q.trim().length >= 2 && (
+          <ul className="mt-2 divide-y divide-border rounded-md border border-border bg-background">
+            {search.isFetching && (
+              <li className="px-3 py-2 text-xs text-muted-foreground">Searching…</li>
+            )}
+            {!search.isFetching && (search.data ?? []).length === 0 && (
+              <li className="px-3 py-2 text-xs text-muted-foreground">No matches.</li>
+            )}
+            {(search.data ?? []).map((h) => (
+              <li key={h.user_id} className="flex items-center justify-between gap-2 px-3 py-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-medium truncate">{h.display_name || h.username}</p>
+                  <p className="text-[11px] text-muted-foreground truncate">@{h.username}</p>
+                </div>
+                <button
+                  onClick={() => send.mutate({ user_id: h.user_id })}
+                  disabled={send.isPending}
+                  className="shrink-0 rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-xs disabled:opacity-50"
+                >
+                  Add
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Incoming requests */}
+      {incoming.length > 0 && (
+        <ul className="mt-3 divide-y divide-border rounded-md border border-primary/30 bg-primary/5">
+          {incoming.map((f) => (
+            <li key={f.id} className="flex items-center justify-between gap-2 px-3 py-2">
+              <div className="min-w-0">
+                <p className="text-[10px] uppercase text-primary tracking-wider">Request</p>
+                <p className="text-sm font-medium truncate">{f.other.display_name || f.other.username}</p>
+              </div>
+              <div className="flex gap-1.5">
+                <button
+                  onClick={() => respond.mutate({ id: f.id, action: "accept" })}
+                  className="h-8 w-8 rounded-md bg-primary text-primary-foreground flex items-center justify-center"
+                  aria-label="Accept"
+                >
+                  <Check size={14} />
+                </button>
+                <button
+                  onClick={() => respond.mutate({ id: f.id, action: "decline" })}
+                  className="h-8 w-8 rounded-md border border-border flex items-center justify-center"
+                  aria-label="Decline"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* Friend avatars strip */}
       <div className="mt-3 flex items-start gap-3 overflow-x-auto pb-1 -mx-1 px-1">
         <Link
           to="/friends"
@@ -86,7 +167,6 @@ function FeedContent() {
   const feed = useFriendsFeed(30);
   const activity = useFeedActivity();
 
-  // Opening the feed clears the activity dot.
   useEffect(() => {
     if (activity.data?.latest_at) markFeedSeen(activity.data.latest_at);
   }, [activity.data?.latest_at]);
@@ -100,8 +180,7 @@ function FeedContent() {
         </Link>
       </div>
 
-      {/* Friends first — social graph on top, not buried under an empty state. */}
-      <FriendsStrip />
+      <FriendsSection />
 
       {feed.isLoading ? (
         <div className="text-sm text-muted-foreground">Loading…</div>
@@ -113,14 +192,8 @@ function FeedContent() {
         <div className="rounded-lg border border-border bg-card/60 p-6 text-center">
           <p className="text-sm text-foreground">No friend activity yet.</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            Add friends to see wines they've rated, scored for your palate.
+            Add friends above to see wines they've rated, scored for your palate.
           </p>
-          <Link
-            to="/friends"
-            className="mt-4 inline-block rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium"
-          >
-            Find friends
-          </Link>
         </div>
       ) : (
         <div className="space-y-3">

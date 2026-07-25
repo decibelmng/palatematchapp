@@ -1,6 +1,6 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ScanLine, Pencil, Star, Crown, Moon, Sun, Users, Bookmark } from "lucide-react";
+import { ScanLine, Pencil, Star, Crown, Moon, Sun, Users, Bookmark, List as ListIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
@@ -11,15 +11,18 @@ import { markScanUnlockSeen } from "@/lib/friends.functions";
 import { useTheme } from "@/lib/theme";
 import { useRatingsCount, UNLOCK_THRESHOLD } from "@/components/UnlockMeter";
 import { useFeedActivity, hasFreshActivity } from "@/hooks/use-feed";
+import { ScanChooserSheet } from "@/components/ScanChooserSheet";
 
-const TABS = [
-  { to: "/", label: "Scan", Icon: ScanLine },
-  { to: "/feed", label: "Feed", Icon: Users },
-  { to: "/rate", label: "Rate", Icon: Pencil },
+type TabTo = "/palate" | "/rate" | "/scan/list" | "/feed";
+
+const TABS_LEFT: ReadonlyArray<{ to: TabTo; label: string; Icon: typeof Star }> = [
   { to: "/palate", label: "Palate", Icon: Star },
-] as const;
-
-type TabTo = (typeof TABS)[number]["to"];
+  { to: "/rate", label: "Rate", Icon: Pencil },
+];
+const TABS_RIGHT: ReadonlyArray<{ to: TabTo; label: string; Icon: typeof Star }> = [
+  { to: "/scan/list", label: "List", Icon: ListIcon },
+  { to: "/feed", label: "Feed", Icon: Users },
+];
 
 function initialsFor(name: string | null | undefined): string {
   if (!name) return "•";
@@ -30,7 +33,6 @@ function initialsFor(name: string | null | undefined): string {
 }
 
 function isActive(pathname: string, to: TabTo): boolean {
-  if (to === "/") return pathname === "/";
   return pathname === to || pathname.startsWith(to + "/");
 }
 
@@ -75,6 +77,7 @@ function A2HSHint() {
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [menuOpen, setMenuOpen] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const { data: profile } = useMyProfile();
   useLastSeenPing((profile as { id?: string } | undefined)?.id);
@@ -235,12 +238,47 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <A2HSHint />
 
+      <ScanChooserSheet open={scanOpen} onClose={() => setScanOpen(false)} />
+
       <nav
         className="fixed bottom-0 inset-x-0 border-t border-border bg-background/95 backdrop-blur"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
-        <div className="max-w-xl mx-auto flex">
-          {TABS.map(({ to, label, Icon }) => {
+        <div className="max-w-xl mx-auto grid grid-cols-5 items-end">
+          {TABS_LEFT.map(({ to, label, Icon }) => {
+            const active = isActive(pathname, to);
+            return (
+              <Link
+                key={to}
+                to={to}
+                aria-label={label}
+                aria-current={active ? "page" : undefined}
+                className={`flex flex-col items-center justify-center gap-1 min-h-11 py-2.5 text-[11px] transition-colors border-t-2 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary ${
+                  active
+                    ? "text-primary border-primary"
+                    : "text-muted-foreground hover:text-foreground border-transparent"
+                }`}
+              >
+                <Icon size={18} strokeWidth={active ? 2.2 : 1.8} />
+                {label}
+              </Link>
+            );
+          })}
+
+          {/* Center raised SCAN button */}
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onClick={() => setScanOpen(true)}
+              aria-label="Scan"
+              className="-mt-6 h-16 w-16 rounded-full bg-primary text-primary-foreground shadow-lg ring-4 ring-background flex flex-col items-center justify-center active:scale-95 transition"
+            >
+              <ScanLine size={24} strokeWidth={2} />
+              <span className="text-[9px] font-semibold uppercase tracking-wider mt-0.5">Scan</span>
+            </button>
+          </div>
+
+          {TABS_RIGHT.map(({ to, label, Icon }) => {
             const active = isActive(pathname, to);
             const showDot = to === "/feed" && hasFreshActivity(feedLatestAt);
             return (
@@ -249,7 +287,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 to={to}
                 aria-label={label}
                 aria-current={active ? "page" : undefined}
-                className={`flex-1 flex flex-col items-center justify-center gap-1 min-h-11 py-2.5 text-[11px] transition-colors border-t-2 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary ${
+                className={`flex flex-col items-center justify-center gap-1 min-h-11 py-2.5 text-[11px] transition-colors border-t-2 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary ${
                   active
                     ? "text-primary border-primary"
                     : "text-muted-foreground hover:text-foreground border-transparent"
@@ -270,6 +308,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           })}
         </div>
       </nav>
+
     </div>
   );
 }
