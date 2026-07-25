@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { SlidersHorizontal } from "lucide-react";
-import { SORT_OPTIONS, PRICE_BAND_OPTIONS, type Controls } from "@/lib/list-controls";
+import { SORT_OPTIONS, PRICE_BAND_OPTIONS, WINE_TYPE_OPTIONS, type Controls } from "@/lib/list-controls";
 
 type Props = {
   value: Controls;
