@@ -151,7 +151,7 @@ function Rate() {
           to="/scan/bottle"
           data-testid="rate-scan-hero"
           aria-label="Scan a bottle label with your camera"
-          className="block rounded-[18px] border-2 border-primary/60 bg-gradient-to-br from-primary/15 via-card to-card p-5 shadow-[var(--pm-card-shadow)] hover:border-primary transition"
+          className="block rounded-[18px] border-2 border-primary/60 bg-gradient-to-br from-primary/15 via-card to-card p-6 min-h-[240px] shadow-[var(--pm-card-shadow)] hover:border-primary transition"
         >
           <div className="flex items-center gap-4">
             <div className="shrink-0 h-14 w-14 rounded-2xl bg-primary/20 text-primary flex items-center justify-center">
