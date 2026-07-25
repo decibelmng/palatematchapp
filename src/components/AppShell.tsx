@@ -192,6 +192,14 @@ export function AppShell({ children }: { children: ReactNode }) {
                   Canon Cellar
                 </Link>
                 <Link
+                  to="/wishlist"
+                  role="menuitem"
+                  className="flex items-center gap-2 px-3 py-3 text-sm text-foreground hover:bg-accent/60 border-t border-border"
+                >
+                  <Bookmark size={14} />
+                  Wishlist
+                </Link>
+                <Link
                   to="/friends"
                   role="menuitem"
                   className="block px-3 py-3 text-sm text-foreground hover:bg-accent/60"
