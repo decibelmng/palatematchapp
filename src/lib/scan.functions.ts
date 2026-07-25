@@ -1,6 +1,34 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { cuveeKey } from "@/lib/price-verdict";
+
+// ---------- Price + format parsing helpers ----------
+
+/** Extract numeric price (USD-ish). Returns null when nothing parses. */
+export function parsePriceAmount(s: string | null | undefined): number | null {
+  if (!s) return null;
+  const m = s.match(/(\d[\d.,]*)/);
+  if (!m) return null;
+  const n = Number(m[1].replace(/,/g, "").replace(/\.(?=\d{3}\b)/g, ""));
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
+/** Infer bottle/glass/half from OCR line cues. Defaults to bottle. */
+export function inferFormat(raw: string | null | undefined): "bottle" | "glass" | "half" {
+  const s = (raw ?? "").toLowerCase();
+  if (/\bhalf\b|\b375\s?ml\b/.test(s)) return "half";
+  if (/\bgl\b|\bglass\b|\bby[- ]the[- ]glass\b|\bbtg\b/.test(s)) return "glass";
+  return "bottle";
+}
+
+/** Best-effort composed "raw line" from parsed fields; preserved for later re-resolution. */
+export function composeRawLine(w: {
+  producer?: string | null; wine_name?: string | null; vintage?: number | null; price?: string | null;
+}): string {
+  return [w.producer, w.wine_name, w.vintage, w.price].filter(Boolean).join(" ").trim();
+}
+
 
 const FpSchema = z.object({
   fresh: z.number(), acid: z.number(), tannin: z.number(), fruit_dark: z.number(),
@@ -241,6 +269,7 @@ export const createScanRecord = createServerFn({ method: "POST" })
     page_count: z.number().int().min(1).max(8),
     batch_count: z.number().int().min(1).max(8),
     image_paths: StringArray.optional(),
+    venue_raw_text: z.string().max(200).nullable().optional(),
   }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
@@ -250,6 +279,7 @@ export const createScanRecord = createServerFn({ method: "POST" })
       page_count: data.page_count,
       batch_count: data.batch_count,
       image_paths: data.image_paths ?? [],
+      venue_raw_text: data.venue_raw_text?.trim() || null,
     }).select("id").single();
     if (error || !inserted) throw new Error(error?.message ?? "Failed to create scan");
     return { scan_id: inserted.id as string };
@@ -277,26 +307,34 @@ export const scanWineBatch = createServerFn({ method: "POST" })
       const raw = await extractWinesWithRetry(data.images, key);
       const resolved = await resolveAgainstCatalog(raw, supabase);
 
-      // Persist immediately
+      // Persist immediately with raw_text/format/price_amount captured for
+      // later re-resolution and silent price capture.
       if (resolved.length > 0) {
-        const rows = resolved.map((w) => ({
-          scan_id: data.scan_id,
-          user_id: userId,
-          batch_index: data.batch_index,
-          producer: w.producer ?? null,
-          cuvee: w.wine_name ?? null,
-          vintage: w.vintage ?? null,
-          wine_type: w.type ?? null,
-          region: w.region ?? null,
-          grape: w.grape ?? null,
-          price: w.price ?? null,
-          raw_json: w as any,
-          fp: (w.fp_resolved ?? null) as any,
-          fp_source: w.fp_source,
-          matched_bottle_id: w.matched_bottle_id,
-          match_score: w.match_score,
-          match_reasons: (w.match_reasons ?? []) as any,
-        }));
+        const rows = resolved.map((w) => {
+          const rawLine = composeRawLine(w);
+          return {
+            scan_id: data.scan_id,
+            user_id: userId,
+            batch_index: data.batch_index,
+            producer: w.producer ?? null,
+            cuvee: w.wine_name ?? null,
+            vintage: w.vintage ?? null,
+            wine_type: w.type ?? null,
+            region: w.region ?? null,
+            grape: w.grape ?? null,
+            price: w.price ?? null,
+            price_amount: parsePriceAmount(w.price ?? null),
+            currency: "USD",
+            format: inferFormat(rawLine),
+            raw_text: rawLine || null,
+            raw_json: w as any,
+            fp: (w.fp_resolved ?? null) as any,
+            fp_source: w.fp_source,
+            matched_bottle_id: w.matched_bottle_id,
+            match_score: w.match_score,
+            match_reasons: (w.match_reasons ?? []) as any,
+          };
+        });
         await supabase.from("scan_wines").insert(rows);
       }
 
@@ -309,13 +347,14 @@ export const scanWineBatch = createServerFn({ method: "POST" })
     }
   });
 
+
 export const finalizeScan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ scan_id: z.string().uuid() }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     const { data: scan } = await supabase.from("scans")
-      .select("batches_done,batch_count,batches_failed,image_paths")
+      .select("batches_done,batch_count,batches_failed,image_paths,venue_raw_text,restaurant_id,scanned_at")
       .eq("id", data.scan_id).single();
     if (!scan) throw new Error("Scan not found");
     const failed = ((scan.batches_failed ?? []) as number[]);
@@ -328,9 +367,23 @@ export const finalizeScan = createServerFn({ method: "POST" })
     else status = "processing";
     await supabase.from("scans").update({ status }).eq("id", data.scan_id);
 
+    // ---- Silent capture: resolve restaurant from venue_raw_text if set ----
+    let restaurantId: string | null = (scan as any).restaurant_id ?? null;
+    if (!restaurantId && (scan as any).venue_raw_text) {
+      try {
+        const { FuzzyRestaurantResolver } = await import("@/lib/restaurant-resolver");
+        const resolver = new FuzzyRestaurantResolver(supabase as any);
+        const res = await resolver.resolve((scan as any).venue_raw_text as string, userId);
+        if (res) {
+          restaurantId = res.restaurant_id;
+          await supabase.from("scans").update({ restaurant_id: restaurantId }).eq("id", data.scan_id);
+        }
+      } catch { /* resolver failure never blocks scan */ }
+    }
+
     // Mirror aggregated wines into scan_logs for existing restaurant-attribution flow.
     const { data: rows } = await supabase.from("scan_wines")
-      .select("producer,cuvee,vintage,region,grape,price,wine_type,fp,fp_source,matched_bottle_id")
+      .select("producer,cuvee,vintage,region,grape,price,price_amount,currency,format,wine_type,fp,fp_source,matched_bottle_id")
       .eq("scan_id", data.scan_id);
     const winesForLog = (rows ?? []).map((r: any) => ({
       producer: r.producer, wine_name: r.cuvee, vintage: r.vintage,
@@ -350,12 +403,73 @@ export const finalizeScan = createServerFn({ method: "POST" })
         wines: winesForLog as any,
         image_paths: (scan.image_paths as any) ?? [],
         status,
+        restaurant_id: restaurantId,
       }).select("id").single();
       scan_log_id = log?.id ?? null;
     } catch { /* logging best-effort */ }
 
-    return { status, scan_log_id };
+    // ---- Silent capture: price_observations append-only for matched wines ----
+    // Ranking always recomputed against current palate; only *facts* land here.
+    if (restaurantId && (rows ?? []).length > 0) {
+      try {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        // Also upsert restaurant_wines edges + append price_observations.
+        const now = ((scan as any).scanned_at as string | null) ?? new Date().toISOString();
+        for (const r of rows as any[]) {
+          if (!r.matched_bottle_id) continue;
+          const amount: number | null = r.price_amount ?? null;
+          const format: string = r.format ?? "bottle";
+          // Upsert restaurant_wines
+          const { data: existing } = await supabaseAdmin
+            .from("restaurant_wines")
+            .select("id,seen_count")
+            .eq("restaurant_id", restaurantId)
+            .eq("bottle_id", r.matched_bottle_id)
+            .maybeSingle();
+          if (existing) {
+            await supabaseAdmin.from("restaurant_wines").update({
+              last_seen_at: now,
+              seen_count: (existing.seen_count ?? 1) + 1,
+              menu_price: r.price ?? undefined,
+              menu_price_amount: amount ?? undefined,
+              source_scan_id: data.scan_id,
+            }).eq("id", existing.id);
+          } else {
+            await supabaseAdmin.from("restaurant_wines").insert({
+              restaurant_id: restaurantId,
+              bottle_id: r.matched_bottle_id,
+              menu_price: r.price ?? null,
+              menu_price_amount: amount,
+              first_seen_at: now,
+              last_seen_at: now,
+              seen_count: 1,
+              source_scan_id: data.scan_id,
+              added_by: userId,
+            });
+          }
+          // Append price observation (never overwrite).
+          if (amount && amount > 0) {
+            await supabaseAdmin.from("price_observations").insert({
+              restaurant_id: restaurantId,
+              bottle_id: r.matched_bottle_id,
+              cuvee_key: cuveeKey(r.producer, r.cuvee),
+              raw_line: r.price ?? null,
+              menu_price: amount,
+              currency: r.currency ?? "USD",
+              format,
+              scan_id: data.scan_id,
+              user_id: userId,
+              source: "ocr",
+              observed_at: now,
+            });
+          }
+        }
+      } catch { /* capture is best-effort; never blocks user */ }
+    }
+
+    return { status, scan_log_id, restaurant_id: restaurantId };
   });
+
 
 const StoredWineSchema = z.object({}).passthrough();
 

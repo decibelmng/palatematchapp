@@ -205,6 +205,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                   Wishlist
                 </Link>
                 <Link
+                  to="/scans"
+                  role="menuitem"
+                  className="block px-3 py-3 text-sm text-foreground hover:bg-accent/60 border-t border-border"
+                >
+                  Past scans
+                </Link>
+                <Link
                   to="/friends"
                   role="menuitem"
                   className="block px-3 py-3 text-sm text-foreground hover:bg-accent/60"

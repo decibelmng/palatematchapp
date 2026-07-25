@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WishlistRouteImport } from './routes/wishlist'
+import { Route as ScansRouteImport } from './routes/scans'
 import { Route as ScanRouteImport } from './routes/scan'
 import { Route as RateRouteImport } from './routes/rate'
 import { Route as FriendsRouteImport } from './routes/friends'
@@ -22,12 +23,15 @@ import { Route as WineIdRouteImport } from './routes/wine.$id'
 import { Route as UUsernameRouteImport } from './routes/u.$username'
 import { Route as ScanListRouteImport } from './routes/scan.list'
 import { Route as ScanBottleRouteImport } from './routes/scan.bottle'
+import { Route as ScanIdRouteImport } from './routes/scan.$id'
+import { Route as STokenRouteImport } from './routes/s.$token'
 import { Route as PalateVerifyRouteImport } from './routes/palate.verify'
 import { Route as PalateTypeRouteImport } from './routes/palate.$type'
 import { Route as AdminUsageRouteImport } from './routes/admin.usage'
 import { Route as AdminTypeFixRouteImport } from './routes/admin.type-fix'
 import { Route as AdminInspectRouteImport } from './routes/admin.inspect'
 import { Route as AdminDisputesRouteImport } from './routes/admin.disputes'
+import { Route as AdminDataCaptureRouteImport } from './routes/admin.data-capture'
 import { Route as AdminDataRouteImport } from './routes/admin.data'
 import { Route as AdminCorrectionsRouteImport } from './routes/admin.corrections'
 import { Route as AdminConsensusRouteImport } from './routes/admin.consensus'
@@ -36,6 +40,11 @@ import { Route as AddFriendUsernameRouteImport } from './routes/add-friend.$user
 const WishlistRoute = WishlistRouteImport.update({
   id: '/wishlist',
   path: '/wishlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScansRoute = ScansRouteImport.update({
+  id: '/scans',
+  path: '/scans',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ScanRoute = ScanRouteImport.update({
@@ -98,6 +107,16 @@ const ScanBottleRoute = ScanBottleRouteImport.update({
   path: '/bottle',
   getParentRoute: () => ScanRoute,
 } as any)
+const ScanIdRoute = ScanIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => ScanRoute,
+} as any)
+const STokenRoute = STokenRouteImport.update({
+  id: '/s/$token',
+  path: '/s/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PalateVerifyRoute = PalateVerifyRouteImport.update({
   id: '/palate/verify',
   path: '/palate/verify',
@@ -126,6 +145,11 @@ const AdminInspectRoute = AdminInspectRouteImport.update({
 const AdminDisputesRoute = AdminDisputesRouteImport.update({
   id: '/admin/disputes',
   path: '/admin/disputes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminDataCaptureRoute = AdminDataCaptureRouteImport.update({
+  id: '/admin/data-capture',
+  path: '/admin/data-capture',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminDataRoute = AdminDataRouteImport.update({
@@ -157,17 +181,21 @@ export interface FileRoutesByFullPath {
   '/friends': typeof FriendsRoute
   '/rate': typeof RateRoute
   '/scan': typeof ScanRouteWithChildren
+  '/scans': typeof ScansRoute
   '/wishlist': typeof WishlistRoute
   '/add-friend/$username': typeof AddFriendUsernameRoute
   '/admin/consensus': typeof AdminConsensusRoute
   '/admin/corrections': typeof AdminCorrectionsRoute
   '/admin/data': typeof AdminDataRoute
+  '/admin/data-capture': typeof AdminDataCaptureRoute
   '/admin/disputes': typeof AdminDisputesRoute
   '/admin/inspect': typeof AdminInspectRoute
   '/admin/type-fix': typeof AdminTypeFixRoute
   '/admin/usage': typeof AdminUsageRoute
   '/palate/$type': typeof PalateTypeRoute
   '/palate/verify': typeof PalateVerifyRoute
+  '/s/$token': typeof STokenRoute
+  '/scan/$id': typeof ScanIdRoute
   '/scan/bottle': typeof ScanBottleRoute
   '/scan/list': typeof ScanListRoute
   '/u/$username': typeof UUsernameRoute
@@ -182,17 +210,21 @@ export interface FileRoutesByTo {
   '/friends': typeof FriendsRoute
   '/rate': typeof RateRoute
   '/scan': typeof ScanRouteWithChildren
+  '/scans': typeof ScansRoute
   '/wishlist': typeof WishlistRoute
   '/add-friend/$username': typeof AddFriendUsernameRoute
   '/admin/consensus': typeof AdminConsensusRoute
   '/admin/corrections': typeof AdminCorrectionsRoute
   '/admin/data': typeof AdminDataRoute
+  '/admin/data-capture': typeof AdminDataCaptureRoute
   '/admin/disputes': typeof AdminDisputesRoute
   '/admin/inspect': typeof AdminInspectRoute
   '/admin/type-fix': typeof AdminTypeFixRoute
   '/admin/usage': typeof AdminUsageRoute
   '/palate/$type': typeof PalateTypeRoute
   '/palate/verify': typeof PalateVerifyRoute
+  '/s/$token': typeof STokenRoute
+  '/scan/$id': typeof ScanIdRoute
   '/scan/bottle': typeof ScanBottleRoute
   '/scan/list': typeof ScanListRoute
   '/u/$username': typeof UUsernameRoute
@@ -208,17 +240,21 @@ export interface FileRoutesById {
   '/friends': typeof FriendsRoute
   '/rate': typeof RateRoute
   '/scan': typeof ScanRouteWithChildren
+  '/scans': typeof ScansRoute
   '/wishlist': typeof WishlistRoute
   '/add-friend/$username': typeof AddFriendUsernameRoute
   '/admin/consensus': typeof AdminConsensusRoute
   '/admin/corrections': typeof AdminCorrectionsRoute
   '/admin/data': typeof AdminDataRoute
+  '/admin/data-capture': typeof AdminDataCaptureRoute
   '/admin/disputes': typeof AdminDisputesRoute
   '/admin/inspect': typeof AdminInspectRoute
   '/admin/type-fix': typeof AdminTypeFixRoute
   '/admin/usage': typeof AdminUsageRoute
   '/palate/$type': typeof PalateTypeRoute
   '/palate/verify': typeof PalateVerifyRoute
+  '/s/$token': typeof STokenRoute
+  '/scan/$id': typeof ScanIdRoute
   '/scan/bottle': typeof ScanBottleRoute
   '/scan/list': typeof ScanListRoute
   '/u/$username': typeof UUsernameRoute
@@ -235,17 +271,21 @@ export interface FileRouteTypes {
     | '/friends'
     | '/rate'
     | '/scan'
+    | '/scans'
     | '/wishlist'
     | '/add-friend/$username'
     | '/admin/consensus'
     | '/admin/corrections'
     | '/admin/data'
+    | '/admin/data-capture'
     | '/admin/disputes'
     | '/admin/inspect'
     | '/admin/type-fix'
     | '/admin/usage'
     | '/palate/$type'
     | '/palate/verify'
+    | '/s/$token'
+    | '/scan/$id'
     | '/scan/bottle'
     | '/scan/list'
     | '/u/$username'
@@ -260,17 +300,21 @@ export interface FileRouteTypes {
     | '/friends'
     | '/rate'
     | '/scan'
+    | '/scans'
     | '/wishlist'
     | '/add-friend/$username'
     | '/admin/consensus'
     | '/admin/corrections'
     | '/admin/data'
+    | '/admin/data-capture'
     | '/admin/disputes'
     | '/admin/inspect'
     | '/admin/type-fix'
     | '/admin/usage'
     | '/palate/$type'
     | '/palate/verify'
+    | '/s/$token'
+    | '/scan/$id'
     | '/scan/bottle'
     | '/scan/list'
     | '/u/$username'
@@ -285,17 +329,21 @@ export interface FileRouteTypes {
     | '/friends'
     | '/rate'
     | '/scan'
+    | '/scans'
     | '/wishlist'
     | '/add-friend/$username'
     | '/admin/consensus'
     | '/admin/corrections'
     | '/admin/data'
+    | '/admin/data-capture'
     | '/admin/disputes'
     | '/admin/inspect'
     | '/admin/type-fix'
     | '/admin/usage'
     | '/palate/$type'
     | '/palate/verify'
+    | '/s/$token'
+    | '/scan/$id'
     | '/scan/bottle'
     | '/scan/list'
     | '/u/$username'
@@ -311,17 +359,20 @@ export interface RootRouteChildren {
   FriendsRoute: typeof FriendsRoute
   RateRoute: typeof RateRoute
   ScanRoute: typeof ScanRouteWithChildren
+  ScansRoute: typeof ScansRoute
   WishlistRoute: typeof WishlistRoute
   AddFriendUsernameRoute: typeof AddFriendUsernameRoute
   AdminConsensusRoute: typeof AdminConsensusRoute
   AdminCorrectionsRoute: typeof AdminCorrectionsRoute
   AdminDataRoute: typeof AdminDataRoute
+  AdminDataCaptureRoute: typeof AdminDataCaptureRoute
   AdminDisputesRoute: typeof AdminDisputesRoute
   AdminInspectRoute: typeof AdminInspectRoute
   AdminTypeFixRoute: typeof AdminTypeFixRoute
   AdminUsageRoute: typeof AdminUsageRoute
   PalateTypeRoute: typeof PalateTypeRoute
   PalateVerifyRoute: typeof PalateVerifyRoute
+  STokenRoute: typeof STokenRoute
   UUsernameRoute: typeof UUsernameRoute
   WineIdRoute: typeof WineIdRoute
   PalateIndexRoute: typeof PalateIndexRoute
@@ -334,6 +385,13 @@ declare module '@tanstack/react-router' {
       path: '/wishlist'
       fullPath: '/wishlist'
       preLoaderRoute: typeof WishlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scans': {
+      id: '/scans'
+      path: '/scans'
+      fullPath: '/scans'
+      preLoaderRoute: typeof ScansRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/scan': {
@@ -420,6 +478,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ScanBottleRouteImport
       parentRoute: typeof ScanRoute
     }
+    '/scan/$id': {
+      id: '/scan/$id'
+      path: '/$id'
+      fullPath: '/scan/$id'
+      preLoaderRoute: typeof ScanIdRouteImport
+      parentRoute: typeof ScanRoute
+    }
+    '/s/$token': {
+      id: '/s/$token'
+      path: '/s/$token'
+      fullPath: '/s/$token'
+      preLoaderRoute: typeof STokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/palate/verify': {
       id: '/palate/verify'
       path: '/palate/verify'
@@ -462,6 +534,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDisputesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/data-capture': {
+      id: '/admin/data-capture'
+      path: '/admin/data-capture'
+      fullPath: '/admin/data-capture'
+      preLoaderRoute: typeof AdminDataCaptureRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/data': {
       id: '/admin/data'
       path: '/admin/data'
@@ -494,11 +573,13 @@ declare module '@tanstack/react-router' {
 }
 
 interface ScanRouteChildren {
+  ScanIdRoute: typeof ScanIdRoute
   ScanBottleRoute: typeof ScanBottleRoute
   ScanListRoute: typeof ScanListRoute
 }
 
 const ScanRouteChildren: ScanRouteChildren = {
+  ScanIdRoute: ScanIdRoute,
   ScanBottleRoute: ScanBottleRoute,
   ScanListRoute: ScanListRoute,
 }
@@ -513,17 +594,20 @@ const rootRouteChildren: RootRouteChildren = {
   FriendsRoute: FriendsRoute,
   RateRoute: RateRoute,
   ScanRoute: ScanRouteWithChildren,
+  ScansRoute: ScansRoute,
   WishlistRoute: WishlistRoute,
   AddFriendUsernameRoute: AddFriendUsernameRoute,
   AdminConsensusRoute: AdminConsensusRoute,
   AdminCorrectionsRoute: AdminCorrectionsRoute,
   AdminDataRoute: AdminDataRoute,
+  AdminDataCaptureRoute: AdminDataCaptureRoute,
   AdminDisputesRoute: AdminDisputesRoute,
   AdminInspectRoute: AdminInspectRoute,
   AdminTypeFixRoute: AdminTypeFixRoute,
   AdminUsageRoute: AdminUsageRoute,
   PalateTypeRoute: PalateTypeRoute,
   PalateVerifyRoute: PalateVerifyRoute,
+  STokenRoute: STokenRoute,
   UUsernameRoute: UUsernameRoute,
   WineIdRoute: WineIdRoute,
   PalateIndexRoute: PalateIndexRoute,
@@ -531,13 +615,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

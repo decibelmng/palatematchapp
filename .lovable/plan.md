@@ -1,115 +1,84 @@
+# Persistent Scans + Restaurant Data Capture
 
-# Profiles & Somm Trust Tier — build plan (A + B + C + D shadow)
+Three shippable parts + schema seams. The load-bearing invariant: **facts stored once, opinion (ranking) always recomputed against the viewer's current palate**.
 
-Governing principle preserved end-to-end: **payment buys the badge, calibration earns the weight, social metrics never touch the engine.** Phases B and D are structurally isolated — B never sets a λ.
+## Part 1 — Persistent, re-scorable scan history
 
----
+**Schema (migration):**
+- `scans`: add `restaurant_id uuid`, `venue_raw_text text`, `scanned_at timestamptz` (default `created_at`), `share_token text unique` (nullable, for shareable link).
+- `scan_wines`: add `raw_text text` (raw OCR line), `format text` (`bottle` | `glass` | `half`, default `bottle`), `price_amount numeric`, `currency text default 'USD'`. Keep existing `raw_json`, `price`.
+- `profiles`: add `palate_shareable boolean not null default false` (seam for C, no UI).
+- New index on `scan_wines(scan_id)` and `scans(user_id, scanned_at desc)`.
 
-## Migration (single migration, four table/column groups)
+**Server functions (`src/lib/scans-history.functions.ts`):**
+- `listUserScans` — user's past scans (id, restaurant, date, wine count, matched count).
+- `loadScanForRanking(scan_id)` — returns wines (matched bottle_id + raw fallback) so the client can recompute ranking against the *current* palate. No stored ranking.
+- `shareScan(scan_id)` — mints/returns `share_token`.
+- `loadSharedScan(token)` — public read; recipient's palate is used client-side.
 
-### profiles — new columns
-- `visibility` text default `'private'`, check in (`private`,`followers`,`public`)
-- `somm_status` text default `'none'`, check in (`none`,`pending`,`verified`,`revoked`)
-- `somm_role` text (`sommelier` / `store_owner` / `beverage_lead` / `other`)
-- `establishment` text
-- `verified_at` timestamptz, `verified_by` uuid, `bypass_code_used` text
-- `avatar_url` text (if not already present)
-- `bio` text (short, optional — surfaces on profile card)
+**UI:**
+- New route `src/routes/scans.tsx` (list) and `src/routes/scan.$id.tsx` (detail — reuses ranked list + hero components from `scan.list.tsx`).
+- New route `src/routes/s.$token.tsx` — public shared-scan viewer (uses viewer's palate; falls back to signed-out empty state with sign-in nudge).
+- Entry: add "Scans" link in account menu / Palate tab (no new bottom-nav tab — 3-tab rule holds).
 
-### somm_invite_codes (new)
-- `code` text primary key, `issued_by` uuid, `used_by` uuid null, `used_at` timestamptz null, `created_at` timestamptz default now(), `note` text
-- RLS: no anon; authenticated select own issued/used rows; only service_role writes. Redemption goes through a SECURITY DEFINER RPC `redeem_somm_code(p_code text)` that atomically claims the code and sets `somm_status='verified'`.
+**Format capture:** parse `glass`/`gl`/`btl` cues from `raw_text` at extraction time; default `bottle`.
 
-### follows (new, directed)
-- `follower_id`, `followee_id`, `status` text (`accepted`,`pending`), `created_at`, `responded_at`
-- Unique (follower_id, followee_id). RLS:
-  - INSERT: `auth.uid()=follower_id`; if followee visibility is `public`, insert as `accepted`; else `pending`. Enforced in RPC `follow_user(p_followee uuid)`.
-  - SELECT: either side.
-  - UPDATE (accept/reject): followee only.
-  - DELETE (unfollow / cancel): either side.
-- `search_users` already exists; add `follow_user`, `unfollow_user`, `respond_follow`.
+## Part 2 — Silent restaurant + price capture
 
-### fp_observations — Phase D fields
-- Add `reliability_at_write real` (snapshot of author's ρ at write time — replayable).
-- New source_type values allowed by string convention (no CHECK change needed): `somm_verified`.
+**Restaurant resolver (`src/lib/restaurant-resolver.ts`):**
+```ts
+interface RestaurantResolver {
+  resolve(venue: string, loc?: {lat,lng}): Promise<{restaurant_id, confidence, canonical_name, created: boolean, flag_possible_duplicate: boolean}>;
+}
+```
+- `FuzzyResolver` implementation now: normalize (accents, lowercase, strip noise words `restaurant|the|hotel|café|bar|winery|inn|kitchen`), fuzzy match `restaurants` via existing `search_restaurants` RPC + Levenshtein on normalized. High confidence (≥0.85 token overlap) → link. Low → create new + flag.
+- Places swap-in later behind same interface — no capture-code changes.
+- Store `venue_raw_text` on scan and (new column) `venue_raw_text_last` on restaurant for later re-canonicalization.
 
-### user_reliability (new, Phase D)
-- `user_id` primary key, `rho real default 1.0`, `n_holdout int default 0`, `updated_at`
-- Populated by `admin_reliability_recompute()` — a SECURITY DEFINER function that scores each user against consensus-holdout wines from the Phase-4 machinery. **Reads only ratings vs consensus, never social metrics.**
-- λ formula for future somm-driven fp_observations writes: `precision = base(tier) * rho`, where `base(standard)=1`, `base(verified_somm)=3`. Applied in a new `submit_somm_observation` RPC (mirrors admin correction path but tagged `mode='shadow'` and `source_type='somm_verified'`). **No UI wired yet** — table + function exist; kept dormant until Phase-4 volume gate passes.
+**Capture hook (extends `finalizeScan`):**
+On finalize, if a resolver hint exists (venue text captured from a "venue" field the user optionally types — see UI note), silently:
+1. Resolve/create restaurant → set `scans.restaurant_id`.
+2. For each `scan_wines` row with `matched_bottle_id`: upsert `restaurant_wines`.
+3. For each with `price_amount > 0`: **append** `price_observations` row (never overwrite). `observed_at = scans.scanned_at`, `format` copied, `source = 'ocr'`.
 
-### Grants (every new public table, in the migration)
-- `authenticated`: read own rows + accepted follows both directions; grants scoped to policies.
-- `service_role`: ALL.
-- `anon`: SELECT on `follows` counts via a view? — no: counts derive from server fns that use `requireSupabaseAuth`. **Public profile read** goes through a SECURITY DEFINER RPC `get_public_profile(p_username text)` that returns only the fields the visibility setting allows.
+**Venue text source:** small optional inline field at scan finalize ("Where was this? *(optional)*"); persists as `venue_raw_text`. No blocking UX — skipping keeps prior "unattributed scan" behavior.
 
----
+**Restaurants column additions:**
+- `restaurants`: `venue_raw_text_last text`, `possible_duplicate boolean not null default false`.
 
-## Phase A — Palate tab becomes the profile
+**Price obs discipline:**
+- Append-only (existing table already has `superseded` boolean; use it — never delete/update amount).
+- Glass vs bottle tagged via `restaurant_wines.format` and denormalized onto `price_observations` via new column `format text default 'bottle'`.
 
-`src/routes/palate.index.tsx` refactor:
-- Top block: avatar, display name (edit inline), member-since, **badge slot** (renders SOMM chip when `somm_status='verified'`).
-- **Inline** 2D/3D toggle over the existing map/cube — no reveal gate for returning users (the reveal flow stays only for first-time users with < 5 ratings).
-- Stats row: rated / canons / nemeses / current streak (`max(created_at)` window). Values come from existing hooks.
-- Visibility control (private/followers/public radio) + Share button placeholder (Phase C wires it).
-- New `ProfileHeader.tsx`, `ProfileStats.tsx`, `VisibilityControl.tsx`, `SommBadge.tsx` under `src/components/profile/`.
+## Part 3 — Admin accumulation dashboard
 
-Acceptance: viz renders inline on load; no email/precise-location anywhere; default visibility persists as `private`.
+**Route:** `src/routes/admin.data-capture.tsx` (linked from `admin.usage`).
 
----
+**Read-only RPCs (security definer, service_role):**
+- `admin_capture_summary()` → `{ total_restaurants, total_listings, total_price_obs, restaurants_with_ge_n_obs(n=5), scans_this_week }`.
+- `admin_restaurant_coverage()` → per-restaurant `{ id, name, listings, price_obs, first_seen, last_seen, possible_duplicate }`.
 
-## Phase B — SOMM badge + verification (status only, zero engine influence)
+**UI:** 5 tiles + sortable per-restaurant table + a "flagged duplicates" filter chip.
 
-- New route `src/routes/palate.verify.tsx` — "Verify as a somm" form: role, establishment, invite code.
-- Calls `redeem_somm_code` RPC. Success → toast, `somm_status='verified'`, badge shows.
-- **Assertion in code**: `redeem_somm_code` only writes to `profiles`. A unit-style comment + a runtime assertion in a `scripts/assert-badge-no-influence.ts` grep test verifies no code path branches `fp_observations.precision` on `somm_status`. (Phase D writes go through `submit_somm_observation` which reads reliability, not badge alone.)
-- Payment stub: an "Upgrade to SOMM" section that only shows the invite-code path for now.
+## Seams (not shipped)
 
----
+- `profiles.palate_shareable` boolean exists; no UI.
+- `restaurants.possible_duplicate` powers future merge tool.
+- Raw text everywhere (`venue_raw_text`, `raw_text` on scan_wines) enables re-resolution when Places swaps in.
 
-## Phase C — Share + follows
+## Technical order
 
-- Share button on profile → uses `navigator.share` if available, else copies `${origin}/u/${username}` to clipboard.
-- New public route `src/routes/u.$username.tsx` (top-level, SSR **on**, no auth gate). Loader calls a **public** server fn that invokes `get_public_profile` RPC with a server-side publishable client. Returns minimal card for private, followers-only for followers, full for public. Renders `head()` OG tags with display name + palate codes.
-- Follow button: shows Follow/Requested/Following. Uses `follow_user` / `unfollow_user`.
-- Counts: follower/following via server fn `getFollowCounts(userId)` — cheap `count` selects.
-- Anti-gaming grep: `scripts/assert-social-not-in-engine.ts` fails if `recommender.ts`, `fp_observations` migrations, or `admin_fp_recompute_*` reference `follows` / `follower_count` / `share_count`.
+1. Migration (schema + seams + indexes + grants).
+2. `restaurant-resolver.ts` fuzzy impl.
+3. Extend `scan.functions.ts` (createScanRecord accepts venue_raw_text; scanWineBatch persists `raw_text`/`format`/`price_amount`; finalizeScan does silent capture).
+4. `scans-history.functions.ts` + Scans list/detail routes + shared route.
+5. Admin dashboard route + RPCs.
+6. Verify: scan a list, reload → past scan visible; reopening recomputes ranking; price_observations rows appended.
 
----
+## Lines held
 
-## Phase D — Earned evidence-weight (shadow, dormant)
-
-Infrastructure only. **No UI to submit somm observations yet.** Ships:
-
-- `user_reliability` table + `admin_reliability_recompute()` computing ρ from consensus-holdout agreement (uses the Phase-4 surprise machinery inverted — agreement not disagreement).
-- `submit_somm_observation(bottle_id, axis, value, rationale)` — SECURITY DEFINER RPC that writes to `fp_observations` with `precision = base(tier) * rho`, `mode='shadow'`, `reliability_at_write=rho`, `source_type='somm_verified'`. Applies existing guardrails via reuse of `admin_fp_recompute_bottle` (25% cap, floor, move cap already enforced there).
-- Validation reuses `admin_consensus_validate` — a shadow somm observation only promotes to `mode='live'` when it beats the prior on held-out prediction.
-- At current volume: `admin_consensus_gate_status()` still returns `global_pass=false`, so zero live promotions. Documented in a `PHASE_D_DORMANT.md` under `docs/`.
-
----
-
-## Acceptance matrix (executable where possible)
-
-- **A**: Palate tab renders profile + inline viz (screenshot); visibility persists (SQL check on `profiles.visibility`); no email/location strings in rendered HTML (grep of route).
-- **B**: valid bypass code → `somm_status='verified'`; invalid → no change. Grep confirms `fp_observations.precision` unchanged by badge.
-- **C**: public follow accepts instantly; private follow creates `pending`; social metrics grep passes.
-- **D**: `submit_somm_observation` writes with precision = base·ρ (asserted with a fixture SQL); consensus gate still fails → zero live promotions.
-
----
-
-## Files touched
-
-- New migration: `phases-abcd-profiles-somm.sql` (single migration).
-- Routes: `palate.index.tsx` (rewrite), `palate.verify.tsx` (new), `u.$username.tsx` (new).
-- Components: `src/components/profile/{ProfileHeader,ProfileStats,VisibilityControl,SommBadge,FollowButton,ShareProfileButton}.tsx`.
-- Server fns: `src/lib/profile.functions.ts`, `src/lib/follows.functions.ts`.
-- Docs/asserts: `docs/PHASE_D_DORMANT.md`, `scripts/assert-social-not-in-engine.ts`, `scripts/assert-badge-no-influence.ts`.
-- No edits to `recommender.ts`, `admin_fp_recompute_*`, or existing fp_observations write paths.
-
-## Order I'll execute
-
-1. Migration (approval gate — types regenerate after).
-2. Phase A UI on the new columns.
-3. Phase B verify route + badge.
-4. Phase C public profile route + follows UI.
-5. Phase D docs + grep asserts (infra already in the migration).
+- Price never on `bottles`. Timestamped observations only.
+- Ranking never stored. Always recomputed client-side against current palate.
+- Raw OCR + raw venue always kept for re-resolution.
+- No user-facing "value" claims (Phase B); no reservation handoff UI (Phase C).
+- Capture is silent; user's reason to scan stays their ranked list.

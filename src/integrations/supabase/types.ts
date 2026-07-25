@@ -499,6 +499,7 @@ export type Database = {
           created_at: string
           currency: string
           cuvee_key: string | null
+          format: string
           id: string
           menu_price: number
           observed_at: string
@@ -514,6 +515,7 @@ export type Database = {
           created_at?: string
           currency?: string
           cuvee_key?: string | null
+          format?: string
           id?: string
           menu_price: number
           observed_at?: string
@@ -529,6 +531,7 @@ export type Database = {
           created_at?: string
           currency?: string
           cuvee_key?: string | null
+          format?: string
           id?: string
           menu_price?: number
           observed_at?: string
@@ -571,6 +574,7 @@ export type Database = {
           palate_code: string
           palate_code_red: string
           palate_code_white: string
+          palate_shareable: boolean
           palate_version: number
           recent_groups: Json
           scan_unlock_seen: boolean
@@ -597,6 +601,7 @@ export type Database = {
           palate_code?: string
           palate_code_red?: string
           palate_code_white?: string
+          palate_shareable?: boolean
           palate_version?: number
           recent_groups?: Json
           scan_unlock_seen?: boolean
@@ -623,6 +628,7 @@ export type Database = {
           palate_code?: string
           palate_code_red?: string
           palate_code_white?: string
+          palate_shareable?: boolean
           palate_version?: number
           recent_groups?: Json
           scan_unlock_seen?: boolean
@@ -745,6 +751,8 @@ export type Database = {
           id: string
           locale: string | null
           name: string
+          possible_duplicate: boolean
+          venue_raw_text_last: string | null
         }
         Insert: {
           city?: string | null
@@ -754,6 +762,8 @@ export type Database = {
           id?: string
           locale?: string | null
           name: string
+          possible_duplicate?: boolean
+          venue_raw_text_last?: string | null
         }
         Update: {
           city?: string | null
@@ -763,6 +773,8 @@ export type Database = {
           id?: string
           locale?: string | null
           name?: string
+          possible_duplicate?: boolean
+          venue_raw_text_last?: string | null
         }
         Relationships: []
       }
@@ -818,7 +830,9 @@ export type Database = {
         Row: {
           batch_index: number
           created_at: string
+          currency: string
           cuvee: string | null
+          format: string
           fp: Json | null
           fp_source: string | null
           grape: string | null
@@ -828,8 +842,10 @@ export type Database = {
           matched_bottle_id: string | null
           predicted_stars: number | null
           price: string | null
+          price_amount: number | null
           producer: string | null
           raw_json: Json | null
+          raw_text: string | null
           region: string | null
           scan_id: string
           user_id: string
@@ -839,7 +855,9 @@ export type Database = {
         Insert: {
           batch_index?: number
           created_at?: string
+          currency?: string
           cuvee?: string | null
+          format?: string
           fp?: Json | null
           fp_source?: string | null
           grape?: string | null
@@ -849,8 +867,10 @@ export type Database = {
           matched_bottle_id?: string | null
           predicted_stars?: number | null
           price?: string | null
+          price_amount?: number | null
           producer?: string | null
           raw_json?: Json | null
+          raw_text?: string | null
           region?: string | null
           scan_id: string
           user_id: string
@@ -860,7 +880,9 @@ export type Database = {
         Update: {
           batch_index?: number
           created_at?: string
+          currency?: string
           cuvee?: string | null
+          format?: string
           fp?: Json | null
           fp_source?: string | null
           grape?: string | null
@@ -870,8 +892,10 @@ export type Database = {
           matched_bottle_id?: string | null
           predicted_stars?: number | null
           price?: string | null
+          price_amount?: number | null
           producer?: string | null
           raw_json?: Json | null
+          raw_text?: string | null
           region?: string | null
           scan_id?: string
           user_id?: string
@@ -898,9 +922,12 @@ export type Database = {
           image_paths: Json
           page_count: number
           restaurant_id: string | null
+          scanned_at: string
+          share_token: string | null
           status: string
           updated_at: string
           user_id: string
+          venue_raw_text: string | null
         }
         Insert: {
           batch_count?: number
@@ -911,9 +938,12 @@ export type Database = {
           image_paths?: Json
           page_count?: number
           restaurant_id?: string | null
+          scanned_at?: string
+          share_token?: string | null
           status?: string
           updated_at?: string
           user_id: string
+          venue_raw_text?: string | null
         }
         Update: {
           batch_count?: number
@@ -924,9 +954,12 @@ export type Database = {
           image_paths?: Json
           page_count?: number
           restaurant_id?: string | null
+          scanned_at?: string
+          share_token?: string | null
           status?: string
           updated_at?: string
           user_id?: string
+          venue_raw_text?: string | null
         }
         Relationships: [
           {
@@ -1023,6 +1056,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_capture_summary: {
+        Args: { p_min_obs?: number }
+        Returns: {
+          possible_duplicates: number
+          restaurants_with_min_obs: number
+          scans_this_week: number
+          total_listings: number
+          total_price_obs: number
+          total_restaurants: number
+        }[]
+      }
       admin_consensus_gate_status: {
         Args: never
         Returns: {
@@ -1120,6 +1164,20 @@ export type Database = {
         Args: never
         Returns: {
           users_touched: number
+        }[]
+      }
+      admin_restaurant_coverage: {
+        Args: { p_limit?: number }
+        Returns: {
+          city: string
+          first_seen: string
+          id: string
+          last_seen: string
+          listings: number
+          name: string
+          possible_duplicate: boolean
+          price_obs: number
+          venue_raw_text_last: string
         }[]
       }
       admin_table_columns: {
