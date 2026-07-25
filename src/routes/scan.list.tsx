@@ -1359,11 +1359,12 @@ function HeroSkeleton() {
   );
 }
 
-function ResultRow({ row, onOpen }: { row: ScanRow; onOpen: () => void }) {
+function ResultRow({ row, currentStars, onOpen }: { row: ScanRow; currentStars: number | null; onOpen: () => void }) {
   const r = row.ranked;
   const score = r.predicted > 0 ? r.predicted.toFixed(1) : null;
   const reason = reasonLine(row);
   const price = priceLabel(row);
+  const rate = useRate();
   const edge = r.vetoed
     ? "before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-[--crimson] before:content-['']"
     : r.contested
@@ -1371,11 +1372,13 @@ function ResultRow({ row, onOpen }: { row: ScanRow; onOpen: () => void }) {
     : "";
   return (
     <li className="list-none">
-      <button
-        type="button"
+      <div
+        role="button"
+        tabIndex={0}
         onClick={onOpen}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
         aria-label={`Details for ${r.bottle.name}`}
-        className={`relative w-full text-left py-4 pl-4 pr-3 flex items-start gap-4 min-h-11 hover:bg-accent/40 transition-colors ${edge}`}
+        className={`relative w-full text-left py-4 pl-4 pr-3 flex items-start gap-4 min-h-11 hover:bg-accent/40 transition-colors cursor-pointer ${edge}`}
       >
         <div className="shrink-0 flex flex-col items-center justify-center w-14 h-14 rounded-xl border border-border bg-[--surface-2]">
           {score ? (
@@ -1412,6 +1415,25 @@ function ResultRow({ row, onOpen }: { row: ScanRow; onOpen: () => void }) {
           {reason && (
             <p className={`mt-1 text-[11px] ${r.vetoed ? "text-[--crimson]" : "text-muted-foreground"}`}>{reason}</p>
           )}
+          <div className="mt-2" onClick={(e) => e.stopPropagation()}>
+            <StarTap
+              value={currentStars}
+              size="sm"
+              onChange={(stars) => {
+                if (stars == null || stars === currentStars) return;
+                rate.mutate(
+                  { bottleId: r.bottle.id, stars },
+                  {
+                    onSuccess: () => toast.success(`Rated ${stars}★`),
+                    onError: (e) => {
+                      const msg = e instanceof Error ? e.message : String(e);
+                      if (!/canceled/i.test(msg)) toast.error(msg || "Couldn't save rating");
+                    },
+                  },
+                );
+              }}
+            />
+          </div>
         </div>
         <div className="shrink-0 text-right pt-1">
           <p className="text-sm text-foreground font-medium">{price}</p>
@@ -1421,7 +1443,7 @@ function ResultRow({ row, onOpen }: { row: ScanRow; onOpen: () => void }) {
             </p>
           )}
         </div>
-      </button>
+      </div>
     </li>
   );
 }
