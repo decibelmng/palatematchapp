@@ -1558,25 +1558,27 @@ function ScanDetailSheet({ row, onClose }: { row: ScanRow | null; onClose: () =>
         )}
         <div className="mt-4 pt-3 border-t border-border flex items-center justify-between gap-3">
           <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-            {currentStars != null ? "Your rating" : "Tried it? Rate now"}
+            {bottleId == null ? "Estimated — no catalog match to rate" : currentStars != null ? "Your rating" : "Tried it? Rate now"}
           </span>
-          <StarTap
-            value={currentStars}
-            size="md"
-            onChange={(stars) => {
-              if (stars == null || stars === currentStars) return;
-              rate.mutate(
-                { bottleId: r.bottle.id, stars },
-                {
-                  onSuccess: () => toast.success(`Rated ${stars}★`),
-                  onError: (e) => {
-                    const msg = (e as any)?.message ?? (typeof e === "string" ? e : "Couldn't save rating");
-                    if (!/canceled/i.test(msg)) toast.error(msg || "Couldn't save rating");
+          {bottleId != null && (
+            <StarTap
+              value={currentStars}
+              size="md"
+              onChange={(stars) => {
+                if (stars == null || stars === currentStars) return;
+                rate.mutate(
+                  { bottleId, stars },
+                  {
+                    onSuccess: () => toast.success(`Rated ${stars}★`),
+                    onError: (e) => {
+                      const msg = (e as any)?.message ?? (typeof e === "string" ? e : "Couldn't save rating");
+                      if (!/canceled/i.test(msg)) toast.error(msg || "Couldn't save rating");
+                    },
                   },
-                },
-              );
-            }}
-          />
+                );
+              }}
+            />
+          )}
         </div>
         <div className="mt-5 flex items-center gap-4">
           <FingerprintSpoke fp={r.bottle.fp} size={72} />
