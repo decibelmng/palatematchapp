@@ -17,6 +17,7 @@ import {
   loadRecentScan,
   type ResolvedWine,
 } from "@/lib/scan.functions";
+import { listUserScans } from "@/lib/scans-history.functions";
 import { searchRestaurantsFn, createRestaurantFn, attributeScanFn } from "@/lib/restaurants.functions";
 import { aggregateRated } from "@/lib/cuvee";
 import { applyControls, normalizePrice, isGreatValue, DEFAULT_CONTROLS, type Controls, type Priced } from "@/lib/list-controls";
@@ -604,16 +605,12 @@ function Scan() {
 
 
 
+  const inScanFlow = staged.length > 0 || isRunning || !!scanId;
+
   return (
     <div className="pt-2">
-      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Scan a list</p>
-      <h1 className="font-serif text-3xl mt-2">Photograph a wine list</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        I'll read every wine on the list and rank them by predicted stars for your palate.
-      </p>
-
       {showResumeBanner && (
-        <div className="mt-4 rounded-md border border-primary/40 bg-primary/5 p-3 text-sm flex items-start justify-between gap-3">
+        <div className="mt-2 rounded-md border border-primary/40 bg-primary/5 p-3 text-sm flex items-start justify-between gap-3">
           <div>
             <p className="font-medium">Resuming your last scan · {new Date(resumedAt!).toLocaleTimeString()}</p>
             <p className="text-xs text-muted-foreground mt-0.5">
@@ -629,23 +626,6 @@ function Scan() {
         </div>
       )}
 
-      <PrescanRestaurantPicker
-        value={prescanRestaurant}
-        onChange={setPrescanRestaurant}
-        disabled={isRunning || !!scanId}
-      />
-
-      {!scanId && !isRunning && (
-        <div className="mt-4">
-          <DrinkingGroupSelector
-            selectedIds={group.friendIds}
-            onToggle={group.toggle}
-            onClear={group.clear}
-            onSet={group.set}
-          />
-        </div>
-      )}
-
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden"
         onChange={(e) => onPick(e.target.files, e.currentTarget)} />
       <input ref={libraryRef} type="file" accept="image/*" multiple className="hidden"
@@ -658,7 +638,7 @@ function Scan() {
         disabled={isRunning || staged.length >= 8}
         data-testid="scan-entry-camera"
         aria-label="Scan a wine list with your camera"
-        className="mt-5 block w-full text-left rounded-[16px] border-2 border-primary/60 bg-gradient-to-br from-primary/15 via-card to-card p-4 shadow-[var(--pm-card-shadow)] hover:border-primary transition disabled:opacity-60"
+        className="mt-2 block w-full text-left rounded-[16px] border-2 border-primary/60 bg-gradient-to-br from-primary/15 via-card to-card p-4 shadow-[var(--pm-card-shadow)] hover:border-primary transition disabled:opacity-60"
       >
         <div className="flex items-center gap-3">
           <div className="shrink-0 h-12 w-12 rounded-xl bg-primary/20 text-primary flex items-center justify-center">
@@ -686,6 +666,30 @@ function Scan() {
       >
         <ImageIcon size={14} /> Upload photos instead (up to 8 pages)
       </button>
+
+      {/* Setup (restaurant / drinking group) — only inside an active scan flow */}
+      {inScanFlow && (
+        <>
+          <PrescanRestaurantPicker
+            value={prescanRestaurant}
+            onChange={setPrescanRestaurant}
+            disabled={isRunning || !!scanId}
+          />
+          {!scanId && !isRunning && (
+            <div className="mt-4">
+              <DrinkingGroupSelector
+                selectedIds={group.friendIds}
+                onToggle={group.toggle}
+                onClear={group.clear}
+                onSet={group.set}
+              />
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Past scans history — shown when idle, mirrors Rate's "your ratings" list */}
+      {!inScanFlow && !showResumeBanner && <PastScansHistory />}
 
       {(staged.length > 0 || (scanId && !isRunning)) && (
         <div className="mt-3 flex flex-wrap gap-3">
@@ -1669,4 +1673,74 @@ function ScanDetailSheet({ row, onClose }: { row: ScanRow | null; onClose: () =>
     </div>
   );
 }
+
+function fmtScanDate(iso: string): string {
+  const d = new Date(iso);
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
+}
+
+function PastScansHistory() {
+  const list = useServerFn(listUserScans);
+  const q = useQuery({ queryKey: ["user-scans"], queryFn: () => list(), staleTime: 30_000 });
+
+  if (q.isLoading) {
+    return <div className="mt-8 text-sm text-muted-foreground">Loading past scans…</div>;
+  }
+  if (q.error) {
+    return <div className="mt-8 text-sm text-destructive">Couldn't load past scans.</div>;
+  }
+  const scans = q.data ?? [];
+
+  return (
+    <section aria-labelledby="past-scans-heading" className="mt-8">
+      <div className="flex items-baseline justify-between">
+        <h2 id="past-scans-heading" className="font-serif text-lg">Past scans</h2>
+        {scans.length > 0 && (
+          <span className="text-[11px] text-muted-foreground">
+            {scans.length} scan{scans.length === 1 ? "" : "s"}
+          </span>
+        )}
+      </div>
+      <p className="mt-1 text-xs text-muted-foreground">
+        Facts saved once — each scan re-ranks against your current palate when you open it.
+      </p>
+
+      {scans.length === 0 ? (
+        <div className="mt-3 rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
+          No scans yet. Point the camera at a wine list above to capture your first one.
+        </div>
+      ) : (
+        <ul className="mt-3 space-y-2">
+          {scans.map((s) => (
+            <li key={s.id}>
+              <Link
+                to="/scan/$id"
+                params={{ id: s.id }}
+                className="block rounded-lg border border-border bg-card p-4 hover:bg-accent/40 active:bg-accent/60 transition-colors"
+              >
+                <div className="flex items-baseline justify-between gap-3">
+                  <div className="min-w-0">
+                    <div className="font-medium truncate">
+                      {s.restaurant_name ?? s.venue_raw_text ?? "Unattributed scan"}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-0.5">
+                      {fmtScanDate(s.scanned_at)} · {s.wine_count} wine{s.wine_count === 1 ? "" : "s"}
+                      {s.matched_count > 0 && <> · {s.matched_count} matched</>}
+                    </div>
+                  </div>
+                  {s.status !== "complete" && s.status !== "parsed" && (
+                    <span className="shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground rounded px-1.5 py-0.5 border border-border">
+                      {s.status}
+                    </span>
+                  )}
+                </div>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 
