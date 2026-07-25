@@ -17,6 +17,7 @@ import {
   loadRecentScan,
   type ResolvedWine,
 } from "@/lib/scan.functions";
+import { listUserScans } from "@/lib/scans-history.functions";
 import { searchRestaurantsFn, createRestaurantFn, attributeScanFn } from "@/lib/restaurants.functions";
 import { aggregateRated } from "@/lib/cuvee";
 import { applyControls, normalizePrice, isGreatValue, DEFAULT_CONTROLS, type Controls, type Priced } from "@/lib/list-controls";
