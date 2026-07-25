@@ -44,7 +44,7 @@ function AdminInspect() {
 
   const [selected, setSelected] = useState<string | null>(null);
   const [limit, setLimit] = useState(100);
-  const [status, setStatus] = useState<{ kind: "ok" | "err"; msg: string } | null>(null);
+  const [copied, setCopied] = useState<"json" | "csv" | null>(null);
   const [fallback, setFallback] = useState<string | null>(null);
 
   const tables = useQuery({
