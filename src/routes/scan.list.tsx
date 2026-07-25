@@ -783,7 +783,7 @@ function Scan() {
           {/* Zero-strong honest absence */}
           {zeroStrong && (
             <p className="mt-6 rounded-md border border-border bg-card/60 p-3 text-xs text-muted-foreground">
-              Nothing here is a strong match. Your closest is <span className="text-foreground">{heroes[0].bottle?.name ?? heroes[0].ranked.bottle.name}</span> at {heroes[0].predicted.toFixed(1)}★.
+              Nothing here is a strong match. Your closest is <span className="text-foreground">{heroes[0].ranked.bottle.name}</span> at {heroes[0].predicted.toFixed(1)}★.
             </p>
           )}
 
