@@ -14,6 +14,35 @@ export type Database = {
   }
   public: {
     Tables: {
+      admin_type_review_rejects: {
+        Row: {
+          bottle_id: string
+          note: string | null
+          rejected_at: string
+          rejected_by: string | null
+        }
+        Insert: {
+          bottle_id: string
+          note?: string | null
+          rejected_at?: string
+          rejected_by?: string | null
+        }
+        Update: {
+          bottle_id?: string
+          note?: string | null
+          rejected_at?: string
+          rejected_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "admin_type_review_rejects_bottle_id_fkey"
+            columns: ["bottle_id"]
+            isOneToOne: true
+            referencedRelation: "bottles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bottles: {
         Row: {
           added_by: string | null
