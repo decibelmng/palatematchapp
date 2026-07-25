@@ -280,8 +280,10 @@ function FriendRow({ row }: { row: import("@/lib/friends.functions").FriendshipR
           <PalateStar axes={axesFor("red")} letters={redLetters} size={36} />
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-medium truncate">{row.other.display_name || row.other.username}</p>
-          <p className="text-[11px] text-muted-foreground truncate">@{row.other.username}</p>
+          <p className="text-sm font-medium truncate">{displayNameFor(row.other)}</p>
+          {handleForDisplay(row.other.username) && (
+            <p className="text-[11px] text-muted-foreground truncate">@{handleForDisplay(row.other.username)}</p>
+          )}
           <p className="mt-1 text-[11px] text-muted-foreground font-mono tracking-wider">
             🍷 {row.other.palate_code_red} <span className="opacity-40">·</span> 🥂 {row.other.palate_code_white}
           </p>
