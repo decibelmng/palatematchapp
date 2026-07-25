@@ -148,7 +148,7 @@ function Rate() {
 
         {/* PRIMARY: Scan a bottle */}
         <Link
-          to="/scan/list"
+          to="/scan/bottle"
           data-testid="rate-scan-hero"
           aria-label="Scan a bottle label with your camera"
           className="block rounded-[18px] border-2 border-primary/60 bg-gradient-to-br from-primary/15 via-card to-card p-5 shadow-[var(--pm-card-shadow)] hover:border-primary transition"
