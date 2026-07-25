@@ -516,6 +516,73 @@ function Scan() {
   const failedBatches = batches.filter((b) => b.status === "failed");
   const anyBatchInFlight = batches.some((b) => b.status === "running" || b.status === "pending");
 
+  // ---------- Phase 3: unified decision surface ----------
+  // Flatten every type into a single decision list, apply group overlay,
+  // apply user filters (but NOT sort — hero always uses predicted-desc),
+  // then partition hero / rest / vetoed.
+  const allRowsFlat: ScanRow[] = useMemo(() => {
+    const flat = grouped.flatMap((g) => g.rows);
+    if (!groupActive || !groupScores) return flat;
+    return flat.map((r) => {
+      const g = groupScores.get(r.ranked.bottle.id);
+      if (!g) return r;
+      const next: ScanRow = { ...r, predicted: g.group_min };
+      next.greatValue = isGreatValue(next);
+      return next;
+    });
+  }, [grouped, groupActive, groupScores]);
+
+  // Filter (never sort) so hero remains the best predicted within constraints.
+  const filteredNoSort = useMemo(() => {
+    return applyControls(allRowsFlat, { ...controls, sort: "best" });
+  }, [allRowsFlat, controls]);
+
+  const sortedForList = useMemo(() => applyControls(allRowsFlat, controls), [allRowsFlat, controls]);
+
+  const heroes: ScanRow[] = useMemo(() => {
+    if (!enoughRatings) return [];
+    const eligible = filteredNoSort
+      .filter((r) => !r.ranked.vetoed)
+      .sort((a, b) => b.predicted - a.predicted);
+    if (eligible.length === 0) return [];
+    const top = eligible[0];
+    const out = [top];
+    if (eligible[1] && Math.abs(eligible[1].predicted - top.predicted) <= 0.1) out.push(eligible[1]);
+    return out;
+  }, [filteredNoSort, enoughRatings]);
+
+  const heroKeys = useMemo(() => new Set(heroes.map((h) => h.key)), [heroes]);
+  const restNonVeto = useMemo(
+    () => sortedForList.filter((r) => !r.ranked.vetoed && !heroKeys.has(r.key)),
+    [sortedForList, heroKeys],
+  );
+  const vetoedRows = useMemo(
+    () => sortedForList.filter((r) => r.ranked.vetoed),
+    [sortedForList],
+  );
+
+  // Estimate skeleton row count from in-flight batches (avg ~4 wines/page).
+  const pendingSkeletons = useMemo(() => {
+    const inflight = batches.filter((b) => b.status === "pending" || b.status === "running").length;
+    return Math.min(inflight * 4, 8);
+  }, [batches]);
+
+  const zeroStrong = enoughRatings && heroes.length > 0 && heroes[0].predicted < 4.0;
+  const readFailed = !isRunning && status !== "idle" && readable.length === 0 && !anyBatchInFlight;
+  const showDecisionSurface = enoughRatings && (readable.length > 0 || anyBatchInFlight);
+
+  // Phase 3 dev acceptance: no explore chrome on this route.
+  useEffect(() => {
+    if (typeof window === "undefined" || !import.meta.env.DEV) return;
+    const bans = ["TasteMap", "TasteCube", "palate-slider-editor"];
+    const found = bans.filter((s) => document.querySelector(`[data-component="${s}"]`));
+    if (found.length) console.warn("[phase3] forbidden chrome on /scan/list:", found);
+    // eslint-disable-next-line no-console
+    console.log("[phase3-scan] heroes:", heroes.length, "rest:", restNonVeto.length, "vetoed:", vetoedRows.length, "skeletons:", pendingSkeletons);
+  }, [heroes.length, restNonVeto.length, vetoedRows.length, pendingSkeletons]);
+
+
+
   return (
     <div className="pt-2">
       <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Scan a list</p>
