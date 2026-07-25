@@ -756,7 +756,7 @@ function Scan() {
                   row={h}
                   isTie={heroes.length > 1}
                   zeroStrong={zeroStrong}
-                  currentStars={ratings?.find((r) => r.bottle_id === h.ranked.bottle.id)?.stars ?? null}
+                  currentStars={h.ranked.scanned.matched_bottle_id ? (ratings?.find((r) => r.bottle_id === h.ranked.scanned.matched_bottle_id)?.stars ?? null) : null}
                   onOpen={() => setDetailFor(h)}
                 />
               ))}
@@ -772,13 +772,13 @@ function Scan() {
               </p>
               <ul className="mt-3 divide-y divide-border">
                 {restNonVeto.map((r) => (
-                  <ResultRow key={r.key} row={r} currentStars={ratings?.find((x) => x.bottle_id === r.ranked.bottle.id)?.stars ?? null} onOpen={() => setDetailFor(r)} />
+                  <ResultRow key={r.key} row={r} currentStars={r.ranked.scanned.matched_bottle_id ? (ratings?.find((x) => x.bottle_id === r.ranked.scanned.matched_bottle_id)?.stars ?? null) : null} onOpen={() => setDetailFor(r)} />
                 ))}
                 {Array.from({ length: pendingSkeletons }).map((_, i) => (
                   <SkeletonRow key={`sk-${i}`} />
                 ))}
                 {vetoedRows.map((r) => (
-                  <ResultRow key={r.key} row={r} currentStars={ratings?.find((x) => x.bottle_id === r.ranked.bottle.id)?.stars ?? null} onOpen={() => setDetailFor(r)} />
+                  <ResultRow key={r.key} row={r} currentStars={r.ranked.scanned.matched_bottle_id ? (ratings?.find((x) => x.bottle_id === r.ranked.scanned.matched_bottle_id)?.stars ?? null) : null} onOpen={() => setDetailFor(r)} />
                 ))}
               </ul>
             </div>
@@ -1278,7 +1278,7 @@ function HeroCard({
   const price = priceLabel(row);
   const nameId = `hero-${row.key}`;
   const rate = useRate();
-  const bottleId = row.ranked.bottle.id;
+  const bottleId = row.ranked.scanned.matched_bottle_id;
   return (
     <div
       role="button"
@@ -1320,25 +1320,27 @@ function HeroCard({
         onClick={(e) => e.stopPropagation()}
       >
         <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-          {currentStars != null ? "Your rating" : "Tried it? Rate now"}
+          {bottleId == null ? "Estimated — open to rate" : currentStars != null ? "Your rating" : "Tried it? Rate now"}
         </span>
-        <StarTap
-          value={currentStars}
-          size="sm"
-          onChange={(stars) => {
-            if (stars == null || stars === currentStars) return;
-            rate.mutate(
-              { bottleId, stars },
-              {
-                onSuccess: () => toast.success(`Rated ${stars}★`),
-                onError: (e) => {
-                  const msg = (e as any)?.message ?? (typeof e === "string" ? e : "Couldn't save rating");
-                  if (!/canceled/i.test(msg)) toast.error(msg || "Couldn't save rating");
+        {bottleId != null && (
+          <StarTap
+            value={currentStars}
+            size="sm"
+            onChange={(stars) => {
+              if (stars == null || stars === currentStars) return;
+              rate.mutate(
+                { bottleId, stars },
+                {
+                  onSuccess: () => toast.success(`Rated ${stars}★`),
+                  onError: (e) => {
+                    const msg = (e as any)?.message ?? (typeof e === "string" ? e : "Couldn't save rating");
+                    if (!/canceled/i.test(msg)) toast.error(msg || "Couldn't save rating");
+                  },
                 },
-              },
-            );
-          }}
-        />
+              );
+            }}
+          />
+        )}
       </div>
     </div>
   );
@@ -1416,23 +1418,27 @@ function ResultRow({ row, currentStars, onOpen }: { row: ScanRow; currentStars: 
             <p className={`mt-1 text-[11px] ${r.vetoed ? "text-[--crimson]" : "text-muted-foreground"}`}>{reason}</p>
           )}
           <div className="mt-2" onClick={(e) => e.stopPropagation()}>
-            <StarTap
-              value={currentStars}
-              size="sm"
-              onChange={(stars) => {
-                if (stars == null || stars === currentStars) return;
-                rate.mutate(
-                  { bottleId: r.bottle.id, stars },
-                  {
-                    onSuccess: () => toast.success(`Rated ${stars}★`),
-                    onError: (e) => {
-                      const msg = (e as any)?.message ?? (typeof e === "string" ? e : "Couldn't save rating");
-                      if (!/canceled/i.test(msg)) toast.error(msg || "Couldn't save rating");
+            {r.scanned.matched_bottle_id ? (
+              <StarTap
+                value={currentStars}
+                size="sm"
+                onChange={(stars) => {
+                  if (stars == null || stars === currentStars) return;
+                  rate.mutate(
+                    { bottleId: r.scanned.matched_bottle_id!, stars },
+                    {
+                      onSuccess: () => toast.success(`Rated ${stars}★`),
+                      onError: (e) => {
+                        const msg = (e as any)?.message ?? (typeof e === "string" ? e : "Couldn't save rating");
+                        if (!/canceled/i.test(msg)) toast.error(msg || "Couldn't save rating");
+                      },
                     },
-                  },
-                );
-              }}
-            />
+                  );
+                }}
+              />
+            ) : (
+              <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Estimated — no catalog match to rate</p>
+            )}
           </div>
         </div>
         <div className="shrink-0 text-right pt-1">
@@ -1511,7 +1517,8 @@ function ScanDetailSheet({ row, onClose }: { row: ScanRow | null; onClose: () =>
   }, [row, onClose]);
   if (!row) return null;
   const r = row.ranked;
-  const currentStars = ratings?.find((x) => x.bottle_id === r.bottle.id)?.stars ?? null;
+  const bottleId = r.scanned.matched_bottle_id;
+  const currentStars = bottleId ? (ratings?.find((x) => x.bottle_id === bottleId)?.stars ?? null) : null;
   const reason = reasonLine(row);
   return (
     <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label={`Detail for ${r.bottle.name}`}>
@@ -1551,25 +1558,27 @@ function ScanDetailSheet({ row, onClose }: { row: ScanRow | null; onClose: () =>
         )}
         <div className="mt-4 pt-3 border-t border-border flex items-center justify-between gap-3">
           <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-            {currentStars != null ? "Your rating" : "Tried it? Rate now"}
+            {bottleId == null ? "Estimated — no catalog match to rate" : currentStars != null ? "Your rating" : "Tried it? Rate now"}
           </span>
-          <StarTap
-            value={currentStars}
-            size="md"
-            onChange={(stars) => {
-              if (stars == null || stars === currentStars) return;
-              rate.mutate(
-                { bottleId: r.bottle.id, stars },
-                {
-                  onSuccess: () => toast.success(`Rated ${stars}★`),
-                  onError: (e) => {
-                    const msg = (e as any)?.message ?? (typeof e === "string" ? e : "Couldn't save rating");
-                    if (!/canceled/i.test(msg)) toast.error(msg || "Couldn't save rating");
+          {bottleId != null && (
+            <StarTap
+              value={currentStars}
+              size="md"
+              onChange={(stars) => {
+                if (stars == null || stars === currentStars) return;
+                rate.mutate(
+                  { bottleId, stars },
+                  {
+                    onSuccess: () => toast.success(`Rated ${stars}★`),
+                    onError: (e) => {
+                      const msg = (e as any)?.message ?? (typeof e === "string" ? e : "Couldn't save rating");
+                      if (!/canceled/i.test(msg)) toast.error(msg || "Couldn't save rating");
+                    },
                   },
-                },
-              );
-            }}
-          />
+                );
+              }}
+            />
+          )}
         </div>
         <div className="mt-5 flex items-center gap-4">
           <FingerprintSpoke fp={r.bottle.fp} size={72} />
