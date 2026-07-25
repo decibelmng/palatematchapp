@@ -52,6 +52,8 @@ function BottleScan() {
   const qc = useQueryClient();
   const scan = useServerFn(scanBottleLabel);
   const resolveFn = useServerFn(resolveBottleFromRead);
+  const onDemandFn = useServerFn(resolveOrCreateOnDemand);
+  const [onDemandBusy, setOnDemandBusy] = useState(false);
   // Provider-agnostic recognizer wrapper (Lovable vision LLM today; a
   // future bake-off winner can drop in behind the same interface).
   const recognizer = useMemo(() => createLovableVisionRecognizer(scan), [scan]);
