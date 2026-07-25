@@ -81,10 +81,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { data: profile } = useMyProfile();
   useLastSeenPing((profile as { id?: string } | undefined)?.id);
   const { theme, toggle } = useTheme();
-  const initials = initialsFor(
-    (profile as { display_name?: string | null; username?: string | null } | undefined)?.display_name
-      ?? (profile as { username?: string | null } | undefined)?.username
-      ?? null,
+  const initials = sharedInitialsFor(
+    profile as { display_name?: string | null; username?: string | null } | undefined ?? null,
   );
 
   useEffect(() => { setMenuOpen(false); }, [pathname]);
