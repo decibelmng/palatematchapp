@@ -14,6 +14,7 @@ import {
   type BottleScanResult,
   type BottleExtract,
 } from "@/lib/bottle-scan.functions";
+import { resolveOrCreateOnDemand } from "@/lib/on-demand-bottle.functions";
 import { createLovableVisionRecognizer } from "@/lib/recognizer";
 import { supabase } from "@/integrations/supabase/client";
 import { StarTap } from "@/components/StarTap";
@@ -51,6 +52,8 @@ function BottleScan() {
   const qc = useQueryClient();
   const scan = useServerFn(scanBottleLabel);
   const resolveFn = useServerFn(resolveBottleFromRead);
+  const onDemandFn = useServerFn(resolveOrCreateOnDemand);
+  const [onDemandBusy, setOnDemandBusy] = useState(false);
   // Provider-agnostic recognizer wrapper (Lovable vision LLM today; a
   // future bake-off winner can drop in behind the same interface).
   const recognizer = useMemo(() => createLovableVisionRecognizer(scan), [scan]);
@@ -224,6 +227,51 @@ function BottleScan() {
     qc.invalidateQueries({ queryKey: ["canons"] });
     qc.invalidateQueries({ queryKey: ["palate-version"] });
     toast.success(`Rated ${c.name} ${stars}★`);
+  }
+
+  // C2 — On-demand fingerprint & add.
+  // Fires only from the "no catalog match" path, after confirm. Identity
+  // dedup runs server-side; if a match exists we link (no dupe insert). If
+  // not, we fingerprint via the same LLM pipeline the base catalog uses
+  // and insert as source='on-demand', unverified=true.
+  async function fingerprintAndAdd() {
+    if (!extracted || onDemandBusy) return;
+    const producer = extracted.producer?.trim();
+    const name = (extracted.wine_name ?? extracted.region ?? "").trim();
+    if (!producer || !name) {
+      toast.error("Producer and wine/appellation are required.");
+      return;
+    }
+    setOnDemandBusy(true);
+    try {
+      const res = await onDemandFn({
+        data: {
+          producer,
+          name,
+          type: (extracted.type ?? "red") as "red" | "white" | "sparkling" | "rose" | "dessert",
+          region: extracted.region ?? null,
+          country: extracted.country ?? null,
+          grape: extracted.grape ?? null,
+          vintage: extracted.vintage ?? null,
+        },
+      });
+      qc.invalidateQueries({ queryKey: ["bottles"] });
+      if (res.reason === "identity-linked") {
+        toast.success("Matched an existing catalog wine.");
+      } else if (res.reason === "flat-flagged") {
+        toast.warning("Added — fingerprint looked thin and was flagged for review.");
+      } else {
+        toast.success("Fingerprinted and added to your catalog.");
+      }
+      // Hand off to the manual dialog in "rate" phase by opening it with
+      // the resolved id? Simpler: nudge them to /rate — the wine is now
+      // scoreable and searchable.
+      window.location.href = `/wine/${res.bottle_id}`;
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Fingerprint failed.");
+    } finally {
+      setOnDemandBusy(false);
+    }
   }
 
   const rawExtracted = result?.extracted;
@@ -446,12 +494,22 @@ function BottleScan() {
                   <p className="mt-1 text-xs text-muted-foreground">
                     Your confirmed read is pre-filled. Only the wine name is required.
                   </p>
-                  <button
-                    onClick={() => setShowAdd(true)}
-                    className="mt-3 w-full rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm font-medium"
-                  >
-                    Add this bottle →
-                  </button>
+                  <div className="mt-3 grid gap-2">
+                    <button
+                      onClick={fingerprintAndAdd}
+                      disabled={onDemandBusy || !extracted.producer || !(extracted.wine_name || extracted.region)}
+                      className="w-full rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm font-medium disabled:opacity-60"
+                    >
+                      {onDemandBusy ? "Fingerprinting…" : "Fingerprint & add automatically"}
+                    </button>
+                    <button
+                      onClick={() => setShowAdd(true)}
+                      disabled={onDemandBusy}
+                      className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm font-medium disabled:opacity-60"
+                    >
+                      Add with manual details →
+                    </button>
+                  </div>
                 </div>
               )}
             </>
