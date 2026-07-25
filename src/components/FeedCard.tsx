@@ -137,7 +137,7 @@ export function FeedCard({ item }: { item: FeedItem }) {
           </div>
           <div className="min-w-0">
             <div className="text-sm font-medium truncate">
-              {friend.display_name ?? friend.username}
+              {displayNameFor(friend)}
             </div>
             <div className="text-xs text-muted-foreground truncate">
               rated a wine · {relativeTime(item.created_at)} · <span className="font-mono">{paletteCode}</span>
