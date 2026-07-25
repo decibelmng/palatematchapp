@@ -125,46 +125,24 @@ function Rate() {
 
   const canSubmitAdd = addForm.producer.trim().length > 0 && addForm.name.trim().length > 0;
 
+  const isNewUser = ratedCount < UNLOCK_THRESHOLD;
+
   return (
     <div className="pt-2">
-      <div>
-        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Rate</p>
-        <h1 className="font-serif text-3xl mt-2">Tap stars on bottles you've tried</h1>
-      </div>
-
-      <UnlockMeter />
-
-
-      {ratedCount > 0 && (
-        <div className="mt-5 flex items-center justify-between gap-3 px-1">
-          <p className="text-xs text-muted-foreground">
-            <span className="font-semibold text-foreground">{ratedCount}</span> rated · ready for what's next?
-          </p>
-          <div className="flex gap-3">
-            <Link
-              to="/palate"
-              className="text-xs font-medium text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
-            >
-              Your palate
-            </Link>
-            <Link
-              to="/"
-              className="text-xs font-semibold text-primary hover:opacity-80"
-            >
-              Scan a list →
-            </Link>
+      {isNewUser && (
+        <>
+          <div>
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Rate</p>
+            <h1 className="font-serif text-3xl mt-2">Tap stars on bottles you've tried</h1>
           </div>
-        </div>
+          <UnlockMeter />
+        </>
       )}
 
-      {/* ============ ZONE 1: FIND A WINE ============ */}
-      <section aria-labelledby="find-heading" className="mt-8">
-        <div className="flex items-baseline justify-between gap-3">
-          <h2 id="find-heading" className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground font-medium">
-            Find a wine
-          </h2>
-          <span className="text-[10px] text-muted-foreground/70">Search 118k+ bottles already in the catalog</span>
-        </div>
+      {/* ============ FIND A WINE ============ */}
+      <section aria-labelledby="find-heading" className="mt-4">
+        <h2 id="find-heading" className="sr-only">Find a wine</h2>
+
 
         <div className="mt-2 flex gap-2">
           <div className="relative flex-1 min-w-0">
