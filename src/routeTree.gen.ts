@@ -25,6 +25,7 @@ import { Route as AuditRouteImport } from './routes/audit'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ScanIndexRouteImport } from './routes/scan.index'
 import { Route as RestaurantsIndexRouteImport } from './routes/restaurants.index'
+import { Route as PalateIndexRouteImport } from './routes/palate.index'
 import { Route as WineIdRouteImport } from './routes/wine.$id'
 import { Route as ScanListRouteImport } from './routes/scan.list'
 import { Route as ScanBottleRouteImport } from './routes/scan.bottle'
@@ -114,6 +115,11 @@ const RestaurantsIndexRoute = RestaurantsIndexRouteImport.update({
   path: '/',
   getParentRoute: () => RestaurantsRoute,
 } as any)
+const PalateIndexRoute = PalateIndexRouteImport.update({
+  id: '/palate/',
+  path: '/palate/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const WineIdRoute = WineIdRouteImport.update({
   id: '/wine/$id',
   path: '/wine/$id',
@@ -178,6 +184,7 @@ export interface FileRoutesByFullPath {
   '/scan/bottle': typeof ScanBottleRoute
   '/scan/list': typeof ScanListRoute
   '/wine/$id': typeof WineIdRoute
+  '/palate/': typeof PalateIndexRoute
   '/restaurants/': typeof RestaurantsIndexRoute
   '/scan/': typeof ScanIndexRoute
 }
@@ -202,6 +209,7 @@ export interface FileRoutesByTo {
   '/scan/bottle': typeof ScanBottleRoute
   '/scan/list': typeof ScanListRoute
   '/wine/$id': typeof WineIdRoute
+  '/palate': typeof PalateIndexRoute
   '/restaurants': typeof RestaurantsIndexRoute
   '/scan': typeof ScanIndexRoute
 }
@@ -229,6 +237,7 @@ export interface FileRoutesById {
   '/scan/bottle': typeof ScanBottleRoute
   '/scan/list': typeof ScanListRoute
   '/wine/$id': typeof WineIdRoute
+  '/palate/': typeof PalateIndexRoute
   '/restaurants/': typeof RestaurantsIndexRoute
   '/scan/': typeof ScanIndexRoute
 }
@@ -257,6 +266,7 @@ export interface FileRouteTypes {
     | '/scan/bottle'
     | '/scan/list'
     | '/wine/$id'
+    | '/palate/'
     | '/restaurants/'
     | '/scan/'
   fileRoutesByTo: FileRoutesByTo
@@ -281,6 +291,7 @@ export interface FileRouteTypes {
     | '/scan/bottle'
     | '/scan/list'
     | '/wine/$id'
+    | '/palate'
     | '/restaurants'
     | '/scan'
   id:
@@ -307,6 +318,7 @@ export interface FileRouteTypes {
     | '/scan/bottle'
     | '/scan/list'
     | '/wine/$id'
+    | '/palate/'
     | '/restaurants/'
     | '/scan/'
   fileRoutesById: FileRoutesById
@@ -331,6 +343,7 @@ export interface RootRouteChildren {
   AdminDisputesRoute: typeof AdminDisputesRoute
   PalateTypeRoute: typeof PalateTypeRoute
   WineIdRoute: typeof WineIdRoute
+  PalateIndexRoute: typeof PalateIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -447,6 +460,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RestaurantsIndexRouteImport
       parentRoute: typeof RestaurantsRoute
     }
+    '/palate/': {
+      id: '/palate/'
+      path: '/palate'
+      fullPath: '/palate/'
+      preLoaderRoute: typeof PalateIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/wine/$id': {
       id: '/wine/$id'
       path: '/wine/$id'
@@ -554,6 +574,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminDisputesRoute: AdminDisputesRoute,
   PalateTypeRoute: PalateTypeRoute,
   WineIdRoute: WineIdRoute,
+  PalateIndexRoute: PalateIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
