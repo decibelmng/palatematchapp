@@ -20,6 +20,7 @@ import { Route as WineIdRouteImport } from './routes/wine.$id'
 import { Route as ScanListRouteImport } from './routes/scan.list'
 import { Route as ScanBottleRouteImport } from './routes/scan.bottle'
 import { Route as PalateTypeRouteImport } from './routes/palate.$type'
+import { Route as AdminTypeFixRouteImport } from './routes/admin.type-fix'
 import { Route as AdminInspectRouteImport } from './routes/admin.inspect'
 import { Route as AdminDisputesRouteImport } from './routes/admin.disputes'
 import { Route as AdminDataRouteImport } from './routes/admin.data'
@@ -81,6 +82,11 @@ const PalateTypeRoute = PalateTypeRouteImport.update({
   path: '/palate/$type',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminTypeFixRoute = AdminTypeFixRouteImport.update({
+  id: '/admin/type-fix',
+  path: '/admin/type-fix',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminInspectRoute = AdminInspectRouteImport.update({
   id: '/admin/inspect',
   path: '/admin/inspect',
@@ -119,6 +125,7 @@ export interface FileRoutesByFullPath {
   '/admin/data': typeof AdminDataRoute
   '/admin/disputes': typeof AdminDisputesRoute
   '/admin/inspect': typeof AdminInspectRoute
+  '/admin/type-fix': typeof AdminTypeFixRoute
   '/palate/$type': typeof PalateTypeRoute
   '/scan/bottle': typeof ScanBottleRoute
   '/scan/list': typeof ScanListRoute
@@ -137,6 +144,7 @@ export interface FileRoutesByTo {
   '/admin/data': typeof AdminDataRoute
   '/admin/disputes': typeof AdminDisputesRoute
   '/admin/inspect': typeof AdminInspectRoute
+  '/admin/type-fix': typeof AdminTypeFixRoute
   '/palate/$type': typeof PalateTypeRoute
   '/scan/bottle': typeof ScanBottleRoute
   '/scan/list': typeof ScanListRoute
@@ -156,6 +164,7 @@ export interface FileRoutesById {
   '/admin/data': typeof AdminDataRoute
   '/admin/disputes': typeof AdminDisputesRoute
   '/admin/inspect': typeof AdminInspectRoute
+  '/admin/type-fix': typeof AdminTypeFixRoute
   '/palate/$type': typeof PalateTypeRoute
   '/scan/bottle': typeof ScanBottleRoute
   '/scan/list': typeof ScanListRoute
@@ -176,6 +185,7 @@ export interface FileRouteTypes {
     | '/admin/data'
     | '/admin/disputes'
     | '/admin/inspect'
+    | '/admin/type-fix'
     | '/palate/$type'
     | '/scan/bottle'
     | '/scan/list'
@@ -194,6 +204,7 @@ export interface FileRouteTypes {
     | '/admin/data'
     | '/admin/disputes'
     | '/admin/inspect'
+    | '/admin/type-fix'
     | '/palate/$type'
     | '/scan/bottle'
     | '/scan/list'
@@ -212,6 +223,7 @@ export interface FileRouteTypes {
     | '/admin/data'
     | '/admin/disputes'
     | '/admin/inspect'
+    | '/admin/type-fix'
     | '/palate/$type'
     | '/scan/bottle'
     | '/scan/list'
@@ -231,6 +243,7 @@ export interface RootRouteChildren {
   AdminDataRoute: typeof AdminDataRoute
   AdminDisputesRoute: typeof AdminDisputesRoute
   AdminInspectRoute: typeof AdminInspectRoute
+  AdminTypeFixRoute: typeof AdminTypeFixRoute
   PalateTypeRoute: typeof PalateTypeRoute
   WineIdRoute: typeof WineIdRoute
   PalateIndexRoute: typeof PalateIndexRoute
@@ -315,6 +328,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PalateTypeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/type-fix': {
+      id: '/admin/type-fix'
+      path: '/admin/type-fix'
+      fullPath: '/admin/type-fix'
+      preLoaderRoute: typeof AdminTypeFixRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/inspect': {
       id: '/admin/inspect'
       path: '/admin/inspect'
@@ -377,6 +397,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminDataRoute: AdminDataRoute,
   AdminDisputesRoute: AdminDisputesRoute,
   AdminInspectRoute: AdminInspectRoute,
+  AdminTypeFixRoute: AdminTypeFixRoute,
   PalateTypeRoute: PalateTypeRoute,
   WineIdRoute: WineIdRoute,
   PalateIndexRoute: PalateIndexRoute,
