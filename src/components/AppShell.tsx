@@ -85,6 +85,9 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   useEffect(() => { setMenuOpen(false); }, [pathname]);
 
+  const { data: feedActivity } = useFeedActivity();
+  const feedLatestAt = feedActivity?.latest_at ?? null;
+
   // Unlock celebration: fire exactly once per user, ever. Gated on a
   // server-persisted flag (profiles.scan_unlock_seen) so it survives reloads,
   // new devices, and cache resets. Local refs only guard against double-fire
