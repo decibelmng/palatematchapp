@@ -82,12 +82,17 @@ export type Priced = {
   isCatalog: boolean;
   predicted: number; // 0 when the user hasn't rated the type yet
   maxSimilarity?: number;
+  type?: string;
 };
 
 export function applyControls<T extends Priced>(items: T[], c: Controls): T[] {
   let out = items;
 
   if (c.catalogOnly) out = out.filter((x) => x.isCatalog);
+
+  if (c.wineType && c.wineType !== "all") {
+    out = out.filter((x) => (x.type ?? "red") === c.wineType);
+  }
 
   if (c.price !== "all") {
     if (c.price === "unknown") out = out.filter((x) => x.price_band === "unknown");
