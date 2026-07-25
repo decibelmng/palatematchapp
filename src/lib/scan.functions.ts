@@ -382,9 +382,39 @@ export const finalizeScan = createServerFn({ method: "POST" })
     }
 
     // Mirror aggregated wines into scan_logs for existing restaurant-attribution flow.
-    const { data: rows } = await supabase.from("scan_wines")
-      .select("producer,cuvee,vintage,region,grape,price,price_amount,currency,format,raw_text,wine_type,fp,fp_source,matched_bottle_id")
+    const { data: rowsRaw } = await supabase.from("scan_wines")
+      .select("id,producer,cuvee,vintage,region,grape,price,price_amount,currency,format,raw_text,wine_type,fp,fp_source,matched_bottle_id")
       .eq("scan_id", data.scan_id);
+    const rows = (rowsRaw ?? []) as any[];
+
+    // ---- C2 backfill: resolve/fingerprint unmatched scan lines on-demand ----
+    // Any row still carrying matched_bottle_id=null after catalog resolution
+    // now runs through resolveOrCreateOnDemandCore. This is the SAME LLM
+    // fingerprint pipeline the base catalog used — the new bottle enters the
+    // same coordinate space. Identity dedup (producer + name tokens + exact
+    // vintage + type) runs first, so a near-dupe LINKS instead of inserting.
+    // Failure of a single line never blocks the scan finalize.
+    const apiKey = process.env.LOVABLE_API_KEY;
+    if (apiKey) {
+      const { resolveOrCreateOnDemandCore } = await import("@/lib/on-demand-bottle.functions");
+      for (const r of rows) {
+        if (r.matched_bottle_id) continue;
+        if (!r.producer || !r.cuvee || !r.wine_type) continue;
+        try {
+          const res = await resolveOrCreateOnDemandCore(supabase as any, userId, apiKey, {
+            producer: r.producer, name: r.cuvee, type: r.wine_type,
+            region: r.region ?? null, grape: r.grape ?? null, vintage: r.vintage ?? null,
+          });
+          r.matched_bottle_id = res.bottle_id;
+          r.fp_source = res.reason === "identity-linked" ? "catalog" : "estimated";
+          await supabase.from("scan_wines").update({
+            matched_bottle_id: res.bottle_id,
+            fp_source: r.fp_source,
+            match_reasons: [res.reason] as any,
+          }).eq("id", r.id);
+        } catch { /* single-line C2 failures are best-effort */ }
+      }
+    }
     const winesForLog = (rows ?? []).map((r: any) => ({
       producer: r.producer, wine_name: r.cuvee, vintage: r.vintage,
       region: r.region, grape: r.grape, price: r.price, type: r.wine_type,
