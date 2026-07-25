@@ -142,29 +142,25 @@ export function AddBottleDialog({
     setPhase("saving");
     setError(null);
     try {
-      const { fp, ax_sweet, tasting_note } = result;
-      const insert = {
-        producer: form.producer.trim(),
-        name: form.name.trim() || form.region.trim() || `${form.producer.trim()} bottling`,
-        type: form.type,
-        region: form.region.trim() || null,
-        country: form.country.trim() || null,
-        grape: form.grape.trim() || null,
-        vintage: form.vintage.trim() ? parseInt(form.vintage, 10) : null,
-        price_band: form.price_band.trim() || null,
-        fp_fresh: fp.fresh, fp_acid: fp.acid, fp_tannin: fp.tannin,
-        fp_fruit_dark: fp.fruit_dark, fp_ripe: fp.ripe, fp_oak: fp.oak,
-        fp_body: fp.body, fp_savory: fp.savory,
-        ax_body: fp.body, ax_fruit_char: fp.fruit_dark,
-        ax_tannin: fp.tannin, ax_acidity: fp.acid, ax_sweet,
-        tasting_note,
-        source: "user-added; LLM-researched fingerprint",
-        added_by: session.user.id,
-      };
-      const { data: row, error: insErr } = await supabase
-        .from("bottles").insert(insert).select("id").single();
-      if (insErr) throw insErr;
-      setSavedBottleId(row.id);
+      // Route friend-added / user-added unknown wines through the C2
+      // on-demand resolver: identity dedup (never taste), σ-flatness gate,
+      // shared LLM fingerprint pipeline, unverified=true, ax_* mapping per
+      // spec (ax_fruit_char <- fp.savory). The user already reviewed and
+      // dismissed any duplicates in the "duplicate" phase; a strict identity
+      // hit still short-circuits to link (never insert).
+      const res = await resolveOnDemand({
+        data: {
+          producer: form.producer.trim(),
+          name: form.name.trim() || form.region.trim() || `${form.producer.trim()} bottling`,
+          type: form.type,
+          region: form.region.trim() || null,
+          country: form.country.trim() || null,
+          grape: form.grape.trim() || null,
+          vintage: form.vintage.trim() ? parseInt(form.vintage, 10) : null,
+          price_band: form.price_band.trim() || null,
+        },
+      });
+      setSavedBottleId(res.bottle_id);
       setUserNote("");
       setPhase("rate");
     } catch (err) {
@@ -172,6 +168,7 @@ export function AddBottleDialog({
       setPhase("review");
     }
   }
+
 
   async function commitRating(s: number) {
     if (!session || !savedBottleId) return;
