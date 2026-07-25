@@ -269,6 +269,7 @@ export const createScanRecord = createServerFn({ method: "POST" })
     page_count: z.number().int().min(1).max(8),
     batch_count: z.number().int().min(1).max(8),
     image_paths: StringArray.optional(),
+    venue_raw_text: z.string().max(200).nullable().optional(),
   }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
@@ -278,6 +279,7 @@ export const createScanRecord = createServerFn({ method: "POST" })
       page_count: data.page_count,
       batch_count: data.batch_count,
       image_paths: data.image_paths ?? [],
+      venue_raw_text: data.venue_raw_text?.trim() || null,
     }).select("id").single();
     if (error || !inserted) throw new Error(error?.message ?? "Failed to create scan");
     return { scan_id: inserted.id as string };
@@ -305,26 +307,34 @@ export const scanWineBatch = createServerFn({ method: "POST" })
       const raw = await extractWinesWithRetry(data.images, key);
       const resolved = await resolveAgainstCatalog(raw, supabase);
 
-      // Persist immediately
+      // Persist immediately with raw_text/format/price_amount captured for
+      // later re-resolution and silent price capture.
       if (resolved.length > 0) {
-        const rows = resolved.map((w) => ({
-          scan_id: data.scan_id,
-          user_id: userId,
-          batch_index: data.batch_index,
-          producer: w.producer ?? null,
-          cuvee: w.wine_name ?? null,
-          vintage: w.vintage ?? null,
-          wine_type: w.type ?? null,
-          region: w.region ?? null,
-          grape: w.grape ?? null,
-          price: w.price ?? null,
-          raw_json: w as any,
-          fp: (w.fp_resolved ?? null) as any,
-          fp_source: w.fp_source,
-          matched_bottle_id: w.matched_bottle_id,
-          match_score: w.match_score,
-          match_reasons: (w.match_reasons ?? []) as any,
-        }));
+        const rows = resolved.map((w) => {
+          const rawLine = composeRawLine(w);
+          return {
+            scan_id: data.scan_id,
+            user_id: userId,
+            batch_index: data.batch_index,
+            producer: w.producer ?? null,
+            cuvee: w.wine_name ?? null,
+            vintage: w.vintage ?? null,
+            wine_type: w.type ?? null,
+            region: w.region ?? null,
+            grape: w.grape ?? null,
+            price: w.price ?? null,
+            price_amount: parsePriceAmount(w.price ?? null),
+            currency: "USD",
+            format: inferFormat(rawLine),
+            raw_text: rawLine || null,
+            raw_json: w as any,
+            fp: (w.fp_resolved ?? null) as any,
+            fp_source: w.fp_source,
+            matched_bottle_id: w.matched_bottle_id,
+            match_score: w.match_score,
+            match_reasons: (w.match_reasons ?? []) as any,
+          };
+        });
         await supabase.from("scan_wines").insert(rows);
       }
 
@@ -336,6 +346,7 @@ export const scanWineBatch = createServerFn({ method: "POST" })
       throw e;
     }
   });
+
 
 export const finalizeScan = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
