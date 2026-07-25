@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { SlidersHorizontal } from "lucide-react";
-import { SORT_OPTIONS, PRICE_BAND_OPTIONS, type Controls } from "@/lib/list-controls";
+import { SORT_OPTIONS, PRICE_BAND_OPTIONS, WINE_TYPE_OPTIONS, type Controls } from "@/lib/list-controls";
 
 type Props = {
   value: Controls;
@@ -24,6 +24,7 @@ export function ListControls({ value, onChange, idPrefix }: Props) {
   const filterCount =
     (value.sort !== "best" ? 1 : 0) +
     (value.price !== "all" ? 1 : 0) +
+    (value.wineType && value.wineType !== "all" ? 1 : 0) +
     (value.catalogOnly ? 1 : 0);
 
   useEffect(() => {
@@ -38,7 +39,8 @@ export function ListControls({ value, onChange, idPrefix }: Props) {
     };
   }, [open]);
 
-  const label = `${shortSort(value.sort)} · ${shortPrice(value.price)}${value.catalogOnly ? " · Catalog" : ""}`;
+  const typeLabel = WINE_TYPE_OPTIONS.find((o) => o.value === (value.wineType ?? "all"))?.label ?? "All types";
+  const label = `${shortSort(value.sort)} · ${typeLabel} · ${shortPrice(value.price)}${value.catalogOnly ? " · Catalog" : ""}`;
 
   return (
     <>
@@ -100,6 +102,29 @@ export function ListControls({ value, onChange, idPrefix }: Props) {
                       <span className="text-sm">{o.label}</span>
                     </label>
                   ))}
+                </div>
+              </fieldset>
+
+              <fieldset>
+                <legend className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Wine type</legend>
+                <div className="flex flex-wrap gap-2">
+                  {WINE_TYPE_OPTIONS.map((o) => {
+                    const active = (value.wineType ?? "all") === o.value;
+                    return (
+                      <button
+                        key={o.value}
+                        type="button"
+                        onClick={() => onChange({ ...value, wineType: o.value })}
+                        className={`min-h-11 rounded-full border px-4 text-sm font-medium ${
+                          active
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border bg-card text-foreground hover:bg-accent"
+                        }`}
+                      >
+                        {o.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </fieldset>
 

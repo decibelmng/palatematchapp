@@ -3,6 +3,7 @@
 
 export type SortMode = "best" | "price_asc" | "price_desc" | "value" | "confident";
 export type PriceBand = "all" | "cheap" | "mid" | "pricey" | "lux" | "unknown";
+export type WineTypeFilter = "all" | "red" | "white" | "rose" | "sparkling" | "dessert";
 
 export const SORT_OPTIONS: { value: SortMode; label: string }[] = [
   { value: "best", label: "Best match" },
@@ -21,15 +22,26 @@ export const PRICE_BAND_OPTIONS: { value: PriceBand; label: string }[] = [
   { value: "unknown", label: "Price unknown" },
 ];
 
+export const WINE_TYPE_OPTIONS: { value: WineTypeFilter; label: string }[] = [
+  { value: "all", label: "All types" },
+  { value: "red", label: "Red" },
+  { value: "white", label: "White" },
+  { value: "rose", label: "Rosé" },
+  { value: "sparkling", label: "Sparkling" },
+  { value: "dessert", label: "Dessert" },
+];
+
 export type Controls = {
   sort: SortMode;
   price: PriceBand;
+  wineType: WineTypeFilter;
   catalogOnly: boolean;
 };
 
 export const DEFAULT_CONTROLS: Controls = {
   sort: "best",
   price: "all",
+  wineType: "all",
   catalogOnly: false,
 };
 
@@ -70,12 +82,17 @@ export type Priced = {
   isCatalog: boolean;
   predicted: number; // 0 when the user hasn't rated the type yet
   maxSimilarity?: number;
+  type?: string;
 };
 
 export function applyControls<T extends Priced>(items: T[], c: Controls): T[] {
   let out = items;
 
   if (c.catalogOnly) out = out.filter((x) => x.isCatalog);
+
+  if (c.wineType && c.wineType !== "all") {
+    out = out.filter((x) => (x.type ?? "red") === c.wineType);
+  }
 
   if (c.price !== "all") {
     if (c.price === "unknown") out = out.filter((x) => x.price_band === "unknown");
