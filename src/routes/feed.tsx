@@ -78,21 +78,26 @@ function FriendsSection() {
             {!search.isFetching && (search.data ?? []).length === 0 && (
               <li className="px-3 py-2 text-xs text-muted-foreground">No matches.</li>
             )}
-            {(search.data ?? []).map((h) => (
-              <li key={h.user_id} className="flex items-center justify-between gap-2 px-3 py-2">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">{h.display_name || h.username}</p>
-                  <p className="text-[11px] text-muted-foreground truncate">@{h.username}</p>
-                </div>
-                <button
-                  onClick={() => send.mutate({ user_id: h.user_id })}
-                  disabled={send.isPending}
-                  className="shrink-0 rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-xs disabled:opacity-50"
-                >
-                  Add
-                </button>
-              </li>
-            ))}
+            {(search.data ?? []).map((h) => {
+              const name = displayNameFor(h);
+              const handle = handleForDisplay(h.username);
+              return (
+                <li key={h.user_id} className="flex items-center justify-between gap-2 px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{name}</p>
+                    {handle && <p className="text-[11px] text-muted-foreground truncate">@{handle}</p>}
+                  </div>
+                  <button
+                    onClick={() => send.mutate({ user_id: h.user_id })}
+                    disabled={send.isPending}
+                    aria-label={`Add ${name}`}
+                    className="shrink-0 rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-xs disabled:opacity-50"
+                  >
+                    Add
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
