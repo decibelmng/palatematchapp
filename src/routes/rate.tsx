@@ -151,24 +151,21 @@ function Rate() {
           to="/scan/bottle"
           data-testid="rate-scan-hero"
           aria-label="Scan a bottle label with your camera"
-          className="block rounded-[18px] border-2 border-primary/60 bg-gradient-to-br from-primary/15 via-card to-card p-6 min-h-[240px] shadow-[var(--pm-card-shadow)] hover:border-primary transition"
+          className="block rounded-[16px] border-2 border-primary/60 bg-gradient-to-br from-primary/15 via-card to-card p-4 shadow-[var(--pm-card-shadow)] hover:border-primary transition"
         >
-          <div className="flex items-center gap-4">
-            <div className="shrink-0 h-14 w-14 rounded-2xl bg-primary/20 text-primary flex items-center justify-center">
-              <ScanLine size={30} strokeWidth={1.8} />
+          <div className="flex items-center gap-3">
+            <div className="shrink-0 h-12 w-12 rounded-xl bg-primary/20 text-primary flex items-center justify-center">
+              <ScanLine size={24} strokeWidth={1.8} />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-[10px] uppercase text-primary" style={{ letterSpacing: "0.22em" }}>
-                Fastest way
-              </p>
-              <h3 className="mt-1 font-serif text-[22px] leading-tight text-foreground">
+              <h3 className="font-serif text-[20px] leading-tight text-foreground">
                 Scan a bottle
               </h3>
-              <p className="mt-1 text-[12px] text-muted-foreground">
-                Point the camera at the label. We'll add it and let you rate.
+              <p className="mt-0.5 text-[12px] text-muted-foreground">
+                Point the camera at the label — we'll add it.
               </p>
             </div>
-            <ArrowRight className="shrink-0 text-primary" size={20} />
+            <ArrowRight className="shrink-0 text-primary" size={18} />
           </div>
         </Link>
 
