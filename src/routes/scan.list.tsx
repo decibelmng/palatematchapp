@@ -1501,6 +1501,8 @@ function ScanThumbBar({
 }
 
 function ScanDetailSheet({ row, onClose }: { row: ScanRow | null; onClose: () => void }) {
+  const { data: ratings } = useRatings();
+  const rate = useRate();
   useEffect(() => {
     if (!row) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
@@ -1509,6 +1511,8 @@ function ScanDetailSheet({ row, onClose }: { row: ScanRow | null; onClose: () =>
   }, [row, onClose]);
   if (!row) return null;
   const r = row.ranked;
+  const currentStars = ratings?.find((x) => x.bottle_id === r.bottle.id)?.stars ?? null;
+  const reason = reasonLine(row);
   return (
     <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label={`Detail for ${r.bottle.name}`}>
       <button
