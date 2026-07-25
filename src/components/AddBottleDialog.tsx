@@ -40,6 +40,7 @@ export function AddBottleDialog({
   const session = useSession();
   const qc = useQueryClient();
   const research = useServerFn(researchBottle);
+  const resolveOnDemand = useServerFn(resolveOrCreateOnDemand);
 
   const [form, setForm] = useState<Form>({ ...EMPTY, name: initialQuery ?? "", ...(initialForm ?? {}) });
   const [phase, setPhase] = useState<Phase>("form");
