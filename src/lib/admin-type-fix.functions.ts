@@ -77,47 +77,35 @@ export type TypeSuspect = {
   reason: string;
 };
 
-async function fetchAll<T>(
-  build: () => Promise<{ data: T[] | null; error: any }>,
-): Promise<T[]> {
-  const { data, error } = await build();
-  if (error) throw new Error(error.message);
-  return data ?? [];
-}
-
 export const adminListTypeSuspects = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
     await assertAdmin(context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    // Server-side prefilter with a wide OR pulls candidates; we then apply
-    // the name-token exclusion + grape-token check in JS for accuracy.
+    // Server-side prefilter pulls candidates; JS applies the name-token
+    // exclusion + grape-token check for accuracy.
     const columns = "id,name,producer,region,grape,vintage,type";
 
-    const roseCandidates = await fetchAll<any>(() =>
-      supabaseAdmin
-        .from("bottles")
-        .select(columns)
-        .eq("type", "rose")
-        // Any grape mention that hints red — narrows the scan.
-        .or(
-          RED_GRAPE_TOKENS.slice(0, 24) // Supabase .or() has practical length limits; core reds cover the queue
-            .map((t) => `grape.ilike.${ilikePattern(t).replace(/,/g, "\\,")}`)
-            .join(","),
-        )
-        .limit(2000),
-    );
+    const { data: roseCandidates, error: e1 } = await supabaseAdmin
+      .from("bottles")
+      .select(columns)
+      .eq("type", "rose")
+      .or(
+        RED_GRAPE_TOKENS.slice(0, 24)
+          .map((t) => `grape.ilike.${ilikePattern(t)}`)
+          .join(","),
+      )
+      .limit(2000);
+    if (e1) throw new Error(e1.message);
 
-    // Mirror check: type='red' but the name is clearly a rosé/blush/white.
-    const redCandidates = await fetchAll<any>(() =>
-      supabaseAdmin
-        .from("bottles")
-        .select(columns)
-        .eq("type", "red")
-        .or("name.ilike.%White %,name.ilike.%Blanc de Noir%,name.ilike.%Vin Gris%,name.ilike.%Clairet%")
-        .limit(2000),
-    );
+    const { data: redCandidates, error: e2 } = await supabaseAdmin
+      .from("bottles")
+      .select(columns)
+      .eq("type", "red")
+      .or("name.ilike.%White %,name.ilike.%Blanc de Noir%,name.ilike.%Vin Gris%,name.ilike.%Clairet%")
+      .limit(2000);
+    if (e2) throw new Error(e2.message);
 
     const { data: rejects, error: rErr } = await supabaseAdmin
       .from("admin_type_review_rejects")
