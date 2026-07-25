@@ -220,35 +220,18 @@ function AdminInspect() {
                     style={{ width: 64, padding: 2, border: "1px solid #ccc", borderRadius: 4 }}
                   />
                 </label>
-                <button
+                <CopyButton
+                  label="Copy as JSON"
+                  copied={copied === "json"}
+                  disabled={!rows.data}
                   onClick={() => copyPayload("json")}
+                />
+                <CopyButton
+                  label="Copy as CSV"
+                  copied={copied === "csv"}
                   disabled={!rows.data}
-                  style={{ fontSize: 12, padding: "4px 8px", border: "1px solid #999", borderRadius: 4 }}
-                >
-                  Copy as JSON
-                </button>
-                <button
                   onClick={() => copyPayload("csv")}
-                  disabled={!rows.data}
-                  style={{ fontSize: 12, padding: "4px 8px", border: "1px solid #999", borderRadius: 4 }}
-                >
-                  Copy as CSV
-                </button>
-                {status && (
-                  <span
-                    role="status"
-                    style={{
-                      fontSize: 12,
-                      padding: "3px 8px",
-                      borderRadius: 4,
-                      background: status.kind === "ok" ? "#e6f5ea" : "#fdecec",
-                      color: status.kind === "ok" ? "#186a3b" : "#a11a1a",
-                      border: "1px solid " + (status.kind === "ok" ? "#bfe3cc" : "#f2c2c2"),
-                    }}
-                  >
-                    {status.msg}
-                  </span>
-                )}
+                />
               </div>
               {fallback !== null && (
                 <div style={{ marginTop: 8 }}>
