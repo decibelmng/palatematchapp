@@ -618,6 +618,17 @@ function Scan() {
         disabled={isRunning || !!scanId}
       />
 
+      {!scanId && !isRunning && (
+        <div className="mt-4">
+          <DrinkingGroupSelector
+            selectedIds={group.friendIds}
+            onToggle={group.toggle}
+            onClear={group.clear}
+            onSet={group.set}
+          />
+        </div>
+      )}
+
       <div className="mt-5 flex flex-wrap gap-3">
         <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden"
           onChange={(e) => onPick(e.target.files, e.currentTarget)} />
