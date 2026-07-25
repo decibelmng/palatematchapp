@@ -25,6 +25,7 @@ import { Route as AdminInspectRouteImport } from './routes/admin.inspect'
 import { Route as AdminDisputesRouteImport } from './routes/admin.disputes'
 import { Route as AdminDataRouteImport } from './routes/admin.data'
 import { Route as AdminCorrectionsRouteImport } from './routes/admin.corrections'
+import { Route as AdminConsensusRouteImport } from './routes/admin.consensus'
 import { Route as AddFriendUsernameRouteImport } from './routes/add-friend.$username'
 
 const ScanRoute = ScanRouteImport.update({
@@ -107,6 +108,11 @@ const AdminCorrectionsRoute = AdminCorrectionsRouteImport.update({
   path: '/admin/corrections',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminConsensusRoute = AdminConsensusRouteImport.update({
+  id: '/admin/consensus',
+  path: '/admin/consensus',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AddFriendUsernameRoute = AddFriendUsernameRouteImport.update({
   id: '/add-friend/$username',
   path: '/add-friend/$username',
@@ -121,6 +127,7 @@ export interface FileRoutesByFullPath {
   '/rate': typeof RateRoute
   '/scan': typeof ScanRouteWithChildren
   '/add-friend/$username': typeof AddFriendUsernameRoute
+  '/admin/consensus': typeof AdminConsensusRoute
   '/admin/corrections': typeof AdminCorrectionsRoute
   '/admin/data': typeof AdminDataRoute
   '/admin/disputes': typeof AdminDisputesRoute
@@ -140,6 +147,7 @@ export interface FileRoutesByTo {
   '/rate': typeof RateRoute
   '/scan': typeof ScanRouteWithChildren
   '/add-friend/$username': typeof AddFriendUsernameRoute
+  '/admin/consensus': typeof AdminConsensusRoute
   '/admin/corrections': typeof AdminCorrectionsRoute
   '/admin/data': typeof AdminDataRoute
   '/admin/disputes': typeof AdminDisputesRoute
@@ -160,6 +168,7 @@ export interface FileRoutesById {
   '/rate': typeof RateRoute
   '/scan': typeof ScanRouteWithChildren
   '/add-friend/$username': typeof AddFriendUsernameRoute
+  '/admin/consensus': typeof AdminConsensusRoute
   '/admin/corrections': typeof AdminCorrectionsRoute
   '/admin/data': typeof AdminDataRoute
   '/admin/disputes': typeof AdminDisputesRoute
@@ -181,6 +190,7 @@ export interface FileRouteTypes {
     | '/rate'
     | '/scan'
     | '/add-friend/$username'
+    | '/admin/consensus'
     | '/admin/corrections'
     | '/admin/data'
     | '/admin/disputes'
@@ -200,6 +210,7 @@ export interface FileRouteTypes {
     | '/rate'
     | '/scan'
     | '/add-friend/$username'
+    | '/admin/consensus'
     | '/admin/corrections'
     | '/admin/data'
     | '/admin/disputes'
@@ -219,6 +230,7 @@ export interface FileRouteTypes {
     | '/rate'
     | '/scan'
     | '/add-friend/$username'
+    | '/admin/consensus'
     | '/admin/corrections'
     | '/admin/data'
     | '/admin/disputes'
@@ -239,6 +251,7 @@ export interface RootRouteChildren {
   RateRoute: typeof RateRoute
   ScanRoute: typeof ScanRouteWithChildren
   AddFriendUsernameRoute: typeof AddFriendUsernameRoute
+  AdminConsensusRoute: typeof AdminConsensusRoute
   AdminCorrectionsRoute: typeof AdminCorrectionsRoute
   AdminDataRoute: typeof AdminDataRoute
   AdminDisputesRoute: typeof AdminDisputesRoute
@@ -363,6 +376,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminCorrectionsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/consensus': {
+      id: '/admin/consensus'
+      path: '/admin/consensus'
+      fullPath: '/admin/consensus'
+      preLoaderRoute: typeof AdminConsensusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/add-friend/$username': {
       id: '/add-friend/$username'
       path: '/add-friend/$username'
@@ -393,6 +413,7 @@ const rootRouteChildren: RootRouteChildren = {
   RateRoute: RateRoute,
   ScanRoute: ScanRouteWithChildren,
   AddFriendUsernameRoute: AddFriendUsernameRoute,
+  AdminConsensusRoute: AdminConsensusRoute,
   AdminCorrectionsRoute: AdminCorrectionsRoute,
   AdminDataRoute: AdminDataRoute,
   AdminDisputesRoute: AdminDisputesRoute,
@@ -405,3 +426,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
