@@ -27,15 +27,24 @@ export type Database = {
           critic_score: number | null
           excluded_from_recs: boolean
           fp_acid: number
+          fp_acid_prior: number
           fp_body: number
+          fp_body_prior: number
           fp_dispute_count: number
           fp_fresh: number
+          fp_fresh_prior: number
           fp_fruit_dark: number
+          fp_fruit_dark_prior: number
           fp_harmonized_at: string | null
           fp_oak: number
+          fp_oak_prior: number
+          fp_prior_precision: number
           fp_ripe: number
+          fp_ripe_prior: number
           fp_savory: number
+          fp_savory_prior: number
           fp_tannin: number
+          fp_tannin_prior: number
           fp_vec: string | null
           grape: string | null
           id: string
@@ -62,15 +71,24 @@ export type Database = {
           critic_score?: number | null
           excluded_from_recs?: boolean
           fp_acid?: number
+          fp_acid_prior: number
           fp_body?: number
+          fp_body_prior: number
           fp_dispute_count?: number
           fp_fresh?: number
+          fp_fresh_prior: number
           fp_fruit_dark?: number
+          fp_fruit_dark_prior: number
           fp_harmonized_at?: string | null
           fp_oak?: number
+          fp_oak_prior: number
+          fp_prior_precision: number
           fp_ripe?: number
+          fp_ripe_prior: number
           fp_savory?: number
+          fp_savory_prior: number
           fp_tannin?: number
+          fp_tannin_prior: number
           fp_vec?: string | null
           grape?: string | null
           id?: string
@@ -97,15 +115,24 @@ export type Database = {
           critic_score?: number | null
           excluded_from_recs?: boolean
           fp_acid?: number
+          fp_acid_prior?: number
           fp_body?: number
+          fp_body_prior?: number
           fp_dispute_count?: number
           fp_fresh?: number
+          fp_fresh_prior?: number
           fp_fruit_dark?: number
+          fp_fruit_dark_prior?: number
           fp_harmonized_at?: string | null
           fp_oak?: number
+          fp_oak_prior?: number
+          fp_prior_precision?: number
           fp_ripe?: number
+          fp_ripe_prior?: number
           fp_savory?: number
+          fp_savory_prior?: number
           fp_tannin?: number
+          fp_tannin_prior?: number
           fp_vec?: string | null
           grape?: string | null
           id?: string
@@ -176,6 +203,50 @@ export type Database = {
           },
         ]
       }
+      catalog_corrections: {
+        Row: {
+          author_id: string | null
+          bottle_id: string
+          created_at: string
+          field: string
+          id: string
+          new_value: string | null
+          old_value: string | null
+          rationale: string | null
+          source_type: string
+        }
+        Insert: {
+          author_id?: string | null
+          bottle_id: string
+          created_at?: string
+          field: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          rationale?: string | null
+          source_type: string
+        }
+        Update: {
+          author_id?: string | null
+          bottle_id?: string
+          created_at?: string
+          field?: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          rationale?: string | null
+          source_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_corrections_bottle_id_fkey"
+            columns: ["bottle_id"]
+            isOneToOne: false
+            referencedRelation: "bottles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fp_disputes: {
         Row: {
           bottle_id: string
@@ -213,6 +284,56 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "fp_disputes_bottle_id_fkey"
+            columns: ["bottle_id"]
+            isOneToOne: false
+            referencedRelation: "bottles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fp_observations: {
+        Row: {
+          author_id: string | null
+          axis: string
+          bottle_id: string
+          created_at: string
+          id: string
+          mode: string
+          observed_value: number
+          precision: number
+          rationale: string | null
+          source_type: string
+          superseded: boolean
+        }
+        Insert: {
+          author_id?: string | null
+          axis: string
+          bottle_id: string
+          created_at?: string
+          id?: string
+          mode?: string
+          observed_value: number
+          precision: number
+          rationale?: string | null
+          source_type: string
+          superseded?: boolean
+        }
+        Update: {
+          author_id?: string | null
+          axis?: string
+          bottle_id?: string
+          created_at?: string
+          id?: string
+          mode?: string
+          observed_value?: number
+          precision?: number
+          rationale?: string | null
+          source_type?: string
+          superseded?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fp_observations_bottle_id_fkey"
             columns: ["bottle_id"]
             isOneToOne: false
             referencedRelation: "bottles"
@@ -664,6 +785,35 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_fp_prior_stats: {
+        Args: never
+        Returns: {
+          n_bottles: number
+          n_flat: number
+          n_llm_calibrated: number
+          tau0_max: number
+          tau0_median: number
+          tau0_min: number
+          tau0_p25: number
+          tau0_p75: number
+        }[]
+      }
+      admin_fp_recompute_all: {
+        Args: never
+        Returns: {
+          bottles_touched: number
+        }[]
+      }
+      admin_fp_recompute_bottle: {
+        Args: { p_bottle_id: string }
+        Returns: {
+          axis: string
+          moved: boolean
+          new_value: number
+          old_value: number
+          sum_lambda: number
+        }[]
+      }
       admin_group_count: {
         Args: { p_column: string; p_table: string }
         Returns: {
@@ -803,15 +953,24 @@ export type Database = {
           critic_score: number | null
           excluded_from_recs: boolean
           fp_acid: number
+          fp_acid_prior: number
           fp_body: number
+          fp_body_prior: number
           fp_dispute_count: number
           fp_fresh: number
+          fp_fresh_prior: number
           fp_fruit_dark: number
+          fp_fruit_dark_prior: number
           fp_harmonized_at: string | null
           fp_oak: number
+          fp_oak_prior: number
+          fp_prior_precision: number
           fp_ripe: number
+          fp_ripe_prior: number
           fp_savory: number
+          fp_savory_prior: number
           fp_tannin: number
+          fp_tannin_prior: number
           fp_vec: string | null
           grape: string | null
           id: string
