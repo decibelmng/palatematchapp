@@ -1546,6 +1546,31 @@ function ScanDetailSheet({ row, onClose }: { row: ScanRow | null; onClose: () =>
           {row.isCatalog ? <span className="ml-2 text-[10px] uppercase tracking-wider text-muted-foreground">catalog match</span>
             : <span className="ml-2 text-[10px] uppercase tracking-wider text-muted-foreground">estimated</span>}
         </p>
+        {reason && (
+          <p className={`mt-2 text-xs ${r.vetoed ? "text-[--crimson]" : "text-muted-foreground"}`}>{reason}</p>
+        )}
+        <div className="mt-4 pt-3 border-t border-border flex items-center justify-between gap-3">
+          <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+            {currentStars != null ? "Your rating" : "Tried it? Rate now"}
+          </span>
+          <StarTap
+            value={currentStars}
+            size="md"
+            onChange={(stars) => {
+              if (stars == null || stars === currentStars) return;
+              rate.mutate(
+                { bottleId: r.bottle.id, stars },
+                {
+                  onSuccess: () => toast.success(`Rated ${stars}★`),
+                  onError: (e) => {
+                    const msg = e instanceof Error ? e.message : String(e);
+                    if (!/canceled/i.test(msg)) toast.error(msg || "Couldn't save rating");
+                  },
+                },
+              );
+            }}
+          />
+        </div>
         <div className="mt-5 flex items-center gap-4">
           <FingerprintSpoke fp={r.bottle.fp} size={72} />
           <div className="min-w-0 text-xs text-muted-foreground">
