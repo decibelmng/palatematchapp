@@ -30,7 +30,7 @@ export function DrinkingGroupSelector({ selectedIds, onToggle, onClear, onSet }:
   const groupLabel = useMemo(() => {
     if (selectedIds.length === 0) return "You";
     const names = selectedIds
-      .map((id) => friendById.get(id)?.other.display_name || friendById.get(id)?.other.username || "friend")
+      .map((id) => displayNameFor(friendById.get(id)?.other ?? null))
       .filter(Boolean);
     return ["You", ...names].join(" + ");
   }, [selectedIds, friendById]);
@@ -57,7 +57,7 @@ export function DrinkingGroupSelector({ selectedIds, onToggle, onClear, onSet }:
         {/* Me chip — always on, non-toggleable */}
         <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs bg-primary text-primary-foreground">
           <span aria-hidden>●</span>
-          {me?.display_name || me?.username || "You"}
+          {displayNameFor(me ?? null, "You")}
         </span>
 
         {isLoading ? (
@@ -74,13 +74,14 @@ export function DrinkingGroupSelector({ selectedIds, onToggle, onClear, onSet }:
             const id = f.other.user_id;
             const on = selectedIds.includes(id);
             const disabled = !on && selectedIds.length >= 6;
-            const name = f.other.display_name || f.other.username;
+            const name = displayNameFor(f.other);
             return (
               <button
                 key={id}
                 type="button"
                 disabled={disabled}
                 onClick={() => onToggle(id)}
+                aria-label={`Toggle ${name} for group scoring`}
                 className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs border transition-colors ${
                   on
                     ? "bg-primary text-primary-foreground border-primary"
