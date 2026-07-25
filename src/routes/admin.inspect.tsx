@@ -3,6 +3,7 @@ import { AuthGate } from "@/components/AuthGate";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import {
   adminListTables,
   adminGetColumns,
@@ -43,7 +44,7 @@ function AdminInspect() {
 
   const [selected, setSelected] = useState<string | null>(null);
   const [limit, setLimit] = useState(100);
-  const [status, setStatus] = useState<{ kind: "ok" | "err"; msg: string } | null>(null);
+  const [copied, setCopied] = useState<"json" | "csv" | null>(null);
   const [fallback, setFallback] = useState<string | null>(null);
 
   const tables = useQuery({
@@ -94,11 +95,6 @@ function AdminInspect() {
     [rows.data],
   );
 
-  function flash(kind: "ok" | "err", msg: string) {
-    setStatus({ kind, msg });
-    window.setTimeout(() => setStatus(null), 3500);
-  }
-
   function legacyCopy(text: string): boolean {
     try {
       const ta = document.createElement("textarea");
@@ -122,27 +118,38 @@ function AdminInspect() {
   async function copyPayload(kind: "json" | "csv") {
     const data = rows.data;
     if (!data) {
-      flash("err", "No rows loaded yet");
+      toast.error("No rows loaded yet");
       return;
     }
     const text = kind === "json" ? JSON.stringify(data, null, 2) : toCSV(data);
     const n = data.length;
+    const label = kind.toUpperCase();
+    const success = (viaFallback = false) => {
+      setCopied(kind);
+      setFallback(null);
+      window.setTimeout(() => setCopied((c) => (c === kind ? null : c)), 1800);
+      toast.success(`Copied ${n} ${n === 1 ? "row" : "rows"} as ${label}`, {
+        description: viaFallback
+          ? `${text.length.toLocaleString()} chars · via fallback`
+          : `${text.length.toLocaleString()} chars on clipboard`,
+      });
+    };
     try {
-      if (navigator.clipboard?.writeText) {
+      if (navigator.clipboard?.writeText && window.isSecureContext !== false) {
         await navigator.clipboard.writeText(text);
-        flash("ok", `Copied ${n} rows as ${kind.toUpperCase()} (${text.length} chars)`);
-        setFallback(null);
+        success();
         return;
       }
       throw new Error("clipboard API unavailable");
     } catch (e) {
       console.error("[admin-inspect] clipboard failed", e);
       if (legacyCopy(text)) {
-        flash("ok", `Copied ${n} rows as ${kind.toUpperCase()} (fallback)`);
-        setFallback(null);
+        success(true);
       } else {
         setFallback(text);
-        flash("err", `Copy failed — select the text below and copy manually`);
+        toast.error("Copy failed", {
+          description: "Select the text below and copy manually.",
+        });
       }
     }
   }
@@ -213,35 +220,18 @@ function AdminInspect() {
                     style={{ width: 64, padding: 2, border: "1px solid #ccc", borderRadius: 4 }}
                   />
                 </label>
-                <button
+                <CopyButton
+                  label="Copy as JSON"
+                  copied={copied === "json"}
+                  disabled={!rows.data}
                   onClick={() => copyPayload("json")}
+                />
+                <CopyButton
+                  label="Copy as CSV"
+                  copied={copied === "csv"}
                   disabled={!rows.data}
-                  style={{ fontSize: 12, padding: "4px 8px", border: "1px solid #999", borderRadius: 4 }}
-                >
-                  Copy as JSON
-                </button>
-                <button
                   onClick={() => copyPayload("csv")}
-                  disabled={!rows.data}
-                  style={{ fontSize: 12, padding: "4px 8px", border: "1px solid #999", borderRadius: 4 }}
-                >
-                  Copy as CSV
-                </button>
-                {status && (
-                  <span
-                    role="status"
-                    style={{
-                      fontSize: 12,
-                      padding: "3px 8px",
-                      borderRadius: 4,
-                      background: status.kind === "ok" ? "#e6f5ea" : "#fdecec",
-                      color: status.kind === "ok" ? "#186a3b" : "#a11a1a",
-                      border: "1px solid " + (status.kind === "ok" ? "#bfe3cc" : "#f2c2c2"),
-                    }}
-                  >
-                    {status.msg}
-                  </span>
-                )}
+                />
               </div>
               {fallback !== null && (
                 <div style={{ marginTop: 8 }}>
@@ -407,3 +397,50 @@ const cellHead: React.CSSProperties = {
   whiteSpace: "nowrap",
 };
 const cell: React.CSSProperties = { padding: "4px 8px" };
+
+function CopyButton({
+  label,
+  copied,
+  disabled,
+  onClick,
+}: {
+  label: string;
+  copied: boolean;
+  disabled?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-live="polite"
+      style={{
+        fontSize: 12,
+        padding: "4px 10px",
+        border: "1px solid " + (copied ? "#186a3b" : "#999"),
+        borderRadius: 4,
+        background: copied ? "#e6f5ea" : "#fff",
+        color: copied ? "#186a3b" : "inherit",
+        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.5 : 1,
+        transition: "background 120ms, border-color 120ms, color 120ms",
+        display: "inline-flex",
+        alignItems: "center",
+        gap: 6,
+        minWidth: 108,
+        justifyContent: "center",
+        fontWeight: copied ? 600 : 400,
+      }}
+    >
+      {copied ? (
+        <>
+          <span aria-hidden="true">✓</span>
+          <span>Copied</span>
+        </>
+      ) : (
+        label
+      )}
+    </button>
+  );
+}
