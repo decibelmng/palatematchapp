@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { FingerprintSpoke } from "@/components/FingerprintSpoke";
 import { AuthGate } from "@/components/AuthGate";
 import { WineTypeBadge } from "@/components/WineTypeBadge";
 import { ListControls } from "@/components/ListControls";
