@@ -11,6 +11,7 @@ import {
   useSendFriendRequest,
   useRespondFriendship,
 } from "@/hooks/use-friends";
+import { displayNameFor, handleForDisplay, initialsFor } from "@/lib/user-display";
 
 export const Route = createFileRoute("/feed")({
   head: () => ({
