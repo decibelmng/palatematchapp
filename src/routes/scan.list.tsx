@@ -1517,7 +1517,8 @@ function ScanDetailSheet({ row, onClose }: { row: ScanRow | null; onClose: () =>
   }, [row, onClose]);
   if (!row) return null;
   const r = row.ranked;
-  const currentStars = ratings?.find((x) => x.bottle_id === r.bottle.id)?.stars ?? null;
+  const bottleId = r.scanned.matched_bottle_id;
+  const currentStars = bottleId ? (ratings?.find((x) => x.bottle_id === bottleId)?.stars ?? null) : null;
   const reason = reasonLine(row);
   return (
     <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label={`Detail for ${r.bottle.name}`}>
