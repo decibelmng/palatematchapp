@@ -197,21 +197,26 @@ function FindPeople() {
             <p className="text-xs text-muted-foreground">No matches.</p>
           )}
           <ul className="divide-y divide-border">
-            {hits.map((h) => (
-              <li key={h.user_id} className="py-2 flex items-center justify-between gap-3">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">{h.display_name || h.username}</p>
-                  <p className="text-[11px] text-muted-foreground truncate">@{h.username}</p>
-                </div>
-                <button
-                  onClick={() => send.mutate({ user_id: h.user_id })}
-                  disabled={send.isPending}
-                  className="rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-xs disabled:opacity-50"
-                >
-                  Add friend
-                </button>
-              </li>
-            ))}
+            {hits.map((h) => {
+              const name = displayNameFor(h);
+              const handle = handleForDisplay(h.username);
+              return (
+                <li key={h.user_id} className="py-2 flex items-center justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{name}</p>
+                    {handle && <p className="text-[11px] text-muted-foreground truncate">@{handle}</p>}
+                  </div>
+                  <button
+                    onClick={() => send.mutate({ user_id: h.user_id })}
+                    disabled={send.isPending}
+                    aria-label={`Send friend request to ${name}`}
+                    className="rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-xs disabled:opacity-50"
+                  >
+                    Add friend
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         </div>
       )}
