@@ -96,7 +96,7 @@ export const adminGroupCount = createServerFn({ method: "POST" })
     if (cErr) throw new Error(cErr.message);
     const colOk = ((cols ?? []) as { column_name: string }[]).some((r) => r.column_name === data.column);
     if (!colOk) throw new Error("Unknown column");
-    const { data: rows, error } = await supabaseAdmin.rpc("admin_group_count", {
+    const { data: rows, error } = await (supabaseAdmin.rpc as any)("admin_group_count", {
       p_table: data.table,
       p_column: data.column,
     });
