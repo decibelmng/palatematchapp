@@ -8,6 +8,7 @@ import {
   adminListTables,
   adminGetColumns,
   adminGetRows,
+  adminGroupCount,
 } from "@/lib/admin-inspect.functions";
 
 export const Route = createFileRoute("/admin/inspect")({
