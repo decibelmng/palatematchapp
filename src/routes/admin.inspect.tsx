@@ -95,11 +95,6 @@ function AdminInspect() {
     [rows.data],
   );
 
-  function flash(kind: "ok" | "err", msg: string) {
-    setStatus({ kind, msg });
-    window.setTimeout(() => setStatus(null), 3500);
-  }
-
   function legacyCopy(text: string): boolean {
     try {
       const ta = document.createElement("textarea");
@@ -123,27 +118,38 @@ function AdminInspect() {
   async function copyPayload(kind: "json" | "csv") {
     const data = rows.data;
     if (!data) {
-      flash("err", "No rows loaded yet");
+      toast.error("No rows loaded yet");
       return;
     }
     const text = kind === "json" ? JSON.stringify(data, null, 2) : toCSV(data);
     const n = data.length;
+    const label = kind.toUpperCase();
+    const success = (viaFallback = false) => {
+      setCopied(kind);
+      setFallback(null);
+      window.setTimeout(() => setCopied((c) => (c === kind ? null : c)), 1800);
+      toast.success(`Copied ${n} ${n === 1 ? "row" : "rows"} as ${label}`, {
+        description: viaFallback
+          ? `${text.length.toLocaleString()} chars · via fallback`
+          : `${text.length.toLocaleString()} chars on clipboard`,
+      });
+    };
     try {
-      if (navigator.clipboard?.writeText) {
+      if (navigator.clipboard?.writeText && window.isSecureContext !== false) {
         await navigator.clipboard.writeText(text);
-        flash("ok", `Copied ${n} rows as ${kind.toUpperCase()} (${text.length} chars)`);
-        setFallback(null);
+        success();
         return;
       }
       throw new Error("clipboard API unavailable");
     } catch (e) {
       console.error("[admin-inspect] clipboard failed", e);
       if (legacyCopy(text)) {
-        flash("ok", `Copied ${n} rows as ${kind.toUpperCase()} (fallback)`);
-        setFallback(null);
+        success(true);
       } else {
         setFallback(text);
-        flash("err", `Copy failed — select the text below and copy manually`);
+        toast.error("Copy failed", {
+          description: "Select the text below and copy manually.",
+        });
       }
     }
   }
