@@ -17,8 +17,10 @@ import { Route as AuditRouteImport } from './routes/audit'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PalateIndexRouteImport } from './routes/palate.index'
 import { Route as WineIdRouteImport } from './routes/wine.$id'
+import { Route as UUsernameRouteImport } from './routes/u.$username'
 import { Route as ScanListRouteImport } from './routes/scan.list'
 import { Route as ScanBottleRouteImport } from './routes/scan.bottle'
+import { Route as PalateVerifyRouteImport } from './routes/palate.verify'
 import { Route as PalateTypeRouteImport } from './routes/palate.$type'
 import { Route as AdminTypeFixRouteImport } from './routes/admin.type-fix'
 import { Route as AdminInspectRouteImport } from './routes/admin.inspect'
@@ -68,6 +70,11 @@ const WineIdRoute = WineIdRouteImport.update({
   path: '/wine/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const UUsernameRoute = UUsernameRouteImport.update({
+  id: '/u/$username',
+  path: '/u/$username',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ScanListRoute = ScanListRouteImport.update({
   id: '/list',
   path: '/list',
@@ -77,6 +84,11 @@ const ScanBottleRoute = ScanBottleRouteImport.update({
   id: '/bottle',
   path: '/bottle',
   getParentRoute: () => ScanRoute,
+} as any)
+const PalateVerifyRoute = PalateVerifyRouteImport.update({
+  id: '/palate/verify',
+  path: '/palate/verify',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const PalateTypeRoute = PalateTypeRouteImport.update({
   id: '/palate/$type',
@@ -134,8 +146,10 @@ export interface FileRoutesByFullPath {
   '/admin/inspect': typeof AdminInspectRoute
   '/admin/type-fix': typeof AdminTypeFixRoute
   '/palate/$type': typeof PalateTypeRoute
+  '/palate/verify': typeof PalateVerifyRoute
   '/scan/bottle': typeof ScanBottleRoute
   '/scan/list': typeof ScanListRoute
+  '/u/$username': typeof UUsernameRoute
   '/wine/$id': typeof WineIdRoute
   '/palate/': typeof PalateIndexRoute
 }
@@ -154,8 +168,10 @@ export interface FileRoutesByTo {
   '/admin/inspect': typeof AdminInspectRoute
   '/admin/type-fix': typeof AdminTypeFixRoute
   '/palate/$type': typeof PalateTypeRoute
+  '/palate/verify': typeof PalateVerifyRoute
   '/scan/bottle': typeof ScanBottleRoute
   '/scan/list': typeof ScanListRoute
+  '/u/$username': typeof UUsernameRoute
   '/wine/$id': typeof WineIdRoute
   '/palate': typeof PalateIndexRoute
 }
@@ -175,8 +191,10 @@ export interface FileRoutesById {
   '/admin/inspect': typeof AdminInspectRoute
   '/admin/type-fix': typeof AdminTypeFixRoute
   '/palate/$type': typeof PalateTypeRoute
+  '/palate/verify': typeof PalateVerifyRoute
   '/scan/bottle': typeof ScanBottleRoute
   '/scan/list': typeof ScanListRoute
+  '/u/$username': typeof UUsernameRoute
   '/wine/$id': typeof WineIdRoute
   '/palate/': typeof PalateIndexRoute
 }
@@ -197,8 +215,10 @@ export interface FileRouteTypes {
     | '/admin/inspect'
     | '/admin/type-fix'
     | '/palate/$type'
+    | '/palate/verify'
     | '/scan/bottle'
     | '/scan/list'
+    | '/u/$username'
     | '/wine/$id'
     | '/palate/'
   fileRoutesByTo: FileRoutesByTo
@@ -217,8 +237,10 @@ export interface FileRouteTypes {
     | '/admin/inspect'
     | '/admin/type-fix'
     | '/palate/$type'
+    | '/palate/verify'
     | '/scan/bottle'
     | '/scan/list'
+    | '/u/$username'
     | '/wine/$id'
     | '/palate'
   id:
@@ -237,8 +259,10 @@ export interface FileRouteTypes {
     | '/admin/inspect'
     | '/admin/type-fix'
     | '/palate/$type'
+    | '/palate/verify'
     | '/scan/bottle'
     | '/scan/list'
+    | '/u/$username'
     | '/wine/$id'
     | '/palate/'
   fileRoutesById: FileRoutesById
@@ -258,6 +282,8 @@ export interface RootRouteChildren {
   AdminInspectRoute: typeof AdminInspectRoute
   AdminTypeFixRoute: typeof AdminTypeFixRoute
   PalateTypeRoute: typeof PalateTypeRoute
+  PalateVerifyRoute: typeof PalateVerifyRoute
+  UUsernameRoute: typeof UUsernameRoute
   WineIdRoute: typeof WineIdRoute
   PalateIndexRoute: typeof PalateIndexRoute
 }
@@ -320,6 +346,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof WineIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/u/$username': {
+      id: '/u/$username'
+      path: '/u/$username'
+      fullPath: '/u/$username'
+      preLoaderRoute: typeof UUsernameRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/scan/list': {
       id: '/scan/list'
       path: '/list'
@@ -333,6 +366,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/scan/bottle'
       preLoaderRoute: typeof ScanBottleRouteImport
       parentRoute: typeof ScanRoute
+    }
+    '/palate/verify': {
+      id: '/palate/verify'
+      path: '/palate/verify'
+      fullPath: '/palate/verify'
+      preLoaderRoute: typeof PalateVerifyRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/palate/$type': {
       id: '/palate/$type'
@@ -420,6 +460,8 @@ const rootRouteChildren: RootRouteChildren = {
   AdminInspectRoute: AdminInspectRoute,
   AdminTypeFixRoute: AdminTypeFixRoute,
   PalateTypeRoute: PalateTypeRoute,
+  PalateVerifyRoute: PalateVerifyRoute,
+  UUsernameRoute: UUsernameRoute,
   WineIdRoute: WineIdRoute,
   PalateIndexRoute: PalateIndexRoute,
 }
