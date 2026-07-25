@@ -238,12 +238,47 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <A2HSHint />
 
+      <ScanChooserSheet open={scanOpen} onClose={() => setScanOpen(false)} />
+
       <nav
         className="fixed bottom-0 inset-x-0 border-t border-border bg-background/95 backdrop-blur"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
-        <div className="max-w-xl mx-auto flex">
-          {TABS.map(({ to, label, Icon }) => {
+        <div className="max-w-xl mx-auto grid grid-cols-5 items-end">
+          {TABS_LEFT.map(({ to, label, Icon }) => {
+            const active = isActive(pathname, to);
+            return (
+              <Link
+                key={to}
+                to={to}
+                aria-label={label}
+                aria-current={active ? "page" : undefined}
+                className={`flex flex-col items-center justify-center gap-1 min-h-11 py-2.5 text-[11px] transition-colors border-t-2 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary ${
+                  active
+                    ? "text-primary border-primary"
+                    : "text-muted-foreground hover:text-foreground border-transparent"
+                }`}
+              >
+                <Icon size={18} strokeWidth={active ? 2.2 : 1.8} />
+                {label}
+              </Link>
+            );
+          })}
+
+          {/* Center raised SCAN button */}
+          <div className="flex justify-center">
+            <button
+              type="button"
+              onClick={() => setScanOpen(true)}
+              aria-label="Scan"
+              className="-mt-6 h-16 w-16 rounded-full bg-primary text-primary-foreground shadow-lg ring-4 ring-background flex flex-col items-center justify-center active:scale-95 transition"
+            >
+              <ScanLine size={24} strokeWidth={2} />
+              <span className="text-[9px] font-semibold uppercase tracking-wider mt-0.5">Scan</span>
+            </button>
+          </div>
+
+          {TABS_RIGHT.map(({ to, label, Icon }) => {
             const active = isActive(pathname, to);
             const showDot = to === "/feed" && hasFreshActivity(feedLatestAt);
             return (
@@ -252,7 +287,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 to={to}
                 aria-label={label}
                 aria-current={active ? "page" : undefined}
-                className={`flex-1 flex flex-col items-center justify-center gap-1 min-h-11 py-2.5 text-[11px] transition-colors border-t-2 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary ${
+                className={`flex flex-col items-center justify-center gap-1 min-h-11 py-2.5 text-[11px] transition-colors border-t-2 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary ${
                   active
                     ? "text-primary border-primary"
                     : "text-muted-foreground hover:text-foreground border-transparent"
@@ -273,6 +308,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           })}
         </div>
       </nav>
+
     </div>
   );
 }
