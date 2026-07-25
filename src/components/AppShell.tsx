@@ -83,34 +83,56 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   useEffect(() => { setMenuOpen(false); }, [pathname]);
 
-  // Unlock celebration: fire once when the user's rating count crosses the
-  // threshold. Haptic on capable devices + brief toast pointing at Scan.
+  // Unlock celebration: fire exactly once per user, ever. Gated on a
+  // server-persisted flag (profiles.scan_unlock_seen) so it survives reloads,
+  // new devices, and cache resets. Local refs only guard against double-fire
+  // within a single render loop.
   const ratingsCount = useRatingsCount();
-  const prevCountRef = useRef<number | null>(null);
   const celebratedRef = useRef(false);
   const navigate = useNavigate();
+  const qc = useQueryClient();
+  const markSeen = useServerFn(markScanUnlockSeen);
+  const scanUnlockSeen = (profile as { scan_unlock_seen?: boolean } | undefined)?.scan_unlock_seen;
   useEffect(() => {
-    const prev = prevCountRef.current;
-    prevCountRef.current = ratingsCount;
-    if (prev === null) return; // ignore initial hydration
+    if (!profile) return;                       // wait for profile to hydrate
     if (celebratedRef.current) return;
-    if (prev < UNLOCK_THRESHOLD && ratingsCount >= UNLOCK_THRESHOLD) {
-      celebratedRef.current = true;
-      try {
-        if (typeof navigator !== "undefined" && "vibrate" in navigator) {
-          (navigator as Navigator & { vibrate?: (p: number | number[]) => boolean }).vibrate?.([12, 40, 24]);
-        }
-      } catch { /* noop */ }
-      toast.success("Scan unlocked", {
-        description: "Point your camera at any wine list — I'll rank every bottle.",
-        duration: 5000,
-        action: {
-          label: "Scan now",
-          onClick: () => navigate({ to: "/" }),
-        },
-      });
-    }
-  }, [ratingsCount, navigate]);
+    if (scanUnlockSeen) return;                 // already celebrated for this user
+    if (ratingsCount < UNLOCK_THRESHOLD) return;
+
+    celebratedRef.current = true;
+    const dismissAndPersist = () => {
+      markSeen()
+        .catch(() => { /* non-fatal; profile refetch below is best-effort */ })
+        .finally(() => {
+          qc.setQueryData(
+            ["my-profile", (profile as { id?: string }).id ?? null],
+            (old: unknown) => (old && typeof old === "object")
+              ? { ...(old as object), scan_unlock_seen: true }
+              : old,
+          );
+          qc.invalidateQueries({ queryKey: ["my-profile"] });
+        });
+    };
+    try {
+      if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+        (navigator as Navigator & { vibrate?: (p: number | number[]) => boolean }).vibrate?.([12, 40, 24]);
+      }
+    } catch { /* noop */ }
+    toast.success("Scan unlocked", {
+      description: "Point your camera at any wine list — I'll rank every bottle.",
+      duration: 5000,
+      action: {
+        label: "Scan now",
+        onClick: () => { dismissAndPersist(); navigate({ to: "/" }); },
+      },
+      // Any dismissal path (auto-close, swipe, tap-away) still persists the flag.
+      onDismiss: dismissAndPersist,
+      onAutoClose: dismissAndPersist,
+    });
+    // Optimistic: persist immediately even if the user never touches the toast.
+    dismissAndPersist();
+  }, [profile, scanUnlockSeen, ratingsCount, navigate, markSeen, qc]);
+
 
 
   useEffect(() => {
