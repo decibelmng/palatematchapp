@@ -222,6 +222,12 @@ function PalateHome() {
         </div>
       </div>
 
+      {/* Calibration meter — % pinned per color, derived from rating counts only. */}
+      <div className="mt-4">
+        <CalibrationMeter />
+      </div>
+
+
       {/* Visibility */}
       <div className="mt-5">
         <VisibilityControl current={(profile?.visibility as "private" | "followers" | "public") ?? "private"} />
