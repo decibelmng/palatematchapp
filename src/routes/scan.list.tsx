@@ -1320,25 +1320,27 @@ function HeroCard({
         onClick={(e) => e.stopPropagation()}
       >
         <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-          {currentStars != null ? "Your rating" : "Tried it? Rate now"}
+          {bottleId == null ? "Estimated — open to rate" : currentStars != null ? "Your rating" : "Tried it? Rate now"}
         </span>
-        <StarTap
-          value={currentStars}
-          size="sm"
-          onChange={(stars) => {
-            if (stars == null || stars === currentStars) return;
-            rate.mutate(
-              { bottleId, stars },
-              {
-                onSuccess: () => toast.success(`Rated ${stars}★`),
-                onError: (e) => {
-                  const msg = (e as any)?.message ?? (typeof e === "string" ? e : "Couldn't save rating");
-                  if (!/canceled/i.test(msg)) toast.error(msg || "Couldn't save rating");
+        {bottleId != null && (
+          <StarTap
+            value={currentStars}
+            size="sm"
+            onChange={(stars) => {
+              if (stars == null || stars === currentStars) return;
+              rate.mutate(
+                { bottleId, stars },
+                {
+                  onSuccess: () => toast.success(`Rated ${stars}★`),
+                  onError: (e) => {
+                    const msg = (e as any)?.message ?? (typeof e === "string" ? e : "Couldn't save rating");
+                    if (!/canceled/i.test(msg)) toast.error(msg || "Couldn't save rating");
+                  },
                 },
-              },
-            );
-          }}
-        />
+              );
+            }}
+          />
+        )}
       </div>
     </div>
   );
