@@ -209,14 +209,20 @@ export const updateMyProfile = createServerFn({ method: "POST" })
       username: z.string().regex(/^[a-z0-9_]{3,24}$/i).optional(),
       display_name: z.string().max(60).optional(),
       onboarding_stage: z.enum(["intro", "rate5", "done"]).optional(),
+      visibility: z.enum(["private", "followers", "public"]).optional(),
+      avatar_url: z.string().url().max(500).nullable().optional(),
+      bio: z.string().max(280).nullable().optional(),
     }).parse(input),
   )
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
-    const patch: { username?: string; display_name?: string; onboarding_stage?: string } = {};
+    const patch: Partial<{ username: string; display_name: string; onboarding_stage: string; visibility: string; avatar_url: string | null; bio: string | null }> = {};
     if (data.username !== undefined) patch.username = data.username.toLowerCase();
     if (data.display_name !== undefined) patch.display_name = data.display_name;
     if (data.onboarding_stage !== undefined) patch.onboarding_stage = data.onboarding_stage;
+    if (data.visibility !== undefined) patch.visibility = data.visibility;
+    if (data.avatar_url !== undefined) patch.avatar_url = data.avatar_url;
+    if (data.bio !== undefined) patch.bio = data.bio;
     if (Object.keys(patch).length === 0) return { ok: true };
     const { error } = await supabase.from("profiles").update(patch).eq("id", userId);
     if (error) {
@@ -226,7 +232,7 @@ export const updateMyProfile = createServerFn({ method: "POST" })
     return { ok: true };
   });
 
-// -------- Get my own profile (username, display_name, recent_groups) --------
+// -------- Get my own profile --------
 
 export const getMyProfile = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -234,7 +240,7 @@ export const getMyProfile = createServerFn({ method: "GET" })
     const { supabase, userId } = context;
     const { data, error } = await supabase
       .from("profiles")
-      .select("id, username, display_name, palate_code_red, palate_code_white, n_rated, recent_groups, onboarding_stage")
+      .select("id, username, display_name, palate_code_red, palate_code_white, n_rated, recent_groups, onboarding_stage, visibility, avatar_url, bio, somm_status, somm_role, establishment, verified_at, created_at")
       .eq("id", userId)
       .maybeSingle();
     if (error) throw new Error(error.message);

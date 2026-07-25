@@ -1,95 +1,115 @@
-# Extreme Simplicity + Scan Price Intelligence
 
-Order matches your prompt. Appendix (A/B/C) folded into the right slots so nothing drops.
+# Profiles & Somm Trust Tier — build plan (A + B + C + D shadow)
 
-## Price Check coverage report (upfront)
+Governing principle preserved end-to-end: **payment buys the badge, calibration earns the weight, social metrics never touch the engine.** Phases B and D are structurally isolated — B never sets a λ.
 
-Catalog `bottles` has near-100% `price_band` coverage on all types (red 99.99%, white 99.99%, sparkling/rosé/dessert 100%). Granularity is 5-band ordinal (`$`–`$$$$$`) plus `unknown` (~5% of reds, ~6% of whites). Expected chip coverage per scan ≈ **catalog-match rate × 94–100%**; the honest bottleneck is bottle matching, not band coverage. Chip is suppressed silently when `price_band='unknown'`, when the wine is an unmatched community bottle, or when menu-price OCR failed.
+---
 
-## Part A — Boot fix (blocking, do first)
+## Migration (single migration, four table/column groups)
 
-- Root cause already found: the "Missing SUPABASE_URL/PUBLISHABLE_KEY" throw comes from server-side `requireSupabaseAuth`/publishable helpers reading unprefixed `process.env.*`. `start.ts` middleware fallback is already in — verify by hitting a protected serverFn from a fresh session on published site; if still failing, add same fallback inside `client.server.ts` guard and re-publish.
+### profiles — new columns
+- `visibility` text default `'private'`, check in (`private`,`followers`,`public`)
+- `somm_status` text default `'none'`, check in (`none`,`pending`,`verified`,`revoked`)
+- `somm_role` text (`sommelier` / `store_owner` / `beverage_lead` / `other`)
+- `establishment` text
+- `verified_at` timestamptz, `verified_by` uuid, `bypass_code_used` text
+- `avatar_url` text (if not already present)
+- `bio` text (short, optional — surfaces on profile card)
 
-## Part 1 — First-run onboarding
+### somm_invite_codes (new)
+- `code` text primary key, `issued_by` uuid, `used_by` uuid null, `used_at` timestamptz null, `created_at` timestamptz default now(), `note` text
+- RLS: no anon; authenticated select own issued/used rows; only service_role writes. Redemption goes through a SECURITY DEFINER RPC `redeem_somm_code(p_code text)` that atomically claims the code and sets `somm_status='verified'`.
 
-- New `src/routes/welcome.tsx`: 3-screen skippable intro (swipe/next), copy per spec, illustrated with existing `PalateStar` + a mocked ranked-list screenshot.
-- `AuthGate` unchanged for auth; after sign-up, a new `profiles.onboarding_stage` (`intro | rate5 | done`) drives the router: stage=`intro` → `/welcome`; stage=`rate5` → `/rate?mode=onboarding`; stage=`done` → home.
-- `rate.tsx` gains `?mode=onboarding`: hides notes, filters, benchmarks, cellar-memory; shows progress bar `n/5`; on 5th rating routes to `/welcome/reveal`.
-- `/welcome/reveal`: full-screen `PalateStar` with letter-flip animation, one plain-language line ("You lean silky, fresh and red-fruited…" via `styleNameFor`), two CTAs → `/scan` and `/matches`. Sets `onboarding_stage='done'`.
-- Returning users bypass welcome entirely (stage=done at signup migration time).
+### follows (new, directed)
+- `follower_id`, `followee_id`, `status` text (`accepted`,`pending`), `created_at`, `responded_at`
+- Unique (follower_id, followee_id). RLS:
+  - INSERT: `auth.uid()=follower_id`; if followee visibility is `public`, insert as `accepted`; else `pending`. Enforced in RPC `follow_user(p_followee uuid)`.
+  - SELECT: either side.
+  - UPDATE (accept/reject): followee only.
+  - DELETE (unfollow / cancel): either side.
+- `search_users` already exists; add `follow_user`, `unfollow_user`, `respond_follow`.
 
-## Part 2 — Home + scanning
+### fp_observations — Phase D fields
+- Add `reliability_at_write real` (snapshot of author's ρ at write time — replayable).
+- New source_type values allowed by string convention (no CHECK change needed): `somm_verified`.
 
-- `src/routes/index.tsx` collapsed to: palate-code cards (tap → existing depth), one primary Scan CTA (big tile), one secondary Matches. Move cube/lanes/brief teasers behind the palate-code tap (already the detail path).
-- Copy audit pass across `AppShell`, home, scan, matches: replace "Canon/Nemesis/evidence/ω/calibrated/fingerprint" at first level with "benchmark wine / dealbreaker / palate / signature". Detail views keep the technical terms with a one-line gloss.
-- `/scan` becomes a direct camera entry (single pre-prompt line); multi-page strip + Analyze already exists in `scan.list.tsx` — audit for a single Analyze button + server-side persistence (already scan_logs-backed).
-- **Results restructure** (`scan.list.tsx`):
-  - Pinned "From your cellar memory" (existing `CellarMemorySection`).
-  - "Order this" — top 3 by score with match chip, menu price, Price Check chip.
-  - "Also good" — remaining matches, compact.
-  - "Skip" — vetoed + poor matches, collapsed accordion, one-line reason from existing veto reasons.
-  - Unreadable/unmatched — collapsed at bottom with tap-to-fix.
-- All rows link `wine/$id`.
+### user_reliability (new, Phase D)
+- `user_id` primary key, `rho real default 1.0`, `n_holdout int default 0`, `updated_at`
+- Populated by `admin_reliability_recompute()` — a SECURITY DEFINER function that scores each user against consensus-holdout wines from the Phase-4 machinery. **Reads only ratings vs consensus, never social metrics.**
+- λ formula for future somm-driven fp_observations writes: `precision = base(tier) * rho`, where `base(standard)=1`, `base(verified_somm)=3`. Applied in a new `submit_somm_observation` RPC (mirrors admin correction path but tagged `mode='shadow'` and `source_type='somm_verified'`). **No UI wired yet** — table + function exist; kept dormant until Phase-4 volume gate passes.
 
-## Part 3 — Price Check verdict
+### Grants (every new public table, in the migration)
+- `authenticated`: read own rows + accepted follows both directions; grants scoped to policies.
+- `service_role`: ALL.
+- `anon`: SELECT on `follows` counts via a view? — no: counts derive from server fns that use `requireSupabaseAuth`. **Public profile read** goes through a SECURITY DEFINER RPC `get_public_profile(p_username text)` that returns only the fields the visibility setting allows.
 
-- Pure module `src/lib/price-check.ts`: input `{ price_band, menu_price, currency, restaurant_stats? }` → `{ verdict: 'good'|'typical'|'steep'|null, reason }`. Constants: band midpoints (e.g. `$`=$18, `$$`=$40, `$$$`=$80, `$$$$`=$160, `$$$$$`=$300), markup band 2.0–3.2×, steep = >1.25× range top. Returns `null` on `unknown`/missing price/unmatched.
-- Chip component `PriceCheckChip.tsx` — amber "Steep", neutral "Typical", positive "Good price". Tone-only, no dollar retail exposed.
-- Tap-to-correct: inline editable menu price on each result row (existing OCR is per-wine already); commit calls new serverFn `updateScanWinePrice` which (a) updates `scan_logs.wines[i].price`, (b) writes a `user_corrected` `price_observations` row, (c) recomputes chip via query invalidation.
-- "Best value" sort added to `ListControls`: sort key = `predictedStars + verdictBoost` (good=+0.4, steep=−0.4).
-- Restaurant-aware refinement: when `restaurant_stats.observation_count >= 8`, blend median markup index into the range; add detail-view context copy.
+---
 
-## Part 4 — Backend: price_observations
+## Phase A — Palate tab becomes the profile
 
-Migration (single call):
+`src/routes/palate.index.tsx` refactor:
+- Top block: avatar, display name (edit inline), member-since, **badge slot** (renders SOMM chip when `somm_status='verified'`).
+- **Inline** 2D/3D toggle over the existing map/cube — no reveal gate for returning users (the reveal flow stays only for first-time users with < 5 ratings).
+- Stats row: rated / canons / nemeses / current streak (`max(created_at)` window). Values come from existing hooks.
+- Visibility control (private/followers/public radio) + Share button placeholder (Phase C wires it).
+- New `ProfileHeader.tsx`, `ProfileStats.tsx`, `VisibilityControl.tsx`, `SommBadge.tsx` under `src/components/profile/`.
 
-```sql
-create table public.price_observations (
-  id uuid primary key default gen_random_uuid(),
-  restaurant_id uuid not null references public.restaurants(id) on delete cascade,
-  bottle_id uuid references public.bottles(id) on delete set null,
-  cuvee_key text,                    -- lower(producer||' '||name) fallback aggregation
-  raw_line text,
-  menu_price numeric(10,2) not null,
-  currency text not null default 'USD',
-  observed_at timestamptz not null default now(),
-  scan_id uuid references public.scan_logs(id) on delete set null,
-  user_id uuid not null default auth.uid(),
-  source text not null check (source in ('ocr','user_corrected')),
-  superseded boolean not null default false
-);
-grant select, insert, update on public.price_observations to authenticated;
-grant all on public.price_observations to service_role;
-alter table public.price_observations enable row level security;
-create policy "owner rw" on public.price_observations for all using (auth.uid() = user_id) with check (auth.uid() = user_id);
-create index on public.price_observations (restaurant_id, cuvee_key, observed_at desc) where superseded = false;
-```
+Acceptance: viz renders inline on load; no email/precise-location anywhere; default visibility persists as `private`.
 
-Plus SECURITY DEFINER RPCs (no user-id params, uses `auth.uid()` only where writes need it; reads return aggregate-only):
-- `restaurant_price_stats(restaurant_id uuid) → { count, median_markup_index, last_observed_at }`
-- `restaurant_cuvee_history(restaurant_id uuid, cuvee_key text) → rows of {menu_price, observed_at}` (aggregate-only, no user_id column).
+---
 
-Write path:
-- On `attributeScanFn` (already writes to restaurants/restaurant_wines), also insert one `ocr` row per wine that has a numeric `menu_price_amount`.
-- Dedupe: within 30d, same `(restaurant_id, cuvee_key)` and same price → update `observed_at`; different price → insert new row and mark previous active row `superseded=true`.
-- `user_corrected` insert supersedes the same-scan `ocr` row.
+## Phase B — SOMM badge + verification (status only, zero engine influence)
 
-Restaurant page (`restaurants.$id.tsx`): show one-line honest summary from `restaurant_price_stats` when `count ≥ 8`; else silent.
+- New route `src/routes/palate.verify.tsx` — "Verify as a somm" form: role, establishment, invite code.
+- Calls `redeem_somm_code` RPC. Success → toast, `somm_status='verified'`, badge shows.
+- **Assertion in code**: `redeem_somm_code` only writes to `profiles`. A unit-style comment + a runtime assertion in a `scripts/assert-badge-no-influence.ts` grep test verifies no code path branches `fp_observations.precision` on `somm_status`. (Phase D writes go through `submit_somm_observation` which reads reliability, not badge alone.)
+- Payment stub: an "Upgrade to SOMM" section that only shows the invite-code path for now.
 
-## Appendix fixes
+---
 
-- **B (sommelier brief)**: (1) benchmark loop already clusters — bug is threshold; loosen so any lane with ≥1 canon emits its benchmark (cap 3/type); (2) sweep `hedonicNegatives` for adjective-only outputs and require a noun template; (3) drop the "top-2 nemesis contrasts" cap that hid Nebbiolo — render one contrast per crowned nemesis. Update `sommelier-brief.test.ts` fixtures accordingly.
-- **C (cube)**: (1) replace cloud-name source with `styleNameFor` (single vocab); (2) in `TasteCube.tsx` billboarded pole labels compute dot product with camera forward → fade to 15% when negative (far side); nudge caption offsets +0.06 along near-label axis; (3) cloud radius = `max(1.2 * maxAnchorDist, 0.12)` instead of raw `h`; add a rotation-sweep unit assertion in dev tools that nemeses fall outside.
+## Phase C — Share + follows
 
-## Technical notes
+- Share button on profile → uses `navigator.share` if available, else copies `${origin}/u/${username}` to clipboard.
+- New public route `src/routes/u.$username.tsx` (top-level, SSR **on**, no auth gate). Loader calls a **public** server fn that invokes `get_public_profile` RPC with a server-side publishable client. Returns minimal card for private, followers-only for followers, full for public. Renders `head()` OG tags with display name + palate codes.
+- Follow button: shows Follow/Requested/Following. Uses `follow_user` / `unfollow_user`.
+- Counts: follower/following via server fn `getFollowCounts(userId)` — cheap `count` selects.
+- Anti-gaming grep: `scripts/assert-social-not-in-engine.ts` fails if `recommender.ts`, `fp_observations` migrations, or `admin_fp_recompute_*` reference `follows` / `follower_count` / `share_count`.
 
-- New route files use `createFileRoute` under `src/routes/`.
-- All new serverFns use `.middleware([requireSupabaseAuth])`.
-- No engine/scoring changes; Price Check is a pure presentation module fed by catalog + observations.
-- `onboarding_stage` migration also backfills all existing profiles to `'done'` so acceptance-criterion #8 holds.
-- Tests: extend `sommelier-brief.test.ts` (B), add `price-check.test.ts`, add a `TasteCube` cloud-radius unit test.
+---
 
-## Deferred (not in this cycle)
+## Phase D — Earned evidence-weight (shadow, dormant)
 
-- Live retail price APIs, restaurant-facing dashboards, paywall changes — per your out-of-scope list.
-- The 3-minute new-user timing acceptance will be reported after Part 1 lands (I'll walk a fresh account with the recorder and paste the split).
+Infrastructure only. **No UI to submit somm observations yet.** Ships:
+
+- `user_reliability` table + `admin_reliability_recompute()` computing ρ from consensus-holdout agreement (uses the Phase-4 surprise machinery inverted — agreement not disagreement).
+- `submit_somm_observation(bottle_id, axis, value, rationale)` — SECURITY DEFINER RPC that writes to `fp_observations` with `precision = base(tier) * rho`, `mode='shadow'`, `reliability_at_write=rho`, `source_type='somm_verified'`. Applies existing guardrails via reuse of `admin_fp_recompute_bottle` (25% cap, floor, move cap already enforced there).
+- Validation reuses `admin_consensus_validate` — a shadow somm observation only promotes to `mode='live'` when it beats the prior on held-out prediction.
+- At current volume: `admin_consensus_gate_status()` still returns `global_pass=false`, so zero live promotions. Documented in a `PHASE_D_DORMANT.md` under `docs/`.
+
+---
+
+## Acceptance matrix (executable where possible)
+
+- **A**: Palate tab renders profile + inline viz (screenshot); visibility persists (SQL check on `profiles.visibility`); no email/location strings in rendered HTML (grep of route).
+- **B**: valid bypass code → `somm_status='verified'`; invalid → no change. Grep confirms `fp_observations.precision` unchanged by badge.
+- **C**: public follow accepts instantly; private follow creates `pending`; social metrics grep passes.
+- **D**: `submit_somm_observation` writes with precision = base·ρ (asserted with a fixture SQL); consensus gate still fails → zero live promotions.
+
+---
+
+## Files touched
+
+- New migration: `phases-abcd-profiles-somm.sql` (single migration).
+- Routes: `palate.index.tsx` (rewrite), `palate.verify.tsx` (new), `u.$username.tsx` (new).
+- Components: `src/components/profile/{ProfileHeader,ProfileStats,VisibilityControl,SommBadge,FollowButton,ShareProfileButton}.tsx`.
+- Server fns: `src/lib/profile.functions.ts`, `src/lib/follows.functions.ts`.
+- Docs/asserts: `docs/PHASE_D_DORMANT.md`, `scripts/assert-social-not-in-engine.ts`, `scripts/assert-badge-no-influence.ts`.
+- No edits to `recommender.ts`, `admin_fp_recompute_*`, or existing fp_observations write paths.
+
+## Order I'll execute
+
+1. Migration (approval gate — types regenerate after).
+2. Phase A UI on the new columns.
+3. Phase B verify route + badge.
+4. Phase C public profile route + follows UI.
+5. Phase D docs + grep asserts (infra already in the migration).

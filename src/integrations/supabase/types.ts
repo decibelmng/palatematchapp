@@ -276,6 +276,33 @@ export type Database = {
           },
         ]
       }
+      follows: {
+        Row: {
+          created_at: string
+          followee_id: string
+          follower_id: string
+          id: string
+          responded_at: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          followee_id: string
+          follower_id: string
+          id?: string
+          responded_at?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          followee_id?: string
+          follower_id?: string
+          id?: string
+          responded_at?: string | null
+          status?: string
+        }
+        Relationships: []
+      }
       fp_consensus_candidates: {
         Row: {
           axis: string
@@ -397,6 +424,7 @@ export type Database = {
           observed_value: number
           precision: number
           rationale: string | null
+          reliability_at_write: number | null
           source_type: string
           superseded: boolean
         }
@@ -410,6 +438,7 @@ export type Database = {
           observed_value: number
           precision: number
           rationale?: string | null
+          reliability_at_write?: number | null
           source_type: string
           superseded?: boolean
         }
@@ -423,6 +452,7 @@ export type Database = {
           observed_value?: number
           precision?: number
           rationale?: string | null
+          reliability_at_write?: number | null
           source_type?: string
           superseded?: boolean
         }
@@ -528,8 +558,12 @@ export type Database = {
       }
       profiles: {
         Row: {
+          avatar_url: string | null
+          bio: string | null
+          bypass_code_used: string | null
           created_at: string
           display_name: string | null
+          establishment: string | null
           id: string
           n_rated: number
           onboarding_stage: string
@@ -538,13 +572,22 @@ export type Database = {
           palate_code_white: string
           palate_version: number
           recent_groups: Json
+          somm_role: string | null
+          somm_status: string
           theme: string | null
           updated_at: string
           username: string
+          verified_at: string | null
+          verified_by: string | null
+          visibility: string
         }
         Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          bypass_code_used?: string | null
           created_at?: string
           display_name?: string | null
+          establishment?: string | null
           id: string
           n_rated?: number
           onboarding_stage?: string
@@ -553,13 +596,22 @@ export type Database = {
           palate_code_white?: string
           palate_version?: number
           recent_groups?: Json
+          somm_role?: string | null
+          somm_status?: string
           theme?: string | null
           updated_at?: string
           username: string
+          verified_at?: string | null
+          verified_by?: string | null
+          visibility?: string
         }
         Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          bypass_code_used?: string | null
           created_at?: string
           display_name?: string | null
+          establishment?: string | null
           id?: string
           n_rated?: number
           onboarding_stage?: string
@@ -568,9 +620,14 @@ export type Database = {
           palate_code_white?: string
           palate_version?: number
           recent_groups?: Json
+          somm_role?: string | null
+          somm_status?: string
           theme?: string | null
           updated_at?: string
           username?: string
+          verified_at?: string | null
+          verified_by?: string | null
+          visibility?: string
         }
         Relationships: []
       }
@@ -875,6 +932,54 @@ export type Database = {
           },
         ]
       }
+      somm_invite_codes: {
+        Row: {
+          code: string
+          created_at: string
+          issued_by: string | null
+          note: string | null
+          used_at: string | null
+          used_by: string | null
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          issued_by?: string | null
+          note?: string | null
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          issued_by?: string | null
+          note?: string | null
+          used_at?: string | null
+          used_by?: string | null
+        }
+        Relationships: []
+      }
+      user_reliability: {
+        Row: {
+          n_holdout: number
+          rho: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          n_holdout?: number
+          rho?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          n_holdout?: number
+          rho?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -966,6 +1071,12 @@ export type Database = {
           value: string
         }[]
       }
+      admin_reliability_recompute: {
+        Args: never
+        Returns: {
+          users_touched: number
+        }[]
+      }
       admin_table_columns: {
         Args: { p_table: string }
         Returns: {
@@ -981,6 +1092,35 @@ export type Database = {
         }[]
       }
       are_friends: { Args: { _a: string; _b: string }; Returns: boolean }
+      follow_user: {
+        Args: { p_followee: string }
+        Returns: {
+          follow_id: string
+          status: string
+        }[]
+      }
+      get_public_profile: {
+        Args: { p_username: string }
+        Returns: {
+          avatar_url: string
+          bio: string
+          created_at: string
+          display_name: string
+          establishment: string
+          follower_count: number
+          following_count: number
+          id: string
+          is_own: boolean
+          n_rated: number
+          palate_code_red: string
+          palate_code_white: string
+          somm_role: string
+          somm_status: string
+          username: string
+          viewer_follow_status: string
+          visibility: string
+        }[]
+      }
       mark_scan_batch_done: {
         Args: { p_batch_index: number; p_scan_id: string }
         Returns: undefined
@@ -989,7 +1129,18 @@ export type Database = {
         Args: { p_batch_index: number; p_scan_id: string }
         Returns: undefined
       }
+      redeem_somm_code: {
+        Args: { p_code: string; p_establishment?: string; p_role?: string }
+        Returns: {
+          somm_status: string
+          verified_at: string
+        }[]
+      }
       resolve_username_to_id: { Args: { p_username: string }; Returns: string }
+      respond_follow: {
+        Args: { p_accept: boolean; p_follow_id: string }
+        Returns: undefined
+      }
       restaurant_cuvee_history: {
         Args: { p_cuvee_key: string; p_restaurant_id: string }
         Returns: {
@@ -1162,6 +1313,20 @@ export type Database = {
           replaced_id: string
         }[]
       }
+      submit_somm_observation: {
+        Args: {
+          p_axis: string
+          p_bottle_id: string
+          p_observed_value: number
+          p_rationale?: string
+        }
+        Returns: {
+          observation_id: string
+          precision_out: number
+          reliability: number
+        }[]
+      }
+      unfollow_user: { Args: { p_followee: string }; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
