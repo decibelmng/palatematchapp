@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WishlistRouteImport } from './routes/wishlist'
+import { Route as WinesRouteImport } from './routes/wines'
 import { Route as ScansRouteImport } from './routes/scans'
 import { Route as ScanRouteImport } from './routes/scan'
 import { Route as RateRouteImport } from './routes/rate'
@@ -40,6 +41,11 @@ import { Route as AddFriendUsernameRouteImport } from './routes/add-friend.$user
 const WishlistRoute = WishlistRouteImport.update({
   id: '/wishlist',
   path: '/wishlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const WinesRoute = WinesRouteImport.update({
+  id: '/wines',
+  path: '/wines',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ScansRoute = ScansRouteImport.update({
@@ -182,6 +188,7 @@ export interface FileRoutesByFullPath {
   '/rate': typeof RateRoute
   '/scan': typeof ScanRouteWithChildren
   '/scans': typeof ScansRoute
+  '/wines': typeof WinesRoute
   '/wishlist': typeof WishlistRoute
   '/add-friend/$username': typeof AddFriendUsernameRoute
   '/admin/consensus': typeof AdminConsensusRoute
@@ -211,6 +218,7 @@ export interface FileRoutesByTo {
   '/rate': typeof RateRoute
   '/scan': typeof ScanRouteWithChildren
   '/scans': typeof ScansRoute
+  '/wines': typeof WinesRoute
   '/wishlist': typeof WishlistRoute
   '/add-friend/$username': typeof AddFriendUsernameRoute
   '/admin/consensus': typeof AdminConsensusRoute
@@ -241,6 +249,7 @@ export interface FileRoutesById {
   '/rate': typeof RateRoute
   '/scan': typeof ScanRouteWithChildren
   '/scans': typeof ScansRoute
+  '/wines': typeof WinesRoute
   '/wishlist': typeof WishlistRoute
   '/add-friend/$username': typeof AddFriendUsernameRoute
   '/admin/consensus': typeof AdminConsensusRoute
@@ -272,6 +281,7 @@ export interface FileRouteTypes {
     | '/rate'
     | '/scan'
     | '/scans'
+    | '/wines'
     | '/wishlist'
     | '/add-friend/$username'
     | '/admin/consensus'
@@ -301,6 +311,7 @@ export interface FileRouteTypes {
     | '/rate'
     | '/scan'
     | '/scans'
+    | '/wines'
     | '/wishlist'
     | '/add-friend/$username'
     | '/admin/consensus'
@@ -330,6 +341,7 @@ export interface FileRouteTypes {
     | '/rate'
     | '/scan'
     | '/scans'
+    | '/wines'
     | '/wishlist'
     | '/add-friend/$username'
     | '/admin/consensus'
@@ -360,6 +372,7 @@ export interface RootRouteChildren {
   RateRoute: typeof RateRoute
   ScanRoute: typeof ScanRouteWithChildren
   ScansRoute: typeof ScansRoute
+  WinesRoute: typeof WinesRoute
   WishlistRoute: typeof WishlistRoute
   AddFriendUsernameRoute: typeof AddFriendUsernameRoute
   AdminConsensusRoute: typeof AdminConsensusRoute
@@ -385,6 +398,13 @@ declare module '@tanstack/react-router' {
       path: '/wishlist'
       fullPath: '/wishlist'
       preLoaderRoute: typeof WishlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/wines': {
+      id: '/wines'
+      path: '/wines'
+      fullPath: '/wines'
+      preLoaderRoute: typeof WinesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/scans': {
@@ -595,6 +615,7 @@ const rootRouteChildren: RootRouteChildren = {
   RateRoute: RateRoute,
   ScanRoute: ScanRouteWithChildren,
   ScansRoute: ScansRoute,
+  WinesRoute: WinesRoute,
   WishlistRoute: WishlistRoute,
   AddFriendUsernameRoute: AddFriendUsernameRoute,
   AdminConsensusRoute: AdminConsensusRoute,
