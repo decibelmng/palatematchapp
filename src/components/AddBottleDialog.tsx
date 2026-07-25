@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { researchBottle, type ResearchResult, type DuplicateMatch } from "@/lib/add-bottle.functions";
+import { resolveOrCreateOnDemand } from "@/lib/on-demand-bottle.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
 import { StarTap } from "@/components/StarTap";
