@@ -26,6 +26,8 @@ import { computeCellarMemory, producerLookup } from "@/lib/cellar-memory";
 import { CellarMemorySection } from "@/components/CellarMemorySection";
 import { SommelierBriefDialog } from "@/components/SommelierBriefDialog";
 import { priceVerdict, type PriceVerdict } from "@/lib/price-verdict";
+import { FingerprintSpoke } from "@/components/FingerprintSpoke";
+
 
 
 export const Route = createFileRoute("/scan/list")({
