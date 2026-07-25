@@ -24,6 +24,7 @@ import { NameWithHandle } from "@/components/profile/NameWithHandle";
 import { AvatarUpload } from "@/components/profile/AvatarUpload";
 import { GraduationCap, Settings2 } from "lucide-react";
 import { CalibrationMeter } from "@/components/CalibrationMeter";
+import { displayNameFor, initialsFor } from "@/lib/user-display";
 
 
 export const Route = createFileRoute("/palate/")({
