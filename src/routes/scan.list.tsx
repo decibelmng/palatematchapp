@@ -1501,11 +1501,12 @@ function ScanDetailSheet({ row, onClose }: { row: ScanRow | null; onClose: () =>
               <p>No close neighbor in your rated wines yet.</p>
             )}
             {r.vetoed && r.vetoReason && (
-              <p className="mt-2 text-[--crimson]">Avoid — {r.vetoReason}</p>
+              <p className="mt-2 text-[--crimson]">Avoid — close to your nemesis {r.vetoReason.nemesis.name}</p>
             )}
             {!r.vetoed && r.contested && r.contestedReason && (
-              <p className="mt-2 text-[--amber]">Contested — {r.contestedReason}</p>
+              <p className="mt-2 text-[--amber]">Contested — near {r.contestedReason.nemesis.name}, but closer to your love {r.contestedReason.nearestPositive.name}</p>
             )}
+
           </div>
         </div>
       </div>
