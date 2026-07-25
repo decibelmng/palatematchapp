@@ -77,6 +77,7 @@ function A2HSHint() {
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [menuOpen, setMenuOpen] = useState(false);
+  const [scanOpen, setScanOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const { data: profile } = useMyProfile();
   useLastSeenPing((profile as { id?: string } | undefined)?.id);
