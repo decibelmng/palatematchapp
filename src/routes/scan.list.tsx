@@ -126,6 +126,10 @@ function Scan() {
   const [staged, setStaged] = useState<{ file: File; url: string }[]>([]);
   const [elapsed, setElapsed] = useState(0);
   const [sommOpen, setSommOpen] = useState(false);
+  const [boosted, setBoosted] = useState(false);
+  const [detailFor, setDetailFor] = useState<ScanRow | null>(null);
+  const [controls, setControls] = useState<Controls>(DEFAULT_CONTROLS);
+
 
 
   // Scan session state
