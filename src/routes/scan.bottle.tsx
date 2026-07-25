@@ -7,7 +7,14 @@ import { useSession } from "@/hooks/use-session";
 import { useRatings, useBottlesByIds, bottleToFp, bottleType } from "@/hooks/use-palate-data";
 import { recommend, type BottleFp, type RatedFp } from "@/lib/recommender";
 import { aggregateRated } from "@/lib/cuvee";
-import { scanBottleLabel, type BottleCandidate, type BottleScanResult, type BottleExtract } from "@/lib/bottle-scan.functions";
+import {
+  scanBottleLabel,
+  resolveBottleFromRead,
+  type BottleCandidate,
+  type BottleScanResult,
+  type BottleExtract,
+} from "@/lib/bottle-scan.functions";
+import { createLovableVisionRecognizer } from "@/lib/recognizer";
 import { supabase } from "@/integrations/supabase/client";
 import { StarTap } from "@/components/StarTap";
 import { WineTypeBadge } from "@/components/WineTypeBadge";
@@ -43,6 +50,10 @@ function BottleScan() {
   const session = useSession();
   const qc = useQueryClient();
   const scan = useServerFn(scanBottleLabel);
+  const resolveFn = useServerFn(resolveBottleFromRead);
+  // Provider-agnostic recognizer wrapper (Lovable vision LLM today; a
+  // future bake-off winner can drop in behind the same interface).
+  const recognizer = useMemo(() => createLovableVisionRecognizer(scan), [scan]);
   const cameraRef = useRef<HTMLInputElement>(null);
   const libraryRef = useRef<HTMLInputElement>(null);
   const [front, setFront] = useState<{ file: File; url: string } | null>(null);
@@ -50,6 +61,19 @@ function BottleScan() {
   const [elapsed, setElapsed] = useState(0);
   const [pickTarget, setPickTarget] = useState<"front" | "back">("front");
   const [showAdd, setShowAdd] = useState(false);
+
+  // Confirm-first state: after vision reads the label, the user edits
+  // the extracted fields (photo visible), and NOTHING resolves to a
+  // catalog wine or writes a rating until they confirm. Low-confidence
+  // fields render highlighted; the human is the reliable step.
+  const [editedRead, setEditedRead] = useState<BottleExtract | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
+  const [override, setOverride] = useState<{
+    candidates: BottleCandidate[];
+    best_score: number;
+    match_quality: BottleScanResult["match_quality"];
+    match_summary: string;
+  } | null>(null);
 
   const { data: ratings } = useRatings();
   const ratedIds = useMemo(() => (ratings ?? []).map((r) => r.bottle_id), [ratings]);
@@ -92,8 +116,21 @@ function BottleScan() {
       }));
       const image_paths = prepared.map((p) => p.storagePath).filter((p): p is string => !!p);
       const images = prepared.map(({ image_base64, media_type }) => ({ image_base64, media_type }));
-      return await scan({ data: { images, image_paths } });
+      return await recognizer.recognizeBottle({ images, image_paths });
     },
+    onSuccess: (r) => {
+      // Seed the editable confirm form from the raw read; require an
+      // explicit confirm before any candidate is presented for rating.
+      setEditedRead(r.extracted);
+      setConfirmed(false);
+      setOverride(null);
+    },
+  });
+
+  const resolveMut = useMutation({
+    mutationFn: async (read: BottleExtract) => resolveFn({ data: { read } }),
+    onSuccess: (r) => { setOverride(r); setConfirmed(true); },
+    onError: (e: Error) => { toast.error(e.message || "Couldn't re-check the catalog."); },
   });
 
   useEffect(() => {
@@ -118,6 +155,7 @@ function BottleScan() {
     }
     if (inputEl) inputEl.value = "";
     mutation.reset();
+    setEditedRead(null); setConfirmed(false); setOverride(null);
     // Auto-kick the scan on the first photo so users don't have to hunt
     // for a second button. Subsequent adds (e.g. adding a back label)
     // still require an explicit "Identify" tap.
@@ -131,6 +169,7 @@ function BottleScan() {
     if (back) URL.revokeObjectURL(back.url);
     setFront(null); setBack(null);
     mutation.reset();
+    setEditedRead(null); setConfirmed(false); setOverride(null);
   }
 
   const result = mutation.data ?? null;
@@ -187,8 +226,43 @@ function BottleScan() {
     toast.success(`Rated ${c.name} ${stars}★`);
   }
 
-  const extracted = result?.extracted;
+  const rawExtracted = result?.extracted;
+  const extracted = editedRead ?? rawExtracted;
   const looksLikeMenu = result?.looks_like_menu === true;
+
+  // The resolution shown to the user is either the initial server-side
+  // resolution (from the raw read) or an override from re-resolving the
+  // edited read on confirm. Candidates only render once confirmed=true.
+  const resolution = override ?? (result ? {
+    candidates: result.candidates,
+    best_score: result.best_score,
+    match_quality: result.match_quality,
+    match_summary: result.match_summary,
+  } : null);
+
+  function readChanged(): boolean {
+    if (!rawExtracted || !editedRead) return false;
+    const norm = (v: string | null | undefined) => (v ?? "").trim().toLowerCase();
+    return (
+      norm(editedRead.producer)  !== norm(rawExtracted.producer)  ||
+      norm(editedRead.wine_name) !== norm(rawExtracted.wine_name) ||
+      norm(editedRead.region)    !== norm(rawExtracted.region)    ||
+      norm(editedRead.country)   !== norm(rawExtracted.country)   ||
+      norm(editedRead.grape)     !== norm(rawExtracted.grape)     ||
+      (editedRead.vintage ?? null) !== (rawExtracted.vintage ?? null) ||
+      (editedRead.type ?? null)    !== (rawExtracted.type ?? null)
+    );
+  }
+
+  function confirmRead() {
+    if (!editedRead) return;
+    if (readChanged()) {
+      resolveMut.mutate(editedRead);
+    } else {
+      setConfirmed(true);
+    }
+  }
+
 
   return (
     <div className="pt-2">
@@ -276,93 +350,115 @@ function BottleScan() {
         </div>
       )}
 
-      {result && !looksLikeMenu && extracted && (
+      {result && !looksLikeMenu && extracted && editedRead && (
         <div className="mt-6 space-y-5">
-          <ExtractedCard extracted={extracted} />
-
-          {/* Duplicate detection: have I already rated this cuvée? */}
-          {(() => {
-            const dupe = findExistingRating(extracted, ratedBottles ?? [], ratings ?? []);
-            if (!dupe) return null;
-            return (
-              <div className="rounded-md border border-primary/50 bg-primary/10 p-3 text-sm">
-                <p className="font-medium">You've rated this wine before — {dupe.stars}★</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {dupe.bottle.producer} · {dupe.bottle.name}{dupe.bottle.vintage ? ` · ${dupe.bottle.vintage}` : ""}
-                </p>
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  Rate it again below to update — we'll keep it on the same wine instead of duplicating.
-                </p>
-              </div>
-            );
-          })()}
-
-          {(result.match_quality === "confident" || result.match_quality === "ambiguous") && (
-            <p className="text-xs text-muted-foreground -mb-2">{result.match_summary}</p>
-          )}
-
-          {result.match_quality === "confident" && result.candidates[0] && (
-            <ConfidentCard
-              c={result.candidates[0]}
-              predicted={predictedForCandidate(result.candidates[0])}
-              onRate={(s) => rateCandidate(result.candidates[0], s)}
+          {!confirmed ? (
+            <ConfirmReadCard
+              read={editedRead}
+              rawConfidence={rawExtracted?.confidence ?? null}
+              photoUrl={front?.url ?? back?.url ?? null}
+              onChange={(patch: Partial<BottleExtract>) => setEditedRead({ ...editedRead, ...patch })}
+              onConfirm={confirmRead}
+              onNoneOfThese={() => setShowAdd(true)}
+              busy={resolveMut.isPending}
             />
-          )}
+          ) : (
+            <>
+              {/* Duplicate detection: have I already rated this cuvée? */}
+              {(() => {
+                const dupe = findExistingRating(extracted, ratedBottles ?? [], ratings ?? []);
+                if (!dupe) return null;
+                return (
+                  <div className="rounded-md border border-primary/50 bg-primary/10 p-3 text-sm">
+                    <p className="font-medium">You've rated this wine before — {dupe.stars}★</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {dupe.bottle.producer} · {dupe.bottle.name}{dupe.bottle.vintage ? ` · ${dupe.bottle.vintage}` : ""}
+                    </p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      Rate it again below to update — we'll keep it on the same wine instead of duplicating.
+                    </p>
+                  </div>
+                );
+              })()}
 
-          {result.match_quality === "ambiguous" && (
-            <div>
-              <div className="flex items-baseline justify-between gap-3">
-                <p className="text-sm font-medium">Is it one of these?</p>
-                <p className="text-[11px] text-muted-foreground">Top {Math.min(3, result.candidates.length)} matches — compare & pick</p>
-              </div>
-              <ul className="mt-3 space-y-3">
-                {result.candidates.slice(0, 3).map((c, idx) => (
-                  <CompareCard
-                    key={c.id}
-                    c={c}
-                    rank={idx + 1}
-                    extracted={extracted}
-                    predicted={predictedForCandidate(c)}
-                    onRate={(s) => rateCandidate(c, s)}
-                  />
-                ))}
-              </ul>
-              <div className="mt-4 rounded-md border-2 border-dashed border-primary/50 bg-primary/5 p-3">
-                <p className="text-sm font-medium">None of these match?</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  Add it as a new community bottle — we'll pre-fill everything from the label. Only the wine name is required.
-                </p>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-primary">Confirmed</p>
                 <button
-                  onClick={() => setShowAdd(true)}
-                  className="mt-2 w-full rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm font-medium"
+                  onClick={() => setConfirmed(false)}
+                  className="text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-2"
                 >
-                  Add as new bottle →
+                  Edit read
                 </button>
               </div>
-            </div>
-          )}
 
+              {resolution && (resolution.match_quality === "confident" || resolution.match_quality === "ambiguous") && (
+                <p className="text-xs text-muted-foreground -mb-2">{resolution.match_summary}</p>
+              )}
 
-          {result.match_quality === "none" && (
-            <div className="rounded-md border border-dashed border-border bg-card/40 p-4">
-              <p className="text-sm font-medium">
-                {extracted.producer || extracted.wine_name
-                  ? "No confident catalog match — add it as a community bottle."
-                  : "Couldn't read this label — enter the wine name to continue."}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Everything we could read is pre-filled. Only the wine name is required.
-              </p>
-              <button
-                onClick={() => setShowAdd(true)}
-                className="mt-3 w-full rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm font-medium"
-              >
-                Add this bottle →
-              </button>
-            </div>
+              {resolution?.match_quality === "confident" && resolution.candidates[0] && (
+                <ConfidentCard
+                  c={resolution.candidates[0]}
+                  predicted={predictedForCandidate(resolution.candidates[0])}
+                  onRate={(s) => rateCandidate(resolution.candidates[0], s)}
+                />
+              )}
+
+              {resolution?.match_quality === "ambiguous" && (
+                <div>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <p className="text-sm font-medium">Is it one of these?</p>
+                    <p className="text-[11px] text-muted-foreground">Top {Math.min(3, resolution.candidates.length)} matches — compare & pick</p>
+                  </div>
+                  <ul className="mt-3 space-y-3">
+                    {resolution.candidates.slice(0, 3).map((c, idx) => (
+                      <CompareCard
+                        key={c.id}
+                        c={c}
+                        rank={idx + 1}
+                        extracted={extracted}
+                        predicted={predictedForCandidate(c)}
+                        onRate={(s) => rateCandidate(c, s)}
+                      />
+                    ))}
+                  </ul>
+                  <div className="mt-4 rounded-md border-2 border-dashed border-primary/50 bg-primary/5 p-3">
+                    <p className="text-sm font-medium">None of these match?</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Add it as a new community bottle — we'll pre-fill everything from your confirmed read. Only the wine name is required.
+                    </p>
+                    <button
+                      onClick={() => setShowAdd(true)}
+                      className="mt-2 w-full rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm font-medium"
+                    >
+                      Add as new bottle →
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {resolution?.match_quality === "none" && (
+                <div className="rounded-md border border-dashed border-border bg-card/40 p-4">
+                  <p className="text-sm font-medium">
+                    {extracted.producer || extracted.wine_name
+                      ? "No confident catalog match — add it as a community bottle."
+                      : "Couldn't read this label — enter the wine name to continue."}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Your confirmed read is pre-filled. Only the wine name is required.
+                  </p>
+                  <button
+                    onClick={() => setShowAdd(true)}
+                    className="mt-3 w-full rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm font-medium"
+                  >
+                    Add this bottle →
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
+
 
       {showAdd && (
         <AddBottleDialog
@@ -680,6 +776,154 @@ function findExistingRating(
   }
   return best;
 }
+
+
+// ---------- Editable confirm screen (the make-or-break) ----------
+//
+// After vision reads the label, the human confirms or fixes each field
+// BEFORE anything resolves to a catalog wine or writes a rating.
+// Low-confidence fields (or empty fields) render with an amber ring so
+// the user knows what to double-check. The photo stays visible.
+
+function ConfirmReadCard({
+  read, rawConfidence, photoUrl, onChange, onConfirm, onNoneOfThese, busy,
+}: {
+  read: BottleExtract;
+  rawConfidence: "high" | "medium" | "low" | null | undefined;
+  photoUrl: string | null;
+  onChange: (patch: Partial<BottleExtract>) => void;
+  onConfirm: () => void;
+  onNoneOfThese: () => void;
+  busy: boolean;
+}) {
+  // Field is "low-confidence" when either (a) the whole read was flagged
+  // medium/low, or (b) the field itself is empty / null. In either case
+  // we want the human's eye on it.
+  const shaky = rawConfidence !== "high";
+  const highlight = (v: string | number | null | undefined) =>
+    (shaky || v == null || v === "")
+      ? "border-amber-500/60 bg-amber-500/5"
+      : "border-border bg-background";
+
+  const producerBlank = !read.producer?.trim();
+  const nameBlank = !read.wine_name?.trim();
+  const missingCore = producerBlank && nameBlank;
+
+  return (
+    <div className="rounded-lg border-2 border-primary/40 bg-card p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-primary">Confirm the read</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Check what we pulled off the label before we look it up. Amber fields may have been inferred.
+          </p>
+        </div>
+        {photoUrl && (
+          <img
+            src={photoUrl}
+            alt="Scanned label"
+            className="shrink-0 h-20 w-20 object-cover rounded-md border border-border"
+          />
+        )}
+      </div>
+
+      <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <ConfirmField label="Producer" required value={read.producer ?? ""} highlightClass={highlight(read.producer)}
+          onChange={(v) => onChange({ producer: v || null })} placeholder="e.g. Château Margaux" />
+        <ConfirmField label="Cuvée / wine name" value={read.wine_name ?? ""} highlightClass={highlight(read.wine_name)}
+          onChange={(v) => onChange({ wine_name: v || null })} placeholder="Leave empty for producer-only labels" />
+        <ConfirmField label="Vintage" value={read.vintage != null ? String(read.vintage) : ""} highlightClass={highlight(read.vintage)}
+          onChange={(v) => {
+            const n = v.replace(/[^0-9]/g, "").slice(0, 4);
+            onChange({ vintage: n.length === 4 ? Number(n) : null });
+          }} placeholder="Ask, don't guess" inputMode="numeric" />
+        <ConfirmField label="Region / appellation" value={read.region ?? ""} highlightClass={highlight(read.region)}
+          onChange={(v) => onChange({ region: v || null })} placeholder="e.g. Margaux, Bordeaux" />
+        <ConfirmField label="Country" value={read.country ?? ""} highlightClass={highlight(read.country)}
+          onChange={(v) => onChange({ country: v || null })} placeholder="France" />
+        <ConfirmField label="Grape(s)" value={read.grape ?? ""} highlightClass={highlight(read.grape)}
+          onChange={(v) => onChange({ grape: v || null })} placeholder="Nebbiolo · often inferred" />
+        <div className="block">
+          <label className="block text-[11px] font-medium text-foreground mb-1.5">Type</label>
+          <select
+            value={read.type ?? "red"}
+            onChange={(e) => onChange({ type: e.target.value as BottleExtract["type"] })}
+            className={`w-full rounded-md border px-3 py-2 text-sm outline-none transition ${highlight(read.type)}`}
+          >
+            <option value="red">Red</option>
+            <option value="white">White</option>
+            <option value="rose">Rosé</option>
+            <option value="sparkling">Sparkling</option>
+            <option value="dessert">Dessert</option>
+          </select>
+        </div>
+      </div>
+
+      {read.vintage == null && (
+        <p className="mt-3 text-[11px] text-amber-700 dark:text-amber-400">
+          No vintage read — style shifts by year, so leaving this blank matches the wine but not the specific bottle.
+        </p>
+      )}
+
+      <div className="mt-4 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
+        <p className="text-[11px] text-muted-foreground">
+          Nothing is saved until you confirm.
+        </p>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onNoneOfThese}
+            className="rounded-md border border-border bg-background px-3 py-2 text-xs font-medium hover:bg-accent"
+          >
+            Add as new bottle
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={busy || missingCore}
+            className="rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-semibold disabled:opacity-50"
+          >
+            {busy ? "Re-checking catalog…" : "Confirm & find in catalog →"}
+          </button>
+        </div>
+      </div>
+      {missingCore && (
+        <p className="mt-2 text-[11px] text-destructive">
+          At least a producer or wine name is required.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function ConfirmField({
+  label, value, onChange, placeholder, required, inputMode, highlightClass,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  required?: boolean;
+  inputMode?: "text" | "numeric";
+  highlightClass: string;
+}) {
+  return (
+    <div className="block">
+      <label className="block text-[11px] font-medium text-foreground mb-1.5">
+        {label}{required && <span className="text-destructive"> *</span>}
+      </label>
+      <input
+        type="text"
+        inputMode={inputMode}
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        className={`w-full rounded-md border px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 transition ${highlightClass}`}
+      />
+    </div>
+  );
+}
+
 
 
 
