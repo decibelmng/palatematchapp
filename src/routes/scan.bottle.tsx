@@ -193,7 +193,7 @@ function BottleScan() {
   return (
     <div className="pt-2">
       <div className="flex items-center gap-3 text-xs">
-        <Link to="/scan" className="text-muted-foreground hover:text-foreground">← Scan</Link>
+        <Link to="/" className="text-muted-foreground hover:text-foreground">← Home</Link>
       </div>
       <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">Scan a bottle</p>
       <h1 className="font-serif text-3xl mt-2">Point at the label</h1>

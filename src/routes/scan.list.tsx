@@ -1039,10 +1039,6 @@ function RestaurantAttribution({ scanId }: { scanId: string }) {
     return (
       <div className="mt-4 rounded-md border border-primary/40 bg-primary/5 p-3 text-xs">
         <p className="text-foreground">Saved to <span className="font-medium">{attributed.name}</span>.</p>
-        <Link to="/restaurants/$id" params={{ id: attributed.id }}
-          className="mt-1 inline-block text-primary underline underline-offset-2">
-          View restaurant page →
-        </Link>
       </div>
     );
   }

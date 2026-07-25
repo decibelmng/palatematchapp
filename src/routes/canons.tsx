@@ -231,11 +231,11 @@ function CanonsPage() {
       )}
 
       <div className="mt-10 flex flex-wrap gap-2">
-        <Link to="/" className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent">
+        <Link to="/palate" className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent">
           ← Back to palate
         </Link>
-        <Link to="/matches" className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent">
-          See your matches
+        <Link to="/" className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent">
+          Scan a wine list
         </Link>
       </div>
 
