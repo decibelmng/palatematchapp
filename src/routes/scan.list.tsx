@@ -605,16 +605,12 @@ function Scan() {
 
 
 
+  const inScanFlow = staged.length > 0 || isRunning || !!scanId;
+
   return (
     <div className="pt-2">
-      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Scan a list</p>
-      <h1 className="font-serif text-3xl mt-2">Photograph a wine list</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        I'll read every wine on the list and rank them by predicted stars for your palate.
-      </p>
-
       {showResumeBanner && (
-        <div className="mt-4 rounded-md border border-primary/40 bg-primary/5 p-3 text-sm flex items-start justify-between gap-3">
+        <div className="mt-2 rounded-md border border-primary/40 bg-primary/5 p-3 text-sm flex items-start justify-between gap-3">
           <div>
             <p className="font-medium">Resuming your last scan · {new Date(resumedAt!).toLocaleTimeString()}</p>
             <p className="text-xs text-muted-foreground mt-0.5">
@@ -630,23 +626,6 @@ function Scan() {
         </div>
       )}
 
-      <PrescanRestaurantPicker
-        value={prescanRestaurant}
-        onChange={setPrescanRestaurant}
-        disabled={isRunning || !!scanId}
-      />
-
-      {!scanId && !isRunning && (
-        <div className="mt-4">
-          <DrinkingGroupSelector
-            selectedIds={group.friendIds}
-            onToggle={group.toggle}
-            onClear={group.clear}
-            onSet={group.set}
-          />
-        </div>
-      )}
-
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden"
         onChange={(e) => onPick(e.target.files, e.currentTarget)} />
       <input ref={libraryRef} type="file" accept="image/*" multiple className="hidden"
@@ -659,7 +638,7 @@ function Scan() {
         disabled={isRunning || staged.length >= 8}
         data-testid="scan-entry-camera"
         aria-label="Scan a wine list with your camera"
-        className="mt-5 block w-full text-left rounded-[16px] border-2 border-primary/60 bg-gradient-to-br from-primary/15 via-card to-card p-4 shadow-[var(--pm-card-shadow)] hover:border-primary transition disabled:opacity-60"
+        className="mt-2 block w-full text-left rounded-[16px] border-2 border-primary/60 bg-gradient-to-br from-primary/15 via-card to-card p-4 shadow-[var(--pm-card-shadow)] hover:border-primary transition disabled:opacity-60"
       >
         <div className="flex items-center gap-3">
           <div className="shrink-0 h-12 w-12 rounded-xl bg-primary/20 text-primary flex items-center justify-center">
@@ -687,6 +666,30 @@ function Scan() {
       >
         <ImageIcon size={14} /> Upload photos instead (up to 8 pages)
       </button>
+
+      {/* Setup (restaurant / drinking group) — only inside an active scan flow */}
+      {inScanFlow && (
+        <>
+          <PrescanRestaurantPicker
+            value={prescanRestaurant}
+            onChange={setPrescanRestaurant}
+            disabled={isRunning || !!scanId}
+          />
+          {!scanId && !isRunning && (
+            <div className="mt-4">
+              <DrinkingGroupSelector
+                selectedIds={group.friendIds}
+                onToggle={group.toggle}
+                onClear={group.clear}
+                onSet={group.set}
+              />
+            </div>
+          )}
+        </>
+      )}
+
+      {/* Past scans history — shown when idle, mirrors Rate's "your ratings" list */}
+      {!inScanFlow && !showResumeBanner && <PastScansHistory />}
 
       {(staged.length > 0 || (scanId && !isRunning)) && (
         <div className="mt-3 flex flex-wrap gap-3">
