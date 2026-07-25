@@ -9,9 +9,11 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as WishlistRouteImport } from './routes/wishlist'
 import { Route as ScanRouteImport } from './routes/scan'
 import { Route as RateRouteImport } from './routes/rate'
 import { Route as FriendsRouteImport } from './routes/friends'
+import { Route as FeedRouteImport } from './routes/feed'
 import { Route as CanonsRouteImport } from './routes/canons'
 import { Route as AuditRouteImport } from './routes/audit'
 import { Route as IndexRouteImport } from './routes/index'
@@ -30,6 +32,11 @@ import { Route as AdminCorrectionsRouteImport } from './routes/admin.corrections
 import { Route as AdminConsensusRouteImport } from './routes/admin.consensus'
 import { Route as AddFriendUsernameRouteImport } from './routes/add-friend.$username'
 
+const WishlistRoute = WishlistRouteImport.update({
+  id: '/wishlist',
+  path: '/wishlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ScanRoute = ScanRouteImport.update({
   id: '/scan',
   path: '/scan',
@@ -43,6 +50,11 @@ const RateRoute = RateRouteImport.update({
 const FriendsRoute = FriendsRouteImport.update({
   id: '/friends',
   path: '/friends',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FeedRoute = FeedRouteImport.update({
+  id: '/feed',
+  path: '/feed',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CanonsRoute = CanonsRouteImport.update({
@@ -135,9 +147,11 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/audit': typeof AuditRoute
   '/canons': typeof CanonsRoute
+  '/feed': typeof FeedRoute
   '/friends': typeof FriendsRoute
   '/rate': typeof RateRoute
   '/scan': typeof ScanRouteWithChildren
+  '/wishlist': typeof WishlistRoute
   '/add-friend/$username': typeof AddFriendUsernameRoute
   '/admin/consensus': typeof AdminConsensusRoute
   '/admin/corrections': typeof AdminCorrectionsRoute
@@ -157,9 +171,11 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/audit': typeof AuditRoute
   '/canons': typeof CanonsRoute
+  '/feed': typeof FeedRoute
   '/friends': typeof FriendsRoute
   '/rate': typeof RateRoute
   '/scan': typeof ScanRouteWithChildren
+  '/wishlist': typeof WishlistRoute
   '/add-friend/$username': typeof AddFriendUsernameRoute
   '/admin/consensus': typeof AdminConsensusRoute
   '/admin/corrections': typeof AdminCorrectionsRoute
@@ -180,9 +196,11 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/audit': typeof AuditRoute
   '/canons': typeof CanonsRoute
+  '/feed': typeof FeedRoute
   '/friends': typeof FriendsRoute
   '/rate': typeof RateRoute
   '/scan': typeof ScanRouteWithChildren
+  '/wishlist': typeof WishlistRoute
   '/add-friend/$username': typeof AddFriendUsernameRoute
   '/admin/consensus': typeof AdminConsensusRoute
   '/admin/corrections': typeof AdminCorrectionsRoute
@@ -204,9 +222,11 @@ export interface FileRouteTypes {
     | '/'
     | '/audit'
     | '/canons'
+    | '/feed'
     | '/friends'
     | '/rate'
     | '/scan'
+    | '/wishlist'
     | '/add-friend/$username'
     | '/admin/consensus'
     | '/admin/corrections'
@@ -226,9 +246,11 @@ export interface FileRouteTypes {
     | '/'
     | '/audit'
     | '/canons'
+    | '/feed'
     | '/friends'
     | '/rate'
     | '/scan'
+    | '/wishlist'
     | '/add-friend/$username'
     | '/admin/consensus'
     | '/admin/corrections'
@@ -248,9 +270,11 @@ export interface FileRouteTypes {
     | '/'
     | '/audit'
     | '/canons'
+    | '/feed'
     | '/friends'
     | '/rate'
     | '/scan'
+    | '/wishlist'
     | '/add-friend/$username'
     | '/admin/consensus'
     | '/admin/corrections'
@@ -271,9 +295,11 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuditRoute: typeof AuditRoute
   CanonsRoute: typeof CanonsRoute
+  FeedRoute: typeof FeedRoute
   FriendsRoute: typeof FriendsRoute
   RateRoute: typeof RateRoute
   ScanRoute: typeof ScanRouteWithChildren
+  WishlistRoute: typeof WishlistRoute
   AddFriendUsernameRoute: typeof AddFriendUsernameRoute
   AdminConsensusRoute: typeof AdminConsensusRoute
   AdminCorrectionsRoute: typeof AdminCorrectionsRoute
@@ -290,6 +316,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/wishlist': {
+      id: '/wishlist'
+      path: '/wishlist'
+      fullPath: '/wishlist'
+      preLoaderRoute: typeof WishlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/scan': {
       id: '/scan'
       path: '/scan'
@@ -309,6 +342,13 @@ declare module '@tanstack/react-router' {
       path: '/friends'
       fullPath: '/friends'
       preLoaderRoute: typeof FriendsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/feed': {
+      id: '/feed'
+      path: '/feed'
+      fullPath: '/feed'
+      preLoaderRoute: typeof FeedRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/canons': {
@@ -449,9 +489,11 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuditRoute: AuditRoute,
   CanonsRoute: CanonsRoute,
+  FeedRoute: FeedRoute,
   FriendsRoute: FriendsRoute,
   RateRoute: RateRoute,
   ScanRoute: ScanRouteWithChildren,
+  WishlistRoute: WishlistRoute,
   AddFriendUsernameRoute: AddFriendUsernameRoute,
   AdminConsensusRoute: AdminConsensusRoute,
   AdminCorrectionsRoute: AdminCorrectionsRoute,

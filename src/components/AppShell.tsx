@@ -1,6 +1,6 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ScanLine, Pencil, Star, Crown, Moon, Sun } from "lucide-react";
+import { ScanLine, Pencil, Star, Crown, Moon, Sun, Users, Bookmark } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
@@ -9,9 +9,11 @@ import { useMyProfile } from "@/hooks/use-friends";
 import { markScanUnlockSeen } from "@/lib/friends.functions";
 import { useTheme } from "@/lib/theme";
 import { useRatingsCount, UNLOCK_THRESHOLD } from "@/components/UnlockMeter";
+import { useFeedActivity, hasFreshActivity } from "@/hooks/use-feed";
 
 const TABS = [
   { to: "/", label: "Scan", Icon: ScanLine },
+  { to: "/feed", label: "Feed", Icon: Users },
   { to: "/rate", label: "Rate", Icon: Pencil },
   { to: "/palate", label: "Palate", Icon: Star },
 ] as const;
