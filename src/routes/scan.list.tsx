@@ -1519,22 +1519,19 @@ function ScanThumbBar({
   controls: Controls;
   setControls: (c: Controls) => void;
 }) {
-  // Solid toolbar docked directly above the AppShell tab bar (~64px tall).
-  // Full-width, opaque background, no floating pills. Content behind it
-  // scrolls but does not show through (see .scan-decision pb-40).
+  // Static inline toolbar that lives in the content flow (no fixed overlay).
   return (
     <div
-      className="fixed inset-x-0 z-30 border-t border-border bg-background"
-      style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 64px)" }}
+      className="mt-6 rounded-xl border border-border bg-card"
       role="toolbar"
       aria-label="Scan result actions"
     >
-      <div className="mx-auto max-w-xl flex items-center gap-2 px-4 py-2">
+      <div className="flex items-center gap-2 px-3 py-2">
         <button
           type="button"
           onClick={onRescan}
           aria-label="Re-scan"
-          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-card text-foreground text-sm font-medium min-h-11 px-3 whitespace-nowrap overflow-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:bg-accent"
+          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-background text-foreground text-sm font-medium min-h-11 px-3 whitespace-nowrap overflow-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:bg-accent"
         >
           <span aria-hidden>↻</span>
           <span className="truncate">Re-scan</span>
@@ -1547,7 +1544,7 @@ function ScanThumbBar({
           className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border text-sm font-medium min-h-11 px-3 whitespace-nowrap overflow-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
             boosted
               ? "border-primary bg-primary text-primary-foreground"
-              : "border-border bg-card text-foreground active:bg-accent"
+              : "border-border bg-background text-foreground active:bg-accent"
           }`}
         >
           <span aria-hidden>☀</span>
