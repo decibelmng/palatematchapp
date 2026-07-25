@@ -105,6 +105,12 @@ export function DrinkingGroupSelector({ selectedIds, onToggle, onClear, onSet }:
             {recent.map((g) => {
               const validIds = g.ids.filter((id) => friendById.has(id));
               if (validIds.length === 0) return null;
+              // Recompute label from current friend records so previously
+              // stored raw handles (e.g. "You + user_c808a310") never render.
+              const label = [
+                "You",
+                ...validIds.map((id) => displayNameFor(friendById.get(id)?.other ?? null)),
+              ].join(" + ");
               return (
                 <button
                   key={g.usedAt}
@@ -112,7 +118,7 @@ export function DrinkingGroupSelector({ selectedIds, onToggle, onClear, onSet }:
                   onClick={() => onSet(validIds)}
                   className="rounded-full px-2.5 py-1 text-[11px] border border-border bg-background hover:bg-accent"
                 >
-                  {g.label}
+                  {label}
                 </button>
               );
             })}
