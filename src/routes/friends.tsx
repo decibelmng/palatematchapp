@@ -12,6 +12,7 @@ import {
   useRespondFriendship,
   useUpdateProfile,
 } from "@/hooks/use-friends";
+import { displayNameFor, handleForDisplay } from "@/lib/user-display";
 
 export const Route = createFileRoute("/friends")({
   ssr: false,
