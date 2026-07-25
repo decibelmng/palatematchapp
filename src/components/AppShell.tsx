@@ -24,12 +24,11 @@ const TABS_RIGHT: ReadonlyArray<{ to: TabTo; label: string; Icon: typeof Star }>
   { to: "/feed", label: "Feed", Icon: Users },
 ];
 
+// Legacy shim — retained so downstream isActive/A2HS code below is unaffected.
+// Prefer initialsFor from @/lib/user-display for new callers.
+import { initialsFor as sharedInitialsFor } from "@/lib/user-display";
 function initialsFor(name: string | null | undefined): string {
-  if (!name) return "•";
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "•";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return sharedInitialsFor({ display_name: name, username: null });
 }
 
 function isActive(pathname: string, to: TabTo): boolean {
@@ -82,10 +81,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { data: profile } = useMyProfile();
   useLastSeenPing((profile as { id?: string } | undefined)?.id);
   const { theme, toggle } = useTheme();
-  const initials = initialsFor(
-    (profile as { display_name?: string | null; username?: string | null } | undefined)?.display_name
-      ?? (profile as { username?: string | null } | undefined)?.username
-      ?? null,
+  const initials = sharedInitialsFor(
+    profile as { display_name?: string | null; username?: string | null } | undefined ?? null,
   );
 
   useEffect(() => { setMenuOpen(false); }, [pathname]);

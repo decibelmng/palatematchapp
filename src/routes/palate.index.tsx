@@ -24,6 +24,7 @@ import { NameWithHandle } from "@/components/profile/NameWithHandle";
 import { AvatarUpload } from "@/components/profile/AvatarUpload";
 import { GraduationCap, Settings2 } from "lucide-react";
 import { CalibrationMeter } from "@/components/CalibrationMeter";
+import { displayNameFor, initialsFor } from "@/lib/user-display";
 
 
 export const Route = createFileRoute("/palate/")({
@@ -109,8 +110,8 @@ function PalateHome() {
   const memberSince = profile?.created_at
     ? new Date(profile.created_at).toLocaleDateString(undefined, { month: "short", year: "numeric" })
     : "";
-  const displayName = profile?.display_name || profile?.username || "";
-  const initial = (displayName[0] || "?").toUpperCase();
+  const displayName = displayNameFor(profile ?? null);
+  const initial = initialsFor(profile ?? null).charAt(0);
 
   // Inline viz for the active scope.
   const scoped = scope === "red" ? redRated : whiteRated;

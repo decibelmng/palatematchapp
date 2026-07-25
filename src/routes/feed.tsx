@@ -11,6 +11,7 @@ import {
   useSendFriendRequest,
   useRespondFriendship,
 } from "@/hooks/use-friends";
+import { displayNameFor, handleForDisplay, initialsFor } from "@/lib/user-display";
 
 export const Route = createFileRoute("/feed")({
   head: () => ({
@@ -34,12 +35,9 @@ function FeedPage() {
   );
 }
 
+// Local shims kept for backwards compatibility with existing call sites.
 function initials(name: string | null | undefined, username: string) {
-  const s = (name || username || "?").trim();
-  const parts = s.split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "?";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return initialsFor({ display_name: name, username });
 }
 
 function FriendsSection() {
@@ -80,21 +78,26 @@ function FriendsSection() {
             {!search.isFetching && (search.data ?? []).length === 0 && (
               <li className="px-3 py-2 text-xs text-muted-foreground">No matches.</li>
             )}
-            {(search.data ?? []).map((h) => (
-              <li key={h.user_id} className="flex items-center justify-between gap-2 px-3 py-2">
-                <div className="min-w-0">
-                  <p className="text-sm font-medium truncate">{h.display_name || h.username}</p>
-                  <p className="text-[11px] text-muted-foreground truncate">@{h.username}</p>
-                </div>
-                <button
-                  onClick={() => send.mutate({ user_id: h.user_id })}
-                  disabled={send.isPending}
-                  className="shrink-0 rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-xs disabled:opacity-50"
-                >
-                  Add
-                </button>
-              </li>
-            ))}
+            {(search.data ?? []).map((h) => {
+              const name = displayNameFor(h);
+              const handle = handleForDisplay(h.username);
+              return (
+                <li key={h.user_id} className="flex items-center justify-between gap-2 px-3 py-2">
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium truncate">{name}</p>
+                    {handle && <p className="text-[11px] text-muted-foreground truncate">@{handle}</p>}
+                  </div>
+                  <button
+                    onClick={() => send.mutate({ user_id: h.user_id })}
+                    disabled={send.isPending}
+                    aria-label={`Add ${name}`}
+                    className="shrink-0 rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-xs disabled:opacity-50"
+                  >
+                    Add
+                  </button>
+                </li>
+              );
+            })}
           </ul>
         )}
       </div>
@@ -106,7 +109,7 @@ function FriendsSection() {
             <li key={f.id} className="flex items-center justify-between gap-2 px-3 py-2">
               <div className="min-w-0">
                 <p className="text-[10px] uppercase text-primary tracking-wider">Request</p>
-                <p className="text-sm font-medium truncate">{f.other.display_name || f.other.username}</p>
+                <p className="text-sm font-medium truncate">{displayNameFor(f.other)}</p>
               </div>
               <div className="flex gap-1.5">
                 <button
@@ -142,7 +145,7 @@ function FriendsSection() {
           <span className="text-[10px] text-muted-foreground truncate max-w-full">Add</span>
         </Link>
         {friends.map((f) => {
-          const name = f.other.display_name || f.other.username;
+          const name = displayNameFor(f.other);
           return (
             <Link
               key={f.id}
