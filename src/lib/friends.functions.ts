@@ -247,6 +247,23 @@ export const getMyProfile = createServerFn({ method: "GET" })
     return data;
   });
 
+// -------- Mark the "Scan unlocked" celebration as seen (one-shot, per user) --------
+
+export const markScanUnlockSeen = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const { error } = await supabase
+      .from("profiles")
+      .update({ scan_unlock_seen: true })
+      .eq("id", userId)
+      .eq("scan_unlock_seen", false);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+
+
 // -------- Recent drinking groups (persisted on the profile) --------
 
 export type RecentGroup = { ids: string[]; label: string; usedAt: number };
