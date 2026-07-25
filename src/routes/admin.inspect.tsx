@@ -214,20 +214,56 @@ function AdminInspect() {
                   />
                 </label>
                 <button
-                  onClick={() => copyText(JSON.stringify(rows.data ?? [], null, 2), "JSON")}
+                  onClick={() => copyPayload("json")}
                   disabled={!rows.data}
                   style={{ fontSize: 12, padding: "4px 8px", border: "1px solid #999", borderRadius: 4 }}
                 >
                   Copy as JSON
                 </button>
                 <button
-                  onClick={() => copyText(toCSV(rows.data ?? []), "CSV")}
+                  onClick={() => copyPayload("csv")}
                   disabled={!rows.data}
                   style={{ fontSize: 12, padding: "4px 8px", border: "1px solid #999", borderRadius: 4 }}
                 >
                   Copy as CSV
                 </button>
+                {status && (
+                  <span
+                    role="status"
+                    style={{
+                      fontSize: 12,
+                      padding: "3px 8px",
+                      borderRadius: 4,
+                      background: status.kind === "ok" ? "#e6f5ea" : "#fdecec",
+                      color: status.kind === "ok" ? "#186a3b" : "#a11a1a",
+                      border: "1px solid " + (status.kind === "ok" ? "#bfe3cc" : "#f2c2c2"),
+                    }}
+                  >
+                    {status.msg}
+                  </span>
+                )}
               </div>
+              {fallback !== null && (
+                <div style={{ marginTop: 8 }}>
+                  <div style={{ fontSize: 11, opacity: 0.75, marginBottom: 4 }}>
+                    Clipboard unavailable — select all and copy:
+                  </div>
+                  <textarea
+                    readOnly
+                    value={fallback}
+                    onFocus={(e) => e.currentTarget.select()}
+                    style={{
+                      width: "100%",
+                      minHeight: 120,
+                      fontFamily: "ui-monospace, monospace",
+                      fontSize: 11,
+                      padding: 8,
+                      border: "1px solid #f2c2c2",
+                      borderRadius: 6,
+                    }}
+                  />
+                </div>
+              )}
 
               <div style={{ marginTop: 12 }}>
                 <div style={{ fontSize: 12, fontWeight: 600, opacity: 0.7, marginBottom: 4 }}>
