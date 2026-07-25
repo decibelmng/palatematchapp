@@ -408,54 +408,71 @@ export const finalizeScan = createServerFn({ method: "POST" })
       scan_log_id = log?.id ?? null;
     } catch { /* logging best-effort */ }
 
-    // ---- Silent capture: price_observations append-only for matched wines ----
+    // ---- Silent capture: restaurant_wines + append-only price_observations ----
     // Ranking always recomputed against current palate; only *facts* land here.
+    // A capture failure MUST NOT break the user's ranked-list return.
+    //
+    // Segmentation rules of record:
+    //   - restaurant_wines is keyed by (restaurant_id, bottle_id, format) so
+    //     bottle/glass/half pours are separate listings and never overwrite.
+    //   - Unmatched lines (bottle_id null) still append price_observations
+    //     with raw_line + cuvee_key preserved. We NEVER fabricate a bottle_id.
+    //   - price_observations is append-only + timestamped: a re-scan appends
+    //     a fresh row, never overwrites.
     if (restaurantId && (rows ?? []).length > 0) {
       try {
         const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        // Also upsert restaurant_wines edges + append price_observations.
         const now = ((scan as any).scanned_at as string | null) ?? new Date().toISOString();
         for (const r of rows as any[]) {
-          if (!r.matched_bottle_id) continue;
           const amount: number | null = r.price_amount ?? null;
           const format: string = r.format ?? "bottle";
-          // Upsert restaurant_wines
-          const { data: existing } = await supabaseAdmin
-            .from("restaurant_wines")
-            .select("id,seen_count")
-            .eq("restaurant_id", restaurantId)
-            .eq("bottle_id", r.matched_bottle_id)
-            .maybeSingle();
-          if (existing) {
-            await supabaseAdmin.from("restaurant_wines").update({
-              last_seen_at: now,
-              seen_count: (existing.seen_count ?? 1) + 1,
-              menu_price: r.price ?? undefined,
-              menu_price_amount: amount ?? undefined,
-              source_scan_id: data.scan_id,
-            }).eq("id", existing.id);
-          } else {
-            await supabaseAdmin.from("restaurant_wines").insert({
-              restaurant_id: restaurantId,
-              bottle_id: r.matched_bottle_id,
-              menu_price: r.price ?? null,
-              menu_price_amount: amount,
-              first_seen_at: now,
-              last_seen_at: now,
-              seen_count: 1,
-              source_scan_id: data.scan_id,
-              added_by: userId,
-            });
+          const currency: string = r.currency ?? "USD";
+          const ckey = cuveeKey(r.producer, r.cuvee);
+
+          // Matched → upsert restaurant_wines edge, keyed by format.
+          if (r.matched_bottle_id) {
+            const { data: existing } = await supabaseAdmin
+              .from("restaurant_wines")
+              .select("id,seen_count")
+              .eq("restaurant_id", restaurantId)
+              .eq("bottle_id", r.matched_bottle_id)
+              .eq("format", format)
+              .maybeSingle();
+            if (existing) {
+              await supabaseAdmin.from("restaurant_wines").update({
+                last_seen_at: now,
+                seen_count: (existing.seen_count ?? 1) + 1,
+                menu_price: r.price ?? undefined,
+                menu_price_amount: amount ?? undefined,
+                source_scan_id: data.scan_id,
+              }).eq("id", existing.id);
+            } else {
+              await supabaseAdmin.from("restaurant_wines").insert({
+                restaurant_id: restaurantId,
+                bottle_id: r.matched_bottle_id,
+                format,
+                menu_price: r.price ?? null,
+                menu_price_amount: amount,
+                first_seen_at: now,
+                last_seen_at: now,
+                seen_count: 1,
+                source_scan_id: data.scan_id,
+                added_by: userId,
+              });
+            }
           }
-          // Append price observation (never overwrite).
+
+          // Price observation: append for matched AND unmatched lines.
+          // Unmatched keeps bottle_id null; raw_line + cuvee_key preserve the
+          // identity for future re-resolution.
           if (amount && amount > 0) {
             await supabaseAdmin.from("price_observations").insert({
               restaurant_id: restaurantId,
-              bottle_id: r.matched_bottle_id,
-              cuvee_key: cuveeKey(r.producer, r.cuvee),
-              raw_line: r.price ?? null,
+              bottle_id: r.matched_bottle_id ?? null,
+              cuvee_key: ckey || null,
+              raw_line: r.raw_text ?? r.price ?? null,
               menu_price: amount,
-              currency: r.currency ?? "USD",
+              currency,
               format,
               scan_id: data.scan_id,
               user_id: userId,
@@ -464,7 +481,7 @@ export const finalizeScan = createServerFn({ method: "POST" })
             });
           }
         }
-      } catch { /* capture is best-effort; never blocks user */ }
+      } catch { /* capture is best-effort; never blocks the user's scan result */ }
     }
 
     return { status, scan_log_id, restaurant_id: restaurantId };
