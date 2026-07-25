@@ -754,6 +754,14 @@ function Scan() {
         </div>
       )}
 
+      {enoughRatings && readable.length > 0 && lowConfTypes.length > 0 && (
+        <div className="mt-5 rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-xs text-muted-foreground">
+          <span className="text-foreground font-medium">Low confidence on {lowConfTypes.join(" & ")}</span> — you've rated{" "}
+          {lowConfTypes.map((t) => `${perTypeRated.get(t) ?? 0} ${t}`).join(", ")} so far. Rankings will sharpen once you're past {MIN_PER_TYPE} per type.{" "}
+          <Link to="/rate" className="text-primary underline underline-offset-2">Rate more →</Link>
+        </div>
+      )}
+
       {/* ============ PHASE 3: Restaurant decision surface ============ */}
       {showDecisionSurface && (
         <div
