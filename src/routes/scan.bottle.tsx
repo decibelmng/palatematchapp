@@ -350,93 +350,115 @@ function BottleScan() {
         </div>
       )}
 
-      {result && !looksLikeMenu && extracted && (
+      {result && !looksLikeMenu && extracted && editedRead && (
         <div className="mt-6 space-y-5">
-          <ExtractedCard extracted={extracted} />
-
-          {/* Duplicate detection: have I already rated this cuvée? */}
-          {(() => {
-            const dupe = findExistingRating(extracted, ratedBottles ?? [], ratings ?? []);
-            if (!dupe) return null;
-            return (
-              <div className="rounded-md border border-primary/50 bg-primary/10 p-3 text-sm">
-                <p className="font-medium">You've rated this wine before — {dupe.stars}★</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {dupe.bottle.producer} · {dupe.bottle.name}{dupe.bottle.vintage ? ` · ${dupe.bottle.vintage}` : ""}
-                </p>
-                <p className="mt-1 text-[11px] text-muted-foreground">
-                  Rate it again below to update — we'll keep it on the same wine instead of duplicating.
-                </p>
-              </div>
-            );
-          })()}
-
-          {(result.match_quality === "confident" || result.match_quality === "ambiguous") && (
-            <p className="text-xs text-muted-foreground -mb-2">{result.match_summary}</p>
-          )}
-
-          {result.match_quality === "confident" && result.candidates[0] && (
-            <ConfidentCard
-              c={result.candidates[0]}
-              predicted={predictedForCandidate(result.candidates[0])}
-              onRate={(s) => rateCandidate(result.candidates[0], s)}
+          {!confirmed ? (
+            <ConfirmReadCard
+              read={editedRead}
+              rawConfidence={rawExtracted?.confidence ?? null}
+              photoUrl={front?.url ?? back?.url ?? null}
+              onChange={(patch) => setEditedRead({ ...editedRead, ...patch })}
+              onConfirm={confirmRead}
+              onNoneOfThese={() => setShowAdd(true)}
+              busy={resolveMut.isPending}
             />
-          )}
+          ) : (
+            <>
+              {/* Duplicate detection: have I already rated this cuvée? */}
+              {(() => {
+                const dupe = findExistingRating(extracted, ratedBottles ?? [], ratings ?? []);
+                if (!dupe) return null;
+                return (
+                  <div className="rounded-md border border-primary/50 bg-primary/10 p-3 text-sm">
+                    <p className="font-medium">You've rated this wine before — {dupe.stars}★</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {dupe.bottle.producer} · {dupe.bottle.name}{dupe.bottle.vintage ? ` · ${dupe.bottle.vintage}` : ""}
+                    </p>
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      Rate it again below to update — we'll keep it on the same wine instead of duplicating.
+                    </p>
+                  </div>
+                );
+              })()}
 
-          {result.match_quality === "ambiguous" && (
-            <div>
-              <div className="flex items-baseline justify-between gap-3">
-                <p className="text-sm font-medium">Is it one of these?</p>
-                <p className="text-[11px] text-muted-foreground">Top {Math.min(3, result.candidates.length)} matches — compare & pick</p>
-              </div>
-              <ul className="mt-3 space-y-3">
-                {result.candidates.slice(0, 3).map((c, idx) => (
-                  <CompareCard
-                    key={c.id}
-                    c={c}
-                    rank={idx + 1}
-                    extracted={extracted}
-                    predicted={predictedForCandidate(c)}
-                    onRate={(s) => rateCandidate(c, s)}
-                  />
-                ))}
-              </ul>
-              <div className="mt-4 rounded-md border-2 border-dashed border-primary/50 bg-primary/5 p-3">
-                <p className="text-sm font-medium">None of these match?</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  Add it as a new community bottle — we'll pre-fill everything from the label. Only the wine name is required.
-                </p>
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[11px] uppercase tracking-[0.18em] text-primary">Confirmed</p>
                 <button
-                  onClick={() => setShowAdd(true)}
-                  className="mt-2 w-full rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm font-medium"
+                  onClick={() => setConfirmed(false)}
+                  className="text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-2"
                 >
-                  Add as new bottle →
+                  Edit read
                 </button>
               </div>
-            </div>
-          )}
 
+              {resolution && (resolution.match_quality === "confident" || resolution.match_quality === "ambiguous") && (
+                <p className="text-xs text-muted-foreground -mb-2">{resolution.match_summary}</p>
+              )}
 
-          {result.match_quality === "none" && (
-            <div className="rounded-md border border-dashed border-border bg-card/40 p-4">
-              <p className="text-sm font-medium">
-                {extracted.producer || extracted.wine_name
-                  ? "No confident catalog match — add it as a community bottle."
-                  : "Couldn't read this label — enter the wine name to continue."}
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Everything we could read is pre-filled. Only the wine name is required.
-              </p>
-              <button
-                onClick={() => setShowAdd(true)}
-                className="mt-3 w-full rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm font-medium"
-              >
-                Add this bottle →
-              </button>
-            </div>
+              {resolution?.match_quality === "confident" && resolution.candidates[0] && (
+                <ConfidentCard
+                  c={resolution.candidates[0]}
+                  predicted={predictedForCandidate(resolution.candidates[0])}
+                  onRate={(s) => rateCandidate(resolution.candidates[0], s)}
+                />
+              )}
+
+              {resolution?.match_quality === "ambiguous" && (
+                <div>
+                  <div className="flex items-baseline justify-between gap-3">
+                    <p className="text-sm font-medium">Is it one of these?</p>
+                    <p className="text-[11px] text-muted-foreground">Top {Math.min(3, resolution.candidates.length)} matches — compare & pick</p>
+                  </div>
+                  <ul className="mt-3 space-y-3">
+                    {resolution.candidates.slice(0, 3).map((c, idx) => (
+                      <CompareCard
+                        key={c.id}
+                        c={c}
+                        rank={idx + 1}
+                        extracted={extracted}
+                        predicted={predictedForCandidate(c)}
+                        onRate={(s) => rateCandidate(c, s)}
+                      />
+                    ))}
+                  </ul>
+                  <div className="mt-4 rounded-md border-2 border-dashed border-primary/50 bg-primary/5 p-3">
+                    <p className="text-sm font-medium">None of these match?</p>
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      Add it as a new community bottle — we'll pre-fill everything from your confirmed read. Only the wine name is required.
+                    </p>
+                    <button
+                      onClick={() => setShowAdd(true)}
+                      className="mt-2 w-full rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm font-medium"
+                    >
+                      Add as new bottle →
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {resolution?.match_quality === "none" && (
+                <div className="rounded-md border border-dashed border-border bg-card/40 p-4">
+                  <p className="text-sm font-medium">
+                    {extracted.producer || extracted.wine_name
+                      ? "No confident catalog match — add it as a community bottle."
+                      : "Couldn't read this label — enter the wine name to continue."}
+                  </p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Your confirmed read is pre-filled. Only the wine name is required.
+                  </p>
+                  <button
+                    onClick={() => setShowAdd(true)}
+                    className="mt-3 w-full rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm font-medium"
+                  >
+                    Add this bottle →
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
       )}
+
 
       {showAdd && (
         <AddBottleDialog
