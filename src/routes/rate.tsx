@@ -9,6 +9,7 @@ import { WineTypeBadge } from "@/components/WineTypeBadge";
 import { YourRatingsList } from "@/components/YourRatingsList";
 import { supabase } from "@/integrations/supabase/client";
 import { AddBottleDialog } from "@/components/AddBottleDialog";
+import { UnlockMeter } from "@/components/UnlockMeter";
 
 
 export const Route = createFileRoute("/rate")({
