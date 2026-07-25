@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { AppShell } from "@/components/AppShell";
 import { AuthGate } from "@/components/AuthGate";
 import { FeedCard } from "@/components/FeedCard";
 import { useFriendsFeed, useFeedActivity, markFeedSeen } from "@/hooks/use-feed";
+import { useAcceptedFriends } from "@/hooks/use-friends";
+import { UserPlus } from "lucide-react";
 
 export const Route = createFileRoute("/feed")({
   head: () => ({
@@ -22,10 +23,62 @@ export const Route = createFileRoute("/feed")({
 function FeedPage() {
   return (
     <AuthGate>
-      <AppShell>
-        <FeedContent />
-      </AppShell>
+      <FeedContent />
     </AuthGate>
+  );
+}
+
+function initials(name: string | null | undefined, username: string) {
+  const s = (name || username || "?").trim();
+  const parts = s.split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return "?";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+}
+
+function FriendsStrip() {
+  const { data: friends = [], isLoading } = useAcceptedFriends();
+  if (isLoading) return null;
+  return (
+    <section aria-labelledby="friends-strip" className="rounded-[14px] border-[0.5px] border-border bg-card/60 p-3">
+      <div className="flex items-baseline justify-between">
+        <h2 id="friends-strip" className="text-[10px] uppercase text-muted-foreground" style={{ letterSpacing: "0.22em" }}>
+          Friends
+        </h2>
+        <Link to="/friends" className="text-[11px] text-primary hover:underline">
+          Find friends →
+        </Link>
+      </div>
+      <div className="mt-3 flex items-start gap-3 overflow-x-auto pb-1 -mx-1 px-1">
+        <Link
+          to="/friends"
+          aria-label="Find friends"
+          className="shrink-0 flex flex-col items-center gap-1.5 w-14"
+        >
+          <div className="h-12 w-12 rounded-full border border-dashed border-primary/60 text-primary flex items-center justify-center">
+            <UserPlus size={18} />
+          </div>
+          <span className="text-[10px] text-muted-foreground truncate max-w-full">Add</span>
+        </Link>
+        {friends.map((f) => {
+          const name = f.other.display_name || f.other.username;
+          return (
+            <Link
+              key={f.id}
+              to="/u/$username"
+              params={{ username: f.other.username }}
+              className="shrink-0 flex flex-col items-center gap-1.5 w-14"
+              aria-label={`Open ${name}'s profile`}
+            >
+              <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center font-serif text-sm">
+                {initials(f.other.display_name, f.other.username)}
+              </div>
+              <span className="text-[10px] text-foreground truncate max-w-full">{name}</span>
+            </Link>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -46,6 +99,9 @@ function FeedContent() {
           Wishlist →
         </Link>
       </div>
+
+      {/* Friends first — social graph on top, not buried under an empty state. */}
+      <FriendsStrip />
 
       {feed.isLoading ? (
         <div className="text-sm text-muted-foreground">Loading…</div>
