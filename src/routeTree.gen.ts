@@ -23,6 +23,7 @@ import { Route as PalateTypeRouteImport } from './routes/palate.$type'
 import { Route as AdminInspectRouteImport } from './routes/admin.inspect'
 import { Route as AdminDisputesRouteImport } from './routes/admin.disputes'
 import { Route as AdminDataRouteImport } from './routes/admin.data'
+import { Route as AdminCorrectionsRouteImport } from './routes/admin.corrections'
 import { Route as AddFriendUsernameRouteImport } from './routes/add-friend.$username'
 
 const ScanRoute = ScanRouteImport.update({
@@ -95,6 +96,11 @@ const AdminDataRoute = AdminDataRouteImport.update({
   path: '/admin/data',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminCorrectionsRoute = AdminCorrectionsRouteImport.update({
+  id: '/admin/corrections',
+  path: '/admin/corrections',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AddFriendUsernameRoute = AddFriendUsernameRouteImport.update({
   id: '/add-friend/$username',
   path: '/add-friend/$username',
@@ -109,6 +115,7 @@ export interface FileRoutesByFullPath {
   '/rate': typeof RateRoute
   '/scan': typeof ScanRouteWithChildren
   '/add-friend/$username': typeof AddFriendUsernameRoute
+  '/admin/corrections': typeof AdminCorrectionsRoute
   '/admin/data': typeof AdminDataRoute
   '/admin/disputes': typeof AdminDisputesRoute
   '/admin/inspect': typeof AdminInspectRoute
@@ -126,6 +133,7 @@ export interface FileRoutesByTo {
   '/rate': typeof RateRoute
   '/scan': typeof ScanRouteWithChildren
   '/add-friend/$username': typeof AddFriendUsernameRoute
+  '/admin/corrections': typeof AdminCorrectionsRoute
   '/admin/data': typeof AdminDataRoute
   '/admin/disputes': typeof AdminDisputesRoute
   '/admin/inspect': typeof AdminInspectRoute
@@ -144,6 +152,7 @@ export interface FileRoutesById {
   '/rate': typeof RateRoute
   '/scan': typeof ScanRouteWithChildren
   '/add-friend/$username': typeof AddFriendUsernameRoute
+  '/admin/corrections': typeof AdminCorrectionsRoute
   '/admin/data': typeof AdminDataRoute
   '/admin/disputes': typeof AdminDisputesRoute
   '/admin/inspect': typeof AdminInspectRoute
@@ -163,6 +172,7 @@ export interface FileRouteTypes {
     | '/rate'
     | '/scan'
     | '/add-friend/$username'
+    | '/admin/corrections'
     | '/admin/data'
     | '/admin/disputes'
     | '/admin/inspect'
@@ -180,6 +190,7 @@ export interface FileRouteTypes {
     | '/rate'
     | '/scan'
     | '/add-friend/$username'
+    | '/admin/corrections'
     | '/admin/data'
     | '/admin/disputes'
     | '/admin/inspect'
@@ -197,6 +208,7 @@ export interface FileRouteTypes {
     | '/rate'
     | '/scan'
     | '/add-friend/$username'
+    | '/admin/corrections'
     | '/admin/data'
     | '/admin/disputes'
     | '/admin/inspect'
@@ -215,6 +227,7 @@ export interface RootRouteChildren {
   RateRoute: typeof RateRoute
   ScanRoute: typeof ScanRouteWithChildren
   AddFriendUsernameRoute: typeof AddFriendUsernameRoute
+  AdminCorrectionsRoute: typeof AdminCorrectionsRoute
   AdminDataRoute: typeof AdminDataRoute
   AdminDisputesRoute: typeof AdminDisputesRoute
   AdminInspectRoute: typeof AdminInspectRoute
@@ -323,6 +336,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDataRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/corrections': {
+      id: '/admin/corrections'
+      path: '/admin/corrections'
+      fullPath: '/admin/corrections'
+      preLoaderRoute: typeof AdminCorrectionsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/add-friend/$username': {
       id: '/add-friend/$username'
       path: '/add-friend/$username'
@@ -353,6 +373,7 @@ const rootRouteChildren: RootRouteChildren = {
   RateRoute: RateRoute,
   ScanRoute: ScanRouteWithChildren,
   AddFriendUsernameRoute: AddFriendUsernameRoute,
+  AdminCorrectionsRoute: AdminCorrectionsRoute,
   AdminDataRoute: AdminDataRoute,
   AdminDisputesRoute: AdminDisputesRoute,
   AdminInspectRoute: AdminInspectRoute,
