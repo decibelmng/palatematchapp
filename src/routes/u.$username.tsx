@@ -3,6 +3,7 @@ import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { getPublicProfile } from "@/lib/profile.functions";
 import { SommBadge } from "@/components/profile/SommBadge";
 import { FollowButton } from "@/components/profile/FollowButton";
+import { NameWithHandle } from "@/components/profile/NameWithHandle";
 import { useSession } from "@/hooks/use-session";
 import { ChevronLeft } from "lucide-react";
 
