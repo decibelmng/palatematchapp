@@ -405,6 +405,23 @@ function Scan() {
 
   const enoughRatings = ratedRows.length >= 3;
 
+  // Per-type cold-start: soft confidence note when the user has fewer than
+  // MIN_PER_TYPE ratings for a type that appears on the scanned list.
+  const MIN_PER_TYPE = 8;
+  const perTypeRated = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of ratedRows) m.set(r.type, (m.get(r.type) ?? 0) + 1);
+    return m;
+  }, [ratedRows]);
+  const lowConfTypes = useMemo(() => {
+    const scanned = new Set(readable.map((w) => (w.type ?? "red") as string));
+    const low: string[] = [];
+    for (const t of scanned) {
+      if ((perTypeRated.get(t) ?? 0) < MIN_PER_TYPE) low.push(t);
+    }
+    return low;
+  }, [readable, perTypeRated]);
+
   const matchedBottleIds = useMemo(
     () => readable.map((w) => w.matched_bottle_id).filter((id): id is string => !!id),
     [readable],
