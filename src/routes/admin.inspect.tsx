@@ -70,6 +70,12 @@ function AdminInspect() {
     enabled: !!selected,
   });
 
+  const group = useQuery({
+    queryKey: ["admin-inspect", "group", groupRun?.table, groupRun?.column],
+    queryFn: () => groupFn({ data: { table: groupRun!.table, column: groupRun!.column } }),
+    enabled: !!groupRun,
+  });
+
   const err = tables.error ?? cols.error ?? rows.error;
   const notAuthed = err && /Not authorized/i.test((err as Error).message);
 
