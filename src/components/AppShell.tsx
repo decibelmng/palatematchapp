@@ -1,6 +1,6 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ScanLine, Pencil, Star, Crown, Moon, Sun } from "lucide-react";
+import { ScanLine, Pencil, Star, Crown, Moon, Sun, Users, Bookmark } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
@@ -9,9 +9,11 @@ import { useMyProfile } from "@/hooks/use-friends";
 import { markScanUnlockSeen } from "@/lib/friends.functions";
 import { useTheme } from "@/lib/theme";
 import { useRatingsCount, UNLOCK_THRESHOLD } from "@/components/UnlockMeter";
+import { useFeedActivity, hasFreshActivity } from "@/hooks/use-feed";
 
 const TABS = [
   { to: "/", label: "Scan", Icon: ScanLine },
+  { to: "/feed", label: "Feed", Icon: Users },
   { to: "/rate", label: "Rate", Icon: Pencil },
   { to: "/palate", label: "Palate", Icon: Star },
 ] as const;
@@ -82,6 +84,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => { setMenuOpen(false); }, [pathname]);
+
+  const { data: feedActivity } = useFeedActivity();
+  const feedLatestAt = feedActivity?.latest_at ?? null;
 
   // Unlock celebration: fire exactly once per user, ever. Gated on a
   // server-persisted flag (profiles.scan_unlock_seen) so it survives reloads,
@@ -190,6 +195,14 @@ export function AppShell({ children }: { children: ReactNode }) {
                   Canon Cellar
                 </Link>
                 <Link
+                  to="/wishlist"
+                  role="menuitem"
+                  className="flex items-center gap-2 px-3 py-3 text-sm text-foreground hover:bg-accent/60 border-t border-border"
+                >
+                  <Bookmark size={14} />
+                  Wishlist
+                </Link>
+                <Link
                   to="/friends"
                   role="menuitem"
                   className="block px-3 py-3 text-sm text-foreground hover:bg-accent/60"
@@ -220,6 +233,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="max-w-xl mx-auto flex">
           {TABS.map(({ to, label, Icon }) => {
             const active = isActive(pathname, to);
+            const showDot = to === "/feed" && hasFreshActivity(feedLatestAt);
             return (
               <Link
                 key={to}
@@ -232,7 +246,15 @@ export function AppShell({ children }: { children: ReactNode }) {
                     : "text-muted-foreground hover:text-foreground border-transparent"
                 }`}
               >
-                <Icon size={18} strokeWidth={active ? 2.2 : 1.8} />
+                <span className="relative">
+                  <Icon size={18} strokeWidth={active ? 2.2 : 1.8} />
+                  {showDot && (
+                    <span
+                      aria-label="new activity"
+                      className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary ring-2 ring-background"
+                    />
+                  )}
+                </span>
                 {label}
               </Link>
             );

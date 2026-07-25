@@ -983,6 +983,38 @@ export type Database = {
         }
         Relationships: []
       }
+      wishlist: {
+        Row: {
+          bottle_id: string
+          created_at: string
+          id: string
+          source_context: string | null
+          user_id: string
+        }
+        Insert: {
+          bottle_id: string
+          created_at?: string
+          id?: string
+          source_context?: string | null
+          user_id: string
+        }
+        Update: {
+          bottle_id?: string
+          created_at?: string
+          id?: string
+          source_context?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wishlist_bottle_id_fkey"
+            columns: ["bottle_id"]
+            isOneToOne: false
+            referencedRelation: "bottles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

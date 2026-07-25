@@ -21,6 +21,7 @@ import { SommBadge } from "@/components/profile/SommBadge";
 import { VisibilityControl } from "@/components/profile/VisibilityControl";
 import { ShareProfileButton } from "@/components/profile/ShareProfileButton";
 import { GraduationCap, Settings2 } from "lucide-react";
+import { CalibrationMeter } from "@/components/CalibrationMeter";
 
 export const Route = createFileRoute("/palate/")({
   ssr: false,
@@ -221,6 +222,12 @@ function PalateHome() {
           </Link>
         </div>
       </div>
+
+      {/* Calibration meter — % pinned per color, derived from rating counts only. */}
+      <div className="mt-4">
+        <CalibrationMeter />
+      </div>
+
 
       {/* Visibility */}
       <div className="mt-5">
