@@ -234,8 +234,10 @@ function RequestRow({ row, kind }: { row: import("@/lib/friends.functions").Frie
   return (
     <li className="py-3 flex items-center justify-between gap-3">
       <div className="min-w-0">
-        <p className="text-sm font-medium truncate">{row.other.display_name || row.other.username}</p>
-        <p className="text-[11px] text-muted-foreground truncate">@{row.other.username}</p>
+        <p className="text-sm font-medium truncate">{displayNameFor(row.other)}</p>
+        {handleForDisplay(row.other.username) && (
+          <p className="text-[11px] text-muted-foreground truncate">@{handleForDisplay(row.other.username)}</p>
+        )}
       </div>
       <div className="flex gap-2">
         {kind === "incoming" ? (
