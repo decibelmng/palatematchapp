@@ -229,6 +229,51 @@ function BottleScan() {
     toast.success(`Rated ${c.name} ${stars}★`);
   }
 
+  // C2 — On-demand fingerprint & add.
+  // Fires only from the "no catalog match" path, after confirm. Identity
+  // dedup runs server-side; if a match exists we link (no dupe insert). If
+  // not, we fingerprint via the same LLM pipeline the base catalog uses
+  // and insert as source='on-demand', unverified=true.
+  async function fingerprintAndAdd() {
+    if (!extracted || onDemandBusy) return;
+    const producer = extracted.producer?.trim();
+    const name = (extracted.wine_name ?? extracted.region ?? "").trim();
+    if (!producer || !name) {
+      toast.error("Producer and wine/appellation are required.");
+      return;
+    }
+    setOnDemandBusy(true);
+    try {
+      const res = await onDemandFn({
+        data: {
+          producer,
+          name,
+          type: (extracted.type ?? "red") as "red" | "white" | "sparkling" | "rose" | "dessert",
+          region: extracted.region ?? null,
+          country: extracted.country ?? null,
+          grape: extracted.grape ?? null,
+          vintage: extracted.vintage ?? null,
+        },
+      });
+      qc.invalidateQueries({ queryKey: ["bottles"] });
+      if (res.reason === "identity-linked") {
+        toast.success("Matched an existing catalog wine.");
+      } else if (res.reason === "flat-flagged") {
+        toast.warning("Added — fingerprint looked thin and was flagged for review.");
+      } else {
+        toast.success("Fingerprinted and added to your catalog.");
+      }
+      // Hand off to the manual dialog in "rate" phase by opening it with
+      // the resolved id? Simpler: nudge them to /rate — the wine is now
+      // scoreable and searchable.
+      window.location.href = `/wine/${res.bottle_id}`;
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Fingerprint failed.");
+    } finally {
+      setOnDemandBusy(false);
+    }
+  }
+
   const rawExtracted = result?.extracted;
   const extracted = editedRead ?? rawExtracted;
   const looksLikeMenu = result?.looks_like_menu === true;
