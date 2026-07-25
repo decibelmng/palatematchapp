@@ -785,7 +785,7 @@ function Scan() {
       {showDecisionSurface && (
         <div
           data-boost={boosted ? "on" : "off"}
-          className="scan-decision mt-6 bg-background pb-40"
+          className="scan-decision mt-6 bg-background pb-6"
         >
           {/* Group toggle lives in the setup flow above; results screen honors it silently. */}
 
