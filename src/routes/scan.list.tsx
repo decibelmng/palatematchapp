@@ -756,7 +756,7 @@ function Scan() {
                   row={h}
                   isTie={heroes.length > 1}
                   zeroStrong={zeroStrong}
-                  currentStars={ratings?.find((r) => r.bottle_id === h.ranked.bottle.id)?.stars ?? null}
+                  currentStars={h.ranked.scanned.matched_bottle_id ? (ratings?.find((r) => r.bottle_id === h.ranked.scanned.matched_bottle_id)?.stars ?? null) : null}
                   onOpen={() => setDetailFor(h)}
                 />
               ))}
