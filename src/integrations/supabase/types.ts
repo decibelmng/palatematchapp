@@ -664,6 +664,20 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_table_columns: {
+        Args: { p_table: string }
+        Returns: {
+          column_name: string
+          data_type: string
+          is_nullable: string
+        }[]
+      }
+      admin_table_list: {
+        Args: never
+        Returns: {
+          table_name: string
+        }[]
+      }
       are_friends: { Args: { _a: string; _b: string }; Returns: boolean }
       mark_scan_batch_done: {
         Args: { p_batch_index: number; p_scan_id: string }
