@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { useAcceptedFriends, useMyProfile, useRecentGroups, useSaveRecentGroup } from "@/hooks/use-friends";
+import { displayNameFor } from "@/lib/user-display";
 
 type Props = {
   selectedIds: string[];
