@@ -133,7 +133,10 @@ function Rate() {
         <>
           <div>
             <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Rate</p>
-            <h1 className="font-serif text-3xl mt-2">Tap stars on bottles you've tried</h1>
+            <h1 className="font-serif text-3xl mt-2">Have a bottle in front of you?</h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Scan the label to rate it — no typing needed.
+            </p>
           </div>
           <UnlockMeter />
         </>
@@ -141,23 +144,52 @@ function Rate() {
 
       {/* ============ FIND A WINE ============ */}
       <section aria-labelledby="find-heading" className="mt-4">
-        <h2 id="find-heading" className="sr-only">Find a wine</h2>
+        <h2 id="find-heading" className="sr-only">Add a wine to rate</h2>
 
+        {/* PRIMARY: Scan a bottle */}
+        <Link
+          to="/scan/list"
+          data-testid="rate-scan-hero"
+          aria-label="Scan a bottle label with your camera"
+          className="block rounded-[18px] border-2 border-primary/60 bg-gradient-to-br from-primary/15 via-card to-card p-5 shadow-[var(--pm-card-shadow)] hover:border-primary transition"
+        >
+          <div className="flex items-center gap-4">
+            <div className="shrink-0 h-14 w-14 rounded-2xl bg-primary/20 text-primary flex items-center justify-center">
+              <ScanLine size={30} strokeWidth={1.8} />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[10px] uppercase text-primary" style={{ letterSpacing: "0.22em" }}>
+                Fastest way
+              </p>
+              <h3 className="mt-1 font-serif text-[22px] leading-tight text-foreground">
+                Scan a bottle
+              </h3>
+              <p className="mt-1 text-[12px] text-muted-foreground">
+                Point the camera at the label. We'll add it and let you rate.
+              </p>
+            </div>
+            <ArrowRight className="shrink-0 text-primary" size={20} />
+          </div>
+        </Link>
 
-        <div className="mt-2 flex gap-2">
+        {/* SECONDARY: type-to-search fallback */}
+        <p className="mt-4 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+          Or rate from memory
+        </p>
+        <div className="mt-1.5 flex gap-2">
           <div className="relative flex-1 min-w-0">
             <Search
               aria-hidden
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
-              size={18}
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none"
+              size={16}
             />
             <input
               type="search"
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Search wines already in the catalog…"
-              aria-label="Search the wine catalog"
-              className="w-full rounded-xl bg-input-strong text-input-strong-border border-2 border-input-strong-border pl-11 pr-10 py-3.5 text-base outline-none placeholder:text-input-strong-border/50 shadow-md focus:ring-4 focus:ring-primary/30 transition"
+              placeholder="Search wines you've had…"
+              aria-label="Search wines you've had"
+              className="w-full rounded-lg bg-input-strong text-input-strong-border border border-input-strong-border/60 pl-10 pr-9 py-2.5 text-sm outline-none placeholder:text-input-strong-border/50 focus:ring-2 focus:ring-primary/30 transition"
             />
             {q && (
               <button
@@ -173,12 +205,13 @@ function Rate() {
           <button
             type="button"
             onClick={() => jumpToAddForm()}
-            className="shrink-0 inline-flex items-center gap-1.5 rounded-xl border-2 border-primary text-primary bg-background px-4 py-3.5 text-sm font-semibold hover:bg-primary hover:text-primary-foreground transition whitespace-nowrap shadow-sm"
-            aria-label="Add a bottle that isn't in the catalog"
+            className="shrink-0 inline-flex items-center gap-1 rounded-lg border border-border text-muted-foreground bg-background px-3 py-2.5 text-xs font-medium hover:text-foreground hover:border-foreground/40 transition whitespace-nowrap"
+            aria-label="Add a bottle manually"
           >
-            <Plus size={16} strokeWidth={2.5} /> Add a bottle
+            <Plus size={14} /> Add
           </button>
         </div>
+
 
         <div className="mt-3 flex flex-wrap gap-1.5">
           {TYPE_OPTIONS.map((opt) => {
