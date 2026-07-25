@@ -50,6 +50,10 @@ function BottleScan() {
   const session = useSession();
   const qc = useQueryClient();
   const scan = useServerFn(scanBottleLabel);
+  const resolveFn = useServerFn(resolveBottleFromRead);
+  // Provider-agnostic recognizer wrapper (Lovable vision LLM today; a
+  // future bake-off winner can drop in behind the same interface).
+  const recognizer = useMemo(() => createLovableVisionRecognizer(scan), [scan]);
   const cameraRef = useRef<HTMLInputElement>(null);
   const libraryRef = useRef<HTMLInputElement>(null);
   const [front, setFront] = useState<{ file: File; url: string } | null>(null);
@@ -57,6 +61,19 @@ function BottleScan() {
   const [elapsed, setElapsed] = useState(0);
   const [pickTarget, setPickTarget] = useState<"front" | "back">("front");
   const [showAdd, setShowAdd] = useState(false);
+
+  // Confirm-first state: after vision reads the label, the user edits
+  // the extracted fields (photo visible), and NOTHING resolves to a
+  // catalog wine or writes a rating until they confirm. Low-confidence
+  // fields render highlighted; the human is the reliable step.
+  const [editedRead, setEditedRead] = useState<BottleExtract | null>(null);
+  const [confirmed, setConfirmed] = useState(false);
+  const [override, setOverride] = useState<{
+    candidates: BottleCandidate[];
+    best_score: number;
+    match_quality: BottleScanResult["match_quality"];
+    match_summary: string;
+  } | null>(null);
 
   const { data: ratings } = useRatings();
   const ratedIds = useMemo(() => (ratings ?? []).map((r) => r.bottle_id), [ratings]);
