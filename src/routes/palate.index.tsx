@@ -173,11 +173,18 @@ function PalateHome() {
         )}
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <div className="font-serif text-[18px] leading-tight truncate">{displayName || "Palate Match"}</div>
+            {profile?.username ? (
+              <NameWithHandle
+                displayName={displayName || null}
+                username={profile.username}
+              />
+            ) : (
+              <div className="font-serif text-[18px] leading-tight truncate">{displayName || "Palate Match"}</div>
+            )}
             <SommBadge status={profile?.somm_status} role={profile?.somm_role} establishment={profile?.establishment} />
           </div>
-          {profile?.username && (
-            <div className="text-[11px] text-muted-foreground">@{profile.username}{memberSince ? ` · joined ${memberSince}` : ""}</div>
+          {memberSince && (
+            <div className="text-[11px] text-muted-foreground">joined {memberSince}</div>
           )}
         </div>
         {profile?.username && <ShareProfileButton username={profile.username} displayName={displayName} />}
@@ -187,13 +194,14 @@ function PalateHome() {
         <p className="mt-3 text-sm text-muted-foreground">{profile.bio}</p>
       )}
 
-      {/* Stats */}
+      {/* Stats — each tile links to the detailed list. */}
       <div className="mt-5 grid grid-cols-4 gap-2 rounded-[14px] border-[0.5px] border-border bg-card/60 p-3 text-center">
-        <Stat n={totalRated} label="Rated" />
-        <Stat n={canonsCount} label="Canons" />
-        <Stat n={nemesesCount} label="Nemeses" />
-        <Stat n={redRated.length + whiteRated.length} label="Scored" />
+        <StatLink n={totalRated} label="Rated" to="/rate" ariaLabel="See wines you've rated" />
+        <StatLink n={canonsCount} label="Canons" to="/canons" ariaLabel="See your Canons" hash="canons" />
+        <StatLink n={nemesesCount} label="Nemeses" to="/canons" ariaLabel="See your Nemeses" hash="nemeses" />
+        <StatLink n={redRated.length + whiteRated.length} label="Scored" to="/palate/$type" params={{ type: scope }} ariaLabel="Open palate detail" />
       </div>
+
 
       {/* Palate codes */}
       <div className="mt-5 grid grid-cols-2 gap-3">
