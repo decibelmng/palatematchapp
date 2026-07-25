@@ -132,6 +132,9 @@ function Rate() {
         <h1 className="font-serif text-3xl mt-2">Tap stars on bottles you've tried</h1>
       </div>
 
+      <UnlockMeter />
+
+
       {ratedCount > 0 && (
         <div className="mt-5 flex items-center justify-between gap-3 px-1">
           <p className="text-xs text-muted-foreground">
