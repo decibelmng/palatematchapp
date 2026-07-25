@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { toast } from "sonner";
 import { Eye, EyeOff, Users } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -12,17 +11,43 @@ const OPTS: Array<{ value: Visibility; label: string; hint: string; Icon: typeof
   { value: "public",    label: "Public",    hint: "Anyone with the link can see the full profile", Icon: Eye },
 ];
 
+/**
+ * VisibilityControl — persisted profile visibility.
+ * Source of truth is `current` (from getMyProfile). We do not hold a local
+ * duplicate: writing goes through the server fn, cache is patched optimistically,
+ * and the profile query is invalidated to refetch the stored value.
+ */
 export function VisibilityControl({ current }: { current: Visibility }) {
-  const [value, setValue] = useState<Visibility>(current);
   const qc = useQueryClient();
   const m = useMutation({
     mutationFn: (v: Visibility) => updateMyProfile({ data: { visibility: v } }),
+    onMutate: async (v: Visibility) => {
+      // Optimistic: patch every ["my-profile", ...] cache entry so the UI
+      // reflects the new value immediately and survives navigation.
+      const snapshots: Array<[readonly unknown[], unknown]> = [];
+      qc.getQueriesData({ queryKey: ["my-profile"] }).forEach(([key, data]) => {
+        snapshots.push([key, data]);
+        if (data && typeof data === "object") {
+          qc.setQueryData(key, { ...(data as object), visibility: v });
+        }
+      });
+      return { snapshots };
+    },
+    onError: (e: Error, _v, ctx) => {
+      // Roll back optimistic patch.
+      ctx?.snapshots?.forEach(([key, data]) => qc.setQueryData(key, data));
+      toast.error(e.message || "Failed to update visibility");
+    },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["my-profile"] });
       toast.success("Visibility updated");
     },
-    onError: (e: Error) => toast.error(e.message || "Failed to update visibility"),
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["my-profile"] });
+    },
   });
+
+  const value: Visibility = m.isPending && m.variables ? (m.variables as Visibility) : current;
+
   return (
     <div className="rounded-[14px] border-[0.5px] border-border bg-card/60 p-4">
       <p className="text-[10px] uppercase text-muted-foreground" style={{ letterSpacing: "0.22em" }}>
@@ -36,7 +61,8 @@ export function VisibilityControl({ current }: { current: Visibility }) {
               key={v}
               type="button"
               disabled={m.isPending}
-              onClick={() => { setValue(v); m.mutate(v); }}
+              onClick={() => m.mutate(v)}
+              aria-pressed={active}
               className={`flex flex-col items-center gap-1 rounded-md border px-2 py-2 text-xs transition ${active ? "border-primary bg-primary/10 text-primary" : "border-border bg-background text-foreground hover:border-primary/40"}`}
             >
               <Icon className="h-4 w-4" />
