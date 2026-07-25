@@ -253,18 +253,14 @@ function Rate() {
         )}
       </section>
 
-      {/* ============ ZONE 2: YOUR RATINGS (hidden while searching) ============ */}
+      {/* ============ YOUR RATINGS (hidden while searching) ============ */}
       {!searching && (
-        <section aria-labelledby="your-ratings-heading" className="mt-10">
-          <div className="flex items-baseline justify-between gap-3">
-            <h2 id="your-ratings-heading" className="font-serif text-xl">Your ratings</h2>
-            <span className="text-[10px] text-muted-foreground/70">Edit stars, add notes, group by vintage</span>
-          </div>
-          <div className="mt-3">
-            <YourRatingsList />
-          </div>
+        <section aria-labelledby="your-ratings-heading" className="mt-5">
+          <h2 id="your-ratings-heading" className="sr-only">Your ratings</h2>
+          <YourRatingsList />
         </section>
       )}
+
 
       {/* ============ ZONE 3: ADD A NEW BOTTLE ============ */}
       <section
