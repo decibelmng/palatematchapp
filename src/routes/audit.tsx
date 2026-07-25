@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 
-export const Route = createFileRoute("/__audit")({
+export const Route = createFileRoute("/audit")({
   ssr: false,
   component: AuditPage,
 });

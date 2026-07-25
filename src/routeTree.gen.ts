@@ -17,6 +17,7 @@ import { Route as MyRatingsRouteImport } from './routes/my-ratings'
 import { Route as MatchesRouteImport } from './routes/matches'
 import { Route as FriendsRouteImport } from './routes/friends'
 import { Route as CanonsRouteImport } from './routes/canons'
+import { Route as AuditRouteImport } from './routes/audit'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ScanIndexRouteImport } from './routes/scan.index'
 import { Route as RestaurantsIndexRouteImport } from './routes/restaurants.index'
@@ -67,6 +68,11 @@ const FriendsRoute = FriendsRouteImport.update({
 const CanonsRoute = CanonsRouteImport.update({
   id: '/canons',
   path: '/canons',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuditRoute = AuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -127,6 +133,7 @@ const AddFriendUsernameRoute = AddFriendUsernameRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/audit': typeof AuditRoute
   '/canons': typeof CanonsRoute
   '/friends': typeof FriendsRoute
   '/matches': typeof MatchesRoute
@@ -148,6 +155,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/audit': typeof AuditRoute
   '/canons': typeof CanonsRoute
   '/friends': typeof FriendsRoute
   '/matches': typeof MatchesRoute
@@ -168,6 +176,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/audit': typeof AuditRoute
   '/canons': typeof CanonsRoute
   '/friends': typeof FriendsRoute
   '/matches': typeof MatchesRoute
@@ -191,6 +200,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/audit'
     | '/canons'
     | '/friends'
     | '/matches'
@@ -212,6 +222,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/audit'
     | '/canons'
     | '/friends'
     | '/matches'
@@ -231,6 +242,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/audit'
     | '/canons'
     | '/friends'
     | '/matches'
@@ -253,6 +265,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuditRoute: typeof AuditRoute
   CanonsRoute: typeof CanonsRoute
   FriendsRoute: typeof FriendsRoute
   MatchesRoute: typeof MatchesRoute
@@ -324,6 +337,13 @@ declare module '@tanstack/react-router' {
       path: '/canons'
       fullPath: '/canons'
       preLoaderRoute: typeof CanonsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/audit': {
+      id: '/audit'
+      path: '/audit'
+      fullPath: '/audit'
+      preLoaderRoute: typeof AuditRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -436,6 +456,7 @@ const ScanRouteWithChildren = ScanRoute._addFileChildren(ScanRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuditRoute: AuditRoute,
   CanonsRoute: CanonsRoute,
   FriendsRoute: FriendsRoute,
   MatchesRoute: MatchesRoute,
@@ -453,3 +474,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
