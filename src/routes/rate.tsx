@@ -9,6 +9,7 @@ import { WineTypeBadge } from "@/components/WineTypeBadge";
 import { YourRatingsList } from "@/components/YourRatingsList";
 import { supabase } from "@/integrations/supabase/client";
 import { AddBottleDialog } from "@/components/AddBottleDialog";
+import { UnlockMeter } from "@/components/UnlockMeter";
 
 
 export const Route = createFileRoute("/rate")({
@@ -130,6 +131,9 @@ function Rate() {
         <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Rate</p>
         <h1 className="font-serif text-3xl mt-2">Tap stars on bottles you've tried</h1>
       </div>
+
+      <UnlockMeter />
+
 
       {ratedCount > 0 && (
         <div className="mt-5 flex items-center justify-between gap-3 px-1">
