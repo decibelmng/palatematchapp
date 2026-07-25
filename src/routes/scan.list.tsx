@@ -646,31 +646,50 @@ function Scan() {
         </div>
       )}
 
-      <div className="mt-5 flex flex-wrap gap-3">
-        <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden"
-          onChange={(e) => onPick(e.target.files, e.currentTarget)} />
-        <input ref={libraryRef} type="file" accept="image/*" multiple className="hidden"
-          onChange={(e) => onPick(e.target.files, e.currentTarget)} />
-        <button onClick={() => cameraRef.current?.click()} disabled={isRunning || staged.length >= 8}
-          className="rounded-md border border-border bg-card px-4 py-2.5 text-sm font-medium disabled:opacity-60">
-          Take a photo
+      <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden"
+        onChange={(e) => onPick(e.target.files, e.currentTarget)} />
+      <input ref={libraryRef} type="file" accept="image/*" multiple className="hidden"
+        onChange={(e) => onPick(e.target.files, e.currentTarget)} />
+      <div
+        data-testid="scan-entry-boxes"
+        className="mt-5 grid grid-cols-2 gap-3"
+      >
+        <button
+          type="button"
+          onClick={() => cameraRef.current?.click()}
+          disabled={isRunning || staged.length >= 8}
+          data-testid="scan-entry-camera"
+          className="w-full h-24 rounded-xl border border-border bg-card px-4 py-3 text-sm font-medium disabled:opacity-60 flex flex-col items-center justify-center gap-1"
+        >
+          <span aria-hidden className="text-lg leading-none">📷</span>
+          <span>Take a photo</span>
         </button>
-        <button onClick={() => libraryRef.current?.click()} disabled={isRunning || staged.length >= 8}
-          className="rounded-md border border-border bg-card px-4 py-2.5 text-sm font-medium disabled:opacity-60">
-          Upload photos
+        <button
+          type="button"
+          onClick={() => libraryRef.current?.click()}
+          disabled={isRunning || staged.length >= 8}
+          data-testid="scan-entry-library"
+          className="w-full h-24 rounded-xl border border-border bg-card px-4 py-3 text-sm font-medium disabled:opacity-60 flex flex-col items-center justify-center gap-1"
+        >
+          <span aria-hidden className="text-lg leading-none">🖼️</span>
+          <span>Upload photos</span>
         </button>
-        {staged.length > 0 && (
-          <button onClick={submit} disabled={isRunning}
-            className="rounded-md bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium disabled:opacity-60">
-            {isRunning ? "Reading…" : `Scan ${staged.length} photo${staged.length > 1 ? "s" : ""}`}
-          </button>
-        )}
-        {(staged.length > 0 || scanId) && !isRunning && (
-          <button onClick={startOver} className="rounded-md border border-border bg-card px-4 py-2.5 text-sm font-medium">
-            Start over
-          </button>
-        )}
       </div>
+      {(staged.length > 0 || (scanId && !isRunning)) && (
+        <div className="mt-3 flex flex-wrap gap-3">
+          {staged.length > 0 && (
+            <button onClick={submit} disabled={isRunning}
+              className="rounded-md bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium disabled:opacity-60">
+              {isRunning ? "Reading…" : `Scan ${staged.length} photo${staged.length > 1 ? "s" : ""}`}
+            </button>
+          )}
+          {(staged.length > 0 || scanId) && !isRunning && (
+            <button onClick={startOver} className="rounded-md border border-border bg-card px-4 py-2.5 text-sm font-medium">
+              Start over
+            </button>
+          )}
+        </div>
+      )}
 
       {staged.length > 0 && (
         <div className="mt-4 flex flex-wrap gap-2">
@@ -766,7 +785,7 @@ function Scan() {
       {showDecisionSurface && (
         <div
           data-boost={boosted ? "on" : "off"}
-          className="scan-decision mt-6 bg-background pb-40"
+          className="scan-decision mt-6 bg-background pb-6"
         >
           {/* Group toggle lives in the setup flow above; results screen honors it silently. */}
 
@@ -1500,22 +1519,19 @@ function ScanThumbBar({
   controls: Controls;
   setControls: (c: Controls) => void;
 }) {
-  // Solid toolbar docked directly above the AppShell tab bar (~64px tall).
-  // Full-width, opaque background, no floating pills. Content behind it
-  // scrolls but does not show through (see .scan-decision pb-40).
+  // Static inline toolbar that lives in the content flow (no fixed overlay).
   return (
     <div
-      className="fixed inset-x-0 z-30 border-t border-border bg-background"
-      style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 64px)" }}
+      className="mt-6 rounded-xl border border-border bg-card"
       role="toolbar"
       aria-label="Scan result actions"
     >
-      <div className="mx-auto max-w-xl flex items-center gap-2 px-4 py-2">
+      <div className="flex items-center gap-2 px-3 py-2">
         <button
           type="button"
           onClick={onRescan}
           aria-label="Re-scan"
-          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-card text-foreground text-sm font-medium min-h-11 px-3 whitespace-nowrap overflow-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:bg-accent"
+          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-background text-foreground text-sm font-medium min-h-11 px-3 whitespace-nowrap overflow-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:bg-accent"
         >
           <span aria-hidden>↻</span>
           <span className="truncate">Re-scan</span>
@@ -1528,7 +1544,7 @@ function ScanThumbBar({
           className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border text-sm font-medium min-h-11 px-3 whitespace-nowrap overflow-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
             boosted
               ? "border-primary bg-primary text-primary-foreground"
-              : "border-border bg-card text-foreground active:bg-accent"
+              : "border-border bg-background text-foreground active:bg-accent"
           }`}
         >
           <span aria-hidden>☀</span>
