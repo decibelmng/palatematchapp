@@ -664,6 +664,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      admin_group_count: {
+        Args: { p_column: string; p_table: string }
+        Returns: {
+          n: number
+          value: string
+        }[]
+      }
       admin_table_columns: {
         Args: { p_table: string }
         Returns: {
