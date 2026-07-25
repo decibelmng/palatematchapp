@@ -3,13 +3,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search, Plus, ArrowRight } from "lucide-react";
 import { AuthGate } from "@/components/AuthGate";
-import { useRatings, useRate, useBottlesByIds, type BottleRow } from "@/hooks/use-palate-data";
+import { useRatings, useRate, type BottleRow } from "@/hooks/use-palate-data";
 import { StarTap } from "@/components/StarTap";
 import { WineTypeBadge } from "@/components/WineTypeBadge";
 import { YourRatingsList } from "@/components/YourRatingsList";
 import { supabase } from "@/integrations/supabase/client";
 import { AddBottleDialog } from "@/components/AddBottleDialog";
-import { UnlockMeter } from "@/components/UnlockMeter";
+import { UnlockMeter, UNLOCK_THRESHOLD } from "@/components/UnlockMeter";
 
 
 export const Route = createFileRoute("/rate")({
