@@ -3,13 +3,13 @@ import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Search, Plus, ArrowRight } from "lucide-react";
 import { AuthGate } from "@/components/AuthGate";
-import { useRatings, useRate, useBottlesByIds, type BottleRow } from "@/hooks/use-palate-data";
+import { useRatings, useRate, type BottleRow } from "@/hooks/use-palate-data";
 import { StarTap } from "@/components/StarTap";
 import { WineTypeBadge } from "@/components/WineTypeBadge";
 import { YourRatingsList } from "@/components/YourRatingsList";
 import { supabase } from "@/integrations/supabase/client";
 import { AddBottleDialog } from "@/components/AddBottleDialog";
-import { UnlockMeter } from "@/components/UnlockMeter";
+import { UnlockMeter, UNLOCK_THRESHOLD } from "@/components/UnlockMeter";
 
 
 export const Route = createFileRoute("/rate")({
@@ -125,46 +125,24 @@ function Rate() {
 
   const canSubmitAdd = addForm.producer.trim().length > 0 && addForm.name.trim().length > 0;
 
+  const isNewUser = ratedCount < UNLOCK_THRESHOLD;
+
   return (
     <div className="pt-2">
-      <div>
-        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Rate</p>
-        <h1 className="font-serif text-3xl mt-2">Tap stars on bottles you've tried</h1>
-      </div>
-
-      <UnlockMeter />
-
-
-      {ratedCount > 0 && (
-        <div className="mt-5 flex items-center justify-between gap-3 px-1">
-          <p className="text-xs text-muted-foreground">
-            <span className="font-semibold text-foreground">{ratedCount}</span> rated · ready for what's next?
-          </p>
-          <div className="flex gap-3">
-            <Link
-              to="/palate"
-              className="text-xs font-medium text-muted-foreground hover:text-foreground underline-offset-4 hover:underline"
-            >
-              Your palate
-            </Link>
-            <Link
-              to="/"
-              className="text-xs font-semibold text-primary hover:opacity-80"
-            >
-              Scan a list →
-            </Link>
+      {isNewUser && (
+        <>
+          <div>
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Rate</p>
+            <h1 className="font-serif text-3xl mt-2">Tap stars on bottles you've tried</h1>
           </div>
-        </div>
+          <UnlockMeter />
+        </>
       )}
 
-      {/* ============ ZONE 1: FIND A WINE ============ */}
-      <section aria-labelledby="find-heading" className="mt-8">
-        <div className="flex items-baseline justify-between gap-3">
-          <h2 id="find-heading" className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground font-medium">
-            Find a wine
-          </h2>
-          <span className="text-[10px] text-muted-foreground/70">Search 118k+ bottles already in the catalog</span>
-        </div>
+      {/* ============ FIND A WINE ============ */}
+      <section aria-labelledby="find-heading" className="mt-4">
+        <h2 id="find-heading" className="sr-only">Find a wine</h2>
+
 
         <div className="mt-2 flex gap-2">
           <div className="relative flex-1 min-w-0">
@@ -275,18 +253,14 @@ function Rate() {
         )}
       </section>
 
-      {/* ============ ZONE 2: YOUR RATINGS (hidden while searching) ============ */}
+      {/* ============ YOUR RATINGS (hidden while searching) ============ */}
       {!searching && (
-        <section aria-labelledby="your-ratings-heading" className="mt-10">
-          <div className="flex items-baseline justify-between gap-3">
-            <h2 id="your-ratings-heading" className="font-serif text-xl">Your ratings</h2>
-            <span className="text-[10px] text-muted-foreground/70">Edit stars, add notes, group by vintage</span>
-          </div>
-          <div className="mt-3">
-            <YourRatingsList />
-          </div>
+        <section aria-labelledby="your-ratings-heading" className="mt-5">
+          <h2 id="your-ratings-heading" className="sr-only">Your ratings</h2>
+          <YourRatingsList />
         </section>
       )}
+
 
       {/* ============ ZONE 3: ADD A NEW BOTTLE ============ */}
       <section
