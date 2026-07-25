@@ -686,6 +686,7 @@ export type Database = {
           added_by: string | null
           bottle_id: string
           first_seen_at: string
+          format: string
           id: string
           last_seen_at: string
           menu_price: string | null
@@ -698,6 +699,7 @@ export type Database = {
           added_by?: string | null
           bottle_id: string
           first_seen_at?: string
+          format?: string
           id?: string
           last_seen_at?: string
           menu_price?: string | null
@@ -710,6 +712,7 @@ export type Database = {
           added_by?: string | null
           bottle_id?: string
           first_seen_at?: string
+          format?: string
           id?: string
           last_seen_at?: string
           menu_price?: string | null
