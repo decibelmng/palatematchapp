@@ -229,7 +229,7 @@ function BottleScan() {
         />
       </div>
 
-      {front && (
+      {(front || back) && (
         <div className="mt-4 flex flex-wrap gap-3">
           <button
             onClick={() => mutation.mutate()}
