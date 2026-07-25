@@ -1,6 +1,6 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ScanLine, Pencil, Star, Crown, Moon, Sun, Users, Bookmark } from "lucide-react";
+import { ScanLine, Pencil, Star, Crown, Moon, Sun, Users, Bookmark, List as ListIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
@@ -11,15 +11,18 @@ import { markScanUnlockSeen } from "@/lib/friends.functions";
 import { useTheme } from "@/lib/theme";
 import { useRatingsCount, UNLOCK_THRESHOLD } from "@/components/UnlockMeter";
 import { useFeedActivity, hasFreshActivity } from "@/hooks/use-feed";
+import { ScanChooserSheet } from "@/components/ScanChooserSheet";
 
-const TABS = [
-  { to: "/", label: "Scan", Icon: ScanLine },
-  { to: "/feed", label: "Feed", Icon: Users },
-  { to: "/rate", label: "Rate", Icon: Pencil },
+type TabTo = "/palate" | "/rate" | "/scan/list" | "/feed";
+
+const TABS_LEFT: ReadonlyArray<{ to: TabTo; label: string; Icon: typeof Star }> = [
   { to: "/palate", label: "Palate", Icon: Star },
-] as const;
-
-type TabTo = (typeof TABS)[number]["to"];
+  { to: "/rate", label: "Rate", Icon: Pencil },
+];
+const TABS_RIGHT: ReadonlyArray<{ to: TabTo; label: string; Icon: typeof Star }> = [
+  { to: "/scan/list", label: "List", Icon: ListIcon },
+  { to: "/feed", label: "Feed", Icon: Users },
+];
 
 function initialsFor(name: string | null | undefined): string {
   if (!name) return "•";
@@ -30,7 +33,6 @@ function initialsFor(name: string | null | undefined): string {
 }
 
 function isActive(pathname: string, to: TabTo): boolean {
-  if (to === "/") return pathname === "/";
   return pathname === to || pathname.startsWith(to + "/");
 }
 
