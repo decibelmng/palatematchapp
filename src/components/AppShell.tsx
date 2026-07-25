@@ -80,6 +80,36 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   useEffect(() => { setMenuOpen(false); }, [pathname]);
 
+  // Unlock celebration: fire once when the user's rating count crosses the
+  // threshold. Haptic on capable devices + brief toast pointing at Scan.
+  const ratingsCount = useRatingsCount();
+  const prevCountRef = useRef<number | null>(null);
+  const celebratedRef = useRef(false);
+  const navigate = useNavigate();
+  useEffect(() => {
+    const prev = prevCountRef.current;
+    prevCountRef.current = ratingsCount;
+    if (prev === null) return; // ignore initial hydration
+    if (celebratedRef.current) return;
+    if (prev < UNLOCK_THRESHOLD && ratingsCount >= UNLOCK_THRESHOLD) {
+      celebratedRef.current = true;
+      try {
+        if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+          (navigator as Navigator & { vibrate?: (p: number | number[]) => boolean }).vibrate?.([12, 40, 24]);
+        }
+      } catch { /* noop */ }
+      toast.success("Scan unlocked", {
+        description: "Point your camera at any wine list — I'll rank every bottle.",
+        duration: 5000,
+        action: {
+          label: "Scan now",
+          onClick: () => navigate({ to: "/" }),
+        },
+      });
+    }
+  }, [ratingsCount, navigate]);
+
+
   useEffect(() => {
     if (!menuOpen) return;
     function onClick(e: MouseEvent) {
