@@ -12,14 +12,22 @@ import {
   usePersistCode,
 } from "@/hooks/use-palate-data";
 import { useMyCanons } from "@/hooks/use-canon";
+import { useMyProfile } from "@/hooks/use-friends";
 import { computeCode, axesFor, type RatedBottle, type PaletteType } from "@/lib/palate";
+import { useLandmarks } from "@/hooks/use-landmarks";
+import { cuveeKey } from "@/lib/cuvee";
+import { TasteMap, type LovedPoint } from "@/components/TasteMap";
+import { SommBadge } from "@/components/profile/SommBadge";
+import { VisibilityControl } from "@/components/profile/VisibilityControl";
+import { ShareProfileButton } from "@/components/profile/ShareProfileButton";
+import { GraduationCap, Settings2 } from "lucide-react";
 
 export const Route = createFileRoute("/palate/")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Your Palate — Palate Match" },
-      { name: "description", content: "Your taste identity — Red and White palate codes computed from wines you've rated." },
+      { title: "Your profile — Palate Match" },
+      { name: "description", content: "Your Palate Match profile: taste identity, palate codes, stats, and visibility." },
     ],
   }),
   component: () => <AuthGate><PalateHome /></AuthGate>,
@@ -29,11 +37,16 @@ const MIN_RATINGS = 5;
 
 function PalateHome() {
   const { data: ratings } = useRatings();
+  const { data: profile } = useMyProfile();
   const ratedIds = useMemo(() => (ratings ?? []).map((r) => r.bottle_id), [ratings]);
   const { data: bottles } = useBottlesByIds(ratedIds);
   const { data: canons } = useMyCanons();
   const canonBottleIds = useMemo(
     () => new Set((canons ?? []).filter((c) => c.tier === "canon").map((c) => c.bottle_id)),
+    [canons],
+  );
+  const nemesisBottleIds = useMemo(
+    () => new Set((canons ?? []).filter((c) => c.tier === "nemesis").map((c) => c.bottle_id)),
     [canons],
   );
 
@@ -57,6 +70,8 @@ function PalateHome() {
   usePersistCode(red.code, white.code, ratings?.length ?? 0);
 
   const totalRated = ratings?.length ?? 0;
+  const canonsCount = (canons ?? []).filter((c) => c.tier === "canon").length;
+  const nemesesCount = (canons ?? []).filter((c) => c.tier === "nemesis").length;
   const anyPalateReady = redRated.length >= MIN_RATINGS || whiteRated.length >= MIN_RATINGS;
 
   const { stage, isLoading: stageLoading, setStage } = useOnboardingStage();
@@ -70,13 +85,15 @@ function PalateHome() {
     }
   }, [stage, stageLoading, anyPalateReady, setStage]);
 
-  const revealScope: PaletteType = whiteRated.length > redRated.length ? "white" : "red";
-  const revealCode = revealScope === "red" ? red.code : white.code;
+  const defaultScope: PaletteType = whiteRated.length > redRated.length ? "white" : "red";
+  const [scope, setScope] = useState<PaletteType>(defaultScope);
+  useEffect(() => { setScope(defaultScope); }, [defaultScope]);
+  const revealCode = scope === "red" ? red.code : white.code;
 
+  // Onboarding gates unchanged.
   if (!stageLoading && stage === "intro" && totalRated === 0) {
     return <OnboardingIntro onStart={() => { setStage("rate5").catch(() => { /* noop */ }); }} />;
   }
-
   if (!stageLoading && stage === "rate5" && !anyPalateReady) {
     return (
       <div className="pt-6">
@@ -85,33 +102,191 @@ function PalateHome() {
     );
   }
 
+  const memberSince = profile?.created_at
+    ? new Date(profile.created_at).toLocaleDateString(undefined, { month: "short", year: "numeric" })
+    : "";
+  const displayName = profile?.display_name || profile?.username || "";
+  const initial = (displayName[0] || "?").toUpperCase();
+
+  // Inline viz for the active scope.
+  const scoped = scope === "red" ? redRated : whiteRated;
+  const scopedCode = scope === "red" ? red.code : white.code;
+  const { data: landmarks } = useLandmarks(scope);
+  const lovedPoints: LovedPoint[] = useMemo(() => {
+    if (!bottles || !ratings) return [];
+    const byId = new Map(bottles.map((b) => [b.id, b]));
+    const seen = new Map<string, LovedPoint>();
+    for (const r of ratings) {
+      const b = byId.get(r.bottle_id);
+      if (!b || bottleType(b) !== scope || r.stars < 4) continue;
+      const key = cuveeKey(b);
+      const existing = seen.get(key);
+      if (existing) { if (r.stars > existing.stars) existing.stars = r.stars; continue; }
+      seen.set(key, {
+        key, bottleId: b.id,
+        axBody: b.ax_body, axFruit: b.ax_fruit_char, axTannin: b.ax_tannin,
+        axOak: b.fp_oak, axAcidity: b.ax_acidity, axSweet: b.ax_sweet, axRipe: b.fp_ripe,
+        stars: r.stars, name: b.name, producer: b.producer, region: b.region,
+      });
+    }
+    return Array.from(seen.values());
+  }, [bottles, ratings, scope]);
+  const otherPoints: LovedPoint[] = useMemo(() => {
+    if (!bottles || !ratings) return [];
+    const byId = new Map(bottles.map((b) => [b.id, b]));
+    const lovedKeys = new Set(lovedPoints.map((p) => p.key));
+    const seen = new Map<string, LovedPoint>();
+    for (const r of ratings) {
+      const b = byId.get(r.bottle_id);
+      if (!b || bottleType(b) !== scope || r.stars >= 4) continue;
+      const key = cuveeKey(b);
+      if (lovedKeys.has(key)) continue;
+      const existing = seen.get(key);
+      if (existing) { if (r.stars < existing.stars) existing.stars = r.stars; continue; }
+      seen.set(key, {
+        key, bottleId: b.id,
+        axBody: b.ax_body, axFruit: b.ax_fruit_char, axTannin: b.ax_tannin,
+        axOak: b.fp_oak, axAcidity: b.ax_acidity, axSweet: b.ax_sweet, axRipe: b.fp_ripe,
+        stars: r.stars, name: b.name, producer: b.producer, region: b.region,
+      });
+    }
+    return Array.from(seen.values());
+  }, [bottles, ratings, scope, lovedPoints]);
+
+  const hasScope = scoped.length > 0;
+
   return (
-    <div className="pt-2">
+    <div className="pt-2 pb-8 max-w-md mx-auto">
       {showReveal && (
-        <PalateReveal code={revealCode} type={revealScope} onDismiss={() => setShowReveal(false)} />
+        <PalateReveal code={revealCode} type={scope} onDismiss={() => setShowReveal(false)} />
       )}
 
-      <p
-        className="text-[10px] uppercase text-muted-foreground"
-        style={{ letterSpacing: "0.22em" }}
-      >
-        Your palates
-      </p>
-      <div className="mt-3 grid gap-3 sm:grid-cols-2">
-        <CodeChipRow type="red" code={red.code} n={redRated.length} />
-        <CodeChipRow type="white" code={white.code} n={whiteRated.length} />
+      {/* Identity */}
+      <div className="flex items-center gap-3">
+        {profile?.avatar_url ? (
+          <img src={profile.avatar_url} alt="" className="h-14 w-14 rounded-full object-cover" />
+        ) : (
+          <div className="h-14 w-14 rounded-full bg-muted flex items-center justify-center font-serif text-xl">{initial}</div>
+        )}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <div className="font-serif text-[18px] leading-tight truncate">{displayName || "Palate Match"}</div>
+            <SommBadge status={profile?.somm_status} role={profile?.somm_role} establishment={profile?.establishment} />
+          </div>
+          {profile?.username && (
+            <div className="text-[11px] text-muted-foreground">@{profile.username}{memberSince ? ` · joined ${memberSince}` : ""}</div>
+          )}
+        </div>
+        {profile?.username && <ShareProfileButton username={profile.username} displayName={displayName} />}
       </div>
 
-      <div className="mt-6 flex items-center justify-center">
+      {profile?.bio && (
+        <p className="mt-3 text-sm text-muted-foreground">{profile.bio}</p>
+      )}
+
+      {/* Stats */}
+      <div className="mt-5 grid grid-cols-4 gap-2 rounded-[14px] border-[0.5px] border-border bg-card/60 p-3 text-center">
+        <Stat n={totalRated} label="Rated" />
+        <Stat n={canonsCount} label="Canons" />
+        <Stat n={nemesesCount} label="Nemeses" />
+        <Stat n={redRated.length + whiteRated.length} label="Scored" />
+      </div>
+
+      {/* Palate codes */}
+      <div className="mt-5 grid grid-cols-2 gap-3">
+        <CodeChip type="red"   code={red.code}   n={redRated.length}   active={scope === "red"}   onClick={() => setScope("red")} />
+        <CodeChip type="white" code={white.code} n={whiteRated.length} active={scope === "white"} onClick={() => setScope("white")} />
+      </div>
+
+      {/* Inline viz — dominant scope; toggle changes it above */}
+      <div className="mt-4 rounded-[14px] border-[0.5px] border-border bg-card/60 p-2">
+        {hasScope ? (
+          <TasteMap
+            type={scope}
+            landmarks={landmarks ?? []}
+            loved={lovedPoints}
+            others={otherPoints}
+            canonIds={canonBottleIds}
+            nemesisIds={nemesisBottleIds}
+          />
+        ) : (
+          <div className="p-6 text-center text-sm text-muted-foreground">
+            Rate some {scope} wines to see your map take shape.
+          </div>
+        )}
+        <div className="mt-2 flex items-center justify-between px-2 pb-1">
+          <div className="text-[11px] text-muted-foreground">Palate code: <span className="font-mono text-foreground">{scopedCode}</span></div>
+          <Link to="/palate/$type" params={{ type: scope }} className="text-[11px] uppercase text-muted-foreground hover:text-primary" style={{ letterSpacing: "0.18em" }}>
+            Detail + 3D →
+          </Link>
+        </div>
+      </div>
+
+      {/* Visibility */}
+      <div className="mt-5">
+        <VisibilityControl current={(profile?.visibility as "private" | "followers" | "public") ?? "private"} />
+      </div>
+
+      {/* Verify / settings */}
+      <div className="mt-4 flex flex-col gap-2">
+        {profile?.somm_status !== "verified" && (
+          <Link
+            to="/palate/verify"
+            className="flex items-center justify-between rounded-[14px] border-[0.5px] border-border bg-card/60 p-4 hover:border-primary/40"
+          >
+            <div className="flex items-center gap-3">
+              <GraduationCap className="h-5 w-5 text-primary" />
+              <div>
+                <div className="text-sm">Verify as a SOMM</div>
+                <div className="text-[11px] text-muted-foreground">Get the badge on your profile.</div>
+              </div>
+            </div>
+            <span className="text-primary text-sm">→</span>
+          </Link>
+        )}
         <Link
-          to="/rate"
-          className="text-[11px] uppercase text-muted-foreground hover:text-primary"
-          style={{ letterSpacing: "0.18em" }}
+          to="/friends"
+          className="flex items-center justify-between rounded-[14px] border-[0.5px] border-border bg-card/60 p-4 hover:border-primary/40"
         >
-          Rate more ({totalRated}) →
+          <div className="flex items-center gap-3">
+            <Settings2 className="h-5 w-5 text-muted-foreground" />
+            <div className="text-sm">Friends &amp; account</div>
+          </div>
+          <span className="text-muted-foreground text-sm">→</span>
         </Link>
       </div>
     </div>
+  );
+}
+
+function Stat({ n, label }: { n: number; label: string }) {
+  return (
+    <div>
+      <div className="font-serif text-[18px] leading-tight">{n}</div>
+      <div className="text-[10px] uppercase text-muted-foreground" style={{ letterSpacing: "0.16em" }}>{label}</div>
+    </div>
+  );
+}
+
+function CodeChip({ type, code, n, active, onClick }: { type: PaletteType; code: string; n: number; active: boolean; onClick: () => void }) {
+  const label = type === "red" ? "RED" : "WHITE";
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={`text-left rounded-[14px] border-[0.5px] p-4 transition ${active ? "border-primary bg-primary/5" : "border-border bg-card/60 hover:border-primary/40"}`}
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-[10px] uppercase text-muted-foreground" style={{ letterSpacing: "0.22em" }}>{label}</span>
+        <span className="text-[10px] text-muted-foreground">{n === 0 ? "no ratings" : `${n} rated`}</span>
+      </div>
+      <div className="mt-3 mb-1 font-serif text-[26px] text-primary leading-none" style={{ letterSpacing: "0.3em" }}>
+        {code.split("").map((ch, i) => (
+          <span key={`${type}-${i}-${ch}`} className={ch === "·" ? "text-muted-foreground/60" : ""}>{ch}</span>
+        ))}
+      </div>
+    </button>
   );
 }
 
@@ -138,35 +313,5 @@ function Rate5Progress({ redN, whiteN }: { redN: number; whiteN: number }) {
         {n >= 1 ? "Keep rating" : "Rate your first wine"}
       </Link>
     </div>
-  );
-}
-
-function CodeChipRow({ type, code, n }: { type: PaletteType; code: string; n: number }) {
-  const label = type === "red" ? "RED" : "WHITE";
-  return (
-    <Link
-      to="/palate/$type"
-      params={{ type }}
-      className="text-left rounded-[14px] border-[0.5px] border-border bg-card/60 p-4 transition shadow-[var(--pm-card-shadow)] hover:bg-accent hover:border-primary/40"
-    >
-      <div className="flex items-center justify-between">
-        <span className="text-[10px] uppercase text-muted-foreground" style={{ letterSpacing: "0.22em" }}>{label}</span>
-        <span className="text-[10px] text-muted-foreground">
-          {n === 0 ? "no ratings yet" : n < 3 ? `still learning · ${n}` : `${n} rated`}
-        </span>
-      </div>
-      <div className="mt-3 mb-1 font-serif text-[30px] text-primary leading-none" style={{ letterSpacing: "0.3em" }}>
-        {code.split("").map((ch, i) => (
-          <span
-            key={`${type}-${i}-${ch}`}
-            className={`pm-letter ${ch === "·" ? "text-muted-foreground/60" : ""}`}
-            style={{ ["--pm-delay" as string]: `${i * 50}ms` }}
-            title={ch === "X" ? "loves both poles" : undefined}
-          >
-            {ch}
-          </span>
-        ))}
-      </div>
-    </Link>
   );
 }
