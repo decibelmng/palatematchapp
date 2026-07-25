@@ -24,12 +24,11 @@ const TABS_RIGHT: ReadonlyArray<{ to: TabTo; label: string; Icon: typeof Star }>
   { to: "/feed", label: "Feed", Icon: Users },
 ];
 
+// Legacy shim — retained so downstream isActive/A2HS code below is unaffected.
+// Prefer initialsFor from @/lib/user-display for new callers.
+import { initialsFor as sharedInitialsFor } from "@/lib/user-display";
 function initialsFor(name: string | null | undefined): string {
-  if (!name) return "•";
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return "•";
-  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
-  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+  return sharedInitialsFor({ display_name: name, username: null });
 }
 
 function isActive(pathname: string, to: TabTo): boolean {
