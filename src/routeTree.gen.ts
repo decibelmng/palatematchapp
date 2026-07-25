@@ -9,6 +9,10 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TonightRouteImport } from './routes/tonight'
+import { Route as ShortlistRouteImport } from './routes/shortlist'
+import { Route as ShelfRouteImport } from './routes/shelf'
+import { Route as SearchRouteImport } from './routes/search'
 import { Route as ScanRouteImport } from './routes/scan'
 import { Route as RestaurantsRouteImport } from './routes/restaurants'
 import { Route as RateRouteImport } from './routes/rate'
@@ -30,6 +34,26 @@ import { Route as AdminDisputesRouteImport } from './routes/admin.disputes'
 import { Route as AdminDataRouteImport } from './routes/admin.data'
 import { Route as AddFriendUsernameRouteImport } from './routes/add-friend.$username'
 
+const TonightRoute = TonightRouteImport.update({
+  id: '/tonight',
+  path: '/tonight',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShortlistRoute = ShortlistRouteImport.update({
+  id: '/shortlist',
+  path: '/shortlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ShelfRoute = ShelfRouteImport.update({
+  id: '/shelf',
+  path: '/shelf',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SearchRoute = SearchRouteImport.update({
+  id: '/search',
+  path: '/search',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ScanRoute = ScanRouteImport.update({
   id: '/scan',
   path: '/scan',
@@ -142,6 +166,10 @@ export interface FileRoutesByFullPath {
   '/rate': typeof RateRoute
   '/restaurants': typeof RestaurantsRouteWithChildren
   '/scan': typeof ScanRouteWithChildren
+  '/search': typeof SearchRoute
+  '/shelf': typeof ShelfRoute
+  '/shortlist': typeof ShortlistRoute
+  '/tonight': typeof TonightRoute
   '/add-friend/$username': typeof AddFriendUsernameRoute
   '/admin/data': typeof AdminDataRoute
   '/admin/disputes': typeof AdminDisputesRoute
@@ -162,6 +190,10 @@ export interface FileRoutesByTo {
   '/my-ratings': typeof MyRatingsRoute
   '/pour': typeof PourRoute
   '/rate': typeof RateRoute
+  '/search': typeof SearchRoute
+  '/shelf': typeof ShelfRoute
+  '/shortlist': typeof ShortlistRoute
+  '/tonight': typeof TonightRoute
   '/add-friend/$username': typeof AddFriendUsernameRoute
   '/admin/data': typeof AdminDataRoute
   '/admin/disputes': typeof AdminDisputesRoute
@@ -185,6 +217,10 @@ export interface FileRoutesById {
   '/rate': typeof RateRoute
   '/restaurants': typeof RestaurantsRouteWithChildren
   '/scan': typeof ScanRouteWithChildren
+  '/search': typeof SearchRoute
+  '/shelf': typeof ShelfRoute
+  '/shortlist': typeof ShortlistRoute
+  '/tonight': typeof TonightRoute
   '/add-friend/$username': typeof AddFriendUsernameRoute
   '/admin/data': typeof AdminDataRoute
   '/admin/disputes': typeof AdminDisputesRoute
@@ -209,6 +245,10 @@ export interface FileRouteTypes {
     | '/rate'
     | '/restaurants'
     | '/scan'
+    | '/search'
+    | '/shelf'
+    | '/shortlist'
+    | '/tonight'
     | '/add-friend/$username'
     | '/admin/data'
     | '/admin/disputes'
@@ -229,6 +269,10 @@ export interface FileRouteTypes {
     | '/my-ratings'
     | '/pour'
     | '/rate'
+    | '/search'
+    | '/shelf'
+    | '/shortlist'
+    | '/tonight'
     | '/add-friend/$username'
     | '/admin/data'
     | '/admin/disputes'
@@ -251,6 +295,10 @@ export interface FileRouteTypes {
     | '/rate'
     | '/restaurants'
     | '/scan'
+    | '/search'
+    | '/shelf'
+    | '/shortlist'
+    | '/tonight'
     | '/add-friend/$username'
     | '/admin/data'
     | '/admin/disputes'
@@ -274,6 +322,10 @@ export interface RootRouteChildren {
   RateRoute: typeof RateRoute
   RestaurantsRoute: typeof RestaurantsRouteWithChildren
   ScanRoute: typeof ScanRouteWithChildren
+  SearchRoute: typeof SearchRoute
+  ShelfRoute: typeof ShelfRoute
+  ShortlistRoute: typeof ShortlistRoute
+  TonightRoute: typeof TonightRoute
   AddFriendUsernameRoute: typeof AddFriendUsernameRoute
   AdminDataRoute: typeof AdminDataRoute
   AdminDisputesRoute: typeof AdminDisputesRoute
@@ -283,6 +335,34 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/tonight': {
+      id: '/tonight'
+      path: '/tonight'
+      fullPath: '/tonight'
+      preLoaderRoute: typeof TonightRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/shortlist': {
+      id: '/shortlist'
+      path: '/shortlist'
+      fullPath: '/shortlist'
+      preLoaderRoute: typeof ShortlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/shelf': {
+      id: '/shelf'
+      path: '/shelf'
+      fullPath: '/shelf'
+      preLoaderRoute: typeof ShelfRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/search': {
+      id: '/search'
+      path: '/search'
+      fullPath: '/search'
+      preLoaderRoute: typeof SearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/scan': {
       id: '/scan'
       path: '/scan'
@@ -465,6 +545,10 @@ const rootRouteChildren: RootRouteChildren = {
   RateRoute: RateRoute,
   RestaurantsRoute: RestaurantsRouteWithChildren,
   ScanRoute: ScanRouteWithChildren,
+  SearchRoute: SearchRoute,
+  ShelfRoute: ShelfRoute,
+  ShortlistRoute: ShortlistRoute,
+  TonightRoute: TonightRoute,
   AddFriendUsernameRoute: AddFriendUsernameRoute,
   AdminDataRoute: AdminDataRoute,
   AdminDisputesRoute: AdminDisputesRoute,
