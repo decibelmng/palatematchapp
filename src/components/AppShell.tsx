@@ -76,6 +76,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const { data: profile } = useMyProfile();
+  useLastSeenPing((profile as { id?: string } | undefined)?.id);
   const { theme, toggle } = useTheme();
   const initials = initialsFor(
     (profile as { display_name?: string | null; username?: string | null } | undefined)?.display_name
