@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AuthGate } from "@/components/AuthGate";
-import { ScanText, Sparkles } from "lucide-react";
+import { Search, UtensilsCrossed, Store, Home as HomeIcon, Sparkles } from "lucide-react";
 
 import { useOnboardingStage } from "@/hooks/use-onboarding";
 import { OnboardingIntro } from "@/components/OnboardingIntro";
