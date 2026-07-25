@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { toast } from "sonner";
+import { displayNameFor, handleForDisplay } from "@/lib/user-display";
 
 /**
  * Display name with a hidden @handle revealed on tap/hover.
@@ -7,6 +8,8 @@ import { toast } from "sonner";
  * - Tap the name: copies @handle to clipboard and briefly shows it.
  * - Hover (desktop): shows @handle in a tooltip.
  * - Accessibility: aria-label always includes the @handle for screen readers.
+ * - Auto-generated handles (user_xxxx) are never rendered — a graceful
+ *   placeholder is shown instead and no handle chip appears.
  */
 export function NameWithHandle({
   displayName,
@@ -20,15 +23,17 @@ export function NameWithHandle({
   size?: "sm" | "md" | "lg";
 }) {
   const [revealed, setRevealed] = useState(false);
-  const shown = displayName?.trim() || username;
-  const showHandle = revealed || !displayName?.trim();
+  const shown = displayNameFor({ display_name: displayName, username });
+  const surfaceHandle = handleForDisplay(username);
+  const showHandle = !!surfaceHandle && revealed;
 
   async function reveal() {
+    if (!surfaceHandle) return;
     setRevealed(true);
     try {
       if (typeof navigator !== "undefined" && navigator.clipboard) {
-        await navigator.clipboard.writeText(`@${username}`);
-        toast.success(`Copied @${username}`);
+        await navigator.clipboard.writeText(`@${surfaceHandle}`);
+        toast.success(`Copied @${surfaceHandle}`);
       }
     } catch {
       /* copy is best-effort */
@@ -39,20 +44,24 @@ export function NameWithHandle({
   const nameSize =
     size === "lg" ? "text-[22px]" : size === "sm" ? "text-[14px]" : "text-[18px]";
 
+  const ariaLabel = surfaceHandle
+    ? `${shown} (@${surfaceHandle}) — tap to copy handle`
+    : shown;
+
   return (
     <span className={className}>
       <button
         type="button"
         onClick={reveal}
-        title={`@${username}`}
-        aria-label={`${shown} (@${username}) — tap to copy handle`}
-        className={`font-serif ${nameSize} leading-tight truncate text-left hover:underline decoration-primary/40 underline-offset-4`}
+        title={surfaceHandle ? `@${surfaceHandle}` : shown}
+        aria-label={ariaLabel}
+        className={`font-serif ${nameSize} leading-tight truncate text-left ${surfaceHandle ? "hover:underline decoration-primary/40 underline-offset-4" : ""}`}
       >
         {shown}
       </button>
       {showHandle && (
         <span className="ml-1.5 text-[11px] text-muted-foreground align-middle">
-          @{username}
+          @{surfaceHandle}
         </span>
       )}
     </span>
