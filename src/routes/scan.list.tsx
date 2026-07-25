@@ -1278,7 +1278,7 @@ function HeroCard({
   const price = priceLabel(row);
   const nameId = `hero-${row.key}`;
   const rate = useRate();
-  const bottleId = row.ranked.bottle.id;
+  const bottleId = row.ranked.scanned.matched_bottle_id;
   return (
     <div
       role="button"
