@@ -383,7 +383,7 @@ export const finalizeScan = createServerFn({ method: "POST" })
 
     // Mirror aggregated wines into scan_logs for existing restaurant-attribution flow.
     const { data: rows } = await supabase.from("scan_wines")
-      .select("producer,cuvee,vintage,region,grape,price,price_amount,currency,format,wine_type,fp,fp_source,matched_bottle_id")
+      .select("producer,cuvee,vintage,region,grape,price,price_amount,currency,format,raw_text,wine_type,fp,fp_source,matched_bottle_id")
       .eq("scan_id", data.scan_id);
     const winesForLog = (rows ?? []).map((r: any) => ({
       producer: r.producer, wine_name: r.cuvee, vintage: r.vintage,
