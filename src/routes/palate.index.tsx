@@ -166,11 +166,7 @@ function PalateHome() {
 
       {/* Identity */}
       <div className="flex items-center gap-3">
-        {profile?.avatar_url ? (
-          <img src={profile.avatar_url} alt="" className="h-14 w-14 rounded-full object-cover" />
-        ) : (
-          <div className="h-14 w-14 rounded-full bg-muted flex items-center justify-center font-serif text-xl">{initial}</div>
-        )}
+        <AvatarUpload currentUrl={profile?.avatar_url ?? null} initial={initial} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             {profile?.username ? (
@@ -194,18 +190,18 @@ function PalateHome() {
         <p className="mt-3 text-sm text-muted-foreground">{profile.bio}</p>
       )}
 
-      {/* Stats — each tile links to the detailed list. */}
+      {/* Stats — all tiles land on one consolidated view. */}
       <div className="mt-5 grid grid-cols-4 gap-2 rounded-[14px] border-[0.5px] border-border bg-card/60 p-3 text-center">
-        <Link to="/rate" aria-label="See wines you've rated" className="block rounded-md hover:bg-muted/40 py-1">
+        <Link to="/wines" search={{ tab: "rated" }} aria-label="See wines you've rated" className="block rounded-md hover:bg-muted/40 py-1">
           <Stat n={totalRated} label="Rated" />
         </Link>
-        <Link to="/canons" hash="canons" aria-label="See your Canons" className="block rounded-md hover:bg-muted/40 py-1">
+        <Link to="/wines" search={{ tab: "canons" }} aria-label="See your Canons" className="block rounded-md hover:bg-muted/40 py-1">
           <Stat n={canonsCount} label="Canons" />
         </Link>
-        <Link to="/canons" hash="nemeses" aria-label="See your Nemeses" className="block rounded-md hover:bg-muted/40 py-1">
+        <Link to="/wines" search={{ tab: "nemeses" }} aria-label="See your Nemeses" className="block rounded-md hover:bg-muted/40 py-1">
           <Stat n={nemesesCount} label="Nemeses" />
         </Link>
-        <Link to="/palate/$type" params={{ type: scope }} aria-label="Open palate detail" className="block rounded-md hover:bg-muted/40 py-1">
+        <Link to="/wines" search={{ tab: "scored" }} aria-label="Open palate detail" className="block rounded-md hover:bg-muted/40 py-1">
           <Stat n={redRated.length + whiteRated.length} label="Scored" />
         </Link>
       </div>
