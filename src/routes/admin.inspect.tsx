@@ -42,11 +42,14 @@ function AdminInspect() {
   const listFn = useServerFn(adminListTables);
   const colsFn = useServerFn(adminGetColumns);
   const rowsFn = useServerFn(adminGetRows);
+  const groupFn = useServerFn(adminGroupCount);
 
   const [selected, setSelected] = useState<string | null>(null);
   const [limit, setLimit] = useState(100);
   const [copied, setCopied] = useState<"json" | "csv" | null>(null);
   const [fallback, setFallback] = useState<string | null>(null);
+  const [groupCol, setGroupCol] = useState<string>("");
+  const [groupRun, setGroupRun] = useState<{ table: string; column: string } | null>(null);
 
   const tables = useQuery({
     queryKey: ["admin-inspect", "tables"],
