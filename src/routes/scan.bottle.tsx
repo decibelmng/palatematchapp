@@ -494,12 +494,22 @@ function BottleScan() {
                   <p className="mt-1 text-xs text-muted-foreground">
                     Your confirmed read is pre-filled. Only the wine name is required.
                   </p>
-                  <button
-                    onClick={() => setShowAdd(true)}
-                    className="mt-3 w-full rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm font-medium"
-                  >
-                    Add this bottle →
-                  </button>
+                  <div className="mt-3 grid gap-2">
+                    <button
+                      onClick={fingerprintAndAdd}
+                      disabled={onDemandBusy || !extracted.producer || !(extracted.wine_name || extracted.region)}
+                      className="w-full rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm font-medium disabled:opacity-60"
+                    >
+                      {onDemandBusy ? "Fingerprinting…" : "Fingerprint & add automatically"}
+                    </button>
+                    <button
+                      onClick={() => setShowAdd(true)}
+                      disabled={onDemandBusy}
+                      className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm font-medium disabled:opacity-60"
+                    >
+                      Add with manual details →
+                    </button>
+                  </div>
                 </div>
               )}
             </>
