@@ -4,7 +4,8 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { ListControls } from "@/components/ListControls";
 import { DrinkingGroupSelector } from "@/components/DrinkingGroupSelector";
-import { useRatings, useBottlesByIds, bottleToFp, bottleType } from "@/hooks/use-palate-data";
+import { useRatings, useBottlesByIds, bottleToFp, bottleType, useRate } from "@/hooks/use-palate-data";
+import { StarTap } from "@/components/StarTap";
 import { useSession } from "@/hooks/use-session";
 import { useGroupSelection, useGroupPredict, type GroupCandidateInput } from "@/hooks/use-friends";
 import { recommend, type BottleFp, type RatedFp, type Recommendation, type WineType } from "@/lib/recommender";
@@ -755,6 +756,7 @@ function Scan() {
                   row={h}
                   isTie={heroes.length > 1}
                   zeroStrong={zeroStrong}
+                  currentStars={ratings?.find((r) => r.bottle_id === h.ranked.bottle.id)?.stars ?? null}
                   onOpen={() => setDetailFor(h)}
                 />
               ))}
@@ -1263,23 +1265,28 @@ function reasonLine(row: ScanRow): string {
 }
 
 function HeroCard({
-  row, isTie, zeroStrong, onOpen,
+  row, isTie, zeroStrong, currentStars, onOpen,
 }: {
   row: ScanRow;
   isTie: boolean;
   zeroStrong: boolean;
+  currentStars: number | null;
   onOpen: () => void;
 }) {
   const score = row.predicted.toFixed(1);
   const reason = reasonLine(row);
   const price = priceLabel(row);
   const nameId = `hero-${row.key}`;
+  const rate = useRate();
+  const bottleId = row.ranked.bottle.id;
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onOpen}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
       aria-labelledby={nameId}
-      className="scan-hero relative w-full text-left rounded-xl border border-[--accent-color] p-5 bg-[--surface] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[--accent-color]"
+      className="scan-hero relative w-full text-left rounded-xl border border-[--accent-color] p-5 bg-[--surface] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[--accent-color]"
       style={{ boxShadow: "0 0 0 1px var(--accent-color), 0 12px 40px -12px color-mix(in oklab, var(--accent-color) 40%, transparent)" }}
     >
       <p className="text-[11px] uppercase tracking-[0.22em] text-[--accent-color] font-medium">
@@ -1308,7 +1315,32 @@ function HeroCard({
         <span className="text-[--accent-color] font-medium">{price}</span>
         {reason && <span className="text-muted-foreground"> · {reason}</span>}
       </p>
-    </button>
+      <div
+        className="mt-4 pt-3 border-t border-[--accent-color]/30 flex items-center justify-between gap-3"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+          {currentStars != null ? "Your rating" : "Tried it? Rate now"}
+        </span>
+        <StarTap
+          value={currentStars}
+          size="sm"
+          onChange={(stars) => {
+            if (stars == null || stars === currentStars) return;
+            rate.mutate(
+              { bottleId, stars },
+              {
+                onSuccess: () => toast.success(`Rated ${stars}★`),
+                onError: (e) => {
+                  const msg = e instanceof Error ? e.message : String(e);
+                  if (!/canceled/i.test(msg)) toast.error(msg || "Couldn't save rating");
+                },
+              },
+            );
+          }}
+        />
+      </div>
+    </div>
   );
 }
 
