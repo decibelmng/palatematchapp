@@ -157,6 +157,18 @@ function AuthScreen() {
       )}
 
       <form onSubmit={submitEmail} className="mt-4 space-y-3">
+        {mode === "create" && (
+          <input
+            type="text"
+            required
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            placeholder="Your name"
+            autoComplete="name"
+            maxLength={60}
+            className="w-full rounded-md bg-input border border-border px-3 py-2.5 text-sm outline-none focus:border-primary"
+          />
+        )}
         <input
           type="email"
           required
@@ -169,7 +181,7 @@ function AuthScreen() {
         {err && <p className="text-sm text-destructive">{err}</p>}
         <button
           type="submit"
-          disabled={busy || !email}
+          disabled={busy || !email || (mode === "create" && !displayName.trim())}
           className="w-full rounded-md border border-border bg-card py-2.5 text-sm font-medium hover:bg-accent disabled:opacity-50"
         >
           {busy
