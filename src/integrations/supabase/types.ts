@@ -276,6 +276,54 @@ export type Database = {
           },
         ]
       }
+      feedback: {
+        Row: {
+          app_version: string | null
+          category: string
+          context: Json | null
+          created_at: string
+          id: string
+          message: string | null
+          prompt_key: string | null
+          rating: string | null
+          screen: string | null
+          screenshot_url: string | null
+          source: string
+          status: string
+          user_id: string
+        }
+        Insert: {
+          app_version?: string | null
+          category: string
+          context?: Json | null
+          created_at?: string
+          id?: string
+          message?: string | null
+          prompt_key?: string | null
+          rating?: string | null
+          screen?: string | null
+          screenshot_url?: string | null
+          source?: string
+          status?: string
+          user_id: string
+        }
+        Update: {
+          app_version?: string | null
+          category?: string
+          context?: Json | null
+          created_at?: string
+          id?: string
+          message?: string | null
+          prompt_key?: string | null
+          rating?: string | null
+          screen?: string | null
+          screenshot_url?: string | null
+          source?: string
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       follows: {
         Row: {
           created_at: string
