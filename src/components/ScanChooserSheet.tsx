@@ -45,6 +45,7 @@ export function ScanChooserSheet({
         <div className="grid grid-cols-2 gap-3">
           <Link
             to="/scan/list"
+            search={{ capture: "1" } as any}
             onClick={onClose}
             className="rounded-xl border-2 border-primary/60 bg-gradient-to-br from-primary/15 via-card to-card p-4 hover:border-primary transition text-left"
           >
@@ -59,6 +60,7 @@ export function ScanChooserSheet({
 
           <Link
             to="/scan/bottle"
+            search={{ capture: "1" } as any}
             onClick={onClose}
             className="rounded-xl border-2 border-border bg-card p-4 hover:border-primary/60 transition text-left"
           >
