@@ -1630,7 +1630,11 @@ function ScanDetailSheet({ row, onClose }: { row: ScanRow | null; onClose: () =>
         )}
         <div className="mt-4 pt-3 border-t border-border flex items-center justify-between gap-3">
           <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-            {bottleId == null ? "Estimated — no catalog match to rate" : currentStars != null ? "Your rating" : "Tried it? Rate now"}
+            {bottleId == null
+              ? "Estimated — couldn't identify to rate"
+              : currentStars != null
+                ? row.isCatalog ? "Your rating" : "Your rating · estimated"
+                : row.isCatalog ? "Tried it? Rate now" : "Estimated — tried it? Rate now"}
           </span>
           {bottleId != null && (
             <StarTap
