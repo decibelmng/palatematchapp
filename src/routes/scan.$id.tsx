@@ -120,6 +120,15 @@ function ScanDetailPage() {
       </header>
 
       <RankedScanList wines={s.wines} ratedRows={ratedRows} />
+
+      <div className="mt-4">
+        <HelpfulPrompt
+          promptKey="scan.list.ranking"
+          question="Did this ranking match what you'd order?"
+          context={{ wines_count: s.wines?.length ?? 0, scan_id: id }}
+          followUpPlaceholder="Which pick felt off?"
+        />
+      </div>
     </div>
   );
 }
