@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { useMyProfile } from "@/hooks/use-friends";
+import { useMyProfile, useFriendships } from "@/hooks/use-friends";
 import { useLastSeenPing } from "@/hooks/use-last-seen";
 import { useAutoRedeemInvite } from "@/hooks/use-auto-redeem-invite";
 import { markScanUnlockSeen } from "@/lib/friends.functions";
@@ -91,6 +91,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const { data: feedActivity } = useFeedActivity();
   const feedLatestAt = feedActivity?.latest_at ?? null;
+  const { data: allFriendships = [] } = useFriendships();
+  const pendingIncoming = allFriendships.filter(
+    (f) => f.status === "pending" && f.direction === "incoming",
+  ).length;
 
   // Unlock celebration: fire exactly once per user, ever. Gated on a
   // server-persisted flag (profiles.scan_unlock_seen) so it survives reloads,
