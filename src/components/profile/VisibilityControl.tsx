@@ -49,8 +49,8 @@ export function VisibilityControl({ current }: { current: Visibility }) {
   const value: Visibility = m.isPending && m.variables ? (m.variables as Visibility) : current;
 
   return (
-    <div className="rounded-[14px] border-[0.5px] border-border bg-card/60 p-4">
-      <p className="text-[10px] uppercase text-muted-foreground" style={{ letterSpacing: "0.22em" }}>
+    <div className="rounded-[14px] border border-border bg-card p-4">
+      <p className="text-meta uppercase text-muted-foreground" style={{  }}>
         Profile visibility
       </p>
       <div className="mt-3 grid grid-cols-3 gap-2">
@@ -71,7 +71,7 @@ export function VisibilityControl({ current }: { current: Visibility }) {
           );
         })}
       </div>
-      <p className="mt-2 text-[11px] text-muted-foreground">
+      <p className="mt-2 text-meta text-muted-foreground">
         {OPTS.find((o) => o.value === value)?.hint}
       </p>
     </div>

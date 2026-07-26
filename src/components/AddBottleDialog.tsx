@@ -205,7 +205,7 @@ export function AddBottleDialog({
 
         {phase === "form" && (
           <form onSubmit={onResearch} className="space-y-3">
-            <p className="text-[11px] text-muted-foreground -mb-1">
+            <p className="text-meta text-muted-foreground -mb-1">
               Copy what's on the label. Only the winery is required — leave anything else blank if you're not sure.
             </p>
             <Field
@@ -272,7 +272,7 @@ export function AddBottleDialog({
             />
 
             {error && <p className="text-xs text-destructive">{error}</p>}
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-meta text-muted-foreground">
               We'll research the wine's style and estimate a fingerprint on the same scale as the catalog.
             </p>
             <div className="flex gap-2 pt-1">
@@ -303,7 +303,7 @@ export function AddBottleDialog({
                     <p className="text-xs text-muted-foreground truncate">
                       {[d.producer, d.region, d.vintage].filter(Boolean).join(" · ")}
                     </p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">match {(d.score * 100).toFixed(0)}%</p>
+                    <p className="text-meta text-muted-foreground mt-0.5">match {(d.score * 100).toFixed(0)}%</p>
                   </div>
                   <button
                     onClick={() => rateExisting(d)}
@@ -337,7 +337,7 @@ export function AddBottleDialog({
             </div>
 
             <div className="rounded-md border border-dashed border-border bg-muted/30 p-3">
-              <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-1">
+              <p className="text-meta uppercase tracking-label text-muted-foreground mb-1">
                 Researched estimate — not a verified tasting note
               </p>
               <p className="text-sm leading-snug italic">"{result.tasting_note}"</p>
@@ -367,14 +367,14 @@ export function AddBottleDialog({
             <div>
               <p className="text-xs text-muted-foreground mb-2">How would you rate it?</p>
               <StarTap value={stars} onChange={(s) => s != null && commitRating(s)} />
-              {stars != null && <p className="text-[11px] text-primary mt-2">Saved ★ {stars}</p>}
+              {stars != null && <p className="text-meta text-primary mt-2">Saved ★ {stars}</p>}
             </div>
 
             <div>
-              <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground mb-1">
+              <p className="text-meta uppercase tracking-label text-muted-foreground mb-1">
                 Replace or append the researched note (optional)
               </p>
-              <p className="text-[11px] italic text-muted-foreground mb-2">
+              <p className="text-meta italic text-muted-foreground mb-2">
                 Current: "{result.tasting_note}"
               </p>
               <textarea
@@ -418,7 +418,7 @@ function Field({ label, value, onChange, placeholder, hint }: {
         placeholder={placeholder}
         className="mt-1 w-full bg-input border border-border rounded-md px-3 py-2 text-sm text-foreground"
       />
-      {hint && <span className="mt-1 block text-[10px] leading-snug text-muted-foreground/80">{hint}</span>}
+      {hint && <span className="mt-1 block text-meta leading-snug text-muted-foreground/80">{hint}</span>}
     </label>
   );
 }
@@ -432,7 +432,7 @@ function FpGrid({ fp, sweet }: { fp: Record<string, number>; sweet: number }) {
   return (
     <div className="mt-3 grid grid-cols-3 gap-x-3 gap-y-1.5">
       {rows.map(([k, v]) => (
-        <div key={k} className="flex items-center gap-2 text-[11px]">
+        <div key={k} className="flex items-center gap-2 text-meta">
           <span className="w-16 text-muted-foreground">{k}</span>
           <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
             <div className="h-full bg-primary" style={{ width: `${Math.round(v * 100)}%` }} />

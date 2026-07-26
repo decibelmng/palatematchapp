@@ -44,7 +44,7 @@ function AdminHub() {
       </header>
 
       {isAdmin === false && (
-        <p className="text-[11px] text-muted-foreground">Signed in as non-admin — links will show "Not authorized".</p>
+        <p className="text-meta text-muted-foreground">Signed in as non-admin — links will show "Not authorized".</p>
       )}
 
       <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -57,7 +57,7 @@ function AdminHub() {
               <Icon size={16} className="mt-0.5 text-primary" />
               <div className="min-w-0">
                 <div className="text-sm font-medium">{label}</div>
-                <div className="text-[11px] text-muted-foreground">{description}</div>
+                <div className="text-meta text-muted-foreground">{description}</div>
               </div>
             </Link>
           </li>

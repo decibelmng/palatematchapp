@@ -61,9 +61,9 @@ function FeedbackAdmin() {
       {summaryData && (
         <section className="grid grid-cols-2 gap-2">
           <div className="rounded-lg border border-border bg-card p-3">
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">This week</div>
+            <div className="text-meta uppercase tracking-label text-muted-foreground">This week</div>
             <div className="mt-1 text-2xl font-semibold">{summaryData.this_week_total}</div>
-            <ul className="mt-1 text-[11px] text-muted-foreground space-y-0.5">
+            <ul className="mt-1 text-meta text-muted-foreground space-y-0.5">
               {summaryData.by_category.map((c) => (
                 <li key={c.category} className="flex justify-between">
                   <span>{c.category}</span><span>{c.n}</span>
@@ -72,8 +72,8 @@ function FeedbackAdmin() {
             </ul>
           </div>
           <div className="rounded-lg border border-border bg-card p-3">
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Prompt 👍/👎</div>
-            <ul className="mt-1 text-[11px] space-y-1">
+            <div className="text-meta uppercase tracking-label text-muted-foreground">Prompt 👍/👎</div>
+            <ul className="mt-1 text-meta space-y-1">
               {summaryData.prompt_ratios.length === 0 && (
                 <li className="text-muted-foreground">No prompt data yet.</li>
               )}
@@ -83,7 +83,7 @@ function FeedbackAdmin() {
                 return (
                   <li key={p.prompt_key}>
                     <div className="flex justify-between">
-                      <span className="font-mono text-[10px]">{p.prompt_key}</span>
+                      <span className="font-mono text-meta">{p.prompt_key}</span>
                       <span>{upPct}% 👍 ({p.up}/{total})</span>
                     </div>
                   </li>
@@ -92,16 +92,16 @@ function FeedbackAdmin() {
             </ul>
           </div>
           <div className="col-span-2 rounded-lg border border-border bg-card p-3">
-            <div className="text-[10px] uppercase tracking-wider text-muted-foreground">
+            <div className="text-meta uppercase tracking-label text-muted-foreground">
               Screens generating most "confusing" feedback
             </div>
             {summaryData.confusing_by_screen.length === 0 ? (
-              <p className="mt-1 text-[11px] text-muted-foreground">None this week.</p>
+              <p className="mt-1 text-meta text-muted-foreground">None this week.</p>
             ) : (
-              <ul className="mt-1 text-[11px] space-y-0.5">
+              <ul className="mt-1 text-meta space-y-0.5">
                 {summaryData.confusing_by_screen.map((s) => (
                   <li key={s.screen} className="flex justify-between">
-                    <span className="font-mono text-[10px] truncate">{s.screen}</span>
+                    <span className="font-mono text-meta truncate">{s.screen}</span>
                     <span>{s.n}</span>
                   </li>
                 ))}
@@ -157,8 +157,8 @@ function FeedbackCard({ row, onSetStatus }: { row: FeedbackRow; onSetStatus: (s:
 
   return (
     <article className="rounded-lg border border-border bg-card p-3 space-y-2">
-      <header className="flex items-center gap-2 text-[11px] text-muted-foreground">
-        <span className="inline-flex items-center rounded-full bg-primary/10 text-primary px-2 py-0.5 text-[10px] font-medium">
+      <header className="flex items-center gap-2 text-meta text-muted-foreground">
+        <span className="inline-flex items-center rounded-full bg-primary/10 text-primary px-2 py-0.5 text-meta font-medium">
           {badge}
         </span>
         <span>·</span>
@@ -173,7 +173,7 @@ function FeedbackCard({ row, onSetStatus }: { row: FeedbackRow; onSetStatus: (s:
           <img src={row.signed_screenshot_url} alt="Screenshot" className="max-h-48 rounded border border-border" />
         </a>
       )}
-      <footer className="flex flex-wrap items-center gap-2 text-[10px] text-muted-foreground">
+      <footer className="flex flex-wrap items-center gap-2 text-meta text-muted-foreground">
         {row.app_version && <span>build: {row.app_version}</span>}
         {row.context && Object.entries(row.context).map(([k, v]) => (
           <span key={k} className="rounded bg-muted/50 px-1.5 py-0.5">{k}: {String(v)}</span>

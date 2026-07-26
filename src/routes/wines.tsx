@@ -50,7 +50,7 @@ function WinesPage() {
               search={{ tab: id }}
               role="tab"
               aria-selected={active}
-              className={`flex flex-col items-center gap-1 rounded-lg border px-2 py-2 text-[11px] transition ${
+              className={`flex flex-col items-center gap-1 rounded-lg border px-2 py-2 text-meta transition ${
                 active
                   ? "border-primary bg-primary/10 text-primary"
                   : "border-border text-muted-foreground hover:text-foreground"
@@ -83,7 +83,7 @@ function BenchmarkList({ tier }: { tier: "canon" | "nemesis" }) {
   if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
   if (rows.length === 0) {
     return (
-      <div className="rounded-lg border border-border bg-card/60 p-6 text-center">
+      <div className="rounded-lg border border-border bg-card p-6 text-center">
         <p className="text-sm">No {tier === "canon" ? "Canons" : "Nemeses"} yet.</p>
         <p className="mt-1 text-xs text-muted-foreground">
           Rate a wine 5 stars and mark it as a Canon — or 1 star and mark it as a Nemesis — to anchor your palate.
@@ -121,15 +121,15 @@ function ScoredHint() {
 
   return (
     <div className="grid grid-cols-2 gap-3">
-      <Link to="/palate/$type" params={{ type: "red" }} className="rounded-lg border border-border bg-card/60 p-4 hover:border-primary/60 transition">
-        <p className="text-[11px] uppercase tracking-wider text-muted-foreground">Red</p>
+      <Link to="/palate/$type" params={{ type: "red" }} className="rounded-lg border border-border bg-card p-4 hover:border-primary/60 transition">
+        <p className="text-meta uppercase tracking-label text-muted-foreground">Red</p>
         <p className="mt-1 font-serif text-2xl">{redCount}</p>
-        <p className="mt-1 text-[11px] text-muted-foreground">Open map + 3D →</p>
+        <p className="mt-1 text-meta text-muted-foreground">Open map + 3D →</p>
       </Link>
-      <Link to="/palate/$type" params={{ type: "white" }} className="rounded-lg border border-border bg-card/60 p-4 hover:border-primary/60 transition">
-        <p className="text-[11px] uppercase tracking-wider text-muted-foreground">White</p>
+      <Link to="/palate/$type" params={{ type: "white" }} className="rounded-lg border border-border bg-card p-4 hover:border-primary/60 transition">
+        <p className="text-meta uppercase tracking-label text-muted-foreground">White</p>
         <p className="mt-1 font-serif text-2xl">{whiteCount}</p>
-        <p className="mt-1 text-[11px] text-muted-foreground">Open map + 3D →</p>
+        <p className="mt-1 text-meta text-muted-foreground">Open map + 3D →</p>
       </Link>
     </div>
   );

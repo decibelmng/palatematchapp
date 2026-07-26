@@ -467,12 +467,12 @@ export function TasteMap({ type, landmarks, loved, others = [], canonIds, nemesi
       </svg>
 
       {/* Callout slot — fixed position directly below the plot */}
-      <div className="mt-3 min-h-[64px] rounded-[14px] border-[0.5px] border-border bg-card/60 px-4 py-3 shadow-[var(--pm-card-shadow)]">
+      <div className="mt-3 min-h-[64px] rounded-[14px] border border-border bg-card px-4 py-3 shadow-[var(--pm-card-shadow)]">
         {selected ? (
           <Callout key={`${selected.kind}-${selected.kind === "loved" ? selected.p.key : selected.l.label}`}
             selected={selected} />
         ) : (
-          <p className="text-muted-foreground text-center text-[12px]">Tap any dot to see the wine</p>
+          <p className="text-muted-foreground text-center text-meta">Tap any dot to see the wine</p>
         )}
       </div>
 
@@ -488,14 +488,14 @@ export function TasteMap({ type, landmarks, loved, others = [], canonIds, nemesi
               disabled={disabled}
               onClick={() => setTierOn((prev) => ({ ...prev, [s]: !prev[s] }))}
               aria-pressed={on}
-              className={`rounded-full border-[0.5px] px-2 py-0.5 text-[10px] uppercase transition ${
+              className={`rounded-full border px-2 py-0.5 text-meta uppercase transition ${
                 disabled
                   ? "border-border/50 text-muted-foreground/40 cursor-not-allowed"
                   : on
                   ? "border-primary bg-primary/10 text-foreground"
                   : "border-border text-muted-foreground hover:bg-accent"
               }`}
-              style={{ letterSpacing: "0.14em" }}
+              style={{  }}
             >
               {s}★
             </button>
@@ -504,7 +504,7 @@ export function TasteMap({ type, landmarks, loved, others = [], canonIds, nemesi
       </div>
 
       {/* Legend */}
-      <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+      <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-meta text-muted-foreground">
         <span className="inline-flex items-center gap-1.5">
           <span className="inline-block w-2.5 h-2.5 rounded-full bg-primary" />
           Wines you love
@@ -556,19 +556,19 @@ function Callout({ selected }: { selected: NonNullable<Selected> }) {
     const stars = "★".repeat(p.stars) + "☆".repeat(5 - p.stars);
     return (
       <div className="pm-rise">
-        <div className="font-serif text-[17px] leading-snug text-foreground truncate">{p.name}</div>
-        {meta && <div className="text-[13px] text-muted-foreground truncate">{meta}</div>}
-        <div className="mt-1 text-primary text-[14px]" style={{ letterSpacing: "0.15em" }}>{stars}</div>
+        <div className="font-serif text-body leading-snug text-foreground truncate">{p.name}</div>
+        {meta && <div className="text-meta text-muted-foreground truncate">{meta}</div>}
+        <div className="mt-1 text-primary text-sub" style={{  }}>{stars}</div>
       </div>
     );
   }
   const l = selected.l;
   return (
     <div className="pm-rise">
-      <div className="font-serif text-[17px] leading-snug text-foreground truncate">{l.label}</div>
-      <div className="text-[13px] text-muted-foreground truncate">{l.sub}</div>
+      <div className="font-serif text-body leading-snug text-foreground truncate">{l.label}</div>
+      <div className="text-meta text-muted-foreground truncate">{l.sub}</div>
       <div className="mt-1.5">
-        <span className="inline-block rounded-full border-[0.5px] border-border px-2 py-[2px] text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
+        <span className="inline-block rounded-full border border-border px-2 py-[2px] text-meta uppercase tracking-label text-muted-foreground">
           Landmark
         </span>
       </div>

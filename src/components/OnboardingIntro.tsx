@@ -13,12 +13,12 @@ export function OnboardingIntro({ onStart }: { onStart: () => void }) {
       </div>
 
       <p
-        className="mt-4 text-[10px] uppercase text-muted-foreground"
-        style={{ letterSpacing: "0.22em" }}
+        className="mt-4 text-meta uppercase text-muted-foreground"
+        style={{  }}
       >
         Welcome
       </p>
-      <h1 className="mt-2 font-serif text-[26px] leading-tight max-w-[22ch]">
+      <h1 className="mt-2 font-serif text-title leading-tight max-w-[22ch]">
         Your palate has a code.
       </h1>
       <p className="mt-3 text-sm text-muted-foreground max-w-[36ch] leading-relaxed">
@@ -40,8 +40,8 @@ export function OnboardingIntro({ onStart }: { onStart: () => void }) {
           "See your palate on the map",
           "Scan any wine list — we rank it for you",
         ].map((text, i) => (
-          <li key={i} className="flex items-center gap-3 text-[13px]">
-            <span className="w-5 h-5 rounded-full border border-border flex items-center justify-center text-[11px]">
+          <li key={i} className="flex items-center gap-3 text-meta">
+            <span className="w-5 h-5 rounded-full border border-border flex items-center justify-center text-meta">
               {i + 1}
             </span>
             <span className={i === 0 ? "" : "text-muted-foreground"}>{text}</span>

@@ -132,7 +132,7 @@ function Rate() {
       {isNewUser && (
         <>
           <div>
-            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Rate</p>
+            <p className="text-xs uppercase tracking-label text-muted-foreground">Rate</p>
             <h1 className="font-serif text-3xl mt-2">Have a bottle in front of you?</h1>
             <p className="mt-2 text-sm text-muted-foreground">
               Scan the label to rate it — no typing needed.
@@ -158,10 +158,10 @@ function Rate() {
               <ScanLine size={24} strokeWidth={1.8} />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-serif text-[20px] leading-tight text-foreground">
+              <h3 className="font-serif text-heading leading-tight text-foreground">
                 Scan a bottle
               </h3>
-              <p className="mt-0.5 text-[12px] text-muted-foreground">
+              <p className="mt-0.5 text-meta text-muted-foreground">
                 Point the camera at the label — we'll add it.
               </p>
             </div>
@@ -170,7 +170,7 @@ function Rate() {
         </Link>
 
         {/* SECONDARY: type-to-search fallback */}
-        <p className="mt-4 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+        <p className="mt-4 text-meta uppercase tracking-label text-muted-foreground">
           Or rate from memory
         </p>
         <div className="mt-1.5 flex gap-2">
@@ -231,7 +231,7 @@ function Rate() {
 
         {searching && (
           <>
-            <p className="mt-3 text-[11px] text-muted-foreground">
+            <p className="mt-3 text-meta text-muted-foreground">
               {isFetching
                 ? "Searching…"
                 : `${list.length} result${list.length === 1 ? "" : "s"}${list.length === 50 ? " (refine to narrow)" : ""}`}
@@ -305,7 +305,7 @@ function Rate() {
               Not in the catalog? Fill in what you know and we'll research the rest.
             </p>
           </div>
-          <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider">
+          <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 text-primary px-2.5 py-1 text-meta font-semibold uppercase tracking-label">
             <Plus size={12} /> New
           </span>
         </div>
@@ -377,7 +377,7 @@ function Rate() {
           </div>
 
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t border-border">
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-meta text-muted-foreground">
               We'll estimate a calibrated fingerprint on the same scale as the catalog.
             </p>
             <button

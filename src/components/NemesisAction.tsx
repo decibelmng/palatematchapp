@@ -76,7 +76,7 @@ export function NemesisAction({ bottle, stars, compact = false }: Props) {
   const label = isNemesis ? "Nemesis (tap to remove)" : "Mark as my Nemesis";
   const btnClasses = compact
     ? "inline-flex items-center justify-center rounded-full p-1.5 transition"
-    : "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-semibold transition";
+    : "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-meta font-semibold transition";
   const style = isNemesis
     ? {
         color: "var(--destructive)",

@@ -658,10 +658,10 @@ function Scan() {
             <ScanLine size={24} strokeWidth={1.8} />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-serif text-[20px] leading-tight text-foreground">
+            <h3 className="font-serif text-heading leading-tight text-foreground">
               Scan a wine list
             </h3>
-            <p className="mt-0.5 text-[12px] text-muted-foreground">
+            <p className="mt-0.5 text-meta text-muted-foreground">
               Point the camera at the list — I'll rank every bottle.
             </p>
           </div>
@@ -736,12 +736,12 @@ function Scan() {
 
       {/* Per-batch progress */}
       {batches.length > 0 && (isRunning || anyBatchInFlight || failedBatches.length > 0) && (
-        <div className="mt-4 rounded-md border border-border bg-card/60 p-3">
+        <div className="mt-4 rounded-md border border-border bg-card p-3">
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium">
               {isRunning ? "Reading pages…" : failedBatches.length > 0 ? "Some pages failed" : "Reading complete"}
             </p>
-            {isRunning && <p className="text-[11px] text-muted-foreground">{elapsed}s</p>}
+            {isRunning && <p className="text-meta text-muted-foreground">{elapsed}s</p>}
           </div>
           <ul className="mt-2 space-y-1 text-xs">
             {batches.map((b) => {
@@ -762,7 +762,7 @@ function Scan() {
                     <span aria-hidden className="inline-block h-3 w-3 rounded-full border-2 border-current border-r-transparent animate-spin" />
                   )}
                   {b.status === "failed" && b.error && (
-                    <span className="text-[10px] text-muted-foreground truncate">— {b.error}</span>
+                    <span className="text-meta text-muted-foreground truncate">— {b.error}</span>
                   )}
                 </li>
               );
@@ -775,7 +775,7 @@ function Scan() {
                 Retry {failedBatches.length} failed page{failedBatches.length === 1 ? "" : "s"}
               </button>
               {failedBatches.some((b) => b.images.length === 0) && (
-                <p className="mt-1 text-[10px] text-muted-foreground">
+                <p className="mt-1 text-meta text-muted-foreground">
                   Retry unavailable after refresh — start a new scan for the failed pages.
                 </p>
               )}
@@ -797,7 +797,7 @@ function Scan() {
       )}
 
       {!enoughRatings && readable.length > 0 && (
-        <div className="mt-5 rounded-md border border-border bg-card/60 p-3 text-xs text-muted-foreground">
+        <div className="mt-5 rounded-md border border-border bg-card p-3 text-xs text-muted-foreground">
           Rate a few wines first so I can match this list to your taste. Showing the list in the order it was read.
         </div>
       )}
@@ -841,7 +841,7 @@ function Scan() {
           {/* THE REST */}
           {(restNonVeto.length > 0 || vetoedRows.length > 0 || pendingSkeletons > 0) && (
             <div className="mt-8">
-              <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+              <p className="text-meta uppercase tracking-label text-muted-foreground">
                 The rest of the list
                 {anyBatchInFlight && <span className="ml-2 normal-case tracking-normal text-muted-foreground">· still reading…</span>}
               </p>
@@ -861,7 +861,7 @@ function Scan() {
 
           {/* Zero-strong honest absence */}
           {zeroStrong && (
-            <p className="mt-6 rounded-md border border-border bg-card/60 p-3 text-xs text-muted-foreground">
+            <p className="mt-6 rounded-md border border-border bg-card p-3 text-xs text-muted-foreground">
               Nothing here is a strong match. Your closest is <span className="text-foreground">{heroes[0].ranked.bottle.name}</span> at {heroes[0].predicted.toFixed(1)}★.
             </p>
           )}
@@ -878,7 +878,7 @@ function Scan() {
               <RestaurantAttribution scanId={scanLogId} />
             )}
             {totalWines > 0 && (
-              <p className="text-[11px] text-muted-foreground">
+              <p className="text-meta text-muted-foreground">
                 Read {totalWines} wine{totalWines > 1 ? "s" : ""} · {matchedCount} matched · {estimatedCount} estimated
                 {unreadable.length > 0 ? ` · ${unreadable.length} unreadable` : ""}.
               </p>
@@ -887,8 +887,8 @@ function Scan() {
               <button
                 type="button"
                 onClick={() => setSommOpen(true)}
-                className="text-[11px] uppercase text-muted-foreground hover:text-primary"
-                style={{ letterSpacing: "0.18em" }}
+                className="text-meta uppercase text-muted-foreground hover:text-primary"
+                style={{  }}
               >
                 Show your palate to the somm →
               </button>
@@ -898,7 +898,7 @@ function Scan() {
       )}
 
       {readFailed && (
-        <div className="mt-6 rounded-md border border-border bg-card/60 p-4 text-sm">
+        <div className="mt-6 rounded-md border border-border bg-card p-4 text-sm">
           <p className="text-foreground">Couldn't read that list.</p>
           <p className="mt-1 text-xs text-muted-foreground">Try again with more light, or hold the phone closer.</p>
           <button
@@ -937,7 +937,7 @@ function Scan() {
         </div>
       )}
 
-      <p className="mt-10 text-[11px] text-muted-foreground">
+      <p className="mt-10 text-meta text-muted-foreground">
         Long lists are read in parallel batches of 2 pages. Your photos and results are saved privately so a
         refresh, tab close, or dropped connection never loses a restaurant session.
       </p>
@@ -986,14 +986,14 @@ function PrescanRestaurantPicker({
     return (
       <div className="mt-4 rounded-md border border-primary/40 bg-primary/5 p-3 flex items-center justify-between gap-3">
         <div className="text-sm">
-          <p className="text-[10px] uppercase tracking-wider text-primary">Attributing to</p>
+          <p className="text-meta uppercase tracking-label text-primary">Attributing to</p>
           <p className="font-medium">{value.name}</p>
         </div>
         {!disabled && (
           <button
             type="button"
             onClick={() => onChange(null)}
-            className="text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-2"
+            className="text-meta text-muted-foreground hover:text-foreground underline underline-offset-2"
           >
             Change
           </button>
@@ -1005,9 +1005,9 @@ function PrescanRestaurantPicker({
   const showCreate = debounced.length >= 2 && results.data && results.data.length === 0;
 
   return (
-    <div className="mt-4 rounded-md border border-border bg-card/70 p-3">
+    <div className="mt-4 rounded-md border border-border bg-card p-3">
       <p className="text-sm font-medium">Where are you? <span className="text-muted-foreground font-normal">(optional)</span></p>
-      <p className="text-[11px] text-muted-foreground">Pick a restaurant now to attribute this list automatically.</p>
+      <p className="text-meta text-muted-foreground">Pick a restaurant now to attribute this list automatically.</p>
       <input
         type="text"
         value={q}
@@ -1119,14 +1119,14 @@ function RestaurantAttribution({ scanId }: { scanId: string }) {
   const showCreate = debounced.length >= 2 && results.data && results.data.length === 0;
 
   return (
-    <div className="mt-4 rounded-md border border-border bg-card/70 p-3">
+    <div className="mt-4 rounded-md border border-border bg-card p-3">
       <div className="flex items-baseline justify-between gap-2">
         <div>
           <p className="text-sm font-medium">Where are you?</p>
-          <p className="text-[11px] text-muted-foreground">Optional — attribute this list to a restaurant.</p>
+          <p className="text-meta text-muted-foreground">Optional — attribute this list to a restaurant.</p>
         </div>
         <button onClick={() => setDismissed(true)}
-          className="text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-2">
+          className="text-meta text-muted-foreground hover:text-foreground underline underline-offset-2">
           Skip
         </button>
       </div>
@@ -1158,7 +1158,7 @@ function RestaurantAttribution({ scanId }: { scanId: string }) {
         </div>
       )}
       {busy && !createAndAttribute.isPending && (
-        <p className="mt-2 text-[11px] text-muted-foreground">Saving…</p>
+        <p className="mt-2 text-meta text-muted-foreground">Saving…</p>
       )}
     </div>
   );
@@ -1208,7 +1208,7 @@ function ScanSection({
     <section>
       <h2 className="font-serif text-xl">{TYPE_LABEL[type]}</h2>
       {groupActive && (
-        <p className="mt-1 text-[11px] uppercase tracking-wider text-primary">
+        <p className="mt-1 text-meta uppercase tracking-label text-primary">
           Group picks · ranked by worst-case ★{groupLoading ? " · scoring…" : ""}
         </p>
       )}
@@ -1225,7 +1225,7 @@ function ScanSection({
               verdict?.tone === "good"
                 ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
                 : verdict?.tone === "warn"
-                ? "border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                ? "border-amber-500/40 bg-amber-500/10 text-foreground dark:text-foreground"
                 : "border-destructive/40 bg-destructive/10 text-destructive";
             return (
               <li key={r.bottle.id} className="py-4 flex items-start justify-between gap-3">
@@ -1233,20 +1233,20 @@ function ScanSection({
                   <div className="flex items-center gap-2 flex-wrap">
                     <p className="font-medium leading-tight truncate">{r.bottle.name}</p>
                     <span
-                      className={`shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border ${
+                      className={`shrink-0 inline-block rounded-full px-1.5 py-0.5 text-meta uppercase tracking-label border ${
                         isCatalog ? "border-primary/40 bg-primary/10 text-primary" : "border-border bg-muted text-muted-foreground"
                       }`}
                       title={isCatalog ? `Matched: ${r.scanned.matched_bottle_name}` : "No catalog match — calibrated LLM estimate"}>
                       {isCatalog ? "catalog" : "estimated"}
                     </span>
                     {greatValue && (
-                      <span className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
+                      <span className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-meta uppercase tracking-label border border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
                         great value
                       </span>
                     )}
                     {verdict && (
                       <span
-                        className={`shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border ${verdictTone}`}
+                        className={`shrink-0 inline-block rounded-full px-1.5 py-0.5 text-meta uppercase tracking-label border ${verdictTone}`}
                         title={`Menu price ≈ ${verdict.markup?.toFixed(2)}× typical retail for this bottle's price band`}
                       >
                         {verdict.label}
@@ -1254,7 +1254,7 @@ function ScanSection({
                     )}
                     {prodFam && (
                       <span
-                        className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-border bg-muted text-muted-foreground"
+                        className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-meta uppercase tracking-label border border-border bg-muted text-muted-foreground"
                         title={`You've rated ${prodFam.n} wine${prodFam.n === 1 ? "" : "s"} from ${prodFam.name} (avg ${prodFam.avg.toFixed(1)}★)`}
                       >
                         producer you know · {prodFam.avg.toFixed(1)}★
@@ -1266,7 +1266,7 @@ function ScanSection({
                     {[r.bottle.region, r.scanned.grape, price_display].filter(Boolean).join(" · ")}
                   </p>
                   {g && (
-                    <p className="mt-1 text-[11px] text-muted-foreground leading-relaxed">
+                    <p className="mt-1 text-meta text-muted-foreground leading-relaxed">
                       {g.per_person.map((p, i) => (
                         <span key={p.user_id}>
                           {i > 0 && <span className="opacity-50"> · </span>}
@@ -1278,12 +1278,12 @@ function ScanSection({
                     </p>
                   )}
                   {!g && enoughRatings && r.nearest && (
-                    <p className="mt-1 text-[11px] text-muted-foreground">
+                    <p className="mt-1 text-meta text-muted-foreground">
                       like your {r.nearest.stars}★ <span className="text-foreground/80">{r.nearest.name}</span>
                     </p>
                   )}
                   {flag && (
-                    <p className={`mt-1 text-[11px] ${
+                    <p className={`mt-1 text-meta ${
                       flag.tone === "good" ? "text-primary" :
                       flag.tone === "bad" ? "text-destructive" : "text-muted-foreground italic"
                     }`}>
@@ -1295,7 +1295,7 @@ function ScanSection({
                   <div className="shrink-0 text-right">
                     <span className="font-serif text-primary text-xl">{g.group_min.toFixed(1)}</span>
                     <span className="text-primary text-sm">★</span>
-                    <p className="text-[10px] text-muted-foreground">avg {g.group_avg.toFixed(1)}</p>
+                    <p className="text-meta text-muted-foreground">avg {g.group_avg.toFixed(1)}</p>
                   </div>
                 ) : enoughRatings ? (
                   <div className="shrink-0 text-right">
@@ -1309,7 +1309,7 @@ function ScanSection({
         </ul>
       )}
       {hidden > 0 && (
-        <p className="mt-2 text-[11px] text-muted-foreground">+{hidden} more match these filters.</p>
+        <p className="mt-2 text-meta text-muted-foreground">+{hidden} more match these filters.</p>
       )}
     </section>
   );
@@ -1360,7 +1360,7 @@ function HeroCard({
       className="scan-hero relative w-full text-left rounded-xl border border-[--accent-color] p-5 bg-[--surface] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[--accent-color]"
       style={{ boxShadow: "0 0 0 1px var(--accent-color), 0 12px 40px -12px color-mix(in oklab, var(--accent-color) 40%, transparent)" }}
     >
-      <p className="text-[11px] uppercase tracking-[0.22em] text-[--accent-color] font-medium">
+      <p className="text-meta uppercase tracking-label text-[--accent-color] font-medium">
         {isTie ? "Top picks" : zeroStrong ? "Closest match" : "Top pick"}
       </p>
       <div className="mt-3 flex items-baseline gap-3">
@@ -1390,7 +1390,7 @@ function HeroCard({
         className="mt-4 pt-3 border-t border-[--accent-color]/30 flex items-center justify-between gap-3"
         onClick={(e) => e.stopPropagation()}
       >
-        <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+        <span className="text-meta uppercase tracking-label text-muted-foreground">
           {bottleId == null
             ? "Estimated — couldn't identify to rate"
             : currentStars != null
@@ -1464,13 +1464,13 @@ function ResultRow({ row, currentStars, onOpen }: { row: ScanRow; currentStars: 
               <span className="mt-0.5 text-sm text-[--accent-color] leading-none">★</span>
             </>
           ) : (
-            <span className="text-[9px] uppercase tracking-wider text-muted-foreground">n/a</span>
+            <span className="text-meta uppercase tracking-label text-muted-foreground">n/a</span>
           )}
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex items-start gap-2">
             {r.vetoed && (
-              <span className="shrink-0 mt-0.5 rounded-sm bg-[--crimson] text-white text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5">
+              <span className="shrink-0 mt-0.5 rounded-sm bg-[--crimson] text-white text-meta font-bold uppercase tracking-label px-1.5 py-0.5">
                 Avoid
               </span>
             )}
@@ -1490,7 +1490,7 @@ function ResultRow({ row, currentStars, onOpen }: { row: ScanRow; currentStars: 
             </p>
           </div>
           {reason && (
-            <p className={`mt-1 text-[11px] ${r.vetoed ? "text-[--crimson]" : "text-muted-foreground"}`}>{reason}</p>
+            <p className={`mt-1 text-meta ${r.vetoed ? "text-[--crimson]" : "text-muted-foreground"}`}>{reason}</p>
           )}
           <div className="mt-2" onClick={(e) => e.stopPropagation()}>
             {r.scanned.matched_bottle_id ? (
@@ -1512,14 +1512,14 @@ function ResultRow({ row, currentStars, onOpen }: { row: ScanRow; currentStars: 
                 }}
               />
             ) : (
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground/70">Estimated — no catalog match to rate</p>
+              <p className="text-meta uppercase tracking-label text-muted-foreground/70">Estimated — no catalog match to rate</p>
             )}
           </div>
         </div>
         <div className="shrink-0 text-right pt-1">
           <p className="text-sm text-foreground font-medium">{price}</p>
           {row.greatValue && !r.vetoed && (
-            <p className="mt-0.5 flex items-center justify-end gap-1 text-[10px] text-[--value]">
+            <p className="mt-0.5 flex items-center justify-end gap-1 text-meta text-[--value]">
               <span aria-hidden className="inline-block w-1.5 h-1.5 rounded-full bg-[--value]" /> value
             </p>
           )}
@@ -1536,7 +1536,7 @@ function SkeletonRow() {
       <div className="flex-1 space-y-2">
         <div className="h-4 w-3/4 rounded bg-[--surface-2]" />
         <div className="h-3 w-1/3 rounded bg-[--surface-2]" />
-        <p className="text-[11px] text-muted-foreground italic">still reading…</p>
+        <p className="text-meta text-muted-foreground italic">still reading…</p>
       </div>
       <div className="w-12 h-4 rounded bg-[--surface-2]" />
     </li>
@@ -1619,7 +1619,7 @@ function ScanDetailSheet({ row, onClose }: { row: ScanRow | null; onClose: () =>
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-border" aria-hidden />
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
-            <p className="font-serif text-[22px] leading-tight text-foreground break-words">{r.bottle.name}</p>
+            <p className="font-serif text-heading leading-tight text-foreground break-words">{r.bottle.name}</p>
             {r.bottle.region && <p className="mt-1 text-xs text-muted-foreground">{r.bottle.region}</p>}
           </div>
           <div className="shrink-0 text-right">
@@ -1635,14 +1635,14 @@ function ScanDetailSheet({ row, onClose }: { row: ScanRow | null; onClose: () =>
         </div>
         <p className="mt-3 text-sm">
           <span className="text-[--accent-color] font-medium">{priceLabel(row)}</span>
-          {row.isCatalog ? <span className="ml-2 text-[10px] uppercase tracking-wider text-muted-foreground">catalog match</span>
-            : <span className="ml-2 text-[10px] uppercase tracking-wider text-muted-foreground">estimated</span>}
+          {row.isCatalog ? <span className="ml-2 text-meta uppercase tracking-label text-muted-foreground">catalog match</span>
+            : <span className="ml-2 text-meta uppercase tracking-label text-muted-foreground">estimated</span>}
         </p>
         {reason && (
           <p className={`mt-2 text-xs ${r.vetoed ? "text-[--crimson]" : "text-muted-foreground"}`}>{reason}</p>
         )}
         <div className="mt-4 pt-3 border-t border-border flex items-center justify-between gap-3">
-          <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+          <span className="text-meta uppercase tracking-label text-muted-foreground">
             {bottleId == null
               ? "Estimated — couldn't identify to rate"
               : currentStars != null
@@ -1717,7 +1717,7 @@ function PastScansHistory() {
       <div className="flex items-baseline justify-between">
         <h2 id="past-scans-heading" className="font-serif text-lg">Past scans</h2>
         {scans.length > 0 && (
-          <span className="text-[11px] text-muted-foreground">
+          <span className="text-meta text-muted-foreground">
             {scans.length} scan{scans.length === 1 ? "" : "s"}
           </span>
         )}
@@ -1750,7 +1750,7 @@ function PastScansHistory() {
                     </div>
                   </div>
                   {s.status !== "complete" && s.status !== "parsed" && (
-                    <span className="shrink-0 text-[10px] uppercase tracking-wide text-muted-foreground rounded px-1.5 py-0.5 border border-border">
+                    <span className="shrink-0 text-meta uppercase tracking-label text-muted-foreground rounded px-1.5 py-0.5 border border-border">
                       {s.status}
                     </span>
                   )}

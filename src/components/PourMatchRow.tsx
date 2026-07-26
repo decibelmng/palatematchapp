@@ -18,7 +18,7 @@ export function PourMatchRow({ match }: { match: TopMatch }) {
       <div className="min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <WineTypeBadge type={c.type} />
-          <span className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-primary/40 bg-primary/10 text-primary">
+          <span className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-meta uppercase tracking-label border border-primary/40 bg-primary/10 text-primary">
             catalog
           </span>
         </div>
@@ -27,7 +27,7 @@ export function PourMatchRow({ match }: { match: TopMatch }) {
           {meta}{vl ? <span className="text-muted-foreground/80"> · {vl}</span> : null}
         </p>
         {match.nearestCuvee && (
-          <p className="mt-1 text-[11px] text-muted-foreground">
+          <p className="mt-1 text-meta text-muted-foreground">
             like your {match.nearestCuvee.stars.toFixed(1)}★{" "}
             <span className="text-foreground/80">{match.nearestCuvee.name}</span>
           </p>
@@ -37,7 +37,7 @@ export function PourMatchRow({ match }: { match: TopMatch }) {
         <span className="font-serif text-primary text-xl">{match.predicted.toFixed(1)}</span>
         <span className="text-primary text-sm">★</span>
         {match.confidence < 0.35 && (
-          <p className="mt-0.5 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-border bg-muted text-muted-foreground">
+          <p className="mt-0.5 inline-block rounded-full px-1.5 py-0.5 text-meta uppercase tracking-label border border-border bg-muted text-muted-foreground">
             low match data
           </p>
         )}

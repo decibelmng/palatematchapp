@@ -68,7 +68,7 @@ function SommCodesAdmin() {
       </header>
 
       <section className="rounded-lg border border-border bg-card p-3 space-y-2">
-        <div className="text-[10px] uppercase tracking-wider text-muted-foreground">Generate a code</div>
+        <div className="text-meta uppercase tracking-label text-muted-foreground">Generate a code</div>
         <div className="flex gap-2">
           <input
             type="text"
@@ -137,7 +137,7 @@ function CodeCard({ row, onRevoke }: { row: SommCodeRow; onRevoke: () => void })
     <article className="rounded-lg border border-border bg-card p-3 space-y-1.5">
       <header className="flex items-center gap-2">
         <code className="font-mono text-sm font-semibold">{row.code}</code>
-        <span className={`text-[10px] uppercase tracking-wider rounded-full px-2 py-0.5 border ${statusStyles[row.status]}`}>
+        <span className={`text-meta uppercase tracking-label rounded-full px-2 py-0.5 border ${statusStyles[row.status]}`}>
           {row.status}
         </span>
         <button
@@ -162,8 +162,8 @@ function CodeCard({ row, onRevoke }: { row: SommCodeRow; onRevoke: () => void })
           </button>
         )}
       </header>
-      {row.note && <p className="text-[12px]">{row.note}</p>}
-      <p className="text-[11px] text-muted-foreground">
+      {row.note && <p className="text-meta">{row.note}</p>}
+      <p className="text-meta text-muted-foreground">
         Created {created}
         {used && redeemer && (
           <>

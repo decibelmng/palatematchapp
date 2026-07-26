@@ -119,7 +119,7 @@ function WishlistContent() {
       {wishlist.isLoading ? (
         <div className="text-sm text-muted-foreground">Loading…</div>
       ) : sorted.length === 0 ? (
-        <div className="rounded-lg border border-border bg-card/60 p-6 text-center">
+        <div className="rounded-lg border border-border bg-card p-6 text-center">
           <p className="text-sm text-foreground">Your wishlist is empty.</p>
           <p className="mt-1 text-xs text-muted-foreground">
             Save wines from your friends' feed to remember them here.
@@ -128,12 +128,12 @@ function WishlistContent() {
       ) : (
         <div className="space-y-2">
           {sorted.map((row) => (
-            <div key={row.id} className="rounded-lg border border-border bg-card/60 p-3 flex items-center gap-3">
+            <div key={row.id} className="rounded-lg border border-border bg-card p-3 flex items-center gap-3">
               <div className="w-12 text-center">
                 <div className="text-2xl font-serif tabular-nums leading-none">
                   {row.predicted != null ? row.predicted.toFixed(1) : "—"}
                 </div>
-                <div className="text-[10px] uppercase tracking-wide text-muted-foreground mt-1">
+                <div className="text-meta uppercase tracking-label text-muted-foreground mt-1">
                   for you
                 </div>
               </div>

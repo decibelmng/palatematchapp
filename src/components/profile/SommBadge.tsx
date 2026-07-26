@@ -25,8 +25,8 @@ export function SommBadge({
     : "SOMM";
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-[10px] uppercase text-primary ${className}`}
-      style={{ letterSpacing: "0.16em" }}
+      className={`inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-2 py-0.5 text-meta uppercase text-primary ${className}`}
+      style={{  }}
       title={establishment ?? roleLabel}
     >
       <GraduationCap className="h-3 w-3" />

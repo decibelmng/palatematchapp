@@ -150,7 +150,7 @@ function AuthScreen() {
 
           <div className="flex items-center gap-3 pt-2">
             <div className="h-px flex-1 bg-border" />
-            <span className="text-[10px] uppercase tracking-widest text-muted-foreground">or</span>
+            <span className="text-meta uppercase tracking-label text-muted-foreground">or</span>
             <div className="h-px flex-1 bg-border" />
           </div>
         </div>

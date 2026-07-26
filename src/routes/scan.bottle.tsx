@@ -330,7 +330,7 @@ function BottleScan() {
       <div className="flex items-center gap-3 text-xs">
         <Link to="/" className="text-muted-foreground hover:text-foreground">← Home</Link>
       </div>
-      <p className="mt-3 text-xs uppercase tracking-[0.18em] text-muted-foreground">Scan a bottle</p>
+      <p className="mt-3 text-xs uppercase tracking-label text-muted-foreground">Scan a bottle</p>
       <h1 className="font-serif text-3xl mt-2">Point at the label</h1>
       <p className="mt-2 text-sm text-muted-foreground">
         One clear photo of the front label. Add the back if the front is sparse — it helps for obscure bottles.
@@ -435,7 +435,7 @@ function BottleScan() {
                     <p className="mt-0.5 text-xs text-muted-foreground">
                       {dupe.bottle.producer} · {dupe.bottle.name}{dupe.bottle.vintage ? ` · ${dupe.bottle.vintage}` : ""}
                     </p>
-                    <p className="mt-1 text-[11px] text-muted-foreground">
+                    <p className="mt-1 text-meta text-muted-foreground">
                       Rate it again below to update — we'll keep it on the same wine instead of duplicating.
                     </p>
                   </div>
@@ -443,10 +443,10 @@ function BottleScan() {
               })()}
 
               <div className="flex items-center justify-between gap-3">
-                <p className="text-[11px] uppercase tracking-[0.18em] text-primary">Confirmed</p>
+                <p className="text-meta uppercase tracking-label text-primary">Confirmed</p>
                 <button
                   onClick={() => setConfirmed(false)}
-                  className="text-[11px] text-muted-foreground hover:text-foreground underline underline-offset-2"
+                  className="text-meta text-muted-foreground hover:text-foreground underline underline-offset-2"
                 >
                   Edit read
                 </button>
@@ -468,7 +468,7 @@ function BottleScan() {
                 <div>
                   <div className="flex items-baseline justify-between gap-3">
                     <p className="text-sm font-medium">Is it one of these?</p>
-                    <p className="text-[11px] text-muted-foreground">Top {Math.min(3, resolution.candidates.length)} matches — compare & pick</p>
+                    <p className="text-meta text-muted-foreground">Top {Math.min(3, resolution.candidates.length)} matches — compare & pick</p>
                   </div>
                   <ul className="mt-3 space-y-3">
                     {resolution.candidates.slice(0, 3).map((c, idx) => (
@@ -498,7 +498,7 @@ function BottleScan() {
               )}
 
               {resolution?.match_quality === "none" && (
-                <div className="rounded-md border border-dashed border-border bg-card/40 p-4">
+                <div className="rounded-md border border-dashed border-border bg-card p-4">
                   <p className="text-sm font-medium">
                     {extracted.producer || extracted.wine_name
                       ? "No confident catalog match — add it as a community bottle."
@@ -547,7 +547,7 @@ function BottleScan() {
         />
       )}
 
-      <p className="mt-10 text-[11px] text-muted-foreground">
+      <p className="mt-10 text-meta text-muted-foreground">
         Each scan makes one paid vision call. Your label photo is stored privately to your account.
       </p>
     </div>
@@ -565,8 +565,8 @@ function LabelSlot({
   disabled: boolean;
 }) {
   return (
-    <div className="rounded-lg border border-border bg-card/60 p-3">
-      <p className="text-[11px] uppercase tracking-wider text-muted-foreground">{title}</p>
+    <div className="rounded-lg border border-border bg-card p-3">
+      <p className="text-meta uppercase tracking-label text-muted-foreground">{title}</p>
       {preview ? (
         <div className="mt-2 relative">
           <img src={preview.url} alt={title} className="w-full h-40 object-cover rounded-md border border-border" />
@@ -606,7 +606,7 @@ function ConfidentCard({
   const [stars, setStars] = useState<number | null>(null);
   return (
     <div className="rounded-md border border-primary/40 bg-primary/5 p-4">
-      <p className="text-[10px] uppercase tracking-[0.18em] text-primary">Found it</p>
+      <p className="text-meta uppercase tracking-label text-primary">Found it</p>
       <p className="mt-1 font-medium">{c.name}</p>
       <p className="text-xs text-muted-foreground">
         {[c.producer, c.region, c.vintage].filter(Boolean).join(" · ")}
@@ -624,7 +624,7 @@ function ConfidentCard({
       <div className="mt-3">
         <p className="text-xs text-muted-foreground mb-1">Rate it (one tap)</p>
         <StarTap value={stars} onChange={(s) => { if (s != null) { setStars(s); onRate(s); } }} />
-        {stars != null && <p className="mt-1 text-[11px] text-primary">Saved {stars}★</p>}
+        {stars != null && <p className="mt-1 text-meta text-primary">Saved {stars}★</p>}
       </div>
     </div>
   );
@@ -637,14 +637,14 @@ function ConfidenceMeter({ score, reasons }: { score: number; reasons: string[] 
     score >= 0.85
       ? "bg-primary text-primary-foreground"
       : score >= 0.6
-      ? "bg-amber-500/20 text-amber-700 dark:text-amber-300"
+      ? "bg-amber-500/20 text-foreground dark:text-foreground"
       : "bg-muted text-muted-foreground";
   const bar =
     score >= 0.85 ? "bg-primary" : score >= 0.6 ? "bg-amber-500" : "bg-muted-foreground/60";
   return (
     <div className="mt-3">
       <div className="flex items-center gap-2">
-        <span className={`text-[10px] uppercase tracking-wider rounded-full px-2 py-0.5 ${tone}`}>
+        <span className={`text-meta uppercase tracking-label rounded-full px-2 py-0.5 ${tone}`}>
           {label} · {pct}%
         </span>
       </div>
@@ -652,7 +652,7 @@ function ConfidenceMeter({ score, reasons }: { score: number; reasons: string[] 
         <div className={`h-full ${bar}`} style={{ width: `${pct}%` }} />
       </div>
       {reasons.length > 0 && (
-        <details className="mt-2 text-[11px] text-muted-foreground">
+        <details className="mt-2 text-meta text-muted-foreground">
           <summary className="cursor-pointer select-none hover:text-foreground">
             Why this match?
           </summary>
@@ -685,12 +685,12 @@ function CompareRow({
 }: { label: string; value: string; status: "match" | "diff" | "unknown" }) {
   const tone =
     status === "match" ? "text-primary" :
-    status === "diff" ? "text-amber-600 dark:text-amber-400" :
+    status === "diff" ? "text-foreground dark:text-foreground" :
     "text-muted-foreground";
   const icon = status === "match" ? "✓" : status === "diff" ? "≠" : "·";
   return (
     <div className="flex items-baseline gap-2 text-xs">
-      <span className="w-16 shrink-0 text-[10px] uppercase tracking-wider text-muted-foreground">{label}</span>
+      <span className="w-16 shrink-0 text-meta uppercase tracking-label text-muted-foreground">{label}</span>
       <span className={`shrink-0 font-mono ${tone}`}>{icon}</span>
       <span className="min-w-0 truncate">{value || <span className="text-muted-foreground italic">—</span>}</span>
     </div>
@@ -716,20 +716,20 @@ function CompareCard({
       : extracted.vintage === c.vintage ? "match" : "diff";
 
   return (
-    <li className="rounded-md border border-border bg-card/60 p-3">
+    <li className="rounded-md border border-border bg-card p-3">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono text-muted-foreground">#{rank}</span>
+            <span className="text-meta font-mono text-muted-foreground">#{rank}</span>
             <p className="text-sm font-medium truncate">{c.name}</p>
           </div>
           {c.tasting_note && (
-            <p className="mt-1 text-[11px] italic text-muted-foreground line-clamp-2">"{c.tasting_note}"</p>
+            <p className="mt-1 text-meta italic text-muted-foreground line-clamp-2">"{c.tasting_note}"</p>
           )}
         </div>
         {predicted != null && (
           <div className="shrink-0 text-right">
-            <p className="text-[10px] uppercase tracking-wider text-muted-foreground">For you</p>
+            <p className="text-meta uppercase tracking-label text-muted-foreground">For you</p>
             <p className="font-serif text-primary text-base leading-none">{predicted.toFixed(1)}<span className="text-xs">★</span></p>
           </div>
         )}
@@ -749,14 +749,14 @@ function CompareCard({
           <p className="text-xs text-muted-foreground">Pick & rate</p>
           <button
             onClick={() => { setStars(5); onRate(5); }}
-            className="text-[11px] rounded-md bg-primary text-primary-foreground px-2.5 py-1 font-medium"
+            className="text-meta rounded-md bg-primary text-primary-foreground px-2.5 py-1 font-medium"
           >
             That's it · 5★
           </button>
         </div>
         <div className="mt-1.5">
           <StarTap value={stars} onChange={(s: number | null) => { if (s != null) { setStars(s); onRate(s); } }} />
-          {stars != null && <p className="mt-1 text-[11px] text-primary">Saved {stars}★</p>}
+          {stars != null && <p className="mt-1 text-meta text-primary">Saved {stars}★</p>}
         </div>
       </div>
     </li>
@@ -771,13 +771,13 @@ function ExtractedCard({ extracted }: { extracted: BottleExtract }) {
   // label is sparse. Chip them as "verify" when overall confidence is not high.
   const inferHint = extracted.confidence !== "high";
   const chip = (
-    <span className="ml-1 rounded-full border border-amber-500/40 bg-amber-500/10 text-amber-700 dark:text-amber-300 px-1.5 py-0.5 text-[9px] uppercase tracking-wider">
+    <span className="ml-1 rounded-full border border-amber-500/40 bg-amber-500/10 text-foreground dark:text-foreground px-1.5 py-0.5 text-meta uppercase tracking-label">
       verify
     </span>
   );
   return (
-    <div className="rounded-md border border-border bg-card/60 p-3">
-      <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Read from label</p>
+    <div className="rounded-md border border-border bg-card p-3">
+      <p className="text-meta uppercase tracking-label text-muted-foreground">Read from label</p>
       <p className="mt-1 font-medium">
         {[extracted.producer, extracted.wine_name].filter(Boolean).join(" — ") || "(couldn't read producer)"}
       </p>
@@ -804,8 +804,8 @@ function ExtractedCard({ extracted }: { extracted: BottleExtract }) {
           {inferHint && chip}
         </div>
       )}
-      <p className="mt-2 text-[11px] text-muted-foreground">
-        Chips marked <span className="text-amber-700 dark:text-amber-300">verify</span> may have been inferred — tap to correct in the form.
+      <p className="mt-2 text-meta text-muted-foreground">
+        Chips marked <span className="text-foreground dark:text-foreground">verify</span> may have been inferred — tap to correct in the form.
       </p>
     </div>
   );
@@ -884,7 +884,7 @@ function ConfirmReadCard({
     <div className="rounded-lg border-2 border-primary/40 bg-card p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-primary">Confirm the read</p>
+          <p className="text-meta uppercase tracking-label text-primary">Confirm the read</p>
           <p className="mt-1 text-sm text-muted-foreground">
             Check what we pulled off the label before we look it up. Amber fields may have been inferred.
           </p>
@@ -915,7 +915,7 @@ function ConfirmReadCard({
         <ConfirmField label="Grape(s)" value={read.grape ?? ""} highlightClass={highlight(read.grape)}
           onChange={(v) => onChange({ grape: v || null })} placeholder="Nebbiolo · often inferred" />
         <div className="block">
-          <label className="block text-[11px] font-medium text-foreground mb-1.5">Type</label>
+          <label className="block text-meta font-medium text-foreground mb-1.5">Type</label>
           <select
             value={read.type ?? "red"}
             onChange={(e) => onChange({ type: e.target.value as BottleExtract["type"] })}
@@ -931,13 +931,13 @@ function ConfirmReadCard({
       </div>
 
       {read.vintage == null && (
-        <p className="mt-3 text-[11px] text-amber-700 dark:text-amber-400">
+        <p className="mt-3 text-meta text-foreground dark:text-foreground">
           No vintage read — style shifts by year, so leaving this blank matches the wine but not the specific bottle.
         </p>
       )}
 
       <div className="mt-4 flex flex-col sm:flex-row gap-2 sm:items-center sm:justify-between">
-        <p className="text-[11px] text-muted-foreground">
+        <p className="text-meta text-muted-foreground">
           Nothing is saved until you confirm.
         </p>
         <div className="flex gap-2">
@@ -959,7 +959,7 @@ function ConfirmReadCard({
         </div>
       </div>
       {missingCore && (
-        <p className="mt-2 text-[11px] text-destructive">
+        <p className="mt-2 text-meta text-destructive">
           At least a producer or wine name is required.
         </p>
       )}
@@ -980,7 +980,7 @@ function ConfirmField({
 }) {
   return (
     <div className="block">
-      <label className="block text-[11px] font-medium text-foreground mb-1.5">
+      <label className="block text-meta font-medium text-foreground mb-1.5">
         {label}{required && <span className="text-destructive"> *</span>}
       </label>
       <input

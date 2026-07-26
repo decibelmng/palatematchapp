@@ -13,7 +13,7 @@ function Row({ label, pct, band }: { label: string; pct: number; band: "thin" | 
     : "bg-muted-foreground/50";
   return (
     <div className="flex items-center gap-3">
-      <div className="w-20 text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
+      <div className="w-20 text-xs uppercase tracking-label text-muted-foreground">{label}</div>
       <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
         <div className={`h-full ${barClass} transition-all`} style={{ width: `${pct}%` }} />
       </div>
@@ -43,7 +43,7 @@ export function CalibrationMeter() {
   const whitePct = calibrationPct(counts.white);
 
   return (
-    <div className="rounded-lg border border-border bg-card/60 p-4 space-y-3">
+    <div className="rounded-lg border border-border bg-card p-4 space-y-3">
       <div className="text-sm font-medium text-foreground">Palate calibration</div>
       <Row label="Red" pct={redPct} band={calibrationBand(redPct)} />
       <Row label="White" pct={whitePct} band={calibrationBand(whitePct)} />

@@ -22,17 +22,17 @@ export function PalateReveal({
     <div
       role="status"
       aria-live="polite"
-      className="mt-6 mx-auto max-w-md rounded-[14px] border-[0.5px] border-primary/60 bg-[color-mix(in_oklab,var(--color-primary)_4%,var(--color-card))] p-5 text-center shadow-[var(--pm-card-shadow)]"
+      className="mt-6 mx-auto max-w-md rounded-[14px] border border-primary/60 bg-[color-mix(in_oklab,var(--color-primary)_4%,var(--color-card))] p-5 text-center shadow-[var(--pm-card-shadow)]"
     >
       <p
-        className="text-[10px] uppercase text-primary/80"
-        style={{ letterSpacing: "0.22em" }}
+        className="text-meta uppercase text-primary/80"
+        style={{  }}
       >
         Your {type} palate
       </p>
       <div
-        className="mt-3 font-serif text-[34px] leading-none text-primary"
-        style={{ letterSpacing: "0.3em" }}
+        className="mt-3 font-serif text-display leading-none text-primary"
+        style={{  }}
       >
         {code.split("").map((ch, i) => (
           <span
@@ -44,14 +44,14 @@ export function PalateReveal({
           </span>
         ))}
       </div>
-      <p className="mt-4 font-serif italic text-[14px] text-foreground/90 leading-relaxed">
+      <p className="mt-4 font-serif italic text-sub text-foreground/90 leading-relaxed">
         You're on the map.
       </p>
       <button
         type="button"
         onClick={onDismiss}
-        className="mt-4 text-[11px] uppercase text-muted-foreground hover:text-primary"
-        style={{ letterSpacing: "0.18em" }}
+        className="mt-4 text-meta uppercase text-muted-foreground hover:text-primary"
+        style={{  }}
       >
         Explore your palate →
       </button>

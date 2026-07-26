@@ -72,7 +72,7 @@ export function CanonAction({ bottle, stars, compact = false }: Props) {
   const label = isCanon ? "Canon (tap to remove)" : "Make this my Canon";
   const btnClasses = compact
     ? "inline-flex items-center justify-center rounded-full p-1.5 transition"
-    : "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-[11px] font-semibold transition";
+    : "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-meta font-semibold transition";
   const gold = "#b8860b";
   const style = isCanon
     ? { color: gold, borderColor: `color-mix(in oklab, ${gold} 55%, transparent)`, background: `color-mix(in oklab, ${gold} 14%, transparent)` }
@@ -144,7 +144,7 @@ function ConfirmDialog({
         className="w-full max-w-md rounded-2xl bg-card border border-border p-5 shadow-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center gap-2 text-amber-500">
+        <div className="flex items-center gap-2 text-foreground">
           <Crown size={20} strokeWidth={2.2} fill="currentColor" />
           <h3 className="font-serif text-lg text-foreground">
             {existing ? "Replace your Canon?" : "Crown your benchmark"}

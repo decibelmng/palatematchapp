@@ -104,14 +104,14 @@ function InvitePage() {
     <div className="min-h-screen cellar-bg">
       <div className="max-w-md mx-auto px-5 pt-10 pb-16 space-y-6">
         <div className="text-center">
-          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Palate Match invite</p>
+          <p className="text-meta uppercase tracking-label text-muted-foreground">Palate Match invite</p>
           <h1 className="font-serif text-4xl mt-2">
             Palate <span className="text-primary">Match</span>
           </h1>
         </div>
 
         {!invite && (
-          <div className="rounded-xl border border-border bg-card/60 p-5 text-center text-sm">
+          <div className="rounded-xl border border-border bg-card p-5 text-center text-sm">
             This invite link is no longer valid.
             <div className="mt-4">
               <Link to="/" className="rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-xs">Open Palate Match</Link>
@@ -121,8 +121,8 @@ function InvitePage() {
 
         {invite && (
           <>
-            <div className="rounded-xl border border-border bg-card/60 p-5 text-center">
-              <div className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+            <div className="rounded-xl border border-border bg-card p-5 text-center">
+              <div className="text-meta uppercase tracking-label text-muted-foreground">
                 {invite.kind === "scan" ? "Shared list" : "Friend invite"}
               </div>
               <div className="mt-2 font-serif text-2xl">{hook}</div>
@@ -201,14 +201,14 @@ function SignInBlock() {
 
   if (sent) {
     return (
-      <div className="rounded-xl border border-border bg-card/60 p-4 text-sm text-center">
+      <div className="rounded-xl border border-border bg-card p-4 text-sm text-center">
         Check your inbox — we sent a sign-in link. Opening it will connect you automatically.
       </div>
     );
   }
 
   return (
-    <div className="rounded-xl border border-border bg-card/60 p-4 space-y-3">
+    <div className="rounded-xl border border-border bg-card p-4 space-y-3">
       <div className="text-sm font-medium text-center">Sign in to connect</div>
       <button type="button" onClick={() => oauth("apple")}
         className="w-full rounded-md bg-foreground text-background py-2.5 text-sm font-medium">
@@ -220,7 +220,7 @@ function SignInBlock() {
       </button>
       <div className="flex items-center gap-3 py-1">
         <div className="h-px flex-1 bg-border" />
-        <span className="text-[10px] uppercase tracking-widest text-muted-foreground">or</span>
+        <span className="text-meta uppercase tracking-label text-muted-foreground">or</span>
         <div className="h-px flex-1 bg-border" />
       </div>
       <form onSubmit={submitEmail} className="space-y-2">

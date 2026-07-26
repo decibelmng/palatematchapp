@@ -113,7 +113,7 @@ export function FeedCard({ item }: { item: FeedItem }) {
       : scoring.predicted >= 4
       ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
       : scoring.predicted >= 3
-      ? "bg-amber-500/10 text-amber-700 dark:text-amber-300"
+      ? "bg-amber-500/10 text-foreground dark:text-foreground"
       : "bg-muted/60 text-foreground";
 
   const wishIds = useWishlistIds();
@@ -125,7 +125,7 @@ export function FeedCard({ item }: { item: FeedItem }) {
   const paletteCode = paletteKind === "red" ? friend.palate_code_red : friend.palate_code_white;
 
   return (
-    <article className="rounded-lg border border-border bg-card/60 p-4">
+    <article className="rounded-lg border border-border bg-card p-4">
       <header className="flex items-start justify-between gap-2">
         <Link
           to="/u/$username"
@@ -146,7 +146,7 @@ export function FeedCard({ item }: { item: FeedItem }) {
         </Link>
         <div className="shrink-0 text-right">
           <StarsInline n={item.stars} />
-          <div className="text-[10px] uppercase tracking-wide text-muted-foreground mt-0.5">
+          <div className="text-meta uppercase tracking-label text-muted-foreground mt-0.5">
             their rating
           </div>
         </div>
@@ -185,7 +185,7 @@ export function FeedCard({ item }: { item: FeedItem }) {
           </div>
         </div>
         {copy.caveat && (
-          <div className="mt-2 text-xs text-amber-700 dark:text-amber-300">
+          <div className="mt-2 text-xs text-foreground dark:text-foreground">
             {copy.caveat}
           </div>
         )}

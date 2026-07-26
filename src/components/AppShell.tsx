@@ -178,7 +178,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               aria-haspopup="menu"
               aria-expanded={menuOpen}
               aria-label="Account menu"
-              className="h-11 w-11 rounded-full border border-border bg-card/80 text-xs font-semibold text-foreground hover:bg-accent transition-colors flex items-center justify-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+              className="h-11 w-11 rounded-full border border-border bg-card text-xs font-semibold text-foreground hover:bg-accent transition-colors flex items-center justify-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
             >
               {initials}
             </button>
@@ -266,7 +266,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 to={to}
                 aria-label={label}
                 aria-current={active ? "page" : undefined}
-                className={`flex flex-col items-center justify-center gap-1 min-h-11 py-2.5 text-[11px] transition-colors border-t-2 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary ${
+                className={`flex flex-col items-center justify-center gap-1 min-h-11 py-2.5 text-meta transition-colors border-t-2 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary ${
                   active
                     ? "text-primary border-primary"
                     : "text-muted-foreground hover:text-foreground border-transparent"
@@ -287,7 +287,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               className="-mt-6 h-16 w-16 rounded-full bg-primary text-primary-foreground shadow-lg ring-4 ring-background flex flex-col items-center justify-center active:scale-95 transition"
             >
               <ScanLine size={24} strokeWidth={2} />
-              <span className="text-[9px] font-semibold uppercase tracking-wider mt-0.5">Scan</span>
+              <span className="text-meta font-semibold uppercase tracking-label mt-0.5">Scan</span>
             </button>
           </div>
 
@@ -305,7 +305,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                     : label
                 }
                 aria-current={active ? "page" : undefined}
-                className={`flex flex-col items-center justify-center gap-1 min-h-11 py-2.5 text-[11px] transition-colors border-t-2 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary ${
+                className={`flex flex-col items-center justify-center gap-1 min-h-11 py-2.5 text-meta transition-colors border-t-2 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary ${
                   active
                     ? "text-primary border-primary"
                     : "text-muted-foreground hover:text-foreground border-transparent"
@@ -316,7 +316,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   {showBadge && (
                     <span
                       aria-hidden
-                      className="absolute -top-1.5 -right-2 h-4 min-w-4 rounded-full bg-primary text-primary-foreground text-[9px] font-semibold px-1 flex items-center justify-center ring-2 ring-background"
+                      className="absolute -top-1.5 -right-2 h-4 min-w-4 rounded-full bg-primary text-primary-foreground text-meta font-semibold px-1 flex items-center justify-center ring-2 ring-background"
                     >
                       {pendingIncoming > 9 ? "9+" : pendingIncoming}
                     </span>

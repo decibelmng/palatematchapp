@@ -51,7 +51,7 @@ function Friends() {
   return (
     <div className="pt-2 space-y-8">
       <div>
-        <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Friends</p>
+        <p className="text-xs uppercase tracking-label text-muted-foreground">Friends</p>
         <h1 className="font-serif text-3xl mt-2">Drink together</h1>
         <p className="mt-2 text-sm text-muted-foreground">
           Add friends by username or QR — then group your palates on Matches and Scan.
@@ -121,7 +121,7 @@ function MyProfileCard({ username, display_name, inviteURL }: { username: string
   };
 
   return (
-    <div className="rounded-xl border border-border bg-card/60 p-4">
+    <div className="rounded-xl border border-border bg-card p-4">
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="text-xs text-muted-foreground">
           Username
@@ -177,7 +177,7 @@ function MyProfileCard({ username, display_name, inviteURL }: { username: string
       {showQR && inviteURL && (
         <div className="mt-4 flex flex-col items-center gap-2 rounded-lg bg-background p-4 border border-border">
           <QRCodeSVG value={inviteURL} size={180} bgColor="#ffffff" fgColor="#000000" />
-          <p className="text-[11px] text-muted-foreground">Scan to send me a friend request.</p>
+          <p className="text-meta text-muted-foreground">Scan to send me a friend request.</p>
         </div>
       )}
     </div>
@@ -214,7 +214,7 @@ function FindPeople() {
                 <li key={h.user_id} className="py-2 flex items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{name}</p>
-                    {handle && <p className="text-[11px] text-muted-foreground truncate">@{handle}</p>}
+                    {handle && <p className="text-meta text-muted-foreground truncate">@{handle}</p>}
                   </div>
                   <button
                     onClick={() => send.mutate({ user_id: h.user_id })}
@@ -246,7 +246,7 @@ function RequestRow({ row, kind }: { row: import("@/lib/friends.functions").Frie
       <div className="min-w-0">
         <p className="text-sm font-medium truncate">{displayNameFor(row.other)}</p>
         {handleForDisplay(row.other.username) && (
-          <p className="text-[11px] text-muted-foreground truncate">@{handleForDisplay(row.other.username)}</p>
+          <p className="text-meta text-muted-foreground truncate">@{handleForDisplay(row.other.username)}</p>
         )}
       </div>
       <div className="flex gap-2">
@@ -292,9 +292,9 @@ function FriendRow({ row }: { row: import("@/lib/friends.functions").FriendshipR
         <div className="min-w-0">
           <p className="text-sm font-medium truncate">{displayNameFor(row.other)}</p>
           {handleForDisplay(row.other.username) && (
-            <p className="text-[11px] text-muted-foreground truncate">@{handleForDisplay(row.other.username)}</p>
+            <p className="text-meta text-muted-foreground truncate">@{handleForDisplay(row.other.username)}</p>
           )}
-          <p className="mt-1 text-[11px] text-muted-foreground font-mono tracking-wider">
+          <p className="mt-1 text-meta text-muted-foreground font-mono tracking-label">
             🍷 {row.other.palate_code_red} <span className="opacity-40">·</span> 🥂 {row.other.palate_code_white}
           </p>
         </div>

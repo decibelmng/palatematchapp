@@ -32,14 +32,14 @@ export function PalateBars({ axes, letters }: Props) {
 
         return (
           <li key={axisDef.key} style={{ opacity: rowOpacity }}>
-            <div className="flex items-baseline justify-between gap-2 text-[12px]">
+            <div className="flex items-baseline justify-between gap-2 text-meta">
               <span className={leftClass}>
-                <span className="font-serif text-[14px] mr-1">{axisDef.low}</span>
+                <span className="font-serif text-sub mr-1">{axisDef.low}</span>
                 {axisDef.lowName}
               </span>
               <span
-                className={`${centerClass} text-[10px] uppercase`}
-                style={{ letterSpacing: "0.22em" }}
+                className={`${centerClass} text-meta uppercase`}
+                style={{  }}
                 title={isX ? "loves both poles" : undefined}
               >
                 {axisDef.label}
@@ -48,7 +48,7 @@ export function PalateBars({ axes, letters }: Props) {
               </span>
               <span className={rightClass}>
                 {axisDef.highName}
-                <span className="font-serif text-[14px] ml-1">{axisDef.high}</span>
+                <span className="font-serif text-sub ml-1">{axisDef.high}</span>
               </span>
             </div>
             <div className="mt-2 relative h-3 flex items-center">

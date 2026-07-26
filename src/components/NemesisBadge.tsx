@@ -9,7 +9,7 @@ export function NemesisBadge({ size = "sm", title = "Nemesis — your dealbreake
     <span
       title={title}
       aria-label="Nemesis wine"
-      className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] uppercase tracking-wider font-semibold ${className}`}
+      className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-meta uppercase tracking-label font-semibold ${className}`}
       style={{
         color: "var(--destructive)",
         borderColor: "color-mix(in oklab, var(--destructive) 55%, transparent)",

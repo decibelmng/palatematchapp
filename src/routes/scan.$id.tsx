@@ -111,10 +111,10 @@ function ScanDetailPage() {
           </button>
         </div>
         {inviteLink && (
-          <div className="text-[11px] text-muted-foreground break-all">{inviteLink}</div>
+          <div className="text-meta text-muted-foreground break-all">{inviteLink}</div>
         )}
         {share_token && !inviteLink && (
-          <div className="text-[11px] text-muted-foreground break-all">
+          <div className="text-meta text-muted-foreground break-all">
             {`${typeof window !== "undefined" ? window.location.origin : ""}/s/${share_token}`}
           </div>
         )}

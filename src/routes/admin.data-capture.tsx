@@ -94,9 +94,9 @@ function CapturePage() {
               <tr key={r.id} className="border-t border-border">
                 <td className="px-3 py-2">
                   <div className="font-medium truncate max-w-[220px]">{r.name}</div>
-                  <div className="text-[10px] text-muted-foreground">
+                  <div className="text-meta text-muted-foreground">
                     {r.city ?? ""}
-                    {r.possible_duplicate && <span className="ml-1 text-amber-600">· possible duplicate</span>}
+                    {r.possible_duplicate && <span className="ml-1 text-foreground">· possible duplicate</span>}
                   </div>
                 </td>
                 <td className="px-3 py-2 text-right tabular-nums">{r.listings}</td>
@@ -120,7 +120,7 @@ function Tile({ label, value, tone }: { label: string; value: number | undefined
   return (
     <div className={`rounded-lg border p-3 ${tone === "warn" ? "border-amber-500/40 bg-amber-500/5" : "border-border bg-card"}`}>
       <div className="text-2xl font-semibold tabular-nums">{value ?? "—"}</div>
-      <div className="text-[11px] text-muted-foreground uppercase tracking-wide mt-0.5">{label}</div>
+      <div className="text-meta text-muted-foreground uppercase tracking-label mt-0.5">{label}</div>
     </div>
   );
 }

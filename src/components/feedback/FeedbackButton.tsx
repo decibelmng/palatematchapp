@@ -27,7 +27,7 @@ export function FeedbackButton({ variant = "floating" }: { variant?: "floating" 
         onClick={() => setOpen(true)}
         aria-label="Send feedback"
         title="Send feedback"
-        className="fixed bottom-24 right-3 z-40 h-10 w-10 rounded-full border border-border bg-card/95 backdrop-blur shadow-lg text-muted-foreground hover:text-primary hover:border-primary/50 flex items-center justify-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+        className="fixed bottom-24 right-3 z-40 h-10 w-10 rounded-full border border-border bg-card backdrop-blur shadow-lg text-muted-foreground hover:text-primary hover:border-primary/50 flex items-center justify-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
         style={{ marginBottom: "env(safe-area-inset-bottom, 0px)" }}
       >
         <MessageSquare size={16} />

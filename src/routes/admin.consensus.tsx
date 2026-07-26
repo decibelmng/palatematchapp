@@ -99,7 +99,7 @@ function AdminConsensus() {
               <dt>Gate</dt>
               <dd
                 className={`text-right font-semibold ${
-                  gate.global_pass ? "text-emerald-600" : "text-amber-600"
+                  gate.global_pass ? "text-emerald-600" : "text-foreground"
                 }`}
               >
                 {gate.global_pass ? "PASS" : "FAIL — dormant"}
