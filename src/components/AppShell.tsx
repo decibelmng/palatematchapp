@@ -283,12 +283,17 @@ export function AppShell({ children }: { children: ReactNode }) {
 
           {TABS_RIGHT.map(({ to, label, Icon }) => {
             const active = isActive(pathname, to);
-            const showDot = to === "/feed" && hasFreshActivity(feedLatestAt);
+            const showBadge = to === "/feed" && pendingIncoming > 0;
+            const showDot = to === "/feed" && !showBadge && hasFreshActivity(feedLatestAt);
             return (
               <Link
                 key={to}
                 to={to}
-                aria-label={label}
+                aria-label={
+                  showBadge
+                    ? `${label} — ${pendingIncoming} pending friend request${pendingIncoming === 1 ? "" : "s"}`
+                    : label
+                }
                 aria-current={active ? "page" : undefined}
                 className={`flex flex-col items-center justify-center gap-1 min-h-11 py-2.5 text-[11px] transition-colors border-t-2 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary ${
                   active
@@ -298,6 +303,14 @@ export function AppShell({ children }: { children: ReactNode }) {
               >
                 <span className="relative">
                   <Icon size={18} strokeWidth={active ? 2.2 : 1.8} />
+                  {showBadge && (
+                    <span
+                      aria-hidden
+                      className="absolute -top-1.5 -right-2 h-4 min-w-4 rounded-full bg-primary text-primary-foreground text-[9px] font-semibold px-1 flex items-center justify-center ring-2 ring-background"
+                    >
+                      {pendingIncoming > 9 ? "9+" : pendingIncoming}
+                    </span>
+                  )}
                   {showDot && (
                     <span
                       aria-label="new activity"
