@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { useSession } from "@/hooks/use-session";
 import { AppShell } from "./AppShell";
+import { NameGate } from "./NameGate";
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const session = useSession();
@@ -16,7 +17,11 @@ export function AuthGate({ children }: { children: ReactNode }) {
   }
 
   if (!session) return <AuthScreen />;
-  return <AppShell>{children}</AppShell>;
+  return (
+    <NameGate>
+      <AppShell>{children}</AppShell>
+    </NameGate>
+  );
 }
 
 type Mode = "login" | "recover" | "create";
@@ -24,6 +29,7 @@ type Mode = "login" | "recover" | "create";
 function AuthScreen() {
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
@@ -45,12 +51,18 @@ function AuthScreen() {
     setBusy(true);
     try {
       if (mode === "create") {
+        const trimmed = displayName.trim();
+        if (trimmed.length < 1) throw new Error("Please enter your name.");
+        if (trimmed.length > 60) throw new Error("Name must be under 60 characters.");
+        // Stash the name so NameGate can pre-fill / apply it after the magic link.
+        try { localStorage.setItem("pm.pendingDisplayName", trimmed); } catch { /* ignore */ }
         // Explicit account creation — only happens from the Create screen.
         const { error } = await supabase.auth.signInWithOtp({
           email,
           options: {
             shouldCreateUser: true,
             emailRedirectTo: window.location.origin,
+            data: { display_name: trimmed },
           },
         });
         if (error) throw error;
@@ -145,6 +157,18 @@ function AuthScreen() {
       )}
 
       <form onSubmit={submitEmail} className="mt-4 space-y-3">
+        {mode === "create" && (
+          <input
+            type="text"
+            required
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            placeholder="Your name"
+            autoComplete="name"
+            maxLength={60}
+            className="w-full rounded-md bg-input border border-border px-3 py-2.5 text-sm outline-none focus:border-primary"
+          />
+        )}
         <input
           type="email"
           required
@@ -157,7 +181,7 @@ function AuthScreen() {
         {err && <p className="text-sm text-destructive">{err}</p>}
         <button
           type="submit"
-          disabled={busy || !email}
+          disabled={busy || !email || (mode === "create" && !displayName.trim())}
           className="w-full rounded-md border border-border bg-card py-2.5 text-sm font-medium hover:bg-accent disabled:opacity-50"
         >
           {busy

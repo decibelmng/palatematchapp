@@ -1072,6 +1072,7 @@ export type Database = {
           created_at: string
           issued_by: string | null
           note: string | null
+          revoked_at: string | null
           used_at: string | null
           used_by: string | null
         }
@@ -1080,6 +1081,7 @@ export type Database = {
           created_at?: string
           issued_by?: string | null
           note?: string | null
+          revoked_at?: string | null
           used_at?: string | null
           used_by?: string | null
         }
@@ -1088,6 +1090,7 @@ export type Database = {
           created_at?: string
           issued_by?: string | null
           note?: string | null
+          revoked_at?: string | null
           used_at?: string | null
           used_by?: string | null
         }
@@ -1275,6 +1278,31 @@ export type Database = {
           venue_raw_text_last: string
         }[]
       }
+      admin_somm_code_generate: {
+        Args: { p_admin_id: string; p_note?: string }
+        Returns: {
+          code: string
+        }[]
+      }
+      admin_somm_code_revoke: {
+        Args: { p_admin_id: string; p_code: string }
+        Returns: boolean
+      }
+      admin_somm_codes_list: {
+        Args: never
+        Returns: {
+          code: string
+          created_at: string
+          note: string
+          revoked_at: string
+          status: string
+          used_at: string
+          used_by: string
+          used_by_display_name: string
+          used_by_email: string
+          used_by_username: string
+        }[]
+      }
       admin_table_columns: {
         Args: { p_table: string }
         Returns: {
@@ -1305,6 +1333,20 @@ export type Database = {
         Returns: {
           created_at: string
           display_name: string
+          id: string
+          last_seen_at: string
+          ratings_count: number
+          scans_count: number
+          username: string
+          wishlist_count: number
+        }[]
+      }
+      admin_user_list_with_email: {
+        Args: { p_admin_id: string; p_limit?: number; p_offset?: number }
+        Returns: {
+          created_at: string
+          display_name: string
+          email: string
           id: string
           last_seen_at: string
           ratings_count: number
