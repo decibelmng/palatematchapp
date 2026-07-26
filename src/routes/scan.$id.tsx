@@ -10,6 +10,7 @@ import { useRatings, useBottlesByIds, bottleToFp, bottleType } from "@/hooks/use
 import { aggregateRated } from "@/lib/cuvee";
 import type { RatedFp } from "@/lib/recommender";
 import { RankedScanList } from "@/components/RankedScanList";
+import { HelpfulPrompt } from "@/components/feedback/HelpfulPrompt";
 
 export const Route = createFileRoute("/scan/$id")({
   ssr: false,
