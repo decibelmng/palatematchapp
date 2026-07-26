@@ -28,7 +28,7 @@ type SortKey = "last_seen_at" | "created_at" | "ratings_count" | "scans_count" |
 
 function AdminUsage() {
   const summaryFn = useServerFn(adminUsageSummary);
-  const listFn = useServerFn(adminUserList);
+  const listFn = useServerFn(adminUserListWithEmail);
   const dauFn = useServerFn(adminDailyActiveUsers);
 
   const summary = useQuery({ queryKey: ["admin", "usage", "summary"], queryFn: () => summaryFn() });
