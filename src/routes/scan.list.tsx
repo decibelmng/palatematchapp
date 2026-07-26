@@ -147,6 +147,19 @@ function Scan() {
   const [dismissedResume, setDismissedResume] = useState(false);
   const finalizingRef = useRef(false);
 
+  // Auto-open camera when arriving from the center-scan chooser (?capture=1).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("capture") !== "1") return;
+    // Strip so a refresh doesn't re-trigger.
+    const url = new URL(window.location.href);
+    url.searchParams.delete("capture");
+    window.history.replaceState({}, "", url.toString());
+    const t = setTimeout(() => cameraRef.current?.click(), 60);
+    return () => clearTimeout(t);
+  }, []);
+
   // Pre-scan restaurant selection (optional): stored here so `finalizeScan`
   // can auto-attribute without a second UI trip.
   const [prescanRestaurant, setPrescanRestaurant] = useState<{ id: string; name: string } | null>(null);
