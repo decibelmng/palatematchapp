@@ -37,7 +37,7 @@ export const submitFeedback = createServerFn({ method: "POST" })
       screen: data.screen?.slice(0, 200) ?? null,
       screenshot_url: data.screenshot_path ?? null,
       app_version: data.app_version ?? null,
-      context: data.context ?? null,
+      context: (data.context ?? null) as never,
       source: data.source,
       prompt_key: data.prompt_key ?? null,
       rating: data.rating ?? null,
