@@ -7,6 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useMyProfile } from "@/hooks/use-friends";
 import { useLastSeenPing } from "@/hooks/use-last-seen";
+import { useAutoRedeemInvite } from "@/hooks/use-auto-redeem-invite";
 import { markScanUnlockSeen } from "@/lib/friends.functions";
 import { useTheme } from "@/lib/theme";
 import { useRatingsCount, UNLOCK_THRESHOLD } from "@/components/UnlockMeter";
@@ -80,6 +81,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const menuRef = useRef<HTMLDivElement>(null);
   const { data: profile } = useMyProfile();
   useLastSeenPing((profile as { id?: string } | undefined)?.id);
+  useAutoRedeemInvite();
   const { theme, toggle } = useTheme();
   const initials = sharedInitialsFor(
     profile as { display_name?: string | null; username?: string | null } | undefined ?? null,
