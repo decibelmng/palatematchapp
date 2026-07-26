@@ -13,6 +13,7 @@ import { useTheme } from "@/lib/theme";
 import { useRatingsCount, UNLOCK_THRESHOLD } from "@/components/UnlockMeter";
 import { useFeedActivity, hasFreshActivity } from "@/hooks/use-feed";
 import { ScanChooserSheet } from "@/components/ScanChooserSheet";
+import { FeedbackDialog } from "@/components/feedback/FeedbackDialog";
 
 type TabTo = "/palate" | "/rate" | "/scan/list" | "/feed";
 
@@ -78,6 +79,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [menuOpen, setMenuOpen] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const { data: profile } = useMyProfile();
   useLastSeenPing((profile as { id?: string } | undefined)?.id);
@@ -226,6 +228,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </Link>
                 <button
                   role="menuitem"
+                  onClick={() => { setMenuOpen(false); setFeedbackOpen(true); }}
+                  className="w-full text-left px-3 py-3 text-sm text-foreground hover:bg-accent/60 border-t border-border"
+                >
+                  Send feedback
+                </button>
+                <button
+                  role="menuitem"
                   onClick={async () => { await supabase.auth.signOut(); }}
                   className="w-full text-left px-3 py-3 text-xs text-muted-foreground hover:bg-accent/60 border-t border-border"
                 >
@@ -242,6 +251,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <A2HSHint />
 
       <ScanChooserSheet open={scanOpen} onClose={() => setScanOpen(false)} />
+      <FeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
 
       <nav
         className="fixed bottom-0 inset-x-0 border-t border-border bg-background/95 backdrop-blur"

@@ -10,6 +10,7 @@ import { useRatings, useBottlesByIds, bottleToFp, bottleType } from "@/hooks/use
 import { aggregateRated } from "@/lib/cuvee";
 import type { RatedFp } from "@/lib/recommender";
 import { RankedScanList } from "@/components/RankedScanList";
+import { HelpfulPrompt } from "@/components/feedback/HelpfulPrompt";
 
 export const Route = createFileRoute("/scan/$id")({
   ssr: false,
@@ -120,6 +121,15 @@ function ScanDetailPage() {
       </header>
 
       <RankedScanList wines={s.wines} ratedRows={ratedRows} />
+
+      <div className="mt-4">
+        <HelpfulPrompt
+          promptKey="scan.list.ranking"
+          question="Did this ranking match what you'd order?"
+          context={{ wines_count: s.wines?.length ?? 0, scan_id: id }}
+          followUpPlaceholder="Which pick felt off?"
+        />
+      </div>
     </div>
   );
 }
