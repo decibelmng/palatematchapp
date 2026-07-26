@@ -51,12 +51,18 @@ function AuthScreen() {
     setBusy(true);
     try {
       if (mode === "create") {
+        const trimmed = displayName.trim();
+        if (trimmed.length < 1) throw new Error("Please enter your name.");
+        if (trimmed.length > 60) throw new Error("Name must be under 60 characters.");
+        // Stash the name so NameGate can pre-fill / apply it after the magic link.
+        try { localStorage.setItem("pm.pendingDisplayName", trimmed); } catch { /* ignore */ }
         // Explicit account creation — only happens from the Create screen.
         const { error } = await supabase.auth.signInWithOtp({
           email,
           options: {
             shouldCreateUser: true,
             emailRedirectTo: window.location.origin,
+            data: { display_name: trimmed },
           },
         });
         if (error) throw error;
