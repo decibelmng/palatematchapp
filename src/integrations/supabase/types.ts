@@ -493,6 +493,50 @@ export type Database = {
         }
         Relationships: []
       }
+      invites: {
+        Row: {
+          created_at: string
+          id: string
+          inviter_id: string
+          kind: string
+          redeemed_at: string | null
+          redeemed_by: string | null
+          redemption_count: number
+          scan_id: string | null
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          inviter_id: string
+          kind: string
+          redeemed_at?: string | null
+          redeemed_by?: string | null
+          redemption_count?: number
+          scan_id?: string | null
+          token: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          inviter_id?: string
+          kind?: string
+          redeemed_at?: string | null
+          redeemed_by?: string | null
+          redemption_count?: number
+          scan_id?: string | null
+          token?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invites_scan_id_fkey"
+            columns: ["scan_id"]
+            isOneToOne: false
+            referencedRelation: "scans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       price_observations: {
         Row: {
           bottle_id: string | null
@@ -1229,6 +1273,22 @@ export type Database = {
           status: string
         }[]
       }
+      get_invite: {
+        Args: { p_token: string }
+        Returns: {
+          inviter_avatar_url: string
+          inviter_display_name: string
+          inviter_id: string
+          inviter_palate_code_red: string
+          inviter_palate_code_white: string
+          inviter_username: string
+          kind: string
+          redeemed: boolean
+          scan_share_token: string
+          scan_venue: string
+          token: string
+        }[]
+      }
       get_public_profile: {
         Args: { p_username: string }
         Returns: {
@@ -1258,6 +1318,14 @@ export type Database = {
       mark_scan_batch_failed: {
         Args: { p_batch_index: number; p_scan_id: string }
         Returns: undefined
+      }
+      redeem_invite: {
+        Args: { p_token: string }
+        Returns: {
+          inviter_id: string
+          kind: string
+          scan_share_token: string
+        }[]
       }
       redeem_somm_code: {
         Args: { p_code: string; p_establishment?: string; p_role?: string }

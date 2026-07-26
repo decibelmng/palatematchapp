@@ -5,6 +5,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { AuthGate } from "@/components/AuthGate";
 import { loadScanForRanking, shareScan } from "@/lib/scans-history.functions";
+import { createOrGetInvite } from "@/lib/invites.functions";
 import { useRatings, useBottlesByIds, bottleToFp, bottleType } from "@/hooks/use-palate-data";
 import { aggregateRated } from "@/lib/cuvee";
 import type { RatedFp } from "@/lib/recommender";
@@ -25,7 +26,9 @@ function ScanDetailPage() {
   const { id } = Route.useParams();
   const load = useServerFn(loadScanForRanking);
   const share = useServerFn(shareScan);
+  const invite = useServerFn(createOrGetInvite);
   const [shareLink, setShareLink] = useState<string | null>(null);
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
 
   const detail = useQuery({
     queryKey: ["scan-detail", id],
@@ -42,6 +45,17 @@ function ScanDetailPage() {
       catch { toast.success("Share link ready"); }
     },
     onError: (e: any) => toast.error(e?.message ?? "Couldn't share"),
+  });
+
+  const inviteMut = useMutation({
+    mutationFn: async () => invite({ data: { kind: "scan", scan_id: id } }),
+    onSuccess: (r) => {
+      const url = `${window.location.origin}/i/${r.token}`;
+      setInviteLink(url);
+      try { navigator.clipboard.writeText(url); toast.success("Invite link copied"); }
+      catch { toast.success("Invite link ready"); }
+    },
+    onError: (e: any) => toast.error(e?.message ?? "Couldn't create invite"),
   });
 
   const { data: ratings } = useRatings();
@@ -78,7 +92,7 @@ function ScanDetailPage() {
         <p className="text-xs text-muted-foreground">
           Facts stored once. This ranking recomputes against your current palate every time you open it.
         </p>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => shareMut.mutate()}
             disabled={shareMut.isPending}
@@ -86,8 +100,19 @@ function ScanDetailPage() {
           >
             {share_token ? "Copy share link" : "Share this scan"}
           </button>
+          <button
+            onClick={() => inviteMut.mutate()}
+            disabled={inviteMut.isPending}
+            className="text-xs px-3 py-1.5 rounded border border-primary/50 bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-50"
+            title="Share the list AND auto-connect the recipient as a friend"
+          >
+            {inviteLink ? "Copy invite link" : "Share as friend invite"}
+          </button>
         </div>
-        {share_token && (
+        {inviteLink && (
+          <div className="text-[11px] text-muted-foreground break-all">{inviteLink}</div>
+        )}
+        {share_token && !inviteLink && (
           <div className="text-[11px] text-muted-foreground break-all">
             {`${typeof window !== "undefined" ? window.location.origin : ""}/s/${share_token}`}
           </div>

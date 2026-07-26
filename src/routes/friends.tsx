@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { QRCodeSVG } from "qrcode.react";
 import { AuthGate } from "@/components/AuthGate";
 import { PalateStar, lettersFromCode } from "@/components/PalateStar";
@@ -12,6 +14,7 @@ import {
   useRespondFriendship,
   useUpdateProfile,
 } from "@/hooks/use-friends";
+import { createOrGetInvite } from "@/lib/invites.functions";
 import { displayNameFor, handleForDisplay } from "@/lib/user-display";
 
 export const Route = createFileRoute("/friends")({
@@ -33,10 +36,17 @@ function Friends() {
   const incoming = friendships.filter((f) => f.status === "pending" && f.direction === "incoming");
   const outgoing = friendships.filter((f) => f.status === "pending" && f.direction === "outgoing");
 
-  const inviteURL = useMemo(() => {
-    if (!me?.username || typeof window === "undefined") return "";
-    return `${window.location.origin}/add-friend/${me.username}`;
-  }, [me?.username]);
+  const invite = useServerFn(createOrGetInvite);
+  const inviteQ = useQuery({
+    queryKey: ["my-invite", "friend", me?.id ?? null],
+    enabled: !!me?.id,
+    queryFn: () => invite({ data: { kind: "friend" } }),
+    staleTime: Infinity,
+  });
+  const inviteURL =
+    inviteQ.data?.token && typeof window !== "undefined"
+      ? `${window.location.origin}/i/${inviteQ.data.token}`
+      : "";
 
   return (
     <div className="pt-2 space-y-8">
