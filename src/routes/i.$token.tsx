@@ -1,9 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { getInvite, redeemInvite } from "@/lib/invites.functions";
+import { getInvite, redeemInvite, type InviteInfo } from "@/lib/invites.functions";
 import { useSession } from "@/hooks/use-session";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
@@ -11,29 +10,61 @@ import { displayNameFor } from "@/lib/user-display";
 import { stashPendingInvite, clearPendingInvite } from "@/lib/pending-invite";
 import { InstallGuidance } from "@/components/InstallGuidance";
 
+const CANONICAL_ORIGIN = "https://palatematchapp.com";
+const OG_IMAGE = `${CANONICAL_ORIGIN}/og-invite.jpg`;
+
 export const Route = createFileRoute("/i/$token")({
-  ssr: false,
-  head: () => ({
-    meta: [
-      { title: "You've been invited — Palate Match" },
-      { name: "description", content: "A friend invited you to compare wine palates on Palate Match." },
-    ],
-  }),
+  loader: async ({ params }) => {
+    try {
+      const inv = await getInvite({ data: { token: params.token } });
+      return { invite: inv, token: params.token };
+    } catch {
+      return { invite: null as InviteInfo | null, token: params.token };
+    }
+  },
+  head: ({ loaderData, params }) => {
+    const url = `${CANONICAL_ORIGIN}/i/${params.token}`;
+    const inv = loaderData?.invite ?? null;
+    const inviter = inv
+      ? displayNameFor({ display_name: inv.inviter_display_name, username: inv.inviter_username })
+      : null;
+    const title = inv
+      ? inv.kind === "scan"
+        ? `${inviter} shared a wine list — Palate Match`
+        : `${inviter} invited you to Palate Match`
+      : "You've been invited — Palate Match";
+    const description = inv
+      ? inv.kind === "scan"
+        ? `${inviter} shared a wine list${inv.scan_venue ? ` from ${inv.scan_venue}` : ""}. Open it and see how each bottle scores for your palate.`
+        : `${inviter} (Red palate ${inv.inviter_palate_code_red} · White ${inv.inviter_palate_code_white}) wants to compare wine palates on Palate Match.`
+      : "A friend invited you to compare wine palates on Palate Match.";
+    return {
+      meta: [
+        { title },
+        { name: "description", content: description },
+        { property: "og:title", content: title },
+        { property: "og:description", content: description },
+        { property: "og:type", content: "website" },
+        { property: "og:url", content: url },
+        { property: "og:image", content: OG_IMAGE },
+        { property: "og:image:width", content: "1200" },
+        { property: "og:image:height", content: "630" },
+        { name: "twitter:card", content: "summary_large_image" },
+        { name: "twitter:title", content: title },
+        { name: "twitter:description", content: description },
+        { name: "twitter:image", content: OG_IMAGE },
+      ],
+      links: [{ rel: "canonical", href: url }],
+    };
+  },
   component: InvitePage,
 });
 
 function InvitePage() {
-  const { token } = Route.useParams();
+  const { token, invite } = Route.useLoaderData();
   const session = useSession();
   const nav = useNavigate();
-  const load = useServerFn(getInvite);
   const redeem = useServerFn(redeemInvite);
-
-  const q = useQuery({
-    queryKey: ["invite", token],
-    queryFn: () => load({ data: { token } }),
-    staleTime: 60_000,
-  });
 
   // Stash the token immediately so signup/OAuth flows can redeem after auth.
   useEffect(() => { stashPendingInvite(token); }, [token]);
@@ -61,11 +92,12 @@ function InvitePage() {
     }
   };
 
-  const inv = q.data ?? null;
-  const inviter = inv ? displayNameFor({ display_name: inv.inviter_display_name, username: inv.inviter_username }) : "";
+  const inviter = invite
+    ? displayNameFor({ display_name: invite.inviter_display_name, username: invite.inviter_username })
+    : "";
   const hook =
-    inv?.kind === "scan"
-      ? `${inviter} shared a wine list${inv.scan_venue ? ` from ${inv.scan_venue}` : ""}`
+    invite?.kind === "scan"
+      ? `${inviter} shared a wine list${invite.scan_venue ? ` from ${invite.scan_venue}` : ""}`
       : `${inviter} wants to compare wine palates with you`;
 
   return (
@@ -78,9 +110,7 @@ function InvitePage() {
           </h1>
         </div>
 
-        {q.isLoading && <p className="text-sm text-muted-foreground text-center">Loading invite…</p>}
-
-        {!q.isLoading && !inv && (
+        {!invite && (
           <div className="rounded-xl border border-border bg-card/60 p-5 text-center text-sm">
             This invite link is no longer valid.
             <div className="mt-4">
@@ -89,19 +119,19 @@ function InvitePage() {
           </div>
         )}
 
-        {inv && (
+        {invite && (
           <>
             <div className="rounded-xl border border-border bg-card/60 p-5 text-center">
               <div className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                {inv.kind === "scan" ? "Shared list" : "Friend invite"}
+                {invite.kind === "scan" ? "Shared list" : "Friend invite"}
               </div>
               <div className="mt-2 font-serif text-2xl">{hook}</div>
               <div className="mt-3 flex items-center justify-center gap-3 text-xs text-muted-foreground">
                 <span className="rounded-full bg-background border border-border px-2 py-0.5">
-                  Red · <span className="font-mono">{inv.inviter_palate_code_red}</span>
+                  Red · <span className="font-mono">{invite.inviter_palate_code_red}</span>
                 </span>
                 <span className="rounded-full bg-background border border-border px-2 py-0.5">
-                  White · <span className="font-mono">{inv.inviter_palate_code_white}</span>
+                  White · <span className="font-mono">{invite.inviter_palate_code_white}</span>
                 </span>
               </div>
               <p className="mt-4 text-xs text-muted-foreground">
@@ -146,7 +176,7 @@ function SignInBlock() {
   async function oauth(provider: "apple" | "google") {
     setErr(null);
     const res = await lovable.auth.signInWithOAuth(provider, {
-      redirect_uri: window.location.href, // return here so the invite redeems on landing
+      redirect_uri: window.location.href,
     });
     if (res.error) setErr(res.error.message ?? `${provider} sign-in failed`);
   }
@@ -156,13 +186,9 @@ function SignInBlock() {
     setBusy(true);
     setErr(null);
     try {
-      // shouldCreateUser: true — link-based invites create accounts on first tap.
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: {
-          shouldCreateUser: true,
-          emailRedirectTo: window.location.href,
-        },
+        options: { shouldCreateUser: true, emailRedirectTo: window.location.href },
       });
       if (error) throw error;
       setSent(true);
@@ -184,18 +210,12 @@ function SignInBlock() {
   return (
     <div className="rounded-xl border border-border bg-card/60 p-4 space-y-3">
       <div className="text-sm font-medium text-center">Sign in to connect</div>
-      <button
-        type="button"
-        onClick={() => oauth("apple")}
-        className="w-full rounded-md bg-foreground text-background py-2.5 text-sm font-medium"
-      >
+      <button type="button" onClick={() => oauth("apple")}
+        className="w-full rounded-md bg-foreground text-background py-2.5 text-sm font-medium">
         Continue with Apple
       </button>
-      <button
-        type="button"
-        onClick={() => oauth("google")}
-        className="w-full rounded-md bg-primary text-primary-foreground py-2.5 text-sm font-medium"
-      >
+      <button type="button" onClick={() => oauth("google")}
+        className="w-full rounded-md bg-primary text-primary-foreground py-2.5 text-sm font-medium">
         Continue with Google
       </button>
       <div className="flex items-center gap-3 py-1">
@@ -204,21 +224,12 @@ function SignInBlock() {
         <div className="h-px flex-1 bg-border" />
       </div>
       <form onSubmit={submitEmail} className="space-y-2">
-        <input
-          type="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          placeholder="you@example.com"
-          autoComplete="email"
-          className="w-full rounded-md bg-input border border-border px-3 py-2 text-sm outline-none focus:border-primary"
-        />
+        <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)}
+          placeholder="you@example.com" autoComplete="email"
+          className="w-full rounded-md bg-input border border-border px-3 py-2 text-sm outline-none focus:border-primary" />
         {err && <p className="text-xs text-destructive">{err}</p>}
-        <button
-          type="submit"
-          disabled={busy || !email}
-          className="w-full rounded-md border border-border bg-card py-2 text-sm disabled:opacity-50"
-        >
+        <button type="submit" disabled={busy || !email}
+          className="w-full rounded-md border border-border bg-card py-2 text-sm disabled:opacity-50">
           {busy ? "Sending…" : "Email me a sign-in link"}
         </button>
       </form>
