@@ -125,8 +125,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         (navigator as Navigator & { vibrate?: (p: number | number[]) => boolean }).vibrate?.([12, 40, 24]);
       }
     } catch { /* noop */ }
-    toast.success("Scan unlocked", {
-      description: "Point your camera at any wine list — I'll rank every bottle.",
+    toast.success("List recommendations unlocked", {
+      description: "Scan a restaurant wine list — I'll rank every bottle for your palate.",
       duration: 5000,
       action: {
         label: "Scan now",
