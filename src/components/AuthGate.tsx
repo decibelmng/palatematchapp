@@ -29,6 +29,7 @@ type Mode = "login" | "recover" | "create";
 function AuthScreen() {
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [sent, setSent] = useState(false);
