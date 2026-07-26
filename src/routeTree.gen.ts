@@ -28,6 +28,7 @@ import { Route as ScanIdRouteImport } from './routes/scan.$id'
 import { Route as STokenRouteImport } from './routes/s.$token'
 import { Route as PalateVerifyRouteImport } from './routes/palate.verify'
 import { Route as PalateTypeRouteImport } from './routes/palate.$type'
+import { Route as ITokenRouteImport } from './routes/i.$token'
 import { Route as AdminUsageRouteImport } from './routes/admin.usage'
 import { Route as AdminTypeFixRouteImport } from './routes/admin.type-fix'
 import { Route as AdminInspectRouteImport } from './routes/admin.inspect'
@@ -133,6 +134,11 @@ const PalateTypeRoute = PalateTypeRouteImport.update({
   path: '/palate/$type',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ITokenRoute = ITokenRouteImport.update({
+  id: '/i/$token',
+  path: '/i/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminUsageRoute = AdminUsageRouteImport.update({
   id: '/admin/usage',
   path: '/admin/usage',
@@ -199,6 +205,7 @@ export interface FileRoutesByFullPath {
   '/admin/inspect': typeof AdminInspectRoute
   '/admin/type-fix': typeof AdminTypeFixRoute
   '/admin/usage': typeof AdminUsageRoute
+  '/i/$token': typeof ITokenRoute
   '/palate/$type': typeof PalateTypeRoute
   '/palate/verify': typeof PalateVerifyRoute
   '/s/$token': typeof STokenRoute
@@ -229,6 +236,7 @@ export interface FileRoutesByTo {
   '/admin/inspect': typeof AdminInspectRoute
   '/admin/type-fix': typeof AdminTypeFixRoute
   '/admin/usage': typeof AdminUsageRoute
+  '/i/$token': typeof ITokenRoute
   '/palate/$type': typeof PalateTypeRoute
   '/palate/verify': typeof PalateVerifyRoute
   '/s/$token': typeof STokenRoute
@@ -260,6 +268,7 @@ export interface FileRoutesById {
   '/admin/inspect': typeof AdminInspectRoute
   '/admin/type-fix': typeof AdminTypeFixRoute
   '/admin/usage': typeof AdminUsageRoute
+  '/i/$token': typeof ITokenRoute
   '/palate/$type': typeof PalateTypeRoute
   '/palate/verify': typeof PalateVerifyRoute
   '/s/$token': typeof STokenRoute
@@ -292,6 +301,7 @@ export interface FileRouteTypes {
     | '/admin/inspect'
     | '/admin/type-fix'
     | '/admin/usage'
+    | '/i/$token'
     | '/palate/$type'
     | '/palate/verify'
     | '/s/$token'
@@ -322,6 +332,7 @@ export interface FileRouteTypes {
     | '/admin/inspect'
     | '/admin/type-fix'
     | '/admin/usage'
+    | '/i/$token'
     | '/palate/$type'
     | '/palate/verify'
     | '/s/$token'
@@ -352,6 +363,7 @@ export interface FileRouteTypes {
     | '/admin/inspect'
     | '/admin/type-fix'
     | '/admin/usage'
+    | '/i/$token'
     | '/palate/$type'
     | '/palate/verify'
     | '/s/$token'
@@ -383,6 +395,7 @@ export interface RootRouteChildren {
   AdminInspectRoute: typeof AdminInspectRoute
   AdminTypeFixRoute: typeof AdminTypeFixRoute
   AdminUsageRoute: typeof AdminUsageRoute
+  ITokenRoute: typeof ITokenRoute
   PalateTypeRoute: typeof PalateTypeRoute
   PalateVerifyRoute: typeof PalateVerifyRoute
   STokenRoute: typeof STokenRoute
@@ -526,6 +539,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PalateTypeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/i/$token': {
+      id: '/i/$token'
+      path: '/i/$token'
+      fullPath: '/i/$token'
+      preLoaderRoute: typeof ITokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/usage': {
       id: '/admin/usage'
       path: '/admin/usage'
@@ -626,6 +646,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminInspectRoute: AdminInspectRoute,
   AdminTypeFixRoute: AdminTypeFixRoute,
   AdminUsageRoute: AdminUsageRoute,
+  ITokenRoute: ITokenRoute,
   PalateTypeRoute: PalateTypeRoute,
   PalateVerifyRoute: PalateVerifyRoute,
   STokenRoute: STokenRoute,
