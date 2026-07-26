@@ -13,6 +13,7 @@ import { useTheme } from "@/lib/theme";
 import { useRatingsCount, UNLOCK_THRESHOLD } from "@/components/UnlockMeter";
 import { useFeedActivity, hasFreshActivity } from "@/hooks/use-feed";
 import { ScanChooserSheet } from "@/components/ScanChooserSheet";
+import { FeedbackDialog } from "@/components/feedback/FeedbackDialog";
 
 type TabTo = "/palate" | "/rate" | "/scan/list" | "/feed";
 
@@ -78,6 +79,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [menuOpen, setMenuOpen] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const { data: profile } = useMyProfile();
   useLastSeenPing((profile as { id?: string } | undefined)?.id);
