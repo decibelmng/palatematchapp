@@ -92,7 +92,7 @@ function ScanDetailPage() {
         <p className="text-xs text-muted-foreground">
           Facts stored once. This ranking recomputes against your current palate every time you open it.
         </p>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <button
             onClick={() => shareMut.mutate()}
             disabled={shareMut.isPending}
@@ -100,8 +100,19 @@ function ScanDetailPage() {
           >
             {share_token ? "Copy share link" : "Share this scan"}
           </button>
+          <button
+            onClick={() => inviteMut.mutate()}
+            disabled={inviteMut.isPending}
+            className="text-xs px-3 py-1.5 rounded border border-primary/50 bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-50"
+            title="Share the list AND auto-connect the recipient as a friend"
+          >
+            {inviteLink ? "Copy invite link" : "Share as friend invite"}
+          </button>
         </div>
-        {share_token && (
+        {inviteLink && (
+          <div className="text-[11px] text-muted-foreground break-all">{inviteLink}</div>
+        )}
+        {share_token && !inviteLink && (
           <div className="text-[11px] text-muted-foreground break-all">
             {`${typeof window !== "undefined" ? window.location.origin : ""}/s/${share_token}`}
           </div>
