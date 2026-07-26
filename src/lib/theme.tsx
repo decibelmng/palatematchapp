@@ -1,8 +1,9 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-export type Theme = "light" | "dark";
+export type Theme = "light" | "dark" | "service";
 const STORAGE_KEY = "pm-theme";
+const THEMES: Theme[] = ["light", "dark", "service"];
 
 type Ctx = {
   theme: Theme;
@@ -11,11 +12,15 @@ type Ctx = {
 };
 const ThemeContext = createContext<Ctx | null>(null);
 
+function isTheme(v: unknown): v is Theme {
+  return v === "light" || v === "dark" || v === "service";
+}
+
 function readInitial(): Theme {
   if (typeof window === "undefined") return "light";
   try {
     const saved = window.localStorage.getItem(STORAGE_KEY);
-    if (saved === "light" || saved === "dark") return saved;
+    if (isTheme(saved)) return saved;
   } catch {}
   if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) return "dark";
   return "light";
@@ -24,7 +29,8 @@ function readInitial(): Theme {
 function apply(theme: Theme) {
   if (typeof document === "undefined") return;
   document.documentElement.dataset.theme = theme;
-  document.documentElement.style.colorScheme = theme;
+  // "service" is a dark theme variant for color-scheme purposes.
+  document.documentElement.style.colorScheme = theme === "light" ? "light" : "dark";
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
@@ -38,7 +44,6 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     setHydrated(true);
   }, []);
 
-  // After sign-in, prefer the saved profile theme (cross-device sync).
   useEffect(() => {
     if (!hydrated) return;
     let cancelled = false;
@@ -46,7 +51,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     async function loadFromProfile(uid: string) {
       const { data } = await supabase.from("profiles").select("theme").eq("id", uid).maybeSingle();
       const t = (data as { theme?: string | null } | null)?.theme;
-      if (!cancelled && (t === "light" || t === "dark")) {
+      if (!cancelled && isTheme(t)) {
         setThemeState(t);
         apply(t);
         try { window.localStorage.setItem(STORAGE_KEY, t); } catch {}
@@ -74,7 +79,9 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const toggle = useCallback(() => {
-    setTheme(theme === "dark" ? "light" : "dark");
+    const idx = THEMES.indexOf(theme);
+    const next = THEMES[(idx + 1) % THEMES.length];
+    setTheme(next);
   }, [theme, setTheme]);
 
   return (
@@ -93,4 +100,4 @@ export function useTheme(): Ctx {
 }
 
 /** Inline boot script — sets data-theme before paint to prevent FOUC. */
-export const themeBootstrapScript = `(function(){try{var s=localStorage.getItem('${STORAGE_KEY}');var t=(s==='light'||s==='dark')?s:(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.theme=t;document.documentElement.style.colorScheme=t;}catch(e){document.documentElement.dataset.theme='light';}})();`;
+export const themeBootstrapScript = `(function(){try{var s=localStorage.getItem('${STORAGE_KEY}');var t=(s==='light'||s==='dark'||s==='service')?s:(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.theme=t;document.documentElement.style.colorScheme=(t==='light')?'light':'dark';}catch(e){document.documentElement.dataset.theme='light';}})();`;
