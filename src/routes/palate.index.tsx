@@ -185,7 +185,16 @@ function PalateHome() {
             <div className="text-[11px] text-muted-foreground">joined {memberSince}</div>
           )}
         </div>
-        {profile?.username && <ShareProfileButton username={profile.username} displayName={displayName} />}
+        {profile?.username && (
+          <ShareProfileButton
+            username={profile.username}
+            displayName={displayName}
+            palateCodeRed={profile.palate_code_red}
+            palateCodeWhite={profile.palate_code_white}
+            variant="primary"
+            label="Share"
+          />
+        )}
       </div>
 
       {profile?.bio && (
