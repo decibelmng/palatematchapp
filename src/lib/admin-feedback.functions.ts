@@ -18,7 +18,7 @@ export type FeedbackRow = {
   screenshot_url: string | null;
   signed_screenshot_url: string | null;
   app_version: string | null;
-  context: Record<string, unknown> | null | any;
+  context: Record<string, string | number | boolean | null> | null;
   source: "button" | "prompt";
   prompt_key: string | null;
   rating: "up" | "down" | null;
