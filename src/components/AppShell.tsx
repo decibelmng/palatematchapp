@@ -226,6 +226,13 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </Link>
                 <button
                   role="menuitem"
+                  onClick={() => { setMenuOpen(false); setFeedbackOpen(true); }}
+                  className="w-full text-left px-3 py-3 text-sm text-foreground hover:bg-accent/60 border-t border-border"
+                >
+                  Send feedback
+                </button>
+                <button
+                  role="menuitem"
                   onClick={async () => { await supabase.auth.signOut(); }}
                   className="w-full text-left px-3 py-3 text-xs text-muted-foreground hover:bg-accent/60 border-t border-border"
                 >
