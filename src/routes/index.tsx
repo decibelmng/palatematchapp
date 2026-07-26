@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef } from "react";
-import { ScanLine, Lock, ArrowRight } from "lucide-react";
+import { ScanLine, ArrowRight } from "lucide-react";
 import { AuthGate } from "@/components/AuthGate";
 import { useSession } from "@/hooks/use-session";
 import { loadRecentScan } from "@/lib/scan.functions";
@@ -26,86 +26,35 @@ function Home() {
   const loadRecent = useServerFn(loadRecentScan);
   const navigate = useNavigate();
   const count = useRatingsCount();
-  const unlocked = count >= UNLOCK_THRESHOLD;
+  const calibrated = count >= UNLOCK_THRESHOLD;
   const remaining = Math.max(0, UNLOCK_THRESHOLD - count);
 
-  // Cold-open routing: if this is the first landing this session and the user
-  // is still locked, send them to Rate. Subsequent visits to "/" (e.g. tapping
-  // the Scan tab) still show the gate below.
+  // Cold-open routing: first landing this session with no ratings yet? Nudge
+  // to Rate so the palate has something to work with. Subsequent visits to
+  // "/" still show the scan hero — bottle/list scanning is never gated.
   const redirectedRef = useRef(false);
   useEffect(() => {
     if (redirectedRef.current) return;
     if (typeof window === "undefined") return;
     if (!session) return;
-    if (unlocked) return;
+    if (calibrated) return;
     try {
       if (sessionStorage.getItem("pm-cold-opened") === "1") return;
       sessionStorage.setItem("pm-cold-opened", "1");
     } catch { /* noop */ }
     redirectedRef.current = true;
     navigate({ to: "/rate" });
-  }, [session, unlocked, navigate]);
+  }, [session, calibrated, navigate]);
 
   const recent = useQuery({
     queryKey: ["recent-scan", "home"],
     queryFn: () => loadRecent(),
-    enabled: !!session && unlocked,
+    enabled: !!session,
     staleTime: 60_000,
     refetchOnWindowFocus: false,
   });
   const hasRecent =
     !!(recent.data as { scan?: { id?: string } } | null | undefined)?.scan?.id;
-
-  if (!unlocked) {
-    return (
-      <div className="pt-2">
-        <div
-          className="mt-4 rounded-[18px] border-2 border-dashed border-primary/50 bg-gradient-to-br from-primary/10 via-card to-card p-6 min-h-[240px]"
-          data-testid="scan-locked-gate"
-        >
-          <div className="flex items-start gap-4">
-            <div className="shrink-0 h-16 w-16 rounded-2xl bg-muted text-muted-foreground flex items-center justify-center relative">
-              <ScanLine size={36} strokeWidth={1.8} />
-              <span className="absolute -bottom-1 -right-1 h-7 w-7 rounded-full bg-background border border-border flex items-center justify-center text-primary">
-                <Lock size={14} strokeWidth={2.5} />
-              </span>
-            </div>
-            <div className="flex-1 min-w-0">
-              <p
-                className="text-[10px] uppercase text-primary"
-                style={{ letterSpacing: "0.22em" }}
-              >
-                Almost there
-              </p>
-              <h1 className="mt-2 font-serif text-[26px] leading-[1.15] text-foreground">
-                {remaining === 1 ? "One more to go" : `${remaining} more to go`}
-              </h1>
-              <p className="mt-2 text-[13px] text-muted-foreground">
-                Rate {UNLOCK_THRESHOLD} wines and I'll read any list for you — ranked to your palate in seconds.
-              </p>
-              <div className="mt-4">
-                <div className="h-2 w-full rounded-full bg-border/70 overflow-hidden">
-                  <div
-                    className="h-full bg-primary transition-all duration-500"
-                    style={{ width: `${(count / UNLOCK_THRESHOLD) * 100}%` }}
-                  />
-                </div>
-                <p className="mt-2 text-[11px] tabular-nums text-muted-foreground">
-                  {count} / {UNLOCK_THRESHOLD} rated
-                </p>
-              </div>
-            </div>
-          </div>
-          <Link
-            to="/rate"
-            className="mt-5 inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-primary-foreground w-full"
-          >
-            Rate wines <ArrowRight size={16} />
-          </Link>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="pt-2">
@@ -129,6 +78,35 @@ function Home() {
           <ArrowRight className="shrink-0 text-primary" size={18} />
         </div>
       </Link>
+
+      {!calibrated && (
+        <div
+          className="mt-3 rounded-xl border border-primary/30 bg-primary/5 p-3"
+          data-testid="calibration-note"
+        >
+          <p className="text-[12px] text-foreground">
+            <span className="font-semibold">Rankings warm up as you rate.</span>{" "}
+            <span className="text-muted-foreground">
+              {remaining === 1
+                ? "One more rating and I can rank any wine list for your taste."
+                : `${remaining} more ratings and I can rank any wine list for your taste.`}
+            </span>
+          </p>
+          <div className="mt-2 h-1.5 w-full rounded-full bg-border/70 overflow-hidden">
+            <div
+              className="h-full bg-primary transition-all duration-500"
+              style={{ width: `${(count / UNLOCK_THRESHOLD) * 100}%` }}
+            />
+          </div>
+          <div className="mt-2 flex items-center justify-between text-[11px]">
+            <span className="tabular-nums text-muted-foreground">{count} / {UNLOCK_THRESHOLD} rated</span>
+            <Link to="/rate" className="text-primary font-medium inline-flex items-center gap-1">
+              Rate wines <ArrowRight size={12} />
+            </Link>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
+
