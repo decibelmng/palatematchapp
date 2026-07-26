@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { useSession } from "@/hooks/use-session";
 import { AppShell } from "./AppShell";
+import { NameGate } from "./NameGate";
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const session = useSession();
@@ -16,7 +17,11 @@ export function AuthGate({ children }: { children: ReactNode }) {
   }
 
   if (!session) return <AuthScreen />;
-  return <AppShell>{children}</AppShell>;
+  return (
+    <NameGate>
+      <AppShell>{children}</AppShell>
+    </NameGate>
+  );
 }
 
 type Mode = "login" | "recover" | "create";
