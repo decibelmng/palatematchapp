@@ -32,6 +32,7 @@ import { Route as ITokenRouteImport } from './routes/i.$token'
 import { Route as AdminUsageRouteImport } from './routes/admin.usage'
 import { Route as AdminTypeFixRouteImport } from './routes/admin.type-fix'
 import { Route as AdminInspectRouteImport } from './routes/admin.inspect'
+import { Route as AdminFeedbackRouteImport } from './routes/admin.feedback'
 import { Route as AdminDisputesRouteImport } from './routes/admin.disputes'
 import { Route as AdminDataCaptureRouteImport } from './routes/admin.data-capture'
 import { Route as AdminDataRouteImport } from './routes/admin.data'
@@ -154,6 +155,11 @@ const AdminInspectRoute = AdminInspectRouteImport.update({
   path: '/admin/inspect',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminFeedbackRoute = AdminFeedbackRouteImport.update({
+  id: '/admin/feedback',
+  path: '/admin/feedback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminDisputesRoute = AdminDisputesRouteImport.update({
   id: '/admin/disputes',
   path: '/admin/disputes',
@@ -202,6 +208,7 @@ export interface FileRoutesByFullPath {
   '/admin/data': typeof AdminDataRoute
   '/admin/data-capture': typeof AdminDataCaptureRoute
   '/admin/disputes': typeof AdminDisputesRoute
+  '/admin/feedback': typeof AdminFeedbackRoute
   '/admin/inspect': typeof AdminInspectRoute
   '/admin/type-fix': typeof AdminTypeFixRoute
   '/admin/usage': typeof AdminUsageRoute
@@ -233,6 +240,7 @@ export interface FileRoutesByTo {
   '/admin/data': typeof AdminDataRoute
   '/admin/data-capture': typeof AdminDataCaptureRoute
   '/admin/disputes': typeof AdminDisputesRoute
+  '/admin/feedback': typeof AdminFeedbackRoute
   '/admin/inspect': typeof AdminInspectRoute
   '/admin/type-fix': typeof AdminTypeFixRoute
   '/admin/usage': typeof AdminUsageRoute
@@ -265,6 +273,7 @@ export interface FileRoutesById {
   '/admin/data': typeof AdminDataRoute
   '/admin/data-capture': typeof AdminDataCaptureRoute
   '/admin/disputes': typeof AdminDisputesRoute
+  '/admin/feedback': typeof AdminFeedbackRoute
   '/admin/inspect': typeof AdminInspectRoute
   '/admin/type-fix': typeof AdminTypeFixRoute
   '/admin/usage': typeof AdminUsageRoute
@@ -298,6 +307,7 @@ export interface FileRouteTypes {
     | '/admin/data'
     | '/admin/data-capture'
     | '/admin/disputes'
+    | '/admin/feedback'
     | '/admin/inspect'
     | '/admin/type-fix'
     | '/admin/usage'
@@ -329,6 +339,7 @@ export interface FileRouteTypes {
     | '/admin/data'
     | '/admin/data-capture'
     | '/admin/disputes'
+    | '/admin/feedback'
     | '/admin/inspect'
     | '/admin/type-fix'
     | '/admin/usage'
@@ -360,6 +371,7 @@ export interface FileRouteTypes {
     | '/admin/data'
     | '/admin/data-capture'
     | '/admin/disputes'
+    | '/admin/feedback'
     | '/admin/inspect'
     | '/admin/type-fix'
     | '/admin/usage'
@@ -392,6 +404,7 @@ export interface RootRouteChildren {
   AdminDataRoute: typeof AdminDataRoute
   AdminDataCaptureRoute: typeof AdminDataCaptureRoute
   AdminDisputesRoute: typeof AdminDisputesRoute
+  AdminFeedbackRoute: typeof AdminFeedbackRoute
   AdminInspectRoute: typeof AdminInspectRoute
   AdminTypeFixRoute: typeof AdminTypeFixRoute
   AdminUsageRoute: typeof AdminUsageRoute
@@ -567,6 +580,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminInspectRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/feedback': {
+      id: '/admin/feedback'
+      path: '/admin/feedback'
+      fullPath: '/admin/feedback'
+      preLoaderRoute: typeof AdminFeedbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/disputes': {
       id: '/admin/disputes'
       path: '/admin/disputes'
@@ -643,6 +663,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminDataRoute: AdminDataRoute,
   AdminDataCaptureRoute: AdminDataCaptureRoute,
   AdminDisputesRoute: AdminDisputesRoute,
+  AdminFeedbackRoute: AdminFeedbackRoute,
   AdminInspectRoute: AdminInspectRoute,
   AdminTypeFixRoute: AdminTypeFixRoute,
   AdminUsageRoute: AdminUsageRoute,
