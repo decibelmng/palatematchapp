@@ -65,6 +65,19 @@ function BottleScan() {
   const [pickTarget, setPickTarget] = useState<"front" | "back">("front");
   const [showAdd, setShowAdd] = useState(false);
 
+  // Auto-open camera when arriving from the center-scan chooser (?capture=1).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("capture") !== "1") return;
+    const url = new URL(window.location.href);
+    url.searchParams.delete("capture");
+    window.history.replaceState({}, "", url.toString());
+    setPickTarget("front");
+    const t = setTimeout(() => cameraRef.current?.click(), 60);
+    return () => clearTimeout(t);
+  }, []);
+
   // Confirm-first state: after vision reads the label, the user edits
   // the extracted fields (photo visible), and NOTHING resolves to a
   // catalog wine or writes a rating until they confirm. Low-confidence

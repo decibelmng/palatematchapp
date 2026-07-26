@@ -147,6 +147,19 @@ function Scan() {
   const [dismissedResume, setDismissedResume] = useState(false);
   const finalizingRef = useRef(false);
 
+  // Auto-open camera when arriving from the center-scan chooser (?capture=1).
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("capture") !== "1") return;
+    // Strip so a refresh doesn't re-trigger.
+    const url = new URL(window.location.href);
+    url.searchParams.delete("capture");
+    window.history.replaceState({}, "", url.toString());
+    const t = setTimeout(() => cameraRef.current?.click(), 60);
+    return () => clearTimeout(t);
+  }, []);
+
   // Pre-scan restaurant selection (optional): stored here so `finalizeScan`
   // can auto-attribute without a second UI trip.
   const [prescanRestaurant, setPrescanRestaurant] = useState<{ id: string; name: string } | null>(null);
@@ -1378,7 +1391,11 @@ function HeroCard({
         onClick={(e) => e.stopPropagation()}
       >
         <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-          {bottleId == null ? "Estimated — open to rate" : currentStars != null ? "Your rating" : "Tried it? Rate now"}
+          {bottleId == null
+            ? "Estimated — couldn't identify to rate"
+            : currentStars != null
+              ? row.isCatalog ? "Your rating" : "Your rating · estimated"
+              : row.isCatalog ? "Tried it? Rate now" : "Estimated — tried it? Rate now"}
         </span>
         {bottleId != null && (
           <StarTap
@@ -1626,7 +1643,11 @@ function ScanDetailSheet({ row, onClose }: { row: ScanRow | null; onClose: () =>
         )}
         <div className="mt-4 pt-3 border-t border-border flex items-center justify-between gap-3">
           <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-            {bottleId == null ? "Estimated — no catalog match to rate" : currentStars != null ? "Your rating" : "Tried it? Rate now"}
+            {bottleId == null
+              ? "Estimated — couldn't identify to rate"
+              : currentStars != null
+                ? row.isCatalog ? "Your rating" : "Your rating · estimated"
+                : row.isCatalog ? "Tried it? Rate now" : "Estimated — tried it? Rate now"}
           </span>
           {bottleId != null && (
             <StarTap
