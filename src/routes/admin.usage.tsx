@@ -5,9 +5,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import {
   adminUsageSummary,
-  adminUserList,
   adminDailyActiveUsers,
 } from "@/lib/admin-usage.functions";
+import { adminUserListWithEmail } from "@/lib/admin-somm.functions";
 
 export const Route = createFileRoute("/admin/usage")({
   ssr: false,
