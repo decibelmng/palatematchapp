@@ -251,6 +251,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <A2HSHint />
 
       <ScanChooserSheet open={scanOpen} onClose={() => setScanOpen(false)} />
+      <FeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
 
       <nav
         className="fixed bottom-0 inset-x-0 border-t border-border bg-background/95 backdrop-blur"
