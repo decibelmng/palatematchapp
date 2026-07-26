@@ -1,19 +1,35 @@
 // Blocks the app until the signed-in user has a non-empty display_name.
 // Handles both new signups (before/after this rule shipped) and legacy users.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useMyProfile, useUpdateProfile } from "@/hooks/use-friends";
+
+const PENDING_KEY = "pm.pendingDisplayName";
 
 export function NameGate({ children }: { children: React.ReactNode }) {
   const { data: profile, isLoading } = useMyProfile();
   const update = useUpdateProfile();
-  const [name, setName] = useState("");
+  const [name, setName] = useState<string>(() => {
+    try { return localStorage.getItem(PENDING_KEY)?.trim() ?? ""; } catch { return ""; }
+  });
+
+  const current = (profile as { display_name?: string | null } | null | undefined)?.display_name ?? null;
+  const missing = !isLoading && profile !== undefined && !(current && current.trim().length > 0);
+
+  // Auto-apply a pending name captured at signup, without requiring extra input.
+  useEffect(() => {
+    if (!missing || update.isPending) return;
+    let pending = "";
+    try { pending = localStorage.getItem(PENDING_KEY)?.trim() ?? ""; } catch { /* ignore */ }
+    if (pending.length === 0) return;
+    update.mutate({ display_name: pending.slice(0, 60) }, {
+      onSuccess: () => { try { localStorage.removeItem(PENDING_KEY); } catch { /* ignore */ } },
+    });
+  }, [missing, update]);
 
   // Wait for profile — don't flash the prompt over children.
   if (isLoading || profile === undefined) return <>{children}</>;
-
-  const current = (profile as { display_name?: string | null } | null)?.display_name ?? null;
-  if (current && current.trim().length > 0) return <>{children}</>;
+  if (!missing) return <>{children}</>;
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
