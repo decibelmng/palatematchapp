@@ -35,12 +35,12 @@ export function UnlockMeter() {
       aria-valuemin={0}
       aria-valuemax={UNLOCK_THRESHOLD}
       aria-valuenow={count}
-      aria-label={`Rate ${UNLOCK_THRESHOLD} wines to unlock Scan`}
+      aria-label={`Rate ${UNLOCK_THRESHOLD} wines to unlock list recommendations`}
     >
       <div className="flex items-center gap-2">
         <ScanLine size={16} className="text-primary shrink-0" />
         <p className="text-[13px] font-semibold text-foreground">
-          Rate {UNLOCK_THRESHOLD} wines to unlock Scan
+          Rate {UNLOCK_THRESHOLD} wines to unlock list recommendations
         </p>
         <span className="ml-auto text-[12px] tabular-nums font-medium text-primary">
           {count}/{UNLOCK_THRESHOLD}
@@ -54,8 +54,8 @@ export function UnlockMeter() {
       </div>
       <p className="mt-2 text-[11px] text-muted-foreground">
         {remaining === 1
-          ? "One more to go — then Scan is yours."
-          : `${remaining} more to go — then I'll read any wine list for you.`}
+          ? "One more to go — then I can rank any restaurant wine list for your taste."
+          : `${remaining} more to go — then I can rank any restaurant wine list for your taste.`}
       </p>
     </div>
   );
