@@ -1,0 +1,1 @@
+CREATE POLICY "Friends can read ratings" ON public.ratings FOR SELECT TO authenticated USING (auth.uid() = user_id OR public.are_friends(auth.uid(), user_id));
