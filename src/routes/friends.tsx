@@ -36,10 +36,17 @@ function Friends() {
   const incoming = friendships.filter((f) => f.status === "pending" && f.direction === "incoming");
   const outgoing = friendships.filter((f) => f.status === "pending" && f.direction === "outgoing");
 
-  const inviteURL = useMemo(() => {
-    if (!me?.username || typeof window === "undefined") return "";
-    return `${window.location.origin}/add-friend/${me.username}`;
-  }, [me?.username]);
+  const invite = useServerFn(createOrGetInvite);
+  const inviteQ = useQuery({
+    queryKey: ["my-invite", "friend", me?.id ?? null],
+    enabled: !!me?.id,
+    queryFn: () => invite({ data: { kind: "friend" } }),
+    staleTime: Infinity,
+  });
+  const inviteURL =
+    inviteQ.data?.token && typeof window !== "undefined"
+      ? `${window.location.origin}/i/${inviteQ.data.token}`
+      : "";
 
   return (
     <div className="pt-2 space-y-8">
