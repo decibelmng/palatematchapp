@@ -1378,7 +1378,11 @@ function HeroCard({
         onClick={(e) => e.stopPropagation()}
       >
         <span className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
-          {bottleId == null ? "Estimated — open to rate" : currentStars != null ? "Your rating" : "Tried it? Rate now"}
+          {bottleId == null
+            ? "Estimated — couldn't identify to rate"
+            : currentStars != null
+              ? row.isCatalog ? "Your rating" : "Your rating · estimated"
+              : row.isCatalog ? "Tried it? Rate now" : "Estimated — tried it? Rate now"}
         </span>
         {bottleId != null && (
           <StarTap
