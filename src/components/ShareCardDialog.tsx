@@ -61,7 +61,7 @@ export function ShareCardDialog({ open, onClose, type, code, displayName }: Prop
           <PalateStar axes={axesFor(type)} letters={letters} size={200} />
           <div
             className="mt-4 font-serif text-2xl text-primary"
-            style={{ letterSpacing: "0.3em" }}
+            style={{  }}
           >
             {code.split("").map((c, i) => (
               <span key={i} className={c === "·" ? "text-muted-foreground/60" : ""}>{c}</span>

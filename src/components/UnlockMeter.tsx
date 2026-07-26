@@ -17,7 +17,7 @@ export function UnlockMeter() {
   if (unlocked) {
     return (
       <div
-        className="mt-4 rounded-xl border border-border/60 bg-muted/30 px-4 py-2.5 flex items-center gap-2 text-[12px] text-muted-foreground"
+        className="mt-4 rounded-xl border border-border/60 bg-muted/30 px-4 py-2.5 flex items-center gap-2 text-meta text-muted-foreground"
         aria-label={`${count} rated`}
       >
         <Check size={14} className="text-primary shrink-0" />
@@ -39,10 +39,10 @@ export function UnlockMeter() {
     >
       <div className="flex items-center gap-2">
         <ScanLine size={16} className="text-primary shrink-0" />
-        <p className="text-[13px] font-semibold text-foreground">
+        <p className="text-meta font-semibold text-foreground">
           Rate {UNLOCK_THRESHOLD} wines to unlock list recommendations
         </p>
-        <span className="ml-auto text-[12px] tabular-nums font-medium text-primary">
+        <span className="ml-auto text-meta tabular-nums font-medium text-primary">
           {count}/{UNLOCK_THRESHOLD}
         </span>
       </div>
@@ -52,7 +52,7 @@ export function UnlockMeter() {
           style={{ width: `${pct}%` }}
         />
       </div>
-      <p className="mt-2 text-[11px] text-muted-foreground">
+      <p className="mt-2 text-meta text-muted-foreground">
         {remaining === 1
           ? "One more to go — then I can rank any restaurant wine list for your taste."
           : `${remaining} more to go — then I can rank any restaurant wine list for your taste.`}

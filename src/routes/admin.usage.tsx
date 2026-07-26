@@ -93,7 +93,7 @@ function AdminUsage() {
 
       <section className="mt-6">
         <h2 className="text-sm font-medium">Daily active (last 30d)</h2>
-        <div className="mt-2 rounded border-[0.5px] border-border bg-card/60 p-2">
+        <div className="mt-2 rounded border border-border bg-card p-2">
           {(dau.data ?? []).length === 0 ? (
             <div className="p-3 text-xs text-muted-foreground">No activity yet.</div>
           ) : (
@@ -112,7 +112,7 @@ function AdminUsage() {
 
       <section className="mt-6">
         <h2 className="text-sm font-medium">Users ({sorted.length})</h2>
-        <div className="mt-2 overflow-x-auto rounded border-[0.5px] border-border">
+        <div className="mt-2 overflow-x-auto rounded border border-border">
           <table className="w-full text-xs">
             <thead className="bg-muted/40 text-left">
               <tr>
@@ -130,9 +130,9 @@ function AdminUsage() {
                 <tr key={u.id} className="border-t border-border/60">
                   <td className="p-2">
                     <div className="font-medium">{u.display_name ?? u.username}</div>
-                    <div className="text-[10px] text-muted-foreground">@{u.username}</div>
+                    <div className="text-meta text-muted-foreground">@{u.username}</div>
                   </td>
-                  <td className="p-2 font-mono text-[11px] text-muted-foreground whitespace-nowrap">{u.email ?? "—"}</td>
+                  <td className="p-2 font-mono text-meta text-muted-foreground whitespace-nowrap">{u.email ?? "—"}</td>
                   <td className="p-2 whitespace-nowrap">{fmt(u.created_at)}</td>
                   <td className="p-2 whitespace-nowrap">{u.last_seen_at ? fmt(u.last_seen_at) : "—"}</td>
                   <td className="p-2 tabular-nums">{u.ratings_count}</td>
@@ -150,8 +150,8 @@ function AdminUsage() {
 
 function Tile({ label, value }: { label: string; value: number | string | null | undefined }) {
   return (
-    <div className="rounded-[12px] border-[0.5px] border-border bg-card/60 p-3">
-      <div className="text-[11px] uppercase text-muted-foreground" style={{ letterSpacing: "0.12em" }}>{label}</div>
+    <div className="rounded-[12px] border border-border bg-card p-3">
+      <div className="text-meta uppercase text-muted-foreground" style={{  }}>{label}</div>
       <div className="mt-1 text-lg font-semibold tabular-nums">
         {value == null ? "—" : typeof value === "number" ? Math.round(Number(value) * 10) / 10 : value}
       </div>

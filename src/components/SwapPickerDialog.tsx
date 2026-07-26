@@ -87,7 +87,7 @@ export function SwapPickerDialog({
       >
         <header className="flex items-start justify-between gap-3 p-4 border-b border-border">
           <div className="min-w-0">
-            <p className="text-[10px] uppercase text-muted-foreground" style={{ letterSpacing: "0.2em" }}>
+            <p className="text-meta uppercase text-muted-foreground" style={{  }}>
               Swap {tierLabel} · {region}
             </p>
             <h2 id="swap-picker-title" className="mt-1 font-serif text-lg leading-tight">
@@ -136,7 +136,7 @@ export function SwapPickerDialog({
                     >
                       <div className="flex items-center gap-2 flex-wrap">
                         <WineTypeBadge type={b.type} />
-                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                        <span className="text-meta uppercase tracking-label text-muted-foreground">
                           {b.region}
                         </span>
                       </div>
@@ -145,7 +145,7 @@ export function SwapPickerDialog({
                         {[b.producer, b.vintage].filter(Boolean).join(" · ")}
                       </p>
                       {isPending && (
-                        <p className="mt-1 text-[11px] text-muted-foreground">Swapping…</p>
+                        <p className="mt-1 text-meta text-muted-foreground">Swapping…</p>
                       )}
                     </button>
                   </li>

@@ -43,10 +43,10 @@ function AddFriend() {
 
   return (
     <div className="pt-8 text-center">
-      <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">Palate Match invite</p>
+      <p className="text-xs uppercase tracking-label text-muted-foreground">Palate Match invite</p>
       <h1 className="font-serif text-3xl mt-2">Add @{username}</h1>
 
-      <div className="mt-6 rounded-xl border border-border bg-card/60 p-5 max-w-md mx-auto">
+      <div className="mt-6 rounded-xl border border-border bg-card p-5 max-w-md mx-auto">
         {status === "idle" && <p className="text-sm text-muted-foreground">Sending friend request…</p>}
         {status !== "idle" && (
           <p className={`text-sm ${status === "error" ? "text-destructive" : "text-foreground"}`}>{msg}</p>

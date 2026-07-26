@@ -40,13 +40,13 @@ export function DrinkingGroupSelector({ selectedIds, onToggle, onClear, onSet }:
   };
 
   return (
-    <div className="rounded-xl border border-border bg-card/60 p-3">
+    <div className="rounded-xl border border-border bg-card p-3">
       <div className="flex items-center justify-between gap-2">
-        <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Who's drinking?</div>
+        <div className="text-meta uppercase tracking-label text-muted-foreground">Who's drinking?</div>
         {selectedIds.length > 0 && (
           <button
             onClick={() => { persistRecent(); onClear(); }}
-            className="text-[11px] text-muted-foreground underline underline-offset-2 hover:text-foreground"
+            className="text-meta text-muted-foreground underline underline-offset-2 hover:text-foreground"
           >
             Just me
           </button>
@@ -100,7 +100,7 @@ export function DrinkingGroupSelector({ selectedIds, onToggle, onClear, onSet }:
 
       {recent.length > 0 && (
         <div className="mt-3">
-          <div className="text-[10px] uppercase tracking-wider text-muted-foreground mb-1">Recent groups</div>
+          <div className="text-meta uppercase tracking-label text-muted-foreground mb-1">Recent groups</div>
           <div className="flex flex-wrap gap-1.5">
             {recent.map((g) => {
               const validIds = g.ids.filter((id) => friendById.has(id));
@@ -116,7 +116,7 @@ export function DrinkingGroupSelector({ selectedIds, onToggle, onClear, onSet }:
                   key={g.usedAt}
                   type="button"
                   onClick={() => onSet(validIds)}
-                  className="rounded-full px-2.5 py-1 text-[11px] border border-border bg-background hover:bg-accent"
+                  className="rounded-full px-2.5 py-1 text-meta border border-border bg-background hover:bg-accent"
                 >
                   {label}
                 </button>
@@ -127,7 +127,7 @@ export function DrinkingGroupSelector({ selectedIds, onToggle, onClear, onSet }:
       )}
 
       {selectedIds.length > 0 && (
-        <div className="mt-2 text-[11px] text-muted-foreground">
+        <div className="mt-2 text-meta text-muted-foreground">
           Ranking bottles by the group's worst-case predicted stars (min); tiebreak by average.
         </div>
       )}

@@ -37,7 +37,7 @@ export function InstallGuidance() {
   if (installed) return null;
 
   return (
-    <div className="rounded-xl border border-border bg-card/60 p-4 text-sm">
+    <div className="rounded-xl border border-border bg-card p-4 text-sm">
       <div className="font-medium mb-1">Get Palate Match</div>
       {deferred ? (
         <>

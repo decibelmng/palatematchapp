@@ -577,7 +577,7 @@ export function TasteCube({
   return (
     <div className="w-full max-w-[480px] mx-auto" ref={wrapRef}>
       <div
-        className="relative w-full aspect-square rounded-[14px] border-[0.5px] border-border bg-card/40 overflow-hidden shadow-[var(--pm-card-shadow)]"
+        className="relative w-full aspect-square rounded-[14px] border border-border bg-card overflow-hidden shadow-[var(--pm-card-shadow)]"
         onPointerDown={bumpIdle}
         onWheel={bumpIdle}
         onDoubleClick={() => { controlsRef.current?.reset(); bumpIdle(); }}
@@ -611,7 +611,7 @@ export function TasteCube({
             type="button"
             aria-label="Rotate up"
             onClick={() => { controlsRef.current?.rotateX(-step(15)); bumpIdle(); }}
-            className="pointer-events-auto rounded-full border-[0.5px] border-border bg-background/70 backdrop-blur px-2 py-1 text-xs hover:bg-accent"
+            className="pointer-events-auto rounded-full border border-border bg-background/70 backdrop-blur px-2 py-1 text-xs hover:bg-accent"
           >▲</button>
         </div>
         <div className="absolute inset-x-0 bottom-2 flex justify-center pointer-events-none">
@@ -619,7 +619,7 @@ export function TasteCube({
             type="button"
             aria-label="Rotate down"
             onClick={() => { controlsRef.current?.rotateX(step(15)); bumpIdle(); }}
-            className="pointer-events-auto rounded-full border-[0.5px] border-border bg-background/70 backdrop-blur px-2 py-1 text-xs hover:bg-accent"
+            className="pointer-events-auto rounded-full border border-border bg-background/70 backdrop-blur px-2 py-1 text-xs hover:bg-accent"
           >▼</button>
         </div>
         <div className="absolute inset-y-0 left-2 flex items-center pointer-events-none">
@@ -627,7 +627,7 @@ export function TasteCube({
             type="button"
             aria-label="Rotate left"
             onClick={() => { controlsRef.current?.rotateY(-step(15)); bumpIdle(); }}
-            className="pointer-events-auto rounded-full border-[0.5px] border-border bg-background/70 backdrop-blur px-2 py-1 text-xs hover:bg-accent"
+            className="pointer-events-auto rounded-full border border-border bg-background/70 backdrop-blur px-2 py-1 text-xs hover:bg-accent"
           >◀</button>
         </div>
         <div className="absolute inset-y-0 right-2 flex items-center pointer-events-none">
@@ -635,23 +635,23 @@ export function TasteCube({
             type="button"
             aria-label="Rotate right"
             onClick={() => { controlsRef.current?.rotateY(step(15)); bumpIdle(); }}
-            className="pointer-events-auto rounded-full border-[0.5px] border-border bg-background/70 backdrop-blur px-2 py-1 text-xs hover:bg-accent"
+            className="pointer-events-auto rounded-full border border-border bg-background/70 backdrop-blur px-2 py-1 text-xs hover:bg-accent"
           >▶</button>
         </div>
 
         {showOverlay && (
           <div className="absolute inset-0 grid place-items-center bg-background/55">
-            <p className="font-serif text-[15px] text-foreground">{overlayText ?? "Where do you land?"}</p>
+            <p className="font-serif text-sub text-foreground">{overlayText ?? "Where do you land?"}</p>
           </div>
         )}
       </div>
 
       {/* Callout — same footprint as TasteMap */}
-      <div className="mt-3 min-h-[64px] rounded-[14px] border-[0.5px] border-border bg-card/60 px-4 py-3 shadow-[var(--pm-card-shadow)]">
+      <div className="mt-3 min-h-[64px] rounded-[14px] border border-border bg-card px-4 py-3 shadow-[var(--pm-card-shadow)]">
         {selected ? (
           <Callout p={selected.p} />
         ) : (
-          <p className="text-muted-foreground text-center text-[12px]">Tap any sphere to see the wine · drag to rotate · double-tap to reset</p>
+          <p className="text-muted-foreground text-center text-meta">Tap any sphere to see the wine · drag to rotate · double-tap to reset</p>
         )}
       </div>
 
@@ -665,11 +665,11 @@ export function TasteCube({
               type="button"
               onClick={() => setPresetKey(p.key)}
               aria-pressed={on}
-              className={`rounded-full border-[0.5px] px-2.5 py-0.5 text-[10px] uppercase transition ${
+              className={`rounded-full border px-2.5 py-0.5 text-meta uppercase transition ${
                 on ? "border-primary bg-primary/10 text-foreground"
                    : "border-border text-muted-foreground hover:bg-accent"
               }`}
-              style={{ letterSpacing: "0.14em" }}
+              style={{  }}
             >
               {p.label}
             </button>
@@ -678,7 +678,7 @@ export function TasteCube({
       </div>
 
       {/* Legend — mirrors TasteMap */}
-      <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+      <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-meta text-muted-foreground">
         <span className="inline-flex items-center gap-1.5">
           <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: GOLD }} />
           Wines you love
@@ -709,9 +709,9 @@ function Callout({ p }: { p: LovedPoint }) {
   const stars = "★".repeat(p.stars) + "☆".repeat(5 - p.stars);
   return (
     <div className="pm-rise">
-      <div className="font-serif text-[17px] leading-snug text-foreground truncate">{p.name}</div>
-      {meta && <div className="text-[13px] text-muted-foreground truncate">{meta}</div>}
-      <div className="mt-1 text-primary text-[14px]" style={{ letterSpacing: "0.15em" }}>{stars}</div>
+      <div className="font-serif text-body leading-snug text-foreground truncate">{p.name}</div>
+      {meta && <div className="text-meta text-muted-foreground truncate">{meta}</div>}
+      <div className="mt-1 text-primary text-sub" style={{  }}>{stars}</div>
     </div>
   );
 }

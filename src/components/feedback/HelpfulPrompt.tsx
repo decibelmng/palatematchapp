@@ -101,12 +101,12 @@ export function HelpfulPrompt({
   return (
     <aside
       aria-label={question}
-      className="rounded-[12px] border border-border/70 bg-card/70 px-3 py-2.5 flex items-start gap-2"
+      className="rounded-[12px] border border-border/70 bg-card px-3 py-2.5 flex items-start gap-2"
     >
       <div className="flex-1 min-w-0">
         {!answered && (
           <div className="flex items-center gap-2">
-            <span className="text-[13px] text-foreground">{question}</span>
+            <span className="text-meta text-foreground">{question}</span>
             <div className="ml-auto flex items-center gap-1">
               <button
                 onClick={() => sendVote("up")}
@@ -127,12 +127,12 @@ export function HelpfulPrompt({
         )}
 
         {answered === "up" && (
-          <p className="text-[12px] text-muted-foreground">Thanks — noted.</p>
+          <p className="text-meta text-muted-foreground">Thanks — noted.</p>
         )}
 
         {answered === "down" && !followUpSent && (
           <div className="space-y-1.5">
-            <p className="text-[12px] text-muted-foreground">Thanks — anything specific?</p>
+            <p className="text-meta text-muted-foreground">Thanks — anything specific?</p>
             <div className="flex gap-1.5">
               <input
                 type="text"
@@ -159,7 +159,7 @@ export function HelpfulPrompt({
         )}
 
         {answered === "down" && followUpSent && (
-          <p className="text-[12px] text-muted-foreground">Thanks — sent.</p>
+          <p className="text-meta text-muted-foreground">Thanks — sent.</p>
         )}
       </div>
 

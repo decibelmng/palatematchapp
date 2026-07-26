@@ -105,7 +105,7 @@ export function FeedbackDialog({ open, onClose }: { open: boolean; onClose: () =
         </div>
 
         <div className="px-4 pt-3 pb-1">
-          <p className="text-[12px] text-muted-foreground leading-snug">
+          <p className="text-meta text-muted-foreground leading-snug">
             <span className="text-primary font-medium">Palate Match is in beta</span> and you have
             pre-release access — thank you for helping shape it. Tell us anything: what's
             confusing, what's broken, what you'd love.
@@ -123,7 +123,7 @@ export function FeedbackDialog({ open, onClose }: { open: boolean; onClose: () =
                   type="button"
                   onClick={() => setCategory(c)}
                   aria-pressed={active}
-                  className={`flex flex-col items-center gap-1 rounded-md border px-1 py-2 text-[10px] transition-colors ${
+                  className={`flex flex-col items-center gap-1 rounded-md border px-1 py-2 text-meta transition-colors ${
                     active
                       ? "border-primary bg-primary/10 text-primary"
                       : "border-border bg-background text-muted-foreground hover:border-primary/40"
@@ -150,7 +150,7 @@ export function FeedbackDialog({ open, onClose }: { open: boolean; onClose: () =
         </div>
 
         <div className="px-4 pt-2 flex items-center justify-between">
-          <label className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground cursor-pointer">
+          <label className="inline-flex items-center gap-1.5 text-meta text-muted-foreground hover:text-foreground cursor-pointer">
             <Camera size={14} />
             {file ? <span className="truncate max-w-[180px]">{file.name}</span> : "Attach screenshot"}
             <input
@@ -164,7 +164,7 @@ export function FeedbackDialog({ open, onClose }: { open: boolean; onClose: () =
             <button
               type="button"
               onClick={() => setFile(null)}
-              className="text-[11px] text-muted-foreground hover:text-destructive"
+              className="text-meta text-muted-foreground hover:text-destructive"
             >
               Remove
             </button>

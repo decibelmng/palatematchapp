@@ -55,7 +55,7 @@ export function ListControls({ value, onChange, idPrefix }: Props) {
           <SlidersHorizontal size={14} strokeWidth={2} />
           <span className="truncate max-w-[16rem]">{label}</span>
           {filterCount > 0 && (
-            <span className="ml-1 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold px-1.5 py-0.5">{filterCount}</span>
+            <span className="ml-1 rounded-full bg-primary text-primary-foreground text-meta font-semibold px-1.5 py-0.5">{filterCount}</span>
           )}
         </button>
       </div>
@@ -88,7 +88,7 @@ export function ListControls({ value, onChange, idPrefix }: Props) {
 
             <div className="px-5 pb-2 space-y-4">
               <fieldset>
-                <legend className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Sort by</legend>
+                <legend className="text-xs font-semibold uppercase tracking-label text-muted-foreground mb-2">Sort by</legend>
                 <div className="grid grid-cols-1 gap-2">
                   {SORT_OPTIONS.map((o) => (
                     <label key={o.value} className="flex items-center gap-3 min-h-11 rounded-lg border border-border px-3 cursor-pointer">
@@ -106,7 +106,7 @@ export function ListControls({ value, onChange, idPrefix }: Props) {
               </fieldset>
 
               <fieldset>
-                <legend className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Wine type</legend>
+                <legend className="text-xs font-semibold uppercase tracking-label text-muted-foreground mb-2">Wine type</legend>
                 <div className="flex flex-wrap gap-2">
                   {WINE_TYPE_OPTIONS.map((o) => {
                     const active = (value.wineType ?? "all") === o.value;
@@ -129,7 +129,7 @@ export function ListControls({ value, onChange, idPrefix }: Props) {
               </fieldset>
 
               <fieldset>
-                <legend className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">Price</legend>
+                <legend className="text-xs font-semibold uppercase tracking-label text-muted-foreground mb-2">Price</legend>
                 <div className="flex flex-wrap gap-2">
                   {PRICE_BAND_OPTIONS.map((o) => {
                     const active = value.price === o.value;

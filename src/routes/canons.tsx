@@ -133,9 +133,9 @@ function CanonsPage() {
 
   return (
     <div className="pt-2">
-      <p className="text-[10px] uppercase text-muted-foreground" style={{ letterSpacing: "0.22em" }}>Canon Cellar</p>
+      <p className="text-meta uppercase text-muted-foreground" style={{  }}>Canon Cellar</p>
       <h1 className="font-serif text-3xl mt-2 flex items-center gap-2">
-        <Crown size={26} strokeWidth={2.2} fill="currentColor" className="text-amber-600" />
+        <Crown size={26} strokeWidth={2.2} fill="currentColor" className="text-foreground" />
         Your true north
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
@@ -146,8 +146,8 @@ function CanonsPage() {
       {isLoading && totalAll === 0 ? (
         <p className="mt-8 text-sm text-muted-foreground">Loading…</p>
       ) : totalAll === 0 ? (
-        <div className="mt-8 rounded-xl border border-dashed border-border bg-card/40 p-6 text-center">
-          <Crown size={28} strokeWidth={2.2} className="mx-auto text-amber-600/60" />
+        <div className="mt-8 rounded-xl border border-dashed border-border bg-card p-6 text-center">
+          <Crown size={28} strokeWidth={2.2} className="mx-auto text-foreground" />
           <p className="mt-3 font-serif text-lg">No benchmarks yet.</p>
           <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
             When a wine is <em>the one</em> for a region, crown it — or mark a 1–2★ bottle as your
@@ -276,7 +276,7 @@ function TierSection({
     <section>
       <div className="flex items-baseline justify-between">
         <h2 className="font-serif text-xl">{label}</h2>
-        <span className="text-[11px] text-muted-foreground">{rows.length} region{rows.length === 1 ? "" : "s"}</span>
+        <span className="text-meta text-muted-foreground">{rows.length} region{rows.length === 1 ? "" : "s"}</span>
       </div>
       <ul className="mt-3 divide-y divide-border">
         {rows.map((row) => {
@@ -287,21 +287,21 @@ function TierSection({
                 <div className="flex items-center gap-2 flex-wrap">
                   <BenchmarkTierBadge tier={canon.tier} />
                   <WineTypeBadge type={bottle.type} />
-                  <span className="text-[10px] uppercase tracking-wider text-muted-foreground">{canon.region}</span>
+                  <span className="text-meta uppercase tracking-label text-muted-foreground">{canon.region}</span>
                 </div>
                 <p className="mt-1 font-medium leading-tight truncate">{bottle.name}</p>
                 <p className="text-xs text-muted-foreground truncate">
                   {[bottle.producer, bottle.vintage].filter(Boolean).join(" · ")}
                 </p>
                 {bottle.tasting_note && (
-                  <p className="mt-1 text-[11px] italic text-muted-foreground line-clamp-2">"{bottle.tasting_note}"</p>
+                  <p className="mt-1 text-meta italic text-muted-foreground line-clamp-2">"{bottle.tasting_note}"</p>
                 )}
               </div>
               <div className="shrink-0 flex flex-col items-end gap-1.5">
                 <button
                   type="button"
                   onClick={() => onSwap(row)}
-                  className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-[11px] font-medium hover:bg-accent"
+                  className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-meta font-medium hover:bg-accent"
                   aria-label={`Swap ${tier} for ${canon.region}`}
                 >
                   <ArrowLeftRight size={12} />
@@ -310,7 +310,7 @@ function TierSection({
                 <button
                   type="button"
                   onClick={() => onRemove(row)}
-                  className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-card px-2 py-1 text-[11px] font-medium text-muted-foreground hover:text-destructive hover:border-destructive/40"
+                  className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-card px-2 py-1 text-meta font-medium text-muted-foreground hover:text-destructive hover:border-destructive/40"
                   aria-label={`Remove ${tier} status from ${bottle.name}`}
                 >
                   <X size={12} />

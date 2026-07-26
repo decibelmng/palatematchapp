@@ -177,12 +177,12 @@ function PalateHome() {
                 username={profile.username}
               />
             ) : (
-              <div className="font-serif text-[18px] leading-tight truncate">{displayName || "Palate Match"}</div>
+              <div className="font-serif text-body leading-tight truncate">{displayName || "Palate Match"}</div>
             )}
             <SommBadge status={profile?.somm_status} role={profile?.somm_role} establishment={profile?.establishment} />
           </div>
           {memberSince && (
-            <div className="text-[11px] text-muted-foreground">joined {memberSince}</div>
+            <div className="text-meta text-muted-foreground">joined {memberSince}</div>
           )}
         </div>
         {profile?.username && (
@@ -202,7 +202,7 @@ function PalateHome() {
       )}
 
       {/* Stats — all tiles land on one consolidated view. */}
-      <div className="mt-5 grid grid-cols-4 gap-2 rounded-[14px] border-[0.5px] border-border bg-card/60 p-3 text-center">
+      <div className="mt-5 grid grid-cols-4 gap-2 rounded-[14px] border border-border bg-card p-3 text-center">
         <Link to="/wines" search={{ tab: "rated" }} aria-label="See wines you've rated" className="block rounded-md hover:bg-muted/40 py-1">
           <Stat n={totalRated} label="Rated" />
         </Link>
@@ -226,7 +226,7 @@ function PalateHome() {
       </div>
 
       {/* Inline viz — dominant scope; toggle changes it above */}
-      <div className="mt-4 rounded-[14px] border-[0.5px] border-border bg-card/60 p-2">
+      <div className="mt-4 rounded-[14px] border border-border bg-card p-2">
         {hasScope ? (
           <TasteMap
             type={scope}
@@ -242,8 +242,8 @@ function PalateHome() {
           </div>
         )}
         <div className="mt-2 flex items-center justify-between px-2 pb-1">
-          <div className="text-[11px] text-muted-foreground">Palate code: <span className="font-mono text-foreground">{scopedCode}</span></div>
-          <Link to="/palate/$type" params={{ type: scope }} className="text-[11px] uppercase text-muted-foreground hover:text-primary" style={{ letterSpacing: "0.18em" }}>
+          <div className="text-meta text-muted-foreground">Palate code: <span className="font-mono text-foreground">{scopedCode}</span></div>
+          <Link to="/palate/$type" params={{ type: scope }} className="text-meta uppercase text-muted-foreground hover:text-primary" style={{  }}>
             Detail + 3D →
           </Link>
         </div>
@@ -265,13 +265,13 @@ function PalateHome() {
         {profile?.somm_status !== "verified" && (
           <Link
             to="/palate/verify"
-            className="flex items-center justify-between rounded-[14px] border-[0.5px] border-border bg-card/60 p-4 hover:border-primary/40"
+            className="flex items-center justify-between rounded-[14px] border border-border bg-card p-4 hover:border-primary/40"
           >
             <div className="flex items-center gap-3">
               <GraduationCap className="h-5 w-5 text-primary" />
               <div>
                 <div className="text-sm">Verify as a SOMM</div>
-                <div className="text-[11px] text-muted-foreground">Get the badge on your profile.</div>
+                <div className="text-meta text-muted-foreground">Get the badge on your profile.</div>
               </div>
             </div>
             <span className="text-primary text-sm">→</span>
@@ -279,7 +279,7 @@ function PalateHome() {
         )}
         <Link
           to="/friends"
-          className="flex items-center justify-between rounded-[14px] border-[0.5px] border-border bg-card/60 p-4 hover:border-primary/40"
+          className="flex items-center justify-between rounded-[14px] border border-border bg-card p-4 hover:border-primary/40"
         >
           <div className="flex items-center gap-3">
             <Settings2 className="h-5 w-5 text-muted-foreground" />
@@ -295,8 +295,8 @@ function PalateHome() {
 function Stat({ n, label }: { n: number; label: string }) {
   return (
     <div>
-      <div className="font-serif text-[18px] leading-tight">{n}</div>
-      <div className="text-[10px] uppercase text-muted-foreground" style={{ letterSpacing: "0.16em" }}>{label}</div>
+      <div className="font-serif text-body leading-tight">{n}</div>
+      <div className="text-meta uppercase text-muted-foreground" style={{  }}>{label}</div>
     </div>
   );
 }
@@ -308,13 +308,13 @@ function CodeChip({ type, code, n, active, onClick }: { type: PaletteType; code:
       type="button"
       onClick={onClick}
       aria-pressed={active}
-      className={`text-left rounded-[14px] border-[0.5px] p-4 transition ${active ? "border-primary bg-primary/5" : "border-border bg-card/60 hover:border-primary/40"}`}
+      className={`text-left rounded-[14px] border p-4 transition ${active ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary/40"}`}
     >
       <div className="flex items-center justify-between">
-        <span className="text-[10px] uppercase text-muted-foreground" style={{ letterSpacing: "0.22em" }}>{label}</span>
-        <span className="text-[10px] text-muted-foreground">{n === 0 ? "no ratings" : `${n} rated`}</span>
+        <span className="text-meta uppercase text-muted-foreground" style={{  }}>{label}</span>
+        <span className="text-meta text-muted-foreground">{n === 0 ? "no ratings" : `${n} rated`}</span>
       </div>
-      <div className="mt-3 mb-1 font-serif text-[26px] text-primary leading-none" style={{ letterSpacing: "0.3em" }}>
+      <div className="mt-3 mb-1 font-serif text-title text-primary leading-none" style={{  }}>
         {code.split("").map((ch, i) => (
           <span key={`${type}-${i}-${ch}`} className={ch === "·" ? "text-muted-foreground/60" : ""}>{ch}</span>
         ))}
@@ -329,10 +329,10 @@ function Rate5Progress({ redN, whiteN }: { redN: number; whiteN: number }) {
   const pct = Math.min(100, (n / MIN_RATINGS) * 100);
   return (
     <div className="text-center max-w-md mx-auto">
-      <p className="text-[10px] uppercase text-muted-foreground" style={{ letterSpacing: "0.22em" }}>
+      <p className="text-meta uppercase text-muted-foreground" style={{  }}>
         Getting started
       </p>
-      <h2 className="mt-3 font-serif text-[22px] leading-snug">
+      <h2 className="mt-3 font-serif text-heading leading-snug">
         Rate {MIN_RATINGS} {scope} to place yourself on the map
       </h2>
       <p className="mt-2 text-xs text-muted-foreground">{n} of {MIN_RATINGS} rated</p>

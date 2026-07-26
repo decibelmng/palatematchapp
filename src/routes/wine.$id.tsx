@@ -97,9 +97,9 @@ function WineDetail() {
         </p>
       </div>
 
-      <div className="mt-6 flex items-start justify-between gap-4 rounded-xl border border-border bg-card/60 p-4">
+      <div className="mt-6 flex items-start justify-between gap-4 rounded-xl border border-border bg-card p-4">
         <div className="min-w-0">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Your rating</p>
+          <p className="text-meta uppercase tracking-label text-muted-foreground">Your rating</p>
           <div className="mt-2">
             <StarTap
               value={thisStars}
@@ -113,13 +113,13 @@ function WineDetail() {
         </div>
         {calibrated && (
           <div className="shrink-0 max-w-[55%]">
-            <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Fingerprint</p>
+            <p className="text-meta uppercase tracking-label text-muted-foreground">Fingerprint</p>
             <div className="mt-2 space-y-1">
               {RAX.map((k) => {
                 const v = fp[k];
                 const pct = Math.max(0, Math.min(100, ((v + 1) / 2) * 100));
                 return (
-                  <div key={k} className="flex items-center gap-2 text-[11px]">
+                  <div key={k} className="flex items-center gap-2 text-meta">
                     <span className="w-16 text-muted-foreground shrink-0">{k}</span>
                     <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
                       <div className="h-full bg-primary/70" style={{ width: `${pct}%` }} />
@@ -139,7 +139,7 @@ function WineDetail() {
 
       {bottle.tasting_note && (
         <div className="mt-4 rounded border-l-2 border-border pl-3 py-1">
-          <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground/80">Catalog note</p>
+          <p className="text-meta uppercase tracking-label text-muted-foreground/80">Catalog note</p>
           <p className="text-sm text-muted-foreground leading-snug mt-0.5">{bottle.tasting_note}</p>
         </div>
       )}
@@ -175,7 +175,7 @@ function RatingNoteEditor({ bottleId, rated }: { bottleId: string; rated: boolea
 
   return (
     <div className="mt-4">
-      <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">Your note</p>
+      <p className="text-meta uppercase tracking-label text-muted-foreground">Your note</p>
       {note && !editing && (
         <div className="mt-1 rounded border-l-2 border-primary/40 pl-3 py-1">
           <p className="text-sm italic text-muted-foreground leading-snug">"{note}"</p>

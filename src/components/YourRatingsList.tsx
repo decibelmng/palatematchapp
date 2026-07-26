@@ -171,7 +171,7 @@ export function YourRatingsList() {
                     {[c.producer, c.region].filter(Boolean).join(" · ")}
                   </p>
                   {vl && (
-                    <p className="text-[11px] text-muted-foreground/80 mt-0.5 break-words">
+                    <p className="text-meta text-muted-foreground/80 mt-0.5 break-words">
                       {aggregated ? `${vl}` : `Vintage ${vl}`}
                     </p>
                   )}
@@ -189,7 +189,7 @@ export function YourRatingsList() {
                         onClick={() => toggleExpanded(c.cuvee)}
                         aria-expanded={isExpanded}
                         aria-label={isExpanded ? "Hide vintages" : "Show vintages"}
-                        className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground"
+                        className="inline-flex items-center gap-1 text-meta text-muted-foreground hover:text-foreground"
                       >
                         <span>{c.stars.toFixed(1)} · avg of {c.bottleIds.length} vintages</span>
                         <ChevronDown
@@ -215,12 +215,12 @@ export function YourRatingsList() {
                 <>
                   {note && !editing && (
                     <div className="mt-2 rounded border-l-2 border-primary/40 pl-2 py-0.5">
-                      <p className="text-[11px] italic text-muted-foreground leading-snug">"{note}"</p>
+                      <p className="text-meta italic text-muted-foreground leading-snug">"{note}"</p>
                     </div>
                   )}
                   {!editing && (
                     <button
-                      className="mt-1 text-[10px] text-primary underline"
+                      className="mt-1 text-meta text-primary underline"
                       onClick={() => { setEditingId(noteBottleId); setDraftNote(note ?? ""); }}
                     >
                       {note ? "edit note" : "+ add your note"}
@@ -236,8 +236,8 @@ export function YourRatingsList() {
                         className="w-full bg-input border border-border rounded-md px-2 py-1 text-xs"
                       />
                       <div className="flex gap-2 mt-1">
-                        <button onClick={() => setEditingId(null)} className="text-[10px] text-muted-foreground underline">cancel</button>
-                        <button onClick={() => saveNote(noteBottleId)} className="text-[10px] text-primary underline font-medium">save</button>
+                        <button onClick={() => setEditingId(null)} className="text-meta text-muted-foreground underline">cancel</button>
+                        <button onClick={() => saveNote(noteBottleId)} className="text-meta text-primary underline font-medium">save</button>
                       </div>
                     </div>
                   )}
@@ -273,12 +273,12 @@ export function YourRatingsList() {
                         </div>
                         {childNote && !childEditing && (
                           <div className="rounded border-l-2 border-primary/40 pl-2 py-0.5">
-                            <p className="text-[11px] italic text-muted-foreground leading-snug">"{childNote}"</p>
+                            <p className="text-meta italic text-muted-foreground leading-snug">"{childNote}"</p>
                           </div>
                         )}
                         {!childEditing && (
                           <button
-                            className="text-[10px] text-primary underline self-start"
+                            className="text-meta text-primary underline self-start"
                             onClick={() => { setEditingId(child.id); setDraftNote(childNote ?? ""); }}
                           >
                             {childNote ? "edit note" : "+ add your note"}
@@ -294,8 +294,8 @@ export function YourRatingsList() {
                               className="w-full bg-input border border-border rounded-md px-2 py-1 text-xs"
                             />
                             <div className="flex gap-2 mt-1">
-                              <button onClick={() => setEditingId(null)} className="text-[10px] text-muted-foreground underline">cancel</button>
-                              <button onClick={() => saveNote(child.id)} className="text-[10px] text-primary underline font-medium">save</button>
+                              <button onClick={() => setEditingId(null)} className="text-meta text-muted-foreground underline">cancel</button>
+                              <button onClick={() => saveNote(child.id)} className="text-meta text-primary underline font-medium">save</button>
                             </div>
                           </div>
                         )}

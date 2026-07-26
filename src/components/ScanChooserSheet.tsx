@@ -53,7 +53,7 @@ export function ScanChooserSheet({
               <ScanLine size={22} strokeWidth={1.8} />
             </div>
             <div className="font-serif text-base leading-tight">Wine list</div>
-            <p className="mt-1 text-[11px] text-muted-foreground">
+            <p className="mt-1 text-meta text-muted-foreground">
               Rank every bottle on a menu.
             </p>
           </Link>
@@ -68,7 +68,7 @@ export function ScanChooserSheet({
               <Camera size={22} strokeWidth={1.8} />
             </div>
             <div className="font-serif text-base leading-tight">Bottle label</div>
-            <p className="mt-1 text-[11px] text-muted-foreground">
+            <p className="mt-1 text-meta text-muted-foreground">
               Identify one bottle and rate it.
             </p>
           </Link>

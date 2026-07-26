@@ -9,7 +9,7 @@ export function CanonBadge({ size = "sm", title = "Canon — your benchmark for 
     <span
       title={title}
       aria-label="Canon wine"
-      className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] uppercase tracking-wider font-semibold ${className}`}
+      className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-meta uppercase tracking-label font-semibold ${className}`}
       style={{
         color: "#b8860b",
         borderColor: "color-mix(in oklab, #d4a03a 55%, transparent)",

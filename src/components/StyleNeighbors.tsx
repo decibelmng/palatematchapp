@@ -86,13 +86,13 @@ export function StyleNeighbors({ subjectBottleId, subjectStars }: Props) {
     <section className="mt-10">
       <div className="flex items-baseline justify-between gap-3">
         <h2 className={`font-serif text-xl ${isWarning ? "text-destructive" : ""}`}>{title}</h2>
-        <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+        <span className="text-meta uppercase tracking-label text-muted-foreground">
           by ω-distance
         </span>
       </div>
 
       {isWarning && (
-        <p className="mt-1 text-[11px] uppercase tracking-wider text-destructive">
+        <p className="mt-1 text-meta uppercase tracking-label text-destructive">
           Same-shape wines you may want to skip
         </p>
       )}
@@ -129,7 +129,7 @@ export function StyleNeighbors({ subjectBottleId, subjectStars }: Props) {
           <button
             type="button"
             onClick={() => setShowCellar((v) => !v)}
-            className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground hover:text-foreground"
+            className="text-meta uppercase tracking-label text-muted-foreground hover:text-foreground"
           >
             {showCellar ? "▾" : "▸"} From your cellar: closest wines you've rated ({cellarNeighbors.length})
           </button>
@@ -185,13 +185,13 @@ function NeighborRow({
         <div className="flex items-center gap-2 flex-wrap">
           <WineTypeBadge type={type} />
           {vetoed && (
-            <span className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-destructive/50 bg-destructive/10 text-destructive">
+            <span className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-meta uppercase tracking-label border border-destructive/50 bg-destructive/10 text-destructive">
               avoid
             </span>
           )}
           {!vetoed && contested && contestedNemesisName && (
             <span
-              className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-amber-500/50 bg-amber-500/10 text-amber-700 dark:text-amber-300"
+              className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-meta uppercase tracking-label border border-amber-500/50 bg-amber-500/10 text-foreground dark:text-foreground"
               title="Inside your Nemesis's reach, but closer to a wine you love"
             >
               near your Nemesis {contestedNemesisName}
@@ -210,7 +210,7 @@ function NeighborRow({
           {meta}{vl ? <span className="text-muted-foreground/80"> · {vl}</span> : null}
         </p>
         {vetoed && vetoNemesisName && (
-          <p className="mt-1 text-[11px] text-destructive">
+          <p className="mt-1 text-meta text-destructive">
             Matches your Nemesis {vetoNemesisName}
             {vetoAxes.length > 0 ? ` — ${vetoAxes.join(", ")}` : ""}
           </p>
@@ -218,7 +218,7 @@ function NeighborRow({
       </div>
       <div className="shrink-0 text-right">
         {vetoed ? (
-          <span className="font-serif text-destructive text-sm uppercase tracking-wider">Avoid ✕</span>
+          <span className="font-serif text-destructive text-sm uppercase tracking-label">Avoid ✕</span>
         ) : (
           <>
             <span className={`font-serif text-xl ${muted ? "text-muted-foreground" : "text-primary"}`}>
@@ -226,7 +226,7 @@ function NeighborRow({
             </span>
             <span className={`text-sm ${muted ? "text-muted-foreground" : "text-primary"}`}>★</span>
             <p
-              className="mt-0.5 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-border bg-muted text-muted-foreground"
+              className="mt-0.5 inline-block rounded-full px-1.5 py-0.5 text-meta uppercase tracking-label border border-border bg-muted text-muted-foreground"
               title={`ω-distance: ${distance.toFixed(3)}`}
             >
               {chip}
@@ -266,14 +266,14 @@ function CellarRow({
         >
           {name}
         </Link>
-        <p className="text-[11px] text-muted-foreground truncate mt-0.5">
+        <p className="text-meta text-muted-foreground truncate mt-0.5">
           {meta}{vl ? <span className="text-muted-foreground/80"> · {vl}</span> : null}
         </p>
       </div>
       <div className="shrink-0 text-right">
         <span className="font-serif text-primary text-base">{stars.toFixed(1)}</span>
         <span className="text-primary text-xs">★</span>
-        <p className="mt-0.5 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-border bg-muted text-muted-foreground">
+        <p className="mt-0.5 inline-block rounded-full px-1.5 py-0.5 text-meta uppercase tracking-label border border-border bg-muted text-muted-foreground">
           {chip}
         </p>
       </div>

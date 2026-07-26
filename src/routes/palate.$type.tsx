@@ -123,13 +123,13 @@ function PalateDetail() {
 
   return (
     <div className="pt-2">
-      <Link to="/" className="inline-flex items-center gap-1 text-[11px] uppercase text-muted-foreground hover:text-primary" style={{ letterSpacing: "0.18em" }}>
+      <Link to="/" className="inline-flex items-center gap-1 text-meta uppercase text-muted-foreground hover:text-primary" style={{  }}>
         <ChevronLeft size={12} /> Back
       </Link>
 
       <div className="mt-3 text-center">
-        <p className="text-[10px] uppercase text-muted-foreground" style={{ letterSpacing: "0.22em" }}>{label} palate</p>
-        <div className="mt-2 font-serif text-[34px] leading-none text-primary" style={{ letterSpacing: "0.3em" }}>
+        <p className="text-meta uppercase text-muted-foreground" style={{  }}>{label} palate</p>
+        <div className="mt-2 font-serif text-display leading-none text-primary" style={{  }}>
           {computed.code.split("").map((ch, i) => (
             <span key={`${i}-${ch}`} className={`pm-letter ${ch === "·" ? "text-muted-foreground/60" : ""}`} style={{ ["--pm-delay" as string]: `${i * 50}ms` }}>{ch}</span>
           ))}
@@ -137,7 +137,7 @@ function PalateDetail() {
       </div>
 
       <div className="mt-3 flex items-center justify-center gap-4">
-        <button type="button" onClick={() => setShareOpen(true)} className="text-[11px] uppercase text-muted-foreground hover:text-primary" style={{ letterSpacing: "0.18em" }}>
+        <button type="button" onClick={() => setShareOpen(true)} className="text-meta uppercase text-muted-foreground hover:text-primary" style={{  }}>
           Share your palate →
         </button>
       </div>
@@ -150,8 +150,8 @@ function PalateDetail() {
             const on = view === v;
             return (
               <button key={v} type="button" onClick={() => setView(v)} aria-pressed={on}
-                className={`rounded-full border-[0.5px] px-3 py-0.5 text-[10px] uppercase transition ${on ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:bg-accent"}`}
-                style={{ letterSpacing: "0.16em" }}>
+                className={`rounded-full border px-3 py-0.5 text-meta uppercase transition ${on ? "border-primary bg-primary/10 text-foreground" : "border-border text-muted-foreground hover:bg-accent"}`}
+                style={{  }}>
                 {v === "2d" ? "2D map" : "3D cube"}
               </button>
             );
@@ -161,7 +161,7 @@ function PalateDetail() {
 
       <div className="mt-6">
         {view === "3d" && hasWebGL ? (
-          <Suspense fallback={<div className="w-full max-w-[480px] mx-auto aspect-square rounded-[14px] border-[0.5px] border-border bg-card/40" />}>
+          <Suspense fallback={<div className="w-full max-w-[480px] mx-auto aspect-square rounded-[14px] border border-border bg-card" />}>
             <TasteCube type={scope} loved={lovedPoints} others={otherPoints} canonIds={canonBottleIds} nemesisIds={nemesisBottleIds} />
           </Suspense>
         ) : (
@@ -169,7 +169,7 @@ function PalateDetail() {
         )}
       </div>
 
-      <p className="mt-10 font-serif italic text-[15px] text-foreground/90 text-center mx-auto" style={{ maxWidth: "34ch", lineHeight: 1.6 }}>
+      <p className="mt-10 font-serif italic text-sub text-foreground/90 text-center mx-auto" style={{ maxWidth: "34ch", lineHeight: 1.6 }}>
         {describeCode(computed.letters)}
       </p>
 
@@ -180,13 +180,13 @@ function PalateDetail() {
       <CanonAnchors scope={scope} bottles={bottles ?? []} canons={(canons ?? []).filter((c) => c.tier === "canon")} />
 
       <div className="mt-10 flex flex-wrap gap-2">
-        <Link to="/rate" className="rounded-[14px] border-[0.5px] border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent shadow-[var(--pm-card-shadow)]">
+        <Link to="/rate" className="rounded-[14px] border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent shadow-[var(--pm-card-shadow)]">
           Edit your ratings ({ratings?.length ?? 0})
         </Link>
-        <Link to="/rate" className="rounded-[14px] border-[0.5px] border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent shadow-[var(--pm-card-shadow)]">
+        <Link to="/rate" className="rounded-[14px] border border-border bg-card px-3 py-1.5 text-xs font-medium hover:bg-accent shadow-[var(--pm-card-shadow)]">
           Rate more
         </Link>
-        <Link to="/canons" className="rounded-[14px] border-[0.5px] border-amber-500/50 bg-amber-50/60 dark:bg-amber-950/30 text-amber-800 dark:text-amber-200 px-3 py-1.5 text-xs font-medium hover:bg-amber-100/70 shadow-[var(--pm-card-shadow)] inline-flex items-center gap-1">
+        <Link to="/canons" className="rounded-[14px] border border-amber-500/50 bg-amber-50/60 dark:bg-amber-950/30 text-foreground dark:text-foreground px-3 py-1.5 text-xs font-medium hover:bg-amber-100/70 shadow-[var(--pm-card-shadow)] inline-flex items-center gap-1">
           <Crown size={12} strokeWidth={2.2} fill="currentColor" /> Benchmark wines
         </Link>
       </div>
@@ -218,11 +218,11 @@ function CanonAnchors({
   return (
     <div className="mt-10">
       <div className="flex items-center justify-between">
-        <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground flex items-center gap-1.5">
-          <Crown size={12} strokeWidth={2.2} fill="currentColor" className="text-amber-600" />
+        <p className="text-meta uppercase tracking-label text-muted-foreground flex items-center gap-1.5">
+          <Crown size={12} strokeWidth={2.2} fill="currentColor" className="text-foreground" />
           Benchmark wines feeding this palate
         </p>
-        <Link to="/canons" className="text-[11px] text-primary hover:underline">All →</Link>
+        <Link to="/canons" className="text-meta text-primary hover:underline">All →</Link>
       </div>
       <ul className="mt-3 space-y-1.5">
         {rows.map(({ canon, bottle }) => (

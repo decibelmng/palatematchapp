@@ -68,10 +68,10 @@ function Home() {
             <ScanLine size={24} strokeWidth={1.8} />
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="font-serif text-[20px] leading-tight text-foreground">
+            <h1 className="font-serif text-heading leading-tight text-foreground">
               Scan a wine list
             </h1>
-            <p className="mt-0.5 text-[12px] text-muted-foreground">
+            <p className="mt-0.5 text-meta text-muted-foreground">
               {hasRecent ? "Resume your last scan →" : "Rank every bottle to your palate."}
             </p>
           </div>
@@ -84,7 +84,7 @@ function Home() {
           className="mt-3 rounded-xl border border-primary/30 bg-primary/5 p-3"
           data-testid="calibration-note"
         >
-          <p className="text-[12px] text-foreground">
+          <p className="text-meta text-foreground">
             <span className="font-semibold">Rankings warm up as you rate.</span>{" "}
             <span className="text-muted-foreground">
               {remaining === 1
@@ -98,7 +98,7 @@ function Home() {
               style={{ width: `${(count / UNLOCK_THRESHOLD) * 100}%` }}
             />
           </div>
-          <div className="mt-2 flex items-center justify-between text-[11px]">
+          <div className="mt-2 flex items-center justify-between text-meta">
             <span className="tabular-nums text-muted-foreground">{count} / {UNLOCK_THRESHOLD} rated</span>
             <Link to="/rate" className="text-primary font-medium inline-flex items-center gap-1">
               Rate wines <ArrowRight size={12} />

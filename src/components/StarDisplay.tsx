@@ -17,10 +17,10 @@ export function StarDisplay({ value, size = "md", ariaLabel }: Props) {
       role="img"
       aria-label={ariaLabel ?? `${value.toFixed(1)} out of 5 stars`}
     >
-      <span className={`${px} text-muted-foreground/40 tracking-[0.15em]`}>{stars}</span>
+      <span className={`${px} text-muted-foreground/40 tracking-label`}>{stars}</span>
       <span
         aria-hidden
-        className={`${px} text-primary tracking-[0.15em] absolute inset-0 overflow-hidden whitespace-nowrap`}
+        className={`${px} text-primary tracking-label absolute inset-0 overflow-hidden whitespace-nowrap`}
         style={{ width: `${pct}%` }}
       >
         {stars}

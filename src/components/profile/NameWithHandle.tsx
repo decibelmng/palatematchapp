@@ -42,7 +42,7 @@ export function NameWithHandle({
   }
 
   const nameSize =
-    size === "lg" ? "text-[22px]" : size === "sm" ? "text-[14px]" : "text-[18px]";
+    size === "lg" ? "text-heading" : size === "sm" ? "text-sub" : "text-body";
 
   const ariaLabel = surfaceHandle
     ? `${shown} (@${surfaceHandle}) — tap to copy handle`
@@ -60,7 +60,7 @@ export function NameWithHandle({
         {shown}
       </button>
       {showHandle && (
-        <span className="ml-1.5 text-[11px] text-muted-foreground align-middle">
+        <span className="ml-1.5 text-meta text-muted-foreground align-middle">
           @{surfaceHandle}
         </span>
       )}

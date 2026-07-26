@@ -119,10 +119,10 @@ function PublicProfileRoute() {
         </div>
 
         <div className="mt-4 flex items-center justify-center gap-6 text-center">
-          <div><div className="font-serif text-lg">{p.follower_count}</div><div className="text-[10px] uppercase text-muted-foreground" style={{ letterSpacing: "0.16em" }}>Followers</div></div>
-          <div><div className="font-serif text-lg">{p.following_count}</div><div className="text-[10px] uppercase text-muted-foreground" style={{ letterSpacing: "0.16em" }}>Following</div></div>
+          <div><div className="font-serif text-lg">{p.follower_count}</div><div className="text-meta uppercase text-muted-foreground" style={{  }}>Followers</div></div>
+          <div><div className="font-serif text-lg">{p.following_count}</div><div className="text-meta uppercase text-muted-foreground" style={{  }}>Following</div></div>
           {isFullView && (
-            <div><div className="font-serif text-lg">{p.n_rated}</div><div className="text-[10px] uppercase text-muted-foreground" style={{ letterSpacing: "0.16em" }}>Rated</div></div>
+            <div><div className="font-serif text-lg">{p.n_rated}</div><div className="text-meta uppercase text-muted-foreground" style={{  }}>Rated</div></div>
           )}
         </div>
 
@@ -132,7 +132,7 @@ function PublicProfileRoute() {
           </div>
         )}
         {!session && (
-          <p className="mt-5 text-center text-[11px] text-muted-foreground">
+          <p className="mt-5 text-center text-meta text-muted-foreground">
             <Link to="/" className="text-primary hover:underline">Sign in</Link> to follow.
           </p>
         )}
@@ -143,7 +143,7 @@ function PublicProfileRoute() {
         </div>
 
         {!isFullView && (
-          <p className="mt-6 text-center text-[11px] text-muted-foreground">
+          <p className="mt-6 text-center text-meta text-muted-foreground">
             {p.visibility === "private" ? "This profile is private." : "Follow to see the full profile."}
           </p>
         )}
@@ -154,9 +154,9 @@ function PublicProfileRoute() {
 
 function PalateCodeCard({ label, code }: { label: string; code: string }) {
   return (
-    <div className="rounded-[14px] border-[0.5px] border-border bg-card/60 p-4">
-      <div className="text-[10px] uppercase text-muted-foreground" style={{ letterSpacing: "0.22em" }}>{label}</div>
-      <div className="mt-3 font-serif text-[26px] text-primary" style={{ letterSpacing: "0.3em" }}>
+    <div className="rounded-[14px] border border-border bg-card p-4">
+      <div className="text-meta uppercase text-muted-foreground" style={{  }}>{label}</div>
+      <div className="mt-3 font-serif text-title text-primary" style={{  }}>
         {code.split("").map((ch, i) => (
           <span key={`${label}-${i}`} className={ch === "·" ? "text-muted-foreground/60" : ""}>{ch}</span>
         ))}

@@ -60,16 +60,16 @@ export function SommelierBriefCard({ brief }: Props) {
   return (
     <section
       aria-label="For your sommelier"
-      className="mt-6 rounded-[14px] border-[0.5px] border-border bg-card/60 p-4 shadow-[var(--pm-card-shadow)]"
+      className="mt-6 rounded-[14px] border border-border bg-card p-4 shadow-[var(--pm-card-shadow)]"
     >
       <div className="flex items-center justify-between">
         <p
-          className="text-[10px] uppercase text-muted-foreground"
-          style={{ letterSpacing: "0.22em" }}
+          className="text-meta uppercase text-muted-foreground"
+          style={{  }}
         >
           For your sommelier
         </p>
-        <span className="text-[10px] text-muted-foreground/70">
+        <span className="text-meta text-muted-foreground/70">
           {editing ? "editing (session only)" : `${brief.wordCount} words`}
         </span>
       </div>
@@ -81,7 +81,7 @@ export function SommelierBriefCard({ brief }: Props) {
           onChange={(e) => setDraft(e.target.value)}
           onBlur={() => setEditing(false)}
           rows={Math.min(14, Math.max(6, draft.split("\n").length + 2))}
-          className="mt-3 w-full rounded-md border-[0.5px] border-border bg-background/60 p-3 text-[13px] leading-relaxed font-serif text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+          className="mt-3 w-full rounded-md border border-border bg-background/60 p-3 text-meta leading-relaxed font-serif text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
         />
       ) : (
         <button
@@ -90,7 +90,7 @@ export function SommelierBriefCard({ brief }: Props) {
           aria-label="Edit brief"
           className="mt-3 block w-full text-left rounded-md p-3 -m-3 hover:bg-accent/40 transition-colors"
         >
-          <div className="font-serif text-[14px] leading-relaxed text-foreground whitespace-pre-wrap">
+          <div className="font-serif text-sub leading-relaxed text-foreground whitespace-pre-wrap">
             {brief.text}
           </div>
         </button>
@@ -100,8 +100,8 @@ export function SommelierBriefCard({ brief }: Props) {
         <button
           type="button"
           onClick={onCopy}
-          className="rounded-full border-[0.5px] border-border bg-background/70 px-3 py-1 text-[11px] uppercase text-foreground hover:bg-accent"
-          style={{ letterSpacing: "0.14em" }}
+          className="rounded-full border border-border bg-background/70 px-3 py-1 text-meta uppercase text-foreground hover:bg-accent"
+          style={{  }}
         >
           Copy
         </button>
@@ -109,8 +109,8 @@ export function SommelierBriefCard({ brief }: Props) {
           <button
             type="button"
             onClick={onShare}
-            className="rounded-full border-[0.5px] border-primary bg-primary/10 px-3 py-1 text-[11px] uppercase text-foreground hover:bg-primary/20"
-            style={{ letterSpacing: "0.14em" }}
+            className="rounded-full border border-primary bg-primary/10 px-3 py-1 text-meta uppercase text-foreground hover:bg-primary/20"
+            style={{  }}
           >
             Share
           </button>
@@ -119,14 +119,14 @@ export function SommelierBriefCard({ brief }: Props) {
           <button
             type="button"
             onClick={() => { setEditing(false); setDraft(brief.text); }}
-            className="text-[11px] uppercase text-muted-foreground hover:text-foreground"
-            style={{ letterSpacing: "0.14em" }}
+            className="text-meta uppercase text-muted-foreground hover:text-foreground"
+            style={{  }}
           >
             Discard
           </button>
         )}
         {status && (
-          <span className="text-[11px] text-muted-foreground">{status}</span>
+          <span className="text-meta text-muted-foreground">{status}</span>
         )}
       </div>
     </section>

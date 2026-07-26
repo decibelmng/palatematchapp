@@ -38,10 +38,10 @@ export function WineTypeBadge({ type, size = "sm" }: Props) {
   const t = normalize(type);
   if (!t) return null;
   const color = TOKEN[t];
-  const px = size === "md" ? "px-2.5 py-0.5 text-[11px]" : "px-2 py-0.5 text-[10px]";
+  const px = size === "md" ? "px-2.5 py-0.5 text-meta" : "px-2 py-0.5 text-meta";
   return (
     <span
-      className={`inline-block rounded-full border uppercase tracking-wider ${px}`}
+      className={`inline-block rounded-full border uppercase tracking-label ${px}`}
       style={{
         color,
         borderColor: `color-mix(in oklab, ${color} 45%, transparent)`,

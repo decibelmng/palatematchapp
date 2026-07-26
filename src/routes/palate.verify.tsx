@@ -50,7 +50,7 @@ function VerifyPage() {
         <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-primary/10 text-primary">
           <GraduationCap className="h-7 w-7" />
         </div>
-        <h1 className="mt-4 font-serif text-[24px]">Verify as a SOMM</h1>
+        <h1 className="mt-4 font-serif text-title">Verify as a SOMM</h1>
         <p className="mt-2 text-xs text-muted-foreground max-w-sm mx-auto">
           The SOMM badge is a visible mark on your profile. It grants status, not influence — evidence
           weight in the catalog is earned separately by calibration and can be revoked.
@@ -62,18 +62,18 @@ function VerifyPage() {
           <SommBadge status={profile?.somm_status} role={profile?.somm_role} establishment={profile?.establishment} />
           <p className="mt-2 text-sm">You&apos;re verified as a SOMM.</p>
           {profile?.establishment && (
-            <p className="text-[11px] text-muted-foreground">{profile.establishment}</p>
+            <p className="text-meta text-muted-foreground">{profile.establishment}</p>
           )}
         </div>
       )}
 
       {!verified && (
         <form
-          className="mt-6 space-y-4 rounded-[14px] border-[0.5px] border-border bg-card/60 p-4"
+          className="mt-6 space-y-4 rounded-[14px] border border-border bg-card p-4"
           onSubmit={(e) => { e.preventDefault(); if (!code.trim()) return; redeem.mutate(); }}
         >
           <div>
-            <label className="text-[10px] uppercase text-muted-foreground" style={{ letterSpacing: "0.22em" }}>
+            <label className="text-meta uppercase text-muted-foreground" style={{  }}>
               Role
             </label>
             <div className="mt-2 grid grid-cols-2 gap-2">
@@ -91,7 +91,7 @@ function VerifyPage() {
           </div>
 
           <div>
-            <label className="text-[10px] uppercase text-muted-foreground" style={{ letterSpacing: "0.22em" }}>
+            <label className="text-meta uppercase text-muted-foreground" style={{  }}>
               Establishment (optional)
             </label>
             <input
@@ -105,7 +105,7 @@ function VerifyPage() {
           </div>
 
           <div>
-            <label className="text-[10px] uppercase text-muted-foreground" style={{ letterSpacing: "0.22em" }}>
+            <label className="text-meta uppercase text-muted-foreground" style={{  }}>
               Invite code
             </label>
             <input
@@ -116,7 +116,7 @@ function VerifyPage() {
               autoComplete="off"
               className="mt-2 w-full rounded-md border border-border bg-background px-3 py-2 text-sm font-mono"
             />
-            <p className="mt-1 text-[11px] text-muted-foreground">
+            <p className="mt-1 text-meta text-muted-foreground">
               During MVP, verification is by invite. Payment billing coming later.
             </p>
           </div>
@@ -131,7 +131,7 @@ function VerifyPage() {
         </form>
       )}
 
-      <p className="mt-6 text-[11px] text-muted-foreground text-center max-w-sm mx-auto">
+      <p className="mt-6 text-meta text-muted-foreground text-center max-w-sm mx-auto">
         The badge grants profile status only. Fingerprint influence is granted separately by
         verification + calibration, capped per bottle, consensus-gated, and revocable.
       </p>

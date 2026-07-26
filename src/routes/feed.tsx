@@ -53,7 +53,7 @@ function IncomingRow({ row }: { row: FriendshipRow }) {
       </div>
       <div className="min-w-0 flex-1">
         <NameWithHandle displayName={row.other.display_name} username={row.other.username} size="sm" />
-        <p className="mt-0.5 text-[11px] text-muted-foreground font-mono tracking-wider">
+        <p className="mt-0.5 text-meta text-muted-foreground font-mono tracking-label">
           🍷 {row.other.palate_code_red} <span className="opacity-40">·</span> 🥂 {row.other.palate_code_white}
         </p>
       </div>
@@ -89,7 +89,7 @@ function OutgoingRow({ row }: { row: FriendshipRow }) {
       </div>
       <div className="min-w-0 flex-1">
         <NameWithHandle displayName={row.other.display_name} username={row.other.username} size="sm" />
-        <p className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">Requested</p>
+        <p className="mt-0.5 text-meta uppercase tracking-label text-muted-foreground">Requested</p>
       </div>
       <button
         onClick={() => respond.mutate({ id: row.id, action: "cancel" })}
@@ -114,12 +114,12 @@ function FriendsSection() {
   const send = useSendFriendRequest();
 
   return (
-    <section aria-labelledby="friends-strip" className="rounded-[14px] border-[0.5px] border-border bg-card/60 p-3">
+    <section aria-labelledby="friends-strip" className="rounded-[14px] border border-border bg-card p-3">
       <div className="flex items-baseline justify-between">
-        <h2 id="friends-strip" className="text-[10px] uppercase text-muted-foreground" style={{ letterSpacing: "0.22em" }}>
+        <h2 id="friends-strip" className="text-meta uppercase text-muted-foreground" style={{  }}>
           Friends
         </h2>
-        <Link to="/friends" className="text-[11px] text-primary hover:underline">
+        <Link to="/friends" className="text-meta text-primary hover:underline">
           Manage →
         </Link>
       </div>
@@ -128,8 +128,8 @@ function FriendsSection() {
       {incoming.length > 0 && (
         <div className="mt-3">
           <div className="flex items-center gap-2 mb-1.5">
-            <span className="text-[10px] uppercase tracking-[0.18em] text-primary">Requests</span>
-            <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary text-primary-foreground px-1 text-[10px] font-semibold">
+            <span className="text-meta uppercase tracking-label text-primary">Requests</span>
+            <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary text-primary-foreground px-1 text-meta font-semibold">
               {incoming.length}
             </span>
           </div>
@@ -141,7 +141,7 @@ function FriendsSection() {
 
       {outgoing.length > 0 && (
         <div className="mt-3">
-          <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-1.5">
+          <div className="text-meta uppercase tracking-label text-muted-foreground mb-1.5">
             Sent
           </div>
           <ul className="divide-y divide-border rounded-md border border-border bg-background">
@@ -174,7 +174,7 @@ function FriendsSection() {
                 <li key={h.user_id} className="flex items-center justify-between gap-2 px-3 py-2">
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">{name}</p>
-                    {handle && <p className="text-[11px] text-muted-foreground truncate">@{handle}</p>}
+                    {handle && <p className="text-meta text-muted-foreground truncate">@{handle}</p>}
                   </div>
                   <button
                     onClick={() => send.mutate({ user_id: h.user_id })}
@@ -201,7 +201,7 @@ function FriendsSection() {
           <div className="h-12 w-12 rounded-full border border-dashed border-primary/60 text-primary flex items-center justify-center">
             <UserPlus size={18} />
           </div>
-          <span className="text-[10px] text-muted-foreground truncate max-w-full">Add</span>
+          <span className="text-meta text-muted-foreground truncate max-w-full">Add</span>
         </Link>
         {friends.map((f) => {
           const name = displayNameFor(f.other);
@@ -216,7 +216,7 @@ function FriendsSection() {
               <div className="h-12 w-12 rounded-full bg-muted flex items-center justify-center font-serif text-sm">
                 {initials(f.other.display_name, f.other.username)}
               </div>
-              <span className="text-[10px] text-foreground truncate max-w-full">{name}</span>
+              <span className="text-meta text-foreground truncate max-w-full">{name}</span>
             </Link>
           );
         })}
@@ -251,7 +251,7 @@ function FeedContent() {
           {(feed.error as Error).message}
         </div>
       ) : (feed.data ?? []).length === 0 ? (
-        <div className="rounded-lg border border-border bg-card/60 p-6 text-center">
+        <div className="rounded-lg border border-border bg-card p-6 text-center">
           <p className="text-sm text-foreground">No friend activity yet.</p>
           <p className="mt-1 text-xs text-muted-foreground">
             Add friends above to see wines they've rated, scored for your palate.

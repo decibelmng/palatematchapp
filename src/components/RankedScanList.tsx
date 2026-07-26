@@ -67,13 +67,13 @@ export function RankedScanList({ wines, ratedRows, emptyLabel = "No readable win
               <div className="text-lg font-semibold tabular-nums">
                 {r.predicted > 0 ? r.predicted.toFixed(1) : "—"}
               </div>
-              <div className="text-[10px] uppercase tracking-wide text-muted-foreground">stars</div>
+              <div className="text-meta uppercase tracking-label text-muted-foreground">stars</div>
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-sm font-medium line-clamp-2">{label}</div>
               {meta && <div className="text-xs text-muted-foreground mt-0.5 truncate">{meta}</div>}
-              {r.vetoed && <div className="text-[10px] uppercase tracking-wide text-destructive mt-1">avoid</div>}
-              {r.contested && !r.vetoed && <div className="text-[10px] uppercase tracking-wide text-amber-600 mt-1">caution</div>}
+              {r.vetoed && <div className="text-meta uppercase tracking-label text-destructive mt-1">avoid</div>}
+              {r.contested && !r.vetoed && <div className="text-meta uppercase tracking-label text-foreground mt-1">caution</div>}
             </div>
           </div>
         );

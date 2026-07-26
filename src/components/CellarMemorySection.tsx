@@ -29,7 +29,7 @@ export function CellarMemorySection({ matches, predictionsByIndex }: Props) {
         className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left"
       >
         <div>
-          <p className="text-[10px] uppercase tracking-[0.18em] text-primary">From your cellar memory</p>
+          <p className="text-meta uppercase tracking-label text-primary">From your cellar memory</p>
           <h2 className="font-serif text-lg mt-0.5">
             {anyLoved
               ? "You already love something on this list."
@@ -67,7 +67,7 @@ function Tier1Card({ m }: { m: Extract<CellarMatch, { tier: 1 }> }) {
         <div className="flex items-center gap-2 flex-wrap">
           <p className="font-medium leading-tight truncate">{title}</p>
           <span
-            className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-primary/40 bg-primary/10 text-primary"
+            className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-meta uppercase tracking-label border border-primary/40 bg-primary/10 text-primary"
             title="You rated this"
           >
             You rated this
@@ -79,36 +79,36 @@ function Tier1Card({ m }: { m: Extract<CellarMatch, { tier: 1 }> }) {
           {[w.region, w.grape, w.price ?? null].filter(Boolean).join(" · ")}
         </p>
         {m.isNemesis ? (
-          <p className="mt-1 text-[11px] text-destructive">
+          <p className="mt-1 text-meta text-destructive">
             Avoid ✕ — this is your Nemesis. You rated it {m.stars}★.
           </p>
         ) : isWarn ? (
-          <p className="mt-1 text-[11px] text-destructive">
+          <p className="mt-1 text-meta text-destructive">
             You rated this {m.stars}★ — you might not want to re-order.
           </p>
         ) : null}
         <Link
           to="/rate"
-          className="mt-1 inline-block text-[11px] text-primary underline underline-offset-2"
+          className="mt-1 inline-block text-meta text-primary underline underline-offset-2"
         >
           View in your ratings →
         </Link>
         {m.note && (
           <div className="mt-2 rounded border-l-2 border-primary/40 pl-2 py-0.5">
-            <p className="text-[11px] italic text-muted-foreground leading-snug">"{m.note}"</p>
+            <p className="text-meta italic text-muted-foreground leading-snug">"{m.note}"</p>
           </div>
         )}
       </div>
       <div className="shrink-0 text-right">
         {m.isNemesis ? (
-          <span className="font-serif text-destructive text-sm uppercase tracking-wider">Avoid ✕</span>
+          <span className="font-serif text-destructive text-sm uppercase tracking-label">Avoid ✕</span>
         ) : (
           <>
             <span className={`font-serif text-xl ${isWarn ? "text-destructive" : "text-primary"}`}>{m.stars}</span>
             <span className={`text-sm ${isWarn ? "text-destructive" : "text-primary"}`}>★</span>
           </>
         )}
-        <p className="text-[10px] text-muted-foreground">your rating</p>
+        <p className="text-meta text-muted-foreground">your rating</p>
       </div>
     </div>
   );
@@ -135,7 +135,7 @@ function Tier2Card({
         <div className="flex items-center gap-2 flex-wrap">
           <p className="font-medium leading-tight truncate">{headline}</p>
           <span
-            className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-[9px] uppercase tracking-wider border border-primary/40 bg-primary/10 text-primary"
+            className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-meta uppercase tracking-label border border-primary/40 bg-primary/10 text-primary"
             title="You've rated a different vintage of this wine"
           >
             You know this cuvée
@@ -147,17 +147,17 @@ function Tier2Card({
         <p className="text-xs text-muted-foreground truncate">
           {[w.region, w.grape, w.price ?? null].filter(Boolean).join(" · ")}
         </p>
-        <p className="mt-1 text-[11px] text-foreground/85">
+        <p className="mt-1 text-meta text-foreground/85">
           You rated {knownVintage ? `the ${knownVintage}` : "another vintage"} → {roundedAvg}★
           {m.ratedVintages.length > 1 ? ` (across ${m.ratedVintages.length} vintages)` : ""}
         </p>
         {pred && listedVintage && (
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
+          <p className="mt-0.5 text-meta text-muted-foreground">
             This {listedVintage}: predicted {pred.predicted.toFixed(1)}★
           </p>
         )}
         {pred && !listedVintage && (
-          <p className="mt-0.5 text-[11px] text-muted-foreground">
+          <p className="mt-0.5 text-meta text-muted-foreground">
             This bottling: predicted {pred.predicted.toFixed(1)}★
           </p>
         )}
@@ -165,9 +165,9 @@ function Tier2Card({
       <div className="shrink-0 text-right">
         <span className="font-serif text-primary text-xl">{roundedAvg}</span>
         <span className="text-primary text-sm">★</span>
-        <p className="text-[10px] text-muted-foreground">your history</p>
+        <p className="text-meta text-muted-foreground">your history</p>
         {pred && (
-          <p className="text-[10px] text-muted-foreground mt-0.5">
+          <p className="text-meta text-muted-foreground mt-0.5">
             pred {pred.predicted.toFixed(1)}★
           </p>
         )}
