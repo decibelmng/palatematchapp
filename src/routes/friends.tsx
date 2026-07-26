@@ -1,5 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { QRCodeSVG } from "qrcode.react";
 import { AuthGate } from "@/components/AuthGate";
 import { PalateStar, lettersFromCode } from "@/components/PalateStar";
@@ -12,6 +14,7 @@ import {
   useRespondFriendship,
   useUpdateProfile,
 } from "@/hooks/use-friends";
+import { createOrGetInvite } from "@/lib/invites.functions";
 import { displayNameFor, handleForDisplay } from "@/lib/user-display";
 
 export const Route = createFileRoute("/friends")({
