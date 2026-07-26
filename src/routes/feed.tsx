@@ -11,7 +11,9 @@ import {
   useSendFriendRequest,
   useRespondFriendship,
 } from "@/hooks/use-friends";
+import { NameWithHandle } from "@/components/profile/NameWithHandle";
 import { displayNameFor, handleForDisplay, initialsFor } from "@/lib/user-display";
+import type { FriendshipRow } from "@/lib/friends.functions";
 
 export const Route = createFileRoute("/feed")({
   head: () => ({
@@ -35,16 +37,77 @@ function FeedPage() {
   );
 }
 
-// Local shims kept for backwards compatibility with existing call sites.
 function initials(name: string | null | undefined, username: string) {
   return initialsFor({ display_name: name, username });
+}
+
+// ---------- Requests block ----------
+
+function IncomingRow({ row }: { row: FriendshipRow }) {
+  const respond = useRespondFriendship();
+  const name = displayNameFor(row.other);
+  return (
+    <li className="flex items-center gap-3 px-3 py-3">
+      <div className="h-10 w-10 shrink-0 rounded-full bg-muted flex items-center justify-center font-serif text-sm">
+        {initials(row.other.display_name, row.other.username)}
+      </div>
+      <div className="min-w-0 flex-1">
+        <NameWithHandle displayName={row.other.display_name} username={row.other.username} size="sm" />
+        <p className="mt-0.5 text-[11px] text-muted-foreground font-mono tracking-wider">
+          🍷 {row.other.palate_code_red} <span className="opacity-40">·</span> 🥂 {row.other.palate_code_white}
+        </p>
+      </div>
+      <div className="flex gap-1.5">
+        <button
+          onClick={() => respond.mutate({ id: row.id, action: "accept" })}
+          disabled={respond.isPending}
+          aria-label={`Accept request from ${name}`}
+          className="inline-flex items-center gap-1 rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-xs disabled:opacity-50"
+        >
+          <Check size={13} /> Accept
+        </button>
+        <button
+          onClick={() => respond.mutate({ id: row.id, action: "decline" })}
+          disabled={respond.isPending}
+          aria-label={`Decline request from ${name}`}
+          className="inline-flex items-center gap-1 rounded-md border border-border bg-background px-3 py-1.5 text-xs disabled:opacity-50"
+        >
+          <X size={13} /> Decline
+        </button>
+      </div>
+    </li>
+  );
+}
+
+function OutgoingRow({ row }: { row: FriendshipRow }) {
+  const respond = useRespondFriendship();
+  const name = displayNameFor(row.other);
+  return (
+    <li className="flex items-center gap-3 px-3 py-3">
+      <div className="h-10 w-10 shrink-0 rounded-full bg-muted flex items-center justify-center font-serif text-sm">
+        {initials(row.other.display_name, row.other.username)}
+      </div>
+      <div className="min-w-0 flex-1">
+        <NameWithHandle displayName={row.other.display_name} username={row.other.username} size="sm" />
+        <p className="mt-0.5 text-[10px] uppercase tracking-wider text-muted-foreground">Requested</p>
+      </div>
+      <button
+        onClick={() => respond.mutate({ id: row.id, action: "cancel" })}
+        disabled={respond.isPending}
+        aria-label={`Cancel request to ${name}`}
+        className="rounded-md border border-border bg-background px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground disabled:opacity-50"
+      >
+        Cancel
+      </button>
+    </li>
+  );
 }
 
 function FriendsSection() {
   const { data: friends = [] } = useAcceptedFriends();
   const { data: all = [] } = useFriendships();
   const incoming = all.filter((f) => f.status === "pending" && f.direction === "incoming");
-  const respond = useRespondFriendship();
+  const outgoing = all.filter((f) => f.status === "pending" && f.direction === "outgoing");
 
   const [q, setQ] = useState("");
   const search = useUserSearch(q);
@@ -60,6 +123,32 @@ function FriendsSection() {
           Manage →
         </Link>
       </div>
+
+      {/* Requests — incoming first (loudest), then outgoing */}
+      {incoming.length > 0 && (
+        <div className="mt-3">
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="text-[10px] uppercase tracking-[0.18em] text-primary">Requests</span>
+            <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-primary text-primary-foreground px-1 text-[10px] font-semibold">
+              {incoming.length}
+            </span>
+          </div>
+          <ul className="divide-y divide-border rounded-md border border-primary/40 bg-primary/5">
+            {incoming.map((f) => <IncomingRow key={f.id} row={f} />)}
+          </ul>
+        </div>
+      )}
+
+      {outgoing.length > 0 && (
+        <div className="mt-3">
+          <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground mb-1.5">
+            Sent
+          </div>
+          <ul className="divide-y divide-border rounded-md border border-border bg-background">
+            {outgoing.map((f) => <OutgoingRow key={f.id} row={f} />)}
+          </ul>
+        </div>
+      )}
 
       {/* Inline search */}
       <div className="mt-3">
@@ -101,36 +190,6 @@ function FriendsSection() {
           </ul>
         )}
       </div>
-
-      {/* Incoming requests */}
-      {incoming.length > 0 && (
-        <ul className="mt-3 divide-y divide-border rounded-md border border-primary/30 bg-primary/5">
-          {incoming.map((f) => (
-            <li key={f.id} className="flex items-center justify-between gap-2 px-3 py-2">
-              <div className="min-w-0">
-                <p className="text-[10px] uppercase text-primary tracking-wider">Request</p>
-                <p className="text-sm font-medium truncate">{displayNameFor(f.other)}</p>
-              </div>
-              <div className="flex gap-1.5">
-                <button
-                  onClick={() => respond.mutate({ id: f.id, action: "accept" })}
-                  className="h-8 w-8 rounded-md bg-primary text-primary-foreground flex items-center justify-center"
-                  aria-label="Accept"
-                >
-                  <Check size={14} />
-                </button>
-                <button
-                  onClick={() => respond.mutate({ id: f.id, action: "decline" })}
-                  className="h-8 w-8 rounded-md border border-border flex items-center justify-center"
-                  aria-label="Decline"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
 
       {/* Friend avatars strip */}
       <div className="mt-3 flex items-start gap-3 overflow-x-auto pb-1 -mx-1 px-1">
