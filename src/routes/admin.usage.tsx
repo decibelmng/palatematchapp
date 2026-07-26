@@ -117,6 +117,7 @@ function AdminUsage() {
             <thead className="bg-muted/40 text-left">
               <tr>
                 <th className="p-2">User</th>
+                <th className="p-2">Email</th>
                 <Th onClick={() => clickSort("created_at")} active={sort === "created_at"} dir={dir}>Joined</Th>
                 <Th onClick={() => clickSort("last_seen_at")} active={sort === "last_seen_at"} dir={dir}>Last seen</Th>
                 <Th onClick={() => clickSort("ratings_count")} active={sort === "ratings_count"} dir={dir}>Ratings</Th>
@@ -131,6 +132,7 @@ function AdminUsage() {
                     <div className="font-medium">{u.display_name ?? u.username}</div>
                     <div className="text-[10px] text-muted-foreground">@{u.username}</div>
                   </td>
+                  <td className="p-2 font-mono text-[11px] text-muted-foreground whitespace-nowrap">{u.email ?? "—"}</td>
                   <td className="p-2 whitespace-nowrap">{fmt(u.created_at)}</td>
                   <td className="p-2 whitespace-nowrap">{u.last_seen_at ? fmt(u.last_seen_at) : "—"}</td>
                   <td className="p-2 tabular-nums">{u.ratings_count}</td>
