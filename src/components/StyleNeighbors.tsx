@@ -85,15 +85,15 @@ export function StyleNeighbors({ subjectBottleId, subjectStars }: Props) {
   return (
     <section className="mt-10">
       <div className="flex items-baseline justify-between gap-3">
-        <h2 className={`font-serif text-xl ${isWarning ? "text-destructive" : ""}`}>{title}</h2>
+        <h2 className="font-serif text-xl">{title}</h2>
         <span className="text-meta uppercase tracking-label text-muted-foreground">
           by ω-distance
         </span>
       </div>
 
       {isWarning && (
-        <p className="mt-1 text-meta uppercase tracking-label text-destructive">
-          Same-shape wines you may want to skip
+        <p className="mt-1 text-meta uppercase tracking-label text-muted-foreground">
+          Same-shape wines, close to ones you avoid
         </p>
       )}
 
