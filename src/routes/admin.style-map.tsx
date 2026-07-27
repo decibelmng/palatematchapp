@@ -624,8 +624,15 @@ function StyleMap() {
         })}
       </div>
 
-      {/* Plot + selection */}
-      <div className="grid grid-cols-[820px_1fr] gap-4">
+      {/* Narrow-screen guidance — the scatter plot is desktop-only; the
+          region table below stays available on mobile. */}
+      <div className="hidden max-[899px]:block rounded-md border border-amber bg-card p-3 text-xs">
+        The scatter plot is desktop-only (needs ≥900px). The region coherence table below is
+        available at any width.
+      </div>
+
+      {/* Plot + selection — hidden below 900px to preserve mobile utility. */}
+      <div className="hidden min-[900px]:grid grid-cols-[820px_1fr] gap-4">
         <div className="border border-border rounded-md bg-card">
           <canvas
             ref={canvasRef}
