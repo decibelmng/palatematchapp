@@ -1,19 +1,20 @@
 import { ListControls } from "@/components/ListControls";
 import { ServiceModeSwitch } from "@/components/ServiceModeSwitch";
-import type { Controls } from "@/lib/list-controls";
+import type { Controls, Priced } from "@/lib/list-controls";
+import type { CurrencyCode } from "@/lib/currency";
 
 /**
  * Docked toolbar at the base of the verdict surface.
  * Actions: re-scan · dark-restaurant-mode · list controls.
- * The old brightness "Boost" toggle was removed — its job is fully
- * covered by dark-restaurant-mode (service theme).
  */
 export function ScanThumbBar({
-  onRescan, controls, setControls,
+  onRescan, controls, setControls, currency, rows,
 }: {
   onRescan: () => void;
   controls: Controls;
   setControls: (c: Controls) => void;
+  currency?: CurrencyCode;
+  rows?: Priced[];
 }) {
   return (
     <div className="mt-6 rounded-xl border border-border bg-card" role="toolbar" aria-label="Scan result actions">
@@ -29,9 +30,10 @@ export function ScanThumbBar({
         </button>
         <ServiceModeSwitch variant="icon" className="shrink-0" />
         <div className="flex-1 [&>div]:mt-0 [&>div]:justify-stretch [&_button]:w-full [&_button]:justify-center">
-          <ListControls value={controls} onChange={setControls} idPrefix="scan-decision" />
+          <ListControls value={controls} onChange={setControls} idPrefix="scan-decision" currency={currency} rows={rows} />
         </div>
       </div>
     </div>
   );
 }
+
