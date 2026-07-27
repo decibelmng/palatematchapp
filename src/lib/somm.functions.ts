@@ -9,6 +9,7 @@ import { aggregateRated } from "@/lib/cuvee";
 import { archetypeFor, type QuizAnswers } from "@/lib/quiz-seeds";
 import { summarize, pickTableCall, type CandidateResult, type Verdict } from "@/lib/table-call";
 import { formatAmount, DEFAULT_CURRENCY, type CurrencyCode } from "@/lib/currency";
+import { buildGuestQuickBrief, type QuickBrief } from "@/lib/somm-quick-brief";
 
 /** Archetype name from a guest's own quiz answers, honouring their primary
  *  type (was hardcoded to red, mislabelling white-focused guests). */
@@ -177,6 +178,25 @@ async function loadGuestRatedFpViaConsent(
     };
   });
 }
+
+/** Somm-side: a 10-second read of one guest's palate — a sensory summary plus
+ *  their benchmark loves/avoids by name. Consent-gated through the SAME
+ *  loadGuestRatedFpViaConsent path as scoring, so access rules are identical.
+ *  Uses only the fingerprint bundle (no axis values), so no consent-SQL change. */
+const GuestBriefSchema = z.object({
+  guestUserId: z.string().uuid(),
+  grantId: z.string().uuid().nullable(),
+});
+
+export const sommGuestBrief = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => GuestBriefSchema.parse(i))
+  .handler(async ({ data, context }): Promise<QuickBrief> => {
+    const { supabase, userId } = context;
+    await requireVerifiedSomm(supabase, userId);
+    const rated = await loadGuestRatedFpViaConsent(supabase, data.guestUserId, data.grantId);
+    return buildGuestQuickBrief(rated);
+  });
 
 // ═══════════════════════════════════════════════════════════════════
 // TABLE CALL — narrowed payload

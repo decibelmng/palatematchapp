@@ -6,10 +6,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { friendlyError } from "@/lib/error-message";
-import { X, Plus, ChevronLeft, ScanLine, Users, KeyRound, Store } from "lucide-react";
+import { X, Plus, ChevronLeft, ScanLine, Users, KeyRound, Store, BookOpen } from "lucide-react";
 import {
   sommClaimCode, sommResolvePublicGuest, sommCallTable,
-  sommGetMyHouseList, sommHouseListCandidates, sommSetEstablishment,
+  sommGetMyHouseList, sommHouseListCandidates, sommSetEstablishment, sommGuestBrief,
   type ResolvedGuest, type TableCallOutput, type BottleWithVerdicts,
 } from "@/lib/somm.functions";
 import type { Verdict } from "@/lib/table-call";
@@ -54,6 +54,7 @@ function TablePage() {
   const [username, setUsername] = useState("");
   const [showPublic, setShowPublic] = useState(false);
   const [result, setResult] = useState<TableCallOutput | null>(null);
+  const [briefGuest, setBriefGuest] = useState<ResolvedGuest | null>(null);
 
   const claimFn = useServerFn(sommClaimCode);
   const resolvePublicFn = useServerFn(sommResolvePublicGuest);
@@ -154,15 +155,30 @@ function TablePage() {
                 </div>
                 <button
                   type="button"
+                  aria-label={`Read ${g.displayName}'s palate`}
+                  onClick={() => setBriefGuest(g)}
+                  className="ml-1 text-muted-foreground hover:text-primary"
+                >
+                  <BookOpen className="h-4 w-4" />
+                </button>
+                <button
+                  type="button"
                   aria-label={`Remove ${g.displayName}`}
-                  onClick={() => setGuests((prev) => prev.filter((x) => x.userId !== g.userId))}
-                  className="ml-1 text-muted-foreground hover:text-foreground"
+                  onClick={() => {
+                    setGuests((prev) => prev.filter((x) => x.userId !== g.userId));
+                    setBriefGuest((b) => (b?.userId === g.userId ? null : b));
+                  }}
+                  className="text-muted-foreground hover:text-foreground"
                 >
                   <X className="h-4 w-4" />
                 </button>
               </div>
             ))}
           </div>
+        )}
+
+        {briefGuest && (
+          <GuestBriefPanel key={briefGuest.userId} guest={briefGuest} onClose={() => setBriefGuest(null)} />
         )}
 
         <form
@@ -272,6 +288,51 @@ function TablePage() {
       </div>
 
       {result && <TableResult result={result} />}
+    </div>
+  );
+}
+
+/** A 10-second read of one guest's palate: sensory line + benchmark loves/avoids.
+ *  Consent-gated server-side; the same grant that scores the table reads this. */
+function GuestBriefPanel({ guest, onClose }: { guest: ResolvedGuest; onClose: () => void }) {
+  const briefFn = useServerFn(sommGuestBrief);
+  const q = useQuery({
+    queryKey: ["somm-guest-brief", guest.userId, guest.grantId],
+    queryFn: () => briefFn({ data: { guestUserId: guest.userId, grantId: guest.grantId } }),
+  });
+  return (
+    <div className="pm-card mt-2 p-3">
+      <div className="flex items-center justify-between">
+        <div className="text-sub text-foreground">{guest.displayName}'s palate</div>
+        <button type="button" onClick={onClose} aria-label="Close" className="text-muted-foreground hover:text-foreground">
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+      {q.isLoading && <div className="mt-2 text-meta text-muted-foreground">Reading…</div>}
+      {q.isError && (
+        <div className="mt-2 text-meta text-destructive">Couldn't read this palate — the code may have expired.</div>
+      )}
+      {q.data && q.data.types.length === 0 && (
+        <div className="mt-2 text-meta text-muted-foreground">Not enough ratings yet to read a palate.</div>
+      )}
+      {q.data?.types.map((t) => (
+        <div key={t.type} className="mt-3">
+          <div className="text-meta uppercase tracking-label text-muted-foreground">
+            {t.type === "red" ? "Reds" : "Whites"}
+          </div>
+          <p className="mt-1 text-sub text-foreground">{t.sensory}</p>
+          {t.loves.length > 0 && (
+            <p className="mt-1 text-meta text-muted-foreground">
+              <span className="text-foreground">Loves:</span> {t.loves.join(", ")}
+            </p>
+          )}
+          {t.avoids.length > 0 && (
+            <p className="mt-0.5 text-meta text-muted-foreground">
+              <span className="text-foreground">Avoids:</span> {t.avoids.join(", ")}
+            </p>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
