@@ -88,7 +88,6 @@ export function ScanDetailSheet({
               {currentStars != null ? "Your rating" : isPostMeal ? "Did you order it? Rate it." : "Rate it"}
             </span>
 
-            </span>
             <StarTap
               value={currentStars}
               size="md"
