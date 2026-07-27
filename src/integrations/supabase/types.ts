@@ -1014,6 +1014,7 @@ export type Database = {
           city: string | null
           created_at: string
           created_by: string | null
+          currency: string | null
           google_place_id: string | null
           id: string
           locale: string | null
@@ -1025,6 +1026,7 @@ export type Database = {
           city?: string | null
           created_at?: string
           created_by?: string | null
+          currency?: string | null
           google_place_id?: string | null
           id?: string
           locale?: string | null
@@ -1036,6 +1038,7 @@ export type Database = {
           city?: string | null
           created_at?: string
           created_by?: string | null
+          currency?: string | null
           google_place_id?: string | null
           id?: string
           locale?: string | null
