@@ -186,8 +186,8 @@ function NeighborRow({
           <WineTypeBadge type={type} />
           {vetoed && (
             <span
-              className="pm-contested-chip shrink-0"
-              title="Near a wine you avoid"
+              className="pm-vetoed-chip shrink-0"
+              title="Close to one you avoid"
             >
               close to one you avoid
             </span>
