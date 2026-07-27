@@ -25,7 +25,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { callFingerprintGateway } from "@/lib/fingerprint-prompt";
+import {
+  callFingerprintGateway,
+  FINGERPRINT_MODEL,
+  FINGERPRINT_PROMPT_HASH,
+} from "@/lib/fingerprint-prompt";
+
 
 const WineType = z.enum(["red", "white", "sparkling", "rose", "dessert"]);
 
