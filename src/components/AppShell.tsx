@@ -84,7 +84,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { data: profile } = useMyProfile();
   useLastSeenPing((profile as { id?: string } | undefined)?.id);
   useAutoRedeemInvite();
-  const { theme, toggle } = useTheme();
+  const { base: theme, toggleBase: toggle } = useTheme();
   const initials = sharedInitialsFor(
     profile as { display_name?: string | null; username?: string | null } | undefined ?? null,
   );
