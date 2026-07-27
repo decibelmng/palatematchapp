@@ -218,36 +218,33 @@ function PalateHome() {
         <p className="mt-3 text-sm text-muted-foreground">{profile.bio}</p>
       )}
 
-      {/* Stats — all tiles land on one consolidated view. */}
-      <div className="mt-5 grid grid-cols-4 gap-2 rounded-[14px] border border-border bg-card p-3 text-center">
-        <Link to="/wines" search={{ tab: "rated" }} aria-label="See wines you've rated" className="block rounded-md hover:bg-muted/40 py-1">
+      {/* Stats — three tiles, no "Scored" (it duplicates Rated for
+          single-type users). Labels wrap to two lines with leading-tight
+          rather than truncating. */}
+      <div className="mt-5 grid grid-cols-3 gap-2 rounded-[14px] border border-border bg-card p-3 text-center">
+        <Link to="/wines" search={{ tab: "rated" }} aria-label="See wines you've rated" className="block rounded-md hover:bg-muted/40 py-1 min-w-0">
           <Stat n={totalRated} label="Rated" />
         </Link>
-        <Link to="/wines" search={{ tab: "canons" }} aria-label="See your benchmarks" className="block rounded-md hover:bg-muted/40 py-1">
+        <Link to="/wines" search={{ tab: "canons" }} aria-label="See your benchmarks" className="block rounded-md hover:bg-muted/40 py-1 min-w-0">
           <Stat n={canonsCount} label="Benchmarks" />
         </Link>
-        <Link to="/wines" search={{ tab: "nemeses" }} aria-label="See your dealbreakers" className="block rounded-md hover:bg-muted/40 py-1">
+        <Link to="/wines" search={{ tab: "nemeses" }} aria-label="See your dealbreakers" className="block rounded-md hover:bg-muted/40 py-1 min-w-0">
           <Stat n={nemesesCount} label="Dealbreakers" />
-
-        </Link>
-
-        <Link to="/wines" search={{ tab: "scored" }} aria-label="Open palate detail" className="block rounded-md hover:bg-muted/40 py-1">
-          <Stat n={redRated.length + whiteRated.length} label="Scored" />
         </Link>
       </div>
 
 
 
-      {/* Palate codes — scope switch. The active scope's code is rendered
-          large below with per-letter meanings (see PalateCodeReader). */}
+      {/* Palate codes — scope switch. Shows type and rating count only; the
+          active code renders exactly once, in the hero card below. */}
       <div className="mt-5 grid grid-cols-2 gap-3">
-        <CodeChip type="red"   code={red.code}   n={redRated.length}   active={scope === "red"}   onClick={() => setScope("red")} />
-        <CodeChip type="white" code={white.code} n={whiteRated.length} active={scope === "white"} onClick={() => setScope("white")} />
+        <CodeChip type="red"   n={redRated.length}   active={scope === "red"}   onClick={() => setScope("red")} />
+        <CodeChip type="white" n={whiteRated.length} active={scope === "white"} onClick={() => setScope("white")} />
       </div>
 
-      {/* Code hero — the identity. Tap any letter for its meaning; on first
-          view after the reveal, cycles once automatically (guarded so it
-          plays exactly once per unique code + type). */}
+      {/* Code hero — the identity. Archetype name sits below at heading
+          size; tagline below that as a caption. A bimodal "·" is explained
+          in a plain-language line — never rendered as X (reads as error). */}
       <div className="mt-4 rounded-[14px] border border-border bg-card p-5 text-center">
         <p className="text-meta uppercase tracking-label text-muted-foreground">
           Your {scope} palate code
@@ -256,10 +253,30 @@ function PalateHome() {
           <PalateCodeReader
             code={scopedCode}
             type={scope}
+            letters={scopedLetters}
             autoCycle={showReveal}
             size="title"
           />
         </div>
+        {archetype && (
+          <>
+            <div className="mt-4 font-serif text-heading leading-tight text-foreground">
+              {archetype.name}
+            </div>
+            <p className="mt-1 text-sub text-muted-foreground max-w-[36ch] mx-auto">
+              {archetype.tagline}
+            </p>
+          </>
+        )}
+        {bimodalLetters.length > 0 && (
+          <p className="mt-3 text-meta text-muted-foreground max-w-[36ch] mx-auto">
+            <span className="font-serif text-foreground/80">·</span> means you
+            go both ways on {bimodalLetters.length === 1
+              ? `${bimodalLetters[0].label.toLowerCase()}`
+              : "those axes"}
+            {" "}— tap it to see how.
+          </p>
+        )}
       </div>
 
       {/* Inline viz — dominant scope; toggle changes it above */}
