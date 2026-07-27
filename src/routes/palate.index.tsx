@@ -310,20 +310,7 @@ function PalateHome() {
         <VisibilityControl current={(profile?.visibility as "private" | "followers" | "public") ?? "private"} />
       </div>
 
-      {/* TEMPORARY GATE: The "Hand over a code" card is hidden pending the
-          /somm consent + payload work. It generates a short-lived grant a
-          guest hands to a sommelier — orphaned right now because /somm
-          redirects to /palate, so any code issued cannot be redeemed.
-          Restore this block when /somm ships.
-
-          Known SQL bug to fix at that time: sommGrantGenerate currently
-          throws `column reference "expires_at" is ambiguous` — a PL/pgSQL
-          variable/parameter named `expires_at` is shadowing the column of
-          the same name (or an unqualified reference spans two tables that
-          both have it). Fix by qualifying every reference with its table
-          alias and renaming the local variable to `v_expires_at`, or by
-          adding `#variable_conflict use_column` at the top of the function. */}
-      {false && <SommShareCodeCard />}
+      <SommShareCodeCard />
 
       {/* Rate + verify */}
       <div className="mt-4 flex flex-col gap-2">
@@ -334,9 +321,7 @@ function PalateHome() {
           <div className="text-sm">Rate a wine</div>
           <span className="text-primary text-sm">→</span>
         </Link>
-        {/* TEMPORARY GATE: "Verify as a sommelier" card is hidden pending the
-            /somm consent + payload work. Restore this block when /somm ships. */}
-        {false && profile?.somm_status !== "verified" && (
+        {profile?.somm_status !== "verified" && (
           <Link
             to="/palate/verify"
             className="flex items-center justify-between rounded-[14px] border border-border bg-card p-4 hover:border-primary/40"
