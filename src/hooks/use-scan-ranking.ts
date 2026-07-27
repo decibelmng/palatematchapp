@@ -212,7 +212,11 @@ export function useScanRanking(
   }, [prelimRows]);
 
 
-  const enoughRatings = ratedRows.length >= 3;
+  const quizCompleted = !!quizAnswers?.completedAt;
+  // Quiz-seeded users clear the "enough" gate on day one: the recommender is
+  // running against the seed, and the verdict surface labels it provisional.
+  const enoughRatings = ratedRows.length >= 3 || quizCompleted;
+  const provisional = quizCompleted && ratedRows.length < 5;
 
   const perTypeRated = useMemo(() => {
     const m = new Map<string, number>();
@@ -231,7 +235,7 @@ export function useScanRanking(
 
   return {
     dedupWines, readable, unreadable, matchedCount, estimatedCount,
-    ratedRows, enoughRatings, lowConfTypes, perTypeRated, MIN_PER_TYPE,
+    ratedRows, enoughRatings, provisional, lowConfTypes, perTypeRated, MIN_PER_TYPE,
     ranked, predictionsByIndex, cellar,
     group, allRowsFlat, currency,
   };
