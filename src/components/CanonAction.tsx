@@ -50,15 +50,15 @@ export function CanonAction({ bottle, stars, compact = false }: Props) {
     if (isCanon) {
       void (async () => {
         const ok = await confirmDialog({
-          title: "Remove Canon status?",
+          title: "Remove favorite status?",
           description: (
             <>
-              Remove Canon status from{" "}
+              Remove favorite status from{" "}
               <span className="font-semibold text-foreground">{bottle.name}</span>?
               It'll revert to its {stars ?? 5}★ rating.
             </>
           ),
-          confirmLabel: "Remove Canon",
+          confirmLabel: "Remove favorite",
           destructive: true,
         });
         if (ok) demote.mutate(myCanonForThis!.id);
@@ -69,7 +69,7 @@ export function CanonAction({ bottle, stars, compact = false }: Props) {
   }
 
 
-  const label = isCanon ? "Canon (tap to remove)" : "Make this my Canon";
+  const label = isCanon ? "Favorite (tap to remove)" : "Mark as a favorite";
   const btnClasses = compact
     ? "inline-flex items-center justify-center rounded-full p-1.5 transition"
     : "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-meta font-semibold transition";
@@ -89,7 +89,7 @@ export function CanonAction({ bottle, stars, compact = false }: Props) {
         style={style}
       >
         <Crown size={compact ? 14 : 13} strokeWidth={2.2} fill={isCanon ? "currentColor" : "none"} />
-        {!compact && (isCanon ? "Canon" : "Make Canon")}
+        {!compact && (isCanon ? "Favorite" : "Mark favorite")}
       </button>
 
       {dialog !== "idle" && (
@@ -107,13 +107,14 @@ export function CanonAction({ bottle, stars, compact = false }: Props) {
               setDialog("idle");
             } catch (e) {
               const msg = e instanceof Error ? e.message : String(e);
-              toast.error(msg || "Couldn't crown Canon");
+              toast.error(msg || "Couldn't mark as favorite");
               setDialog("idle");
             }
           }}
           pending={promote.isPending}
         />
       )}
+
     </>
   );
 }
