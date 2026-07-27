@@ -48,6 +48,12 @@ export type RatedFp = BottleFp & {
   canon?: boolean;
   /** Marks this rated wine as a Nemesis anchor (drives veto + explanation). */
   nemesis?: boolean;
+  /** True for synthetic style-quiz seeds. Seeds participate in KERNEL
+   *  scoring (they mark a region of style space the user likes) but are
+   *  EXCLUDED from the pairwise omega ridge fit — a fabricated stars=4
+   *  is not a real observation and would corrupt |Δstars| contrasts.
+   *  Filtered in learnOmega before any pair is built. See Invariant 1. */
+  isSeed?: boolean;
 };
 
 export type VetoReason = {
