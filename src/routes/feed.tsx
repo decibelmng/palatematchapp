@@ -1,9 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { UserPlus, Check, X } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { AuthGate } from "@/components/AuthGate";
 import { FeedCard } from "@/components/FeedCard";
+import { VenueActivityCard } from "@/components/VenueActivityCard";
+import { FounderCard } from "@/components/FounderCard";
+import { OverlapSuggestions } from "@/components/OverlapSuggestions";
 import { useFriendsFeed, useFeedActivity, markFeedSeen } from "@/hooks/use-feed";
+import { getVenueActivity } from "@/lib/social-feed.functions";
 import {
   useAcceptedFriends,
   useFriendships,
