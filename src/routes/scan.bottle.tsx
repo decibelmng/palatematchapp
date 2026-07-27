@@ -23,6 +23,7 @@ import { AddBottleDialog } from "@/components/AddBottleDialog";
 import { verdictLine } from "@/components/verdict/reason";
 import { toast } from "sonner";
 import { friendlyError } from "@/lib/error-message";
+import { prepareImageForScan } from "@/lib/image-downscale";
 
 
 export const Route = createFileRoute("/scan/bottle")({
