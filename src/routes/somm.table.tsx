@@ -2,14 +2,14 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { AuthGate } from "@/components/AuthGate";
 import { useMyProfile } from "@/hooks/use-friends";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { friendlyError } from "@/lib/error-message";
-import { X, Plus, ChevronLeft, ScanLine, Users, KeyRound } from "lucide-react";
+import { X, Plus, ChevronLeft, ScanLine, Users, KeyRound, Store } from "lucide-react";
 import {
   sommClaimCode, sommResolvePublicGuest, sommCallTable,
-  sommGetMyHouseList, sommHouseListCandidates,
+  sommGetMyHouseList, sommHouseListCandidates, sommSetEstablishment,
   type ResolvedGuest, type TableCallOutput, type BottleWithVerdicts,
 } from "@/lib/somm.functions";
 import type { Verdict } from "@/lib/table-call";
@@ -235,7 +235,9 @@ function TablePage() {
 
       <section aria-label="List source" className="mt-6">
         <div className="text-meta uppercase text-muted-foreground">The list</div>
-        {houseList?.activeVersionId ? (
+        {houseListQ.isLoading ? (
+          <div className="pm-card mt-2 p-3 text-meta text-muted-foreground">Loading your list…</div>
+        ) : houseList?.activeVersionId ? (
           <div className="pm-card mt-2 p-3 flex items-center justify-between">
             <div>
               <div className="text-sub text-foreground">{houseList.establishment}</div>
@@ -245,11 +247,13 @@ function TablePage() {
             </div>
             <Link to="/somm/list" className="text-meta uppercase text-primary">Manage</Link>
           </div>
-        ) : (
+        ) : houseList ? (
           <Link to="/somm/list" className="pm-card mt-2 p-3 flex items-center gap-2 text-sub text-foreground">
             <ScanLine className="h-4 w-4 text-primary" />
             Save your house list to enable table calls.
           </Link>
+        ) : (
+          <EstablishmentNudge />
         )}
       </section>
 
@@ -269,6 +273,55 @@ function TablePage() {
 
       {result && <TableResult result={result} />}
     </div>
+  );
+}
+
+/** First-run unblock: a verified somm with no establishment can't have a house
+ *  list, so table calls are impossible. Let them set it inline. */
+function EstablishmentNudge() {
+  const qc = useQueryClient();
+  const setFn = useServerFn(sommSetEstablishment);
+  const [name, setName] = useState("");
+  const save = useMutation({
+    mutationFn: (n: string) => setFn({ data: { establishment: n } }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["somm-house-list"] });
+      toast.success("Establishment set — now save your house list.");
+    },
+    onError: (e: Error) => toast.error(friendlyError(e)),
+  });
+  return (
+    <form
+      className="pm-card mt-2 p-3"
+      onSubmit={(e) => {
+        e.preventDefault();
+        const n = name.trim();
+        if (n) save.mutate(n);
+      }}
+    >
+      <div className="flex items-center gap-2 text-sub text-foreground">
+        <Store className="h-4 w-4 text-primary" /> Name your restaurant to start a house list
+      </div>
+      <p className="mt-1 text-meta text-muted-foreground">
+        Table calls score guests against your list — set this once to begin.
+      </p>
+      <div className="mt-2 flex gap-2">
+        <input
+          aria-label="Restaurant name"
+          className="flex-1 rounded-md border border-border bg-background/70 px-3 py-2 text-sub text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+          placeholder="Restaurant name"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <button
+          type="submit"
+          disabled={save.isPending || !name.trim()}
+          className="rounded-md bg-primary px-3 py-2 text-primary-foreground text-sub disabled:opacity-60"
+        >
+          Save
+        </button>
+      </div>
+    </form>
   );
 }
 

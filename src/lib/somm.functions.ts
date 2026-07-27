@@ -450,6 +450,23 @@ export type HouseListView = {
   versions: Array<{ id: string; version: number; createdAt: string; itemCount: number }>;
 };
 
+/** Set (or rename) the verified somm's establishment. Without one, no house
+ *  list can exist and table calls are impossible — this unblocks first run.
+ *  RLS-scoped to the caller's own profile row. */
+const SetEstablishmentSchema = z.object({ establishment: z.string().min(1).max(120) });
+
+export const sommSetEstablishment = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((i: unknown) => SetEstablishmentSchema.parse(i))
+  .handler(async ({ data, context }): Promise<{ establishment: string }> => {
+    const { supabase, userId } = context;
+    await requireVerifiedSomm(supabase, userId);
+    const name = data.establishment.trim();
+    const { error } = await supabase.from("profiles").update({ establishment: name }).eq("id", userId);
+    if (error) throw new Error(error.message);
+    return { establishment: name };
+  });
+
 export const sommGetMyHouseList = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<HouseListView | null> => {
