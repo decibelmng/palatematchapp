@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { AuthGate } from "@/components/AuthGate";
-import { adminAuthAuditEntries } from "@/lib/admin-auth-audit.functions";
+import { adminAuthAuditEntries, type AdminAuthAuditEntry } from "@/lib/admin-auth-audit.functions";
 
 export const Route = createFileRoute("/admin/auth-audit")({
   ssr: false,
