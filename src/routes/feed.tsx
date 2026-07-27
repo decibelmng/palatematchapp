@@ -7,7 +7,6 @@ import { AuthGate } from "@/components/AuthGate";
 import { FeedCard } from "@/components/FeedCard";
 import { VenueActivityCard } from "@/components/VenueActivityCard";
 import { FounderCard } from "@/components/FounderCard";
-import { OverlapSuggestions } from "@/components/OverlapSuggestions";
 import { useFriendsFeed, useFeedActivity, markFeedSeen } from "@/hooks/use-feed";
 import { getVenueActivity } from "@/lib/social-feed.functions";
 import {
@@ -292,7 +291,6 @@ function FeedContent() {
               </p>
             </div>
             <FounderCard />
-            <OverlapSuggestions />
           </div>
         ) : (
           <div className="space-y-3">

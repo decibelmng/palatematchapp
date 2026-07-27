@@ -3,9 +3,9 @@
 //   friend avatar · name · "rated a wine" · time · palate archetype
 //   friend's stars (small, top-right)
 //   wine name (link) — grape · region · price band
-//   ── predicted-for-you band ─────────────────
-//   [ big score ]  headline  reason
-//   [ amber caveat if thin ]
+//   ── match-for-you band ─────────────────
+//   headline sentence · reason  (no naked decimal score)
+//   [ caveat if thin ]
 //   [ Want to try ] [ Rate it ]
 //
 // Prediction runs the shared `recommend()` engine — read-only. No writes.
@@ -107,13 +107,15 @@ export function FeedCard({ item }: { item: FeedItem }) {
     ? confidenceCopy(band, scoring.predicted, bType)
     : { headline: bottleCalibrated ? "Rate more to get a prediction" : "Not scored yet", caveat: null };
 
+  // Tone is a background tint only; words always use --text (foreground).
+  // (CLAUDE.md: amber is a non-text token; no raw Tailwind color families.)
   const bandTone =
     scoring == null
       ? "bg-muted/40 text-muted-foreground"
       : scoring.predicted >= 4
-      ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
+      ? "bg-[color-mix(in_oklab,var(--good)_12%,transparent)] text-foreground"
       : scoring.predicted >= 3
-      ? "bg-amber-500/10 text-foreground dark:text-foreground"
+      ? "bg-[color-mix(in_oklab,var(--amber)_10%,transparent)] text-foreground"
       : "bg-muted/60 text-foreground";
 
   const wishIds = useWishlistIds();
@@ -172,18 +174,13 @@ export function FeedCard({ item }: { item: FeedItem }) {
         </p>
       )}
 
+      {/* Recommendation as a sentence — never a naked decimal score
+          (CLAUDE.md: no decimal readout, no percentage match). */}
       <div className={`mt-3 rounded-md p-3 ${bandTone}`}>
-        <div className="flex items-center gap-3">
-          <div className="text-3xl font-serif tabular-nums leading-none">
-            {scoring ? scoring.predicted.toFixed(1) : "—"}
-          </div>
-          <div className="min-w-0">
-            <div className="text-sm font-medium">{copy.headline}</div>
-            {scoring && (
-              <div className="text-xs opacity-90 mt-0.5">{scoring.reason}</div>
-            )}
-          </div>
-        </div>
+        <div className="text-sm font-medium">{copy.headline}</div>
+        {scoring && (
+          <div className="text-xs opacity-90 mt-0.5">{scoring.reason}</div>
+        )}
         {copy.caveat && (
           <div className="mt-2 text-xs text-foreground dark:text-foreground">
             {copy.caveat}
