@@ -1,6 +1,6 @@
-import { createFileRoute, notFound, Link } from "@tanstack/react-router";
+import { createFileRoute, notFound, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { getPublicProfile } from "@/lib/profile.functions";
 import { SommBadge } from "@/components/profile/SommBadge";
 import { FollowButton } from "@/components/profile/FollowButton";
@@ -83,9 +83,18 @@ function PublicProfileRoute() {
   const { username } = Route.useParams();
   const { data: p } = useSuspenseQuery(profileQueryOptions(username));
   const session = useSession();
-  if (!p) return null;
+  const navigate = useNavigate();
 
-  const isFullView = p.is_own || p.visibility === "public" || p.viewer_follow_status === "accepted";
+  // One canonical own-profile surface: your own profile always lives at /palate.
+  // /u/$username is purely the public view of OTHER people — so a share link
+  // never shows you a second, differently-designed version of yourself.
+  useEffect(() => {
+    if (p?.is_own) navigate({ to: "/palate", replace: true });
+  }, [p?.is_own, navigate]);
+
+  if (!p || p.is_own) return null;
+
+  const isFullView = p.visibility === "public" || p.viewer_follow_status === "accepted";
 
   return (
     <ProfileFrame withShell={!!session}>
@@ -119,14 +128,14 @@ function PublicProfileRoute() {
         </div>
 
         <div className="mt-4 flex items-center justify-center gap-6 text-center">
-          <div><div className="font-serif text-lg">{p.follower_count}</div><div className="text-meta uppercase text-muted-foreground" style={{  }}>Followers</div></div>
-          <div><div className="font-serif text-lg">{p.following_count}</div><div className="text-meta uppercase text-muted-foreground" style={{  }}>Following</div></div>
+          <div><div className="font-serif text-lg">{p.follower_count}</div><div className="text-meta uppercase text-muted-foreground">Followers</div></div>
+          <div><div className="font-serif text-lg">{p.following_count}</div><div className="text-meta uppercase text-muted-foreground">Following</div></div>
           {isFullView && (
-            <div><div className="font-serif text-lg">{p.n_rated}</div><div className="text-meta uppercase text-muted-foreground" style={{  }}>Rated</div></div>
+            <div><div className="font-serif text-lg">{p.n_rated}</div><div className="text-meta uppercase text-muted-foreground">Rated</div></div>
           )}
         </div>
 
-        {!p.is_own && session && (
+        {session && (
           <div className="mt-5 flex justify-center">
             <FollowButton followeeId={p.id} status={p.viewer_follow_status} />
           </div>
@@ -155,8 +164,8 @@ function PublicProfileRoute() {
 function PalateCodeCard({ label, code }: { label: string; code: string }) {
   return (
     <div className="rounded-[14px] border border-border bg-card p-4">
-      <div className="text-meta uppercase text-muted-foreground" style={{  }}>{label}</div>
-      <div className="mt-3 font-serif text-title text-primary" style={{  }}>
+      <div className="text-meta uppercase text-muted-foreground">{label}</div>
+      <div className="mt-3 font-serif text-title text-primary">
         {code.split("").map((ch, i) => (
           <span key={`${label}-${i}`} className={ch === "·" ? "text-muted-foreground/60" : ""}>{ch}</span>
         ))}

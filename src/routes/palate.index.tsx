@@ -387,7 +387,7 @@ function Rate5Progress({ redN, whiteN }: { redN: number; whiteN: number }) {
   const pct = Math.min(100, (n / MIN_RATINGS) * 100);
   return (
     <div className="text-center max-w-md mx-auto">
-      <p className="text-meta uppercase text-muted-foreground" style={{  }}>
+      <p className="text-meta uppercase text-muted-foreground">
         Getting started
       </p>
       <h2 className="mt-3 font-serif text-heading leading-snug">
