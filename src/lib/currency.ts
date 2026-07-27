@@ -18,18 +18,18 @@ export type BandDef = {
 
 const SYMBOL: Record<CurrencyCode, string> = {
   USD: "$",
-  EUR: "€",
-  GBP: "£",
+  EUR: "\u20AC",
+  GBP: "\u00A3",
 };
 
 /** Symbol- or ISO-code detection from any scanned line. Returns null when
- *  nothing recognizable is present. Case-insensitive for codes. */
+ *  nothing recognizable is present. */
 export function detectCurrencyFromText(raw: string | null | undefined): CurrencyCode | null {
   if (!raw) return null;
   const s = String(raw);
   if (s.includes("$")) return "USD";
-  if (s.includes("€")) return "EUR";
-  if (s.includes("£")) return "GBP";
+  if (s.includes("\u20AC")) return "EUR";
+  if (s.includes("\u00A3")) return "GBP";
   const upper = s.toUpperCase();
   if (/\bUSD\b/.test(upper)) return "USD";
   if (/\bEUR\b/.test(upper)) return "EUR";
@@ -53,7 +53,7 @@ export function aggregateCurrency(
 }
 
 /** Format an amount with the currency's symbol. Whole numbers render
- *  without decimals; decimals only when a menu prints them. */
+ *  without decimals; decimals only when the source has them. */
 export function formatAmount(n: number, currency: CurrencyCode): string {
   const rounded = Math.round(n) === n ? n.toString() : n.toFixed(2);
   return `${SYMBOL[currency]}${rounded}`;
@@ -104,7 +104,9 @@ export function bandForAmount(amount: number, currency: CurrencyCode): Exclude<P
 }
 
 /** Chip options, localized to the detected currency. */
-export function priceBandOptions(currency: CurrencyCode): { value: PriceBandKey | "all"; label: string }[] {
+export function priceBandOptions(
+  currency: CurrencyCode,
+): { value: PriceBandKey | "all"; label: string }[] {
   const fmt = (n: number) => formatAmount(n, currency);
   return [
     { value: "all", label: "Any price" },
