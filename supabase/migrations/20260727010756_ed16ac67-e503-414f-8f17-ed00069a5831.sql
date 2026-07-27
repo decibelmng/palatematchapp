@@ -1,0 +1,2 @@
+REVOKE EXECUTE ON FUNCTION public.is_same_establishment_verified_somm(uuid, text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.is_same_establishment_verified_somm(uuid, text) TO authenticated, service_role;
