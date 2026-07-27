@@ -60,19 +60,19 @@ function AuthScreen() {
   const NEUTRAL =
     "If that email is set up for Palate Match, we've sent a sign-in link. Check your inbox — and your spam folder.";
 
-  async function oauth(provider: "apple" | "google") {
+  async function oauth(provider: "apple" | "google", overrideRedirect?: string) {
     setErr(null);
     installAuthDebug(supabase);
+    const redirect_uri = overrideRedirect ?? window.location.origin;
     authTrace("oauth click", {
       provider,
       origin: window.location.origin,
-      redirect_uri: window.location.origin,
+      redirect_uri,
+      override: !!overrideRedirect,
       href: window.location.href,
       storage: authStorageSnapshot(),
     });
-    const res = await lovable.auth.signInWithOAuth(provider, {
-      redirect_uri: window.location.origin,
-    });
+    const res = await lovable.auth.signInWithOAuth(provider, { redirect_uri });
     authTrace("oauth result", {
       redirected: (res as any)?.redirected,
       hasTokens: !!(res as any)?.tokens,
