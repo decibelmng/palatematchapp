@@ -14,25 +14,20 @@ import { useScanRanking } from "@/hooks/use-scan-ranking";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
-/** Fetch the restaurant's locale ("en-US", "fr-FR", ...) so currency
- *  resolution can prefer restaurant country over browser locale. */
-function useRestaurantLocale(restaurantId: string | null) {
+import type { CurrencyCode } from "@/lib/currency";
+
+/** Fetch the restaurant's stored currency — populated only by prior scans
+ *  that read a symbol off the list itself. Never a locale/default guess. */
+function useRestaurantCurrency(restaurantId: string | null) {
   return useQuery({
-    queryKey: ["restaurant-locale", restaurantId],
+    queryKey: ["restaurant-currency", restaurantId],
     enabled: !!restaurantId,
     queryFn: async () => {
-      const { data } = await supabase.from("restaurants").select("locale").eq("id", restaurantId!).maybeSingle();
-      return (data?.locale as string | null) ?? null;
+      const { data } = await supabase.from("restaurants").select("currency").eq("id", restaurantId!).maybeSingle();
+      const c = (data as { currency: string | null } | null)?.currency ?? null;
+      return (c as CurrencyCode | null);
     },
   });
-}
-
-/** "fr-FR" → "FR"; bare "FR" → "FR"; null-ish → null. */
-function countryFromLocale(locale: string | null | undefined): string | null {
-  if (!locale) return null;
-  const parts = String(locale).split("-");
-  const tail = parts[parts.length - 1];
-  return tail && tail.length === 2 ? tail.toUpperCase() : null;
 }
 
 
@@ -55,16 +50,14 @@ function Scan() {
 
 
   const cap = useScanCapture();
-  // Fetch the picked/attributed restaurant's locale so restaurant-country
-  // can enter the currency resolution chain (see useScanRanking). Fires
-  // only once a restaurant id is known — either from prescan or the
-  // server-side auto-attribution that runs during finalize. When it
-  // resolves, the ranking memo recomputes and the UI re-renders with the
-  // corrected currency; a symbol-free Paris list stops rendering as USD.
+  // Once a restaurant is known (prescan pick or server-side auto-attribution),
+  // pull its stored currency. This is a direct fact — only ever set by a
+  // scan whose currency came from OCR text — so it's safe to feed straight
+  // into the resolution chain. Symbol-bearing text on the current list still
+  // wins (step 2), which is correct for mixed-currency venues.
   const restaurantId = cap.prescanRestaurant?.id ?? null;
-  const { data: restaurantLocale } = useRestaurantLocale(restaurantId);
-  const restaurantCountry = countryFromLocale(restaurantLocale);
-  const rank = useScanRanking(cap.wines, null, restaurantCountry);
+  const { data: restaurantCurrency } = useRestaurantCurrency(restaurantId);
+  const rank = useScanRanking(cap.wines, null, restaurantCurrency ?? null);
 
 
   // Auto-open camera when arriving from the center-scan chooser (?capture=1).

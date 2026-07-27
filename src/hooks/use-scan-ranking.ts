@@ -25,7 +25,7 @@ const MIN_PER_TYPE = 8;
 export function useScanRanking(
   wines: ResolvedWine[],
   scanCurrency?: CurrencyCode | null,
-  restaurantCountry?: string | null,
+  restaurantCurrency?: CurrencyCode | null,
 ) {
   const { data: ratings } = useRatings();
   const { data: quizAnswers } = useQuizAnswers();
@@ -48,25 +48,20 @@ export function useScanRanking(
   // Currency resolution chain, in strict priority order:
   //   1. explicit scan override (already-computed)
   //   2. per-row OCR text (symbols/ISO codes on the list itself)
-  //   3. restaurant country (from restaurants.locale, when resolved)
+  //   3. restaurant.currency (a direct fact learned from a prior symbol-bearing scan)
   //   4. browser locale
   //   5. USD default
-  // Restaurant country is passed in from the caller once the restaurant
-  // record is known (prescan pick or post-attribution). The memo below
-  // recomputes when `restaurantCountry` changes, so if the server later
-  // resolves a Paris restaurant while the client's initial guess was USD
-  // (US locale, symbol-free list), the UI re-renders with EUR. Text-level
-  // detection (step 2) still wins — a "$" on the actual list beats the
-  // restaurant's country, which is the correct behavior for symbol-full
-  // lists in mixed-currency venues.
+  // The restaurant step is a stored currency, not a country guess. It only
+  // ever gets written by scans whose currency came from step 2 (text), so
+  // venues can't inherit the first scanner's locale/default fallback.
   const currencyRes = useMemo(() => {
     return resolveCurrency({
       override: scanCurrency ?? null,
       samples: dedupWines.map((w) => w.price),
-      restaurantCountry: restaurantCountry ?? null,
+      restaurantCurrency: restaurantCurrency ?? null,
       useLocale: true,
     });
-  }, [dedupWines, scanCurrency, restaurantCountry]);
+  }, [dedupWines, scanCurrency, restaurantCurrency]);
   const currency: CurrencyCode = currencyRes.currency;
   // Legacy reference kept for callers that still want the aggregate-only view.
   void aggregateCurrency; void DEFAULT_CURRENCY;

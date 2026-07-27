@@ -405,16 +405,37 @@ export const finalizeScan = createServerFn({ method: "POST" })
     // Aggregate the scan-wide currency from per-row detections and persist it
     // on the scans row so downstream reads (list controls, price banding) can
     // label chips in the currency the user actually saw on the list.
+    //
+    // Re-detect from raw text/price rather than trusting scan_wines.currency,
+    // because that column falls back to "USD" when no symbol was read — we
+    // must not confuse that default with actual OCR evidence when deciding
+    // whether to teach the restaurant its currency below.
+    let textDetectedCurrency: string | null = null;
     try {
       const counts = new Map<string, number>();
       for (const r of rows) {
-        const c = (r.currency as string | null) ?? null;
+        const c = detectCurrencyFromText(r.price ?? r.raw_text ?? null);
         if (c) counts.set(c, (counts.get(c) ?? 0) + 1);
       }
       let winner: string | null = null; let best = 0;
       for (const [k, v] of counts) if (v > best) { winner = k; best = v; }
+      textDetectedCurrency = winner;
       if (winner) await supabase.from("scans").update({ currency: winner }).eq("id", data.scan_id);
     } catch { /* non-fatal */ }
+
+    // Teach the restaurant its currency — but only from "text" evidence, and
+    // only when the column is empty. Locale/default fallbacks never write,
+    // so venues can't inherit the first scanner's guess. A later symbol-free
+    // scan at the same venue then resolves via source "restaurant".
+    if (restaurantId && textDetectedCurrency) {
+      try {
+        await supabase
+          .from("restaurants")
+          .update({ currency: textDetectedCurrency })
+          .eq("id", restaurantId)
+          .is("currency", null);
+      } catch { /* non-fatal */ }
+    }
 
     // ---- C2 backfill: resolve/fingerprint unmatched scan lines on-demand ----
     // Any row still carrying matched_bottle_id=null after catalog resolution
