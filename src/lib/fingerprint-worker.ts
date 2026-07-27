@@ -5,7 +5,13 @@
 // The supabaseAdmin client is passed in so this module has no server-only
 // imports at module scope (safe to import from *.functions.ts).
 
-import { callFingerprintGateway } from "@/lib/fingerprint-prompt";
+import {
+  callFingerprintGateway,
+  FINGERPRINT_MODEL,
+  FINGERPRINT_PROMPT_HASH,
+  FINGERPRINT_PIPELINE,
+} from "@/lib/fingerprint-prompt";
+
 
 const CUVEE_GROUP_MAX = 40;
 
