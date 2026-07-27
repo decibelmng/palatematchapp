@@ -8,6 +8,7 @@ import { PastScansHistory } from "@/components/PastScansHistory";
 import { PrescanRestaurantPicker, RestaurantAttribution } from "@/components/RestaurantPickers";
 import { DrinkingGroupSelector } from "@/components/DrinkingGroupSelector";
 import { ScanEntryButtons, StagedPhotos, BatchProgress } from "@/components/ScanCaptureShell";
+import { ServiceModeSwitch } from "@/components/ServiceModeSwitch";
 import { useScanCapture } from "@/hooks/use-scan-capture";
 import { useScanRanking } from "@/hooks/use-scan-ranking";
 
