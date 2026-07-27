@@ -401,7 +401,7 @@ function BottleScan() {
       )}
 
       {looksLikeMenu && (
-        <div className="mt-4 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-sm">
+        <div className="pm-uncertain mt-4 rounded-md p-3 text-sm">
           This looks like a wine <span className="font-medium">list or menu</span>, not a single bottle.
           <div className="mt-2">
             <Link to="/scan/list" className="rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-xs font-medium">
@@ -771,9 +771,10 @@ function ExtractedCard({ extracted }: { extracted: BottleExtract }) {
   // label is sparse. Chip them as "verify" when overall confidence is not high.
   const inferHint = extracted.confidence !== "high";
   const chip = (
-    <span className="ml-1 rounded-full border border-amber-500/40 bg-amber-500/10 text-foreground dark:text-foreground px-1.5 py-0.5 text-meta uppercase tracking-label">
+    <span className="pm-uncertain-chip ml-1 text-meta">
       verify
     </span>
+
   );
   return (
     <div className="rounded-md border border-border bg-card p-3">
@@ -873,8 +874,9 @@ function ConfirmReadCard({
   const shaky = rawConfidence !== "high";
   const highlight = (v: string | number | null | undefined) =>
     (shaky || v == null || v === "")
-      ? "border-amber-500/60 bg-amber-500/5"
+      ? "border border-dashed border-[--amber] bg-transparent"
       : "border-border bg-background";
+
 
   const producerBlank = !read.producer?.trim();
   const nameBlank = !read.wine_name?.trim();

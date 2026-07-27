@@ -191,12 +191,13 @@ function NeighborRow({
           )}
           {!vetoed && contested && contestedNemesisName && (
             <span
-              className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-meta uppercase tracking-label border border-amber-500/50 bg-amber-500/10 text-foreground dark:text-foreground"
+              className="pm-conflict-chip shrink-0"
               title="Inside your Nemesis's reach, but closer to a wine you love"
             >
               near your Nemesis {contestedNemesisName}
             </span>
           )}
+
           {!vetoed && nearestIsCanon && <CanonBadge size="sm" title="Nearest rated anchor is a Canon" />}
         </div>
         <Link
