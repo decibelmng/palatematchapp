@@ -81,6 +81,19 @@ export function ScanDetailSheet({
             {row.isCatalog ? "Catalog match" : "Estimated"}
           </span>
         </p>
+        {row.verdict && (
+          <span
+            className={`mt-2 inline-block rounded-full px-2 py-0.5 text-label uppercase tracking-label border ${
+              row.verdict.tone === "good"
+                ? "border-[--good]/50 bg-[--good]/10 text-foreground"
+                : row.verdict.tone === "warn"
+                ? "border-[color-mix(in_oklab,var(--amber)_55%,transparent)] bg-[color-mix(in_oklab,var(--amber)_10%,transparent)] text-foreground"
+                : "border-[color-mix(in_oklab,var(--crimson)_55%,transparent)] bg-[color-mix(in_oklab,var(--crimson)_12%,transparent)] text-foreground"
+            }`}
+          >
+            {row.verdict.label}
+          </span>
+        )}
         {row.valueSentence && (
           <p className="mt-2 text-meta text-muted-foreground leading-snug">{row.valueSentence}</p>
         )}
