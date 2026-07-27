@@ -458,14 +458,18 @@
 .scan-decision { /* no-op — was formerly a token override */ }
 
 /* ---------------------------------------------------------------
-   Doubt families — two visually distinct treatments so users can
-   act differently on "we're unsure what this wine is" vs. "we
-   know what it is and it sits near something you dislike". Shape
-   (dashed vs solid rail) carries the distinction, not just hue.
+   Doubt families — THREE visually distinct treatments. Shape AND
+   hue carry the distinction, so all three remain distinguishable
+   in grayscale:
+     UNCERTAIN  amber, dashed, no fill        (data-quality caveat)
+     CONTESTED  amber, solid rail + tint      (near a wine you dislike, your call)
+     VETOED     crimson, solid rail + tint    (don't order this)
+   --amber and --crimson at their non-text contrast (≥3.0:1) are
+   used ONLY as rails, borders, icons, and background tints here;
+   labels always resolve to var(--text).
    --------------------------------------------------------------- */
 
-/* UNCERTAIN IDENTITY — data-quality caveat. Amber, dashed, no fill.
-   Reads as a footnote, not an alarm. */
+/* UNCERTAIN IDENTITY — data-quality caveat. Amber, dashed, no fill. */
 @utility pm-uncertain {
   border: 1px dashed var(--amber);
   background: transparent;
@@ -483,28 +487,28 @@
   letter-spacing: 0.08em;
 }
 
-/* PALATE CONFLICT — this wine sits near something you dislike.
-   Crimson, solid left rail + filled tint. Reads as a warning. */
-@utility pm-conflict {
-  border: 1px solid color-mix(in oklab, var(--crimson) 55%, transparent);
-  background: color-mix(in oklab, var(--crimson) 8%, transparent);
+/* CONTESTED — near something you dislike, but closer to a love.
+   Amber, solid rail + filled tint. "Your call." */
+@utility pm-contested {
+  border: 1px solid color-mix(in oklab, var(--amber) 55%, transparent);
+  background: color-mix(in oklab, var(--amber) 8%, transparent);
   color: var(--text);
 }
-@utility pm-conflict-rail {
+@utility pm-contested-rail {
   position: relative;
 }
-.pm-conflict-rail::before {
+.pm-contested-rail::before {
   content: "";
   position: absolute;
   inset-block: 0;
   left: 0;
-  width: 3px;
-  background: var(--crimson);
+  width: 4px;
+  background: var(--amber);
 }
-@utility pm-conflict-chip {
+@utility pm-contested-chip {
   display: inline-block;
-  border: 1px solid color-mix(in oklab, var(--crimson) 55%, transparent);
-  background: color-mix(in oklab, var(--crimson) 10%, transparent);
+  border: 1px solid color-mix(in oklab, var(--amber) 55%, transparent);
+  background: color-mix(in oklab, var(--amber) 10%, transparent);
   color: var(--text);
   border-radius: 9999px;
   padding: 0.125rem 0.5rem;
@@ -512,4 +516,52 @@
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
+
+/* VETOED — do not order. Crimson, solid rail + filled tint. */
+@utility pm-vetoed {
+  border: 1px solid color-mix(in oklab, var(--crimson) 55%, transparent);
+  background: color-mix(in oklab, var(--crimson) 10%, transparent);
+  color: var(--text);
+}
+@utility pm-vetoed-rail {
+  position: relative;
+}
+.pm-vetoed-rail::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 4px;
+  background: var(--crimson);
+}
+@utility pm-vetoed-chip {
+  display: inline-block;
+  border: 1px solid color-mix(in oklab, var(--crimson) 55%, transparent);
+  background: color-mix(in oklab, var(--crimson) 12%, transparent);
+  color: var(--text);
+  border-radius: 9999px;
+  padding: 0.125rem 0.5rem;
+  font-size: var(--fs-label);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* Back-compat aliases — pm-conflict = the vetoed family. */
+@utility pm-conflict {
+  border: 1px solid color-mix(in oklab, var(--crimson) 55%, transparent);
+  background: color-mix(in oklab, var(--crimson) 10%, transparent);
+  color: var(--text);
+}
+@utility pm-conflict-chip {
+  display: inline-block;
+  border: 1px solid color-mix(in oklab, var(--crimson) 55%, transparent);
+  background: color-mix(in oklab, var(--crimson) 12%, transparent);
+  color: var(--text);
+  border-radius: 9999px;
+  padding: 0.125rem 0.5rem;
+  font-size: var(--fs-label);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
 
