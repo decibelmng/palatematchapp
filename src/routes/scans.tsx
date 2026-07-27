@@ -42,21 +42,39 @@ function ScansPage() {
       )}
 
       <ul className="space-y-2">
-        {(q.data ?? []).map((s) => (
-          <li key={s.id}>
-            <Link
-              to="/scan/$id"
-              params={{ id: s.id }}
-              className="block rounded-lg border border-border bg-card p-4 hover:bg-accent/40 active:bg-accent/60 transition-colors"
-            >
-              <div className="flex items-baseline justify-between gap-3">
-                <div className="min-w-0">
+        {(q.data ?? []).map((s) => {
+          const isBottle = s.kind === "bottle";
+          const to = isBottle ? "/scans" : "/scan/$id";
+          return (
+            <li key={s.id}>
+              <Link
+                to={isBottle ? "/scans" : "/scan/$id"}
+                params={isBottle ? undefined : { id: s.id }}
+                className="flex items-start gap-3 rounded-lg border border-border bg-card p-4 hover:bg-accent/40 active:bg-accent/60 transition-colors"
+              >
+                {isBottle && s.front_thumb_url ? (
+                  <img
+                    src={s.front_thumb_url}
+                    alt=""
+                    className="h-14 w-14 shrink-0 rounded object-cover border border-border"
+                    loading="lazy"
+                  />
+                ) : (
+                  <div className="h-14 w-14 shrink-0 rounded bg-muted border border-border flex items-center justify-center text-meta text-muted-foreground uppercase tracking-label">
+                    {isBottle ? "Btl" : "List"}
+                  </div>
+                )}
+                <div className="min-w-0 flex-1">
                   <div className="font-medium truncate">
-                    {s.restaurant_name ?? s.venue_raw_text ?? "Unattributed scan"}
+                    {isBottle
+                      ? (s.bottle_label ?? "Bottle scan")
+                      : (s.restaurant_name ?? s.venue_raw_text ?? "Unattributed scan")}
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5">
-                    {fmtDate(s.scanned_at)} · {s.wine_count} wine{s.wine_count === 1 ? "" : "s"}
-                    {s.matched_count > 0 && <> · {s.matched_count} matched</>}
+                    {fmtDate(s.scanned_at)}
+                    {isBottle
+                      ? (s.rated_stars ? ` · rated ${s.rated_stars}★` : " · not rated yet")
+                      : ` · ${s.wine_count} wine${s.wine_count === 1 ? "" : "s"}${s.matched_count > 0 ? ` · ${s.matched_count} matched` : ""}`}
                   </div>
                 </div>
                 {s.status !== "complete" && s.status !== "parsed" && (
@@ -64,10 +82,10 @@ function ScansPage() {
                     {s.status}
                   </span>
                 )}
-              </div>
-            </Link>
-          </li>
-        ))}
+              </Link>
+            </li>
+          );
+        })}
       </ul>
     </div>
   );
