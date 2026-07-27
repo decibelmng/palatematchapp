@@ -111,7 +111,17 @@ function RootComponent() {
       <QueryClientProvider client={queryClient}>
         <Outlet />
         <ConfirmDialogHost />
-        <Toaster position="bottom-center" closeButton richColors />
+        {/* Offset clears the fixed bottom nav (56px) + ScanThumbBar / A2HS
+            hint (up to ~72px). At 120px the toast sits above every fixed
+            bottom UI at any viewport from 320px up. */}
+        <Toaster
+          position="bottom-center"
+          closeButton
+          richColors
+          offset="120px"
+          mobileOffset="120px"
+        />
+
 
       </QueryClientProvider>
     </ThemeProvider>

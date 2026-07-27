@@ -1,36 +1,22 @@
-// Per-color palate calibration meter for the Palate profile.
-// Derived purely from the viewer's own rating count per wine type — never
-// from social metrics.
+// Actionable calibration hint. No percentages — a percentage is a fact about
+// the model, not about the person. One sentence, tells you exactly what to
+// do next, or nothing.
 import { useMemo } from "react";
+import { Link } from "@tanstack/react-router";
 import { useRatings, useBottlesByIds, bottleType } from "@/hooks/use-palate-data";
-import { calibrationPct, calibrationBand } from "@/lib/feed-reason";
+import { Sparkles, ArrowRight } from "lucide-react";
 
-function Row({ label, pct, band }: { label: string; pct: number; band: "thin" | "medium" | "strong" }) {
-  const barClass = band === "strong"
-    ? "bg-primary"
-    : band === "medium"
-    ? "bg-amber-500"
-    : "bg-muted-foreground/50";
-  return (
-    <div className="flex items-center gap-3">
-      <div className="w-20 text-xs uppercase tracking-label text-muted-foreground">{label}</div>
-      <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
-        <div className={`h-full ${barClass} transition-all`} style={{ width: `${pct}%` }} />
-      </div>
-      <div className="w-14 text-right text-xs tabular-nums text-foreground">
-        {pct}% <span className="text-muted-foreground">cal.</span>
-      </div>
-    </div>
-  );
-}
+// Below this per-type count, predictions for that color are still coarse.
+// Matches the "provisional" heuristic used elsewhere in the app.
+const TARGET_PER_TYPE = 8;
 
 export function CalibrationMeter() {
   const { data: ratings } = useRatings();
   const ids = useMemo(() => (ratings ?? []).map((r) => r.bottle_id), [ratings]);
   const { data: bottles } = useBottlesByIds(ids);
 
-  const counts = useMemo(() => {
-    const c: Record<"red" | "white", number> = { red: 0, white: 0 };
+  const { red, white } = useMemo(() => {
+    const c = { red: 0, white: 0 };
     for (const b of bottles ?? []) {
       const t = bottleType(b);
       if (t === "red" || t === "dessert") c.red += 1;
@@ -39,19 +25,28 @@ export function CalibrationMeter() {
     return c;
   }, [bottles]);
 
-  const redPct = calibrationPct(counts.red);
-  const whitePct = calibrationPct(counts.white);
+  // Pick whichever color needs the most help. If both are already at target,
+  // render nothing — the whole card disappears.
+  const redGap = Math.max(0, TARGET_PER_TYPE - red);
+  const whiteGap = Math.max(0, TARGET_PER_TYPE - white);
+  if (redGap === 0 && whiteGap === 0) return null;
+
+  const worse: "red" | "white" = whiteGap > redGap ? "white" : "red";
+  const gap = worse === "white" ? whiteGap : redGap;
+  const noun = worse === "white" ? "white" : "red";
+  const plural = gap === 1 ? "" : "s";
+  const picks = worse === "white" ? "white picks" : "red picks";
 
   return (
-    <div className="rounded-lg border border-border bg-card p-4 space-y-3">
-      <div className="text-sm font-medium text-foreground">Palate calibration</div>
-      <Row label="Red" pct={redPct} band={calibrationBand(redPct)} />
-      <Row label="White" pct={whitePct} band={calibrationBand(whitePct)} />
-      {(redPct < 40 || whitePct < 40) && (
-        <p className="text-xs text-muted-foreground">
-          Rate more of the light bars to sharpen your predictions.
-        </p>
-      )}
-    </div>
+    <Link
+      to="/rate"
+      className="flex items-center gap-3 rounded-[14px] border border-primary/30 bg-primary/5 p-3 hover:border-primary/60 transition"
+    >
+      <Sparkles size={16} className="text-primary shrink-0" />
+      <p className="flex-1 text-meta text-foreground">
+        Rate {gap} more {noun}{plural} to sharpen your {picks}.
+      </p>
+      <ArrowRight size={14} className="text-primary shrink-0" />
+    </Link>
   );
 }
