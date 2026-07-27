@@ -22,9 +22,13 @@ import { VisibilityControl } from "@/components/profile/VisibilityControl";
 import { ShareProfileButton } from "@/components/profile/ShareProfileButton";
 import { NameWithHandle } from "@/components/profile/NameWithHandle";
 import { AvatarUpload } from "@/components/profile/AvatarUpload";
-import { GraduationCap, Settings2 } from "lucide-react";
+import { GraduationCap, Moon, Sun, MessageSquare, LogOut, Clock, Users } from "lucide-react";
 import { CalibrationMeter } from "@/components/CalibrationMeter";
 import { displayNameFor, initialsFor } from "@/lib/user-display";
+import { useTheme } from "@/lib/theme";
+import { supabase } from "@/integrations/supabase/client";
+import { FeedbackDialog } from "@/components/feedback/FeedbackDialog";
+
 
 
 export const Route = createFileRoute("/palate/")({
