@@ -10,7 +10,7 @@ describe("benchmark tier validation", () => {
   });
   it("rejects <5★ as Canon", () => {
     for (const s of [1, 2, 3, 4]) {
-      expect(() => validateBenchmarkPromotion("canon", s)).toThrow(/Canon/);
+      expect(() => validateBenchmarkPromotion("canon", s)).toThrow(/benchmark/i);
     }
   });
   it("accepts 1★ or 2★ as Nemesis", () => {
@@ -19,7 +19,7 @@ describe("benchmark tier validation", () => {
   });
   it("rejects >2★ as Nemesis", () => {
     for (const s of [3, 4, 5]) {
-      expect(() => validateBenchmarkPromotion("nemesis", s)).toThrow(/Nemesis/);
+      expect(() => validateBenchmarkPromotion("nemesis", s)).toThrow(/dealbreaker/i);
     }
   });
   it("rejects unknown tier — never falls back to a default", () => {
