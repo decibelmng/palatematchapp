@@ -95,20 +95,21 @@ function CanonsPage() {
 
   const handleRemove = useCallback(
     (row: Row) => {
-      const verb = row.canon.tier === "canon" ? "Canon" : "Nemesis";
+      const verb = row.canon.tier === "canon" ? "Favorite" : "Avoid";
       demote.mutate(row.canon.id, {
         onSuccess: () => {
           armUndo({
             tier: row.canon.tier,
             previousBottle: row.bottle,
-            label: `${verb} removed: ${row.bottle.name}`,
+            label: `${verb} status removed: ${row.bottle.name}`,
           });
         },
         onError: (err) =>
-          toast.error((err as Error).message || `Couldn't remove ${verb}`),
+          toast.error((err as Error).message || `Couldn't remove ${verb.toLowerCase()} status`),
       });
     },
     [demote, armUndo],
+
   );
 
   const { canonGrouped, nemesisGrouped, totalCanons, totalNemeses } = useMemo(() => {
