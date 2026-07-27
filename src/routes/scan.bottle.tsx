@@ -56,6 +56,11 @@ function BottleScan() {
   // Provider-agnostic recognizer wrapper (Lovable vision LLM today; a
   // future bake-off winner can drop in behind the same interface).
   const recognizer = useMemo(() => createLovableVisionRecognizer(scan), [scan]);
+  const persistFn = useServerFn(persistBottleScan);
+  const correctFn = useServerFn(saveBottleScanCorrection);
+  const markRatedFn = useServerFn(markBottleScanRated);
+  // Scan-wine row id captured after identify — used by correction log and mark-rated.
+  const scanWineIdRef = useRef<string | null>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const libraryRef = useRef<HTMLInputElement>(null);
   const [front, setFront] = useState<{ file: File; url: string } | null>(null);
