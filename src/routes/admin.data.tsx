@@ -75,7 +75,7 @@ function AdminData() {
 
   return (
     <div style={{ padding: 24, fontFamily: "system-ui", maxWidth: 720 }}>
-      <h1 style={{ fontSize: 20, marginBottom: 16 }}>Cuvée re-fingerprinting</h1>
+      <h1 style={{ fontSize: 20, marginBottom: 16 }}>Cuvée profile refresh</h1>
       <p style={{ opacity: 0.7, fontSize: 13, marginBottom: 16 }}>
         Processes up to 15 unstamped cuvée groups per click. Priority: rated → on a menu → fully defaulted.
       </p>
