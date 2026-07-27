@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AuthGate } from "@/components/AuthGate";
 import { useSession } from "@/hooks/use-session";
 import {
-  BarChart3, Database, Search, Ticket, MessageSquare, Wand2, Bug, Wrench,
+  BarChart3, Database, Search, Ticket, MessageSquare, Wand2, Bug, Wrench, Map,
 } from "lucide-react";
 
 export const Route = createFileRoute("/admin/")({
@@ -27,6 +27,8 @@ const ADMIN_LINKS: Array<{
   { to: "/admin/disputes",      label: "Disputes",       description: "Style-profile disputes queue.",           Icon: Bug },
 
   { to: "/admin/type-fix",      label: "Type Fixes",     description: "Bottle type review queue.",               Icon: Wrench },
+  { to: "/admin/style-map",     label: "Style Map",      description: "Catalog QA — fingerprint scatter, region coherence.", Icon: Map },
+
 ];
 
 function AdminHub() {
