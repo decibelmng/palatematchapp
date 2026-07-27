@@ -625,58 +625,10 @@ function BottleScan() {
         />
       )}
 
-      <p className="mt-10 text-meta text-muted-foreground">
-        Each scan makes one paid vision call. Your label photo is stored privately to your account.
-      </p>
     </div>
   );
 }
 
-function LabelSlot({
-  title, preview, onCamera, onUpload, onRemove, disabled,
-}: {
-  title: string;
-  preview: { url: string } | null;
-  onCamera: () => void;
-  onUpload: () => void;
-  onRemove: () => void;
-  disabled: boolean;
-}) {
-  return (
-    <div className="rounded-lg border border-border bg-card p-3">
-      <p className="text-meta uppercase tracking-label text-muted-foreground">{title}</p>
-      {preview ? (
-        <div className="mt-2 relative">
-          <img src={preview.url} alt={title} className="w-full h-40 object-cover rounded-md border border-border" />
-          {!disabled && (
-            <button
-              onClick={onRemove}
-              className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-background border border-border text-xs leading-none flex items-center justify-center shadow"
-              aria-label={`Remove ${title}`}
-            >×</button>
-          )}
-        </div>
-      ) : (
-        <div className="mt-2 flex flex-col gap-2">
-          <button
-            onClick={onCamera}
-            disabled={disabled}
-            className="rounded-md bg-primary text-primary-foreground px-3 py-2 text-xs font-medium disabled:opacity-60"
-          >
-            Take photo
-          </button>
-          <button
-            onClick={onUpload}
-            disabled={disabled}
-            className="rounded-md border border-border bg-background px-3 py-2 text-xs font-medium disabled:opacity-60"
-          >
-            Upload
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
 
 function ConfidentCard({
   c, predicted, onRate,
