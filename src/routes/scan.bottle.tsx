@@ -23,6 +23,7 @@ import { AddBottleDialog } from "@/components/AddBottleDialog";
 import { verdictLine } from "@/components/verdict/reason";
 import { toast } from "sonner";
 import { friendlyError } from "@/lib/error-message";
+import { prepareImageForScan } from "@/lib/image-downscale";
 
 
 export const Route = createFileRoute("/scan/bottle")({
@@ -36,19 +37,8 @@ export const Route = createFileRoute("/scan/bottle")({
   component: BottleScan,
 });
 
-async function fileToBase64(file: File): Promise<{ base64: string; mediaType: string }> {
-  const buf = await file.arrayBuffer();
-  const bytes = new Uint8Array(buf);
-  let binary = "";
-  const chunk = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunk) {
-    binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunk)));
-  }
-  const base64 = btoa(binary);
-  let mt = file.type || "image/jpeg";
-  if (!["image/jpeg", "image/png", "image/webp", "image/heic"].includes(mt)) mt = "image/jpeg";
-  return { base64, mediaType: mt };
-}
+// Image prep lives in @/lib/image-downscale — see prepareImageForScan.
+
 
 function BottleScan() {
   const session = useSession();
@@ -116,26 +106,36 @@ function BottleScan() {
       if (files.length === 0) throw new Error("Take or upload at least a front-label photo.");
       const uid = session?.user.id;
       const scanUuid = crypto.randomUUID();
+      // Downscale first (client CPU), THEN kick off Storage upload in
+      // parallel with the vision call so the model isn't waiting on the
+      // Storage round-trip. Storage failures never block recognition —
+      // the photo is a nicety for the scan log, not a dependency.
       const prepared = await Promise.all(files.map(async (s, i) => {
-        const { base64, mediaType } = await fileToBase64(s.file);
-        let storagePath: string | null = null;
+        const img = await prepareImageForScan(s.file);
+        let uploadPromise: Promise<string | null> = Promise.resolve(null);
         if (uid) {
-          const ext = (s.file.name.split(".").pop() ?? "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+          const ext = img.mediaType === "image/png" ? "png" : img.mediaType === "image/webp" ? "webp" : "jpg";
           const path = `${uid}/${scanUuid}/bottle-${i === 0 ? "front" : "back"}.${ext}`;
-          const { error } = await supabase.storage
+          uploadPromise = supabase.storage
             .from("scan-images")
-            .upload(path, s.file, { contentType: mediaType, upsert: true });
-          if (!error) storagePath = path;
+            .upload(path, img.blob, { contentType: img.mediaType, upsert: true })
+            .then(({ error }) => (error ? null : path))
+            .catch(() => null);
         }
-        return {
-          image_base64: base64,
-          media_type: mediaType as "image/jpeg" | "image/png" | "image/webp" | "image/heic",
-          storagePath,
-        };
+        return { img, uploadPromise };
       }));
-      const image_paths = prepared.map((p) => p.storagePath).filter((p): p is string => !!p);
-      const images = prepared.map(({ image_base64, media_type }) => ({ image_base64, media_type }));
-      return await recognizer.recognizeBottle({ images, image_paths });
+      const images = prepared.map(({ img }) => ({
+        image_base64: img.base64,
+        media_type: img.mediaType,
+      }));
+      // Vision + Storage race in parallel; we join Storage after so the
+      // scan log gets the paths, but vision doesn't wait for it.
+      const [result, ...paths] = await Promise.all([
+        recognizer.recognizeBottle({ images, image_paths: [] }),
+        ...prepared.map((p) => p.uploadPromise),
+      ]);
+      const image_paths = paths.filter((p): p is string => !!p);
+      return { ...result, image_paths };
     },
     onSuccess: (r) => {
       // Seed the editable confirm form from the raw read; require an

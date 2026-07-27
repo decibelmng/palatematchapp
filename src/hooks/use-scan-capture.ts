@@ -14,12 +14,12 @@ import { attributeScanFn } from "@/lib/restaurants.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
 import {
-  fileToBase64,
   chunkArr,
   rowToResolved,
   type BatchImage,
   type BatchState,
 } from "@/lib/scan-helpers";
+import { prepareImageForScan } from "@/lib/image-downscale";
 
 export type ScanStatus = "idle" | "running" | "partial" | "complete" | "failed";
 
@@ -143,19 +143,19 @@ export function useScanCapture() {
 
       const prepared = await Promise.all(
         files.map(async (file, i) => {
-          const { base64, mediaType } = await fileToBase64(file);
+          const img = await prepareImageForScan(file);
           let storagePath: string | null = null;
           if (uid) {
-            const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+            const ext = img.mediaType === "image/png" ? "png" : img.mediaType === "image/webp" ? "webp" : "jpg";
             const path = `${uid}/${scanUuid}/page-${i + 1}.${ext}`;
             const { error } = await supabase.storage
               .from("scan-images")
-              .upload(path, file, { contentType: mediaType, upsert: true });
+              .upload(path, img.blob, { contentType: img.mediaType, upsert: true });
             if (!error) storagePath = path;
           }
           return {
-            image_base64: base64,
-            media_type: mediaType as BatchImage["media_type"],
+            image_base64: img.base64,
+            media_type: img.mediaType as BatchImage["media_type"],
             storagePath,
           };
         }),
