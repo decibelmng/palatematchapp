@@ -162,9 +162,9 @@ function learnOmega(rated: RatedFp[], type: WineType): OmegaFit {
   // Build pairs
   type Pair = { g: number; d2: Record<FpKey, number>; w: number };
   const pairs: Pair[] = [];
-  for (let i = 0; i < rated.length; i++) {
-    for (let j = i + 1; j < rated.length; j++) {
-      const a = rated[i], b = rated[j];
+  for (let i = 0; i < real.length; i++) {
+    for (let j = i + 1; j < real.length; j++) {
+      const a = real[i], b = real[j];
       const g = Math.abs(a.stars - b.stars) / 4;
       const d2: Record<FpKey, number> = {} as Record<FpKey, number>;
       for (const k of active) {
