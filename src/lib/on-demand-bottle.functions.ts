@@ -206,7 +206,15 @@ export async function resolveOrCreateOnDemandCore(
       source: flat ? "on-demand; flat-fingerprint flagged" : "on-demand",
       unverified: true,
       added_by: userId,
+      // Provenance — NOT NULL columns. On-demand uses the blinded_v2 pipeline
+      // but a distinct pipeline label so cohort queries can separate it from
+      // bulk re-fingerprint runs.
+      fp_model: FINGERPRINT_MODEL,
+      fp_prompt_hash: FINGERPRINT_PROMPT_HASH,
+      fp_pipeline: "on_demand_blinded_v2",
+      fp_scored_at: new Date().toISOString(),
     } as never)
+
     .select("id")
     .single();
   if (error) throw new Error((error as { message?: string }).message ?? "on-demand insert failed");
