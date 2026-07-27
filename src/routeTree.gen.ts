@@ -37,6 +37,7 @@ import { Route as PalateTypeRouteImport } from './routes/palate.$type'
 import { Route as ITokenRouteImport } from './routes/i.$token'
 import { Route as AdminUsageRouteImport } from './routes/admin.usage'
 import { Route as AdminTypeFixRouteImport } from './routes/admin.type-fix'
+import { Route as AdminStyleMapRouteImport } from './routes/admin.style-map'
 import { Route as AdminSommCodesRouteImport } from './routes/admin.somm-codes'
 import { Route as AdminInspectRouteImport } from './routes/admin.inspect'
 import { Route as AdminFeedbackRouteImport } from './routes/admin.feedback'
@@ -187,6 +188,11 @@ const AdminTypeFixRoute = AdminTypeFixRouteImport.update({
   path: '/admin/type-fix',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminStyleMapRoute = AdminStyleMapRouteImport.update({
+  id: '/admin/style-map',
+  path: '/admin/style-map',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminSommCodesRoute = AdminSommCodesRouteImport.update({
   id: '/admin/somm-codes',
   path: '/admin/somm-codes',
@@ -256,6 +262,7 @@ export interface FileRoutesByFullPath {
   '/admin/feedback': typeof AdminFeedbackRoute
   '/admin/inspect': typeof AdminInspectRoute
   '/admin/somm-codes': typeof AdminSommCodesRoute
+  '/admin/style-map': typeof AdminStyleMapRoute
   '/admin/type-fix': typeof AdminTypeFixRoute
   '/admin/usage': typeof AdminUsageRoute
   '/i/$token': typeof ITokenRoute
@@ -295,6 +302,7 @@ export interface FileRoutesByTo {
   '/admin/feedback': typeof AdminFeedbackRoute
   '/admin/inspect': typeof AdminInspectRoute
   '/admin/somm-codes': typeof AdminSommCodesRoute
+  '/admin/style-map': typeof AdminStyleMapRoute
   '/admin/type-fix': typeof AdminTypeFixRoute
   '/admin/usage': typeof AdminUsageRoute
   '/i/$token': typeof ITokenRoute
@@ -335,6 +343,7 @@ export interface FileRoutesById {
   '/admin/feedback': typeof AdminFeedbackRoute
   '/admin/inspect': typeof AdminInspectRoute
   '/admin/somm-codes': typeof AdminSommCodesRoute
+  '/admin/style-map': typeof AdminStyleMapRoute
   '/admin/type-fix': typeof AdminTypeFixRoute
   '/admin/usage': typeof AdminUsageRoute
   '/i/$token': typeof ITokenRoute
@@ -376,6 +385,7 @@ export interface FileRouteTypes {
     | '/admin/feedback'
     | '/admin/inspect'
     | '/admin/somm-codes'
+    | '/admin/style-map'
     | '/admin/type-fix'
     | '/admin/usage'
     | '/i/$token'
@@ -415,6 +425,7 @@ export interface FileRouteTypes {
     | '/admin/feedback'
     | '/admin/inspect'
     | '/admin/somm-codes'
+    | '/admin/style-map'
     | '/admin/type-fix'
     | '/admin/usage'
     | '/i/$token'
@@ -454,6 +465,7 @@ export interface FileRouteTypes {
     | '/admin/feedback'
     | '/admin/inspect'
     | '/admin/somm-codes'
+    | '/admin/style-map'
     | '/admin/type-fix'
     | '/admin/usage'
     | '/i/$token'
@@ -494,6 +506,7 @@ export interface RootRouteChildren {
   AdminFeedbackRoute: typeof AdminFeedbackRoute
   AdminInspectRoute: typeof AdminInspectRoute
   AdminSommCodesRoute: typeof AdminSommCodesRoute
+  AdminStyleMapRoute: typeof AdminStyleMapRoute
   AdminTypeFixRoute: typeof AdminTypeFixRoute
   AdminUsageRoute: typeof AdminUsageRoute
   ITokenRoute: typeof ITokenRoute
@@ -704,6 +717,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminTypeFixRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/style-map': {
+      id: '/admin/style-map'
+      path: '/admin/style-map'
+      fullPath: '/admin/style-map'
+      preLoaderRoute: typeof AdminStyleMapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/somm-codes': {
       id: '/admin/somm-codes'
       path: '/admin/somm-codes'
@@ -819,6 +839,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminFeedbackRoute: AdminFeedbackRoute,
   AdminInspectRoute: AdminInspectRoute,
   AdminSommCodesRoute: AdminSommCodesRoute,
+  AdminStyleMapRoute: AdminStyleMapRoute,
   AdminTypeFixRoute: AdminTypeFixRoute,
   AdminUsageRoute: AdminUsageRoute,
   ITokenRoute: ITokenRoute,

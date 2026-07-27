@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AuthGate } from "@/components/AuthGate";
 import { useSession } from "@/hooks/use-session";
 import {
-  BarChart3, Database, Search, Ticket, MessageSquare, Wand2, Bug, Wrench,
+  BarChart3, Database, Search, Ticket, MessageSquare, Wand2, Bug, Wrench, Map,
 } from "lucide-react";
 
 export const Route = createFileRoute("/admin/")({
