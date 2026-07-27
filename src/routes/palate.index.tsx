@@ -251,7 +251,7 @@ function PalateHome() {
           </div>
         )}
         <div className="mt-2 flex items-center justify-between px-2 pb-1">
-          <div className="text-meta text-muted-foreground">Your mnemonic: <span className="font-mono text-foreground">{scopedCode}</span></div>
+          <div className="text-meta text-muted-foreground">Palate code: <span className="font-mono text-foreground">{scopedCode}</span></div>
         </div>
       </div>
 

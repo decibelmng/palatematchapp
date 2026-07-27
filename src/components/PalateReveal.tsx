@@ -1,22 +1,31 @@
 import { useEffect } from "react";
 import type { PaletteType } from "@/lib/palate";
+import { PalateCodeReader } from "@/components/PalateCodeReader";
+import { archetypeFor, type QuizAnswers } from "@/lib/quiz-seeds";
 
-/** One-time celebratory reveal shown when the user crosses their 5th rating.
- *  Renders inline; caller controls dismissal via `onDismiss`. */
+/** Post-onboarding reveal. The palate code is the hero — it is the
+ *  identity. The archetype name sits beneath as a secondary label, and
+ *  the tagline is the caption. Auto-cycles through each letter once via
+ *  PalateCodeReader (guarded by localStorage so it never plays twice). */
 export function PalateReveal({
   code,
   type,
+  answers,
   onDismiss,
 }: {
   code: string;
   type: PaletteType;
+  /** Optional — when present, drives archetype name + tagline. */
+  answers?: QuizAnswers | null;
   onDismiss: () => void;
 }) {
   useEffect(() => {
-    // Auto-dismiss after 8s so it never blocks the UI.
-    const t = setTimeout(onDismiss, 8000);
+    // Auto-dismiss after a longer window so the intro cycle has time to run.
+    const t = setTimeout(onDismiss, 14000);
     return () => clearTimeout(t);
   }, [onDismiss]);
+
+  const arche = answers ? archetypeFor(answers, type) : null;
 
   return (
     <div
@@ -24,34 +33,35 @@ export function PalateReveal({
       aria-live="polite"
       className="mt-6 mx-auto max-w-md rounded-[14px] border border-primary/60 bg-[color-mix(in_oklab,var(--color-primary)_4%,var(--color-card))] p-5 text-center shadow-[var(--pm-card-shadow)]"
     >
-      <p
-        className="text-meta uppercase text-primary/80"
-        style={{  }}
-      >
-        Your {type} palate
+      <p className="text-meta uppercase tracking-label text-primary/80">
+        Your {type} palate has a code
       </p>
-      <div
-        className="mt-3 font-serif text-display leading-none text-primary"
-        style={{  }}
-      >
-        {code.split("").map((ch, i) => (
-          <span
-            key={`reveal-${i}-${ch}`}
-            className="pm-letter"
-            style={{ ["--pm-delay" as string]: `${i * 90}ms` }}
-          >
-            {ch}
-          </span>
-        ))}
+
+      <div className="mt-3 flex justify-center">
+        <PalateCodeReader
+          code={code}
+          type={type}
+          autoCycle
+          size="display"
+          className="max-w-full"
+        />
       </div>
-      <p className="mt-4 font-serif italic text-sub text-foreground/90 leading-relaxed">
-        You're on the map.
-      </p>
+
+      {arche && (
+        <>
+          <div className="mt-4 font-serif text-heading leading-tight text-foreground">
+            {arche.name}
+          </div>
+          <p className="mt-1 text-sub text-muted-foreground max-w-[36ch] mx-auto">
+            {arche.tagline}
+          </p>
+        </>
+      )}
+
       <button
         type="button"
         onClick={onDismiss}
-        className="mt-4 text-meta uppercase text-muted-foreground hover:text-primary"
-        style={{  }}
+        className="mt-5 text-meta uppercase tracking-label text-muted-foreground hover:text-primary"
       >
         Explore your palate →
       </button>
