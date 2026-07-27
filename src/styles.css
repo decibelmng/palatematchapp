@@ -142,6 +142,7 @@
   --value: #1F6440;
   --bad: #8A2F3B;               /* 5.20:1 vs --surface — destructive text on light */
   --crimson: #8A2F3B;
+  --skip-badge-fg: #FFFFFF;     /* 8.23:1 on #8A2F3B */
   /* Non-text ONLY (~3.5:1 min across surfaces at accent use, ~4.5:1 on --surface).
      Use as rail/border/icon/tint; labels must resolve to --text. */
   --amber: #8A5D18;
