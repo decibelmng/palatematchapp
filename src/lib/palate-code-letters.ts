@@ -100,16 +100,24 @@ const WHITE_POSITIONS: Array<{ axis: string; letters: Record<string, string> }> 
 ];
 
 /** Return one-line meaning for the letter at `position` (0-indexed) of a
- *  code of the given type. Unknown letters return a safe fallback. */
-export function explainLetter(type: PaletteType, code: string, position: number): LetterMeaning {
+ *  code of the given type. When `bimodal` is true, the position is treated
+ *  as the split-taste case even though it renders as "·" — the user goes
+ *  both ways on that axis. Unknown letters return a safe fallback. */
+export function explainLetter(
+  type: PaletteType,
+  code: string,
+  position: number,
+  bimodal?: boolean,
+): LetterMeaning {
   const positions = type === "red" ? RED_POSITIONS : WHITE_POSITIONS;
   const pos = positions[position];
-  const letter = (code[position] ?? "·") as string;
-  if (!pos) return { letter, axisLabel: "", meaning: "" };
+  const rawLetter = (code[position] ?? "·") as string;
+  const lookup = bimodal ? "X" : rawLetter;
+  if (!pos) return { letter: rawLetter, axisLabel: "", meaning: "" };
   return {
-    letter,
+    letter: rawLetter,
     axisLabel: pos.axis,
-    meaning: pos.letters[letter] ?? `${letter} — ${pos.axis.toLowerCase()} preference.`,
+    meaning: pos.letters[lookup] ?? `${rawLetter} — ${pos.axis.toLowerCase()} preference.`,
   };
 }
 
