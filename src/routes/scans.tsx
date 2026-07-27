@@ -37,20 +37,18 @@ function ScansPage() {
       {q.error && <div className="text-sm text-destructive py-4">Couldn't load scans.</div>}
       {q.data && q.data.length === 0 && (
         <div className="rounded-lg border border-border bg-card p-6 text-sm text-muted-foreground">
-          No scans yet. Head to the <Link to="/scan/list" className="text-primary underline">scan tab</Link> to capture your first wine list.
+          No scans yet. Open the <Link to="/scan/list" className="text-primary underline">scanner</Link> to capture your first wine list.
         </div>
       )}
 
       <ul className="space-y-2">
         {(q.data ?? []).map((s) => {
           const isBottle = s.kind === "bottle";
-          return (
-            <li key={s.id}>
-              <Link
-                to={isBottle ? "/scans" : "/scan/$id"}
-                params={isBottle ? undefined : { id: s.id }}
-                className="flex items-start gap-3 rounded-lg border border-border bg-card p-4 hover:bg-accent/40 active:bg-accent/60 transition-colors"
-              >
+          // Bottle scans have no persisted detail route, so their rows are
+          // static (a self-link to /scans was a dead-end tap). List scans reopen.
+          const rowClass = "flex items-start gap-3 rounded-lg border border-border bg-card p-4";
+          const inner = (
+            <>
                 {isBottle && s.front_thumb_url ? (
                   <img
                     src={s.front_thumb_url}
@@ -81,7 +79,21 @@ function ScansPage() {
                     {s.status}
                   </span>
                 )}
-              </Link>
+            </>
+          );
+          return (
+            <li key={s.id}>
+              {isBottle ? (
+                <div className={rowClass}>{inner}</div>
+              ) : (
+                <Link
+                  to="/scan/$id"
+                  params={{ id: s.id }}
+                  className={`${rowClass} hover:bg-accent/40 active:bg-accent/60 transition-colors`}
+                >
+                  {inner}
+                </Link>
+              )}
             </li>
           );
         })}

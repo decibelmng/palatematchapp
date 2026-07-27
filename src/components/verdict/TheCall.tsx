@@ -20,11 +20,13 @@ export function TheCall({
   const price = priceLabel(row);
   const verdict = verdictLine(row.ranked.predicted);
   const because = becauseLine(row);
-  const nearestCount = row.ranked.maxSimilarity >= 0.35 ? 3 : 0; // proxy — recommender doesn't expose neighbor count
-  const confident = row.isCatalog && nearestCount >= 3;
+  // Confidence rests on two real signals — a clean catalog match and genuine
+  // similarity to a wine you've rated. Don't invent a neighbour count the
+  // recommender never computed (it exposes maxSimilarity, not how many).
+  const confident = row.isCatalog && row.ranked.maxSimilarity >= 0.35;
   const confChip = confident ? "Confident" : "Estimated";
   const confExplain = confident
-    ? "Matched to a wine in the catalog with several close neighbors in wines you've rated."
+    ? "A clean catalog match that sits close to a wine you've rated."
     : "The wine wasn't a clean catalog match, so its profile is inferred — treat the read as a strong guess.";
 
   const bottle = row.ranked.bottle;
