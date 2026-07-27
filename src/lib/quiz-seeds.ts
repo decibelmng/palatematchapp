@@ -156,6 +156,17 @@ export const WHITE_PAIRS: QuizPair[] = [
     shifts: { acid: -0.20, body: 0.20 },
     archetype: "body",
   },
+  {
+    // 8th white pair — texture. The existing seven covered oak, acid,
+    // body, fruit, mineral character. Phenolic texture (skin-contact
+    // whites, extended-lees whites) was under-covered — this pair
+    // separates a silky, unimpeded mouthfeel from a grainy, chewy one.
+    id: "w-texture",
+    low: "Smooth and glassy",
+    high: "Grippy and textural",
+    shifts: { tannin: 0.25, savory: 0.15 },
+    archetype: "earth",
+  },
 ];
 
 export function pairsFor(type: PaletteType): QuizPair[] {
