@@ -93,11 +93,12 @@ export function validateBenchmarkPromotion(tier: BenchmarkTier, stars: number): 
     throw new Error(`Invalid tier: ${tier}`);
   }
   if (tier === "canon" && stars < 5) {
-    throw new Error("Only 5★ wines can become a Canon.");
+    throw new Error("Only 5★ wines can be marked as a favorite.");
   }
   if (tier === "nemesis" && stars > 2) {
-    throw new Error("Only 1★ or 2★ wines can become a Nemesis.");
+    throw new Error("Only 1★ or 2★ wines can be marked as one to avoid.");
   }
+
 }
 
 /** Friendly re-throw for the `EXCLUDED_BOTTLE:` sentinel raised by the
