@@ -165,7 +165,6 @@ function BottleScan() {
     if (!fileList || fileList.length === 0) return;
     const f = fileList[0];
     const url = URL.createObjectURL(f);
-    const isFirstPhoto = !front && !back;
     if (pickTarget === "front") {
       if (front) URL.revokeObjectURL(front.url);
       setFront({ file: f, url });
@@ -176,12 +175,8 @@ function BottleScan() {
     if (inputEl) inputEl.value = "";
     mutation.reset();
     setEditedRead(null); setConfirmed(false); setOverride(null);
-    // Auto-kick the scan on the first photo so users don't have to hunt
-    // for a second button. Subsequent adds (e.g. adding a back label)
-    // still require an explicit "Identify" tap.
-    if (isFirstPhoto) {
-      setTimeout(() => mutation.mutate(), 0);
-    }
+    // Identify runs on an explicit "Continue" tap — the capture step is
+    // its own step, one photo, one action.
   }
 
   function startOver() {
