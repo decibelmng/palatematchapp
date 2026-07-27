@@ -17,6 +17,7 @@ import { authStorageSnapshot, installAuthDebug } from "@/lib/auth-debug";
 import { ThemeProvider, themeBootstrapScript } from "@/lib/theme";
 import { ConfirmDialogHost } from "@/components/confirm-dialog";
 
+const rawLandingCaptureScript = `try{var e={t:Date.now(),href:location.href,hash:location.hash,search:location.search,ref:document.referrer};var a=JSON.parse(sessionStorage.getItem('pm.rawLanding')||'[]');a.push(e);sessionStorage.setItem('pm.rawLanding',JSON.stringify(a.slice(-20)));}catch(_){}`;
 
 function NotFoundComponent() {
   return (
@@ -89,6 +90,7 @@ function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en" data-theme="light">
       <head>
+        <script dangerouslySetInnerHTML={{ __html: rawLandingCaptureScript }} />
         <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
         <HeadContent />
       </head>

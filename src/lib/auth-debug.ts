@@ -2,6 +2,7 @@ import type { Session, SupabaseClient } from "@supabase/supabase-js";
 
 export const AUTH_STORAGE_KEY = "sb-xyxanewatmrekdqowqao-auth-token";
 export const AUTH_TRACE_KEY = "pm.authTrace";
+export const RAW_LANDING_KEY = "pm.rawLanding";
 const MAX_TRACE = 200;
 
 const INSTALL_FLAG = "__pmAuthDebugInstalled";
@@ -35,6 +36,18 @@ export function readAuthTrace(): Array<{ t: number; origin: string; event: strin
 
 export function clearAuthTrace() {
   if (typeof window !== "undefined") sessionStorage.removeItem(AUTH_TRACE_KEY);
+}
+
+export function readRawLanding(): Array<{ t: number; href: string; hash: string; search: string; ref: string }> {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = sessionStorage.getItem(RAW_LANDING_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+export function clearRawLanding() {
+  if (typeof window !== "undefined") sessionStorage.removeItem(RAW_LANDING_KEY);
 }
 
 export function snapshotSbKeys() {
