@@ -513,7 +513,7 @@ function BottleScan() {
                       disabled={onDemandBusy || !extracted.producer || !(extracted.wine_name || extracted.region)}
                       className="w-full rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm font-medium disabled:opacity-60"
                     >
-                      {onDemandBusy ? "Fingerprinting…" : "Fingerprint & add automatically"}
+                      {onDemandBusy ? "Working…" : "Add it for me →"}
                     </button>
                     <button
                       onClick={() => setShowAdd(true)}
