@@ -361,6 +361,28 @@ function BottleScan() {
 
   function confirmRead() {
     if (!editedRead) return;
+    // Log corrections (append-only) — one row per field the user changed.
+    if (readChanged() && rawExtracted && scanWineIdRef.current) {
+      const swid = scanWineIdRef.current;
+      const norm = (v: unknown) => (v === null || v === undefined || v === "") ? null : String(v);
+      const fields: Array<[
+        "producer" | "cuvee" | "vintage" | "wine_type" | "region" | "grape",
+        string | null,
+        string | null,
+      ]> = [
+        ["producer",  norm(rawExtracted.producer),  norm(editedRead.producer)],
+        ["cuvee",     norm(rawExtracted.wine_name), norm(editedRead.wine_name)],
+        ["region",    norm(rawExtracted.region),    norm(editedRead.region)],
+        ["grape",     norm(rawExtracted.grape),     norm(editedRead.grape)],
+        ["wine_type", norm(rawExtracted.type),      norm(editedRead.type)],
+        ["vintage",   norm(rawExtracted.vintage),   norm(editedRead.vintage)],
+      ];
+      for (const [field, oldV, newV] of fields) {
+        if (oldV !== newV) {
+          correctFn({ data: { scanWineId: swid, field, oldValue: oldV, newValue: newV } }).catch(() => {});
+        }
+      }
+    }
     if (readChanged()) {
       resolveMut.mutate(editedRead);
     } else {
