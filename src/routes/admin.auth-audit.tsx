@@ -3,6 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { useQuery } from "@tanstack/react-query";
 import { AuthGate } from "@/components/AuthGate";
+import { Button } from "@/components/ui/button";
 import { adminAuthAuditEntries, type AdminAuthAuditEntry } from "@/lib/admin-auth-audit.functions";
 
 export const Route = createFileRoute("/admin/auth-audit")({
@@ -47,14 +48,15 @@ function AdminAuthAudit() {
 
       <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
         {[24, 72, 168].map((value) => (
-          <button
+          <Button
             key={value}
             type="button"
             onClick={() => setHours(value)}
-            className={`rounded-md border px-3 py-2 ${hours === value ? "border-primary bg-accent" : "border-border bg-card"}`}
+            variant={hours === value ? "default" : "outline"}
+            size="sm"
           >
             {value}h
-          </button>
+          </Button>
         ))}
         <span className="ml-auto text-muted-foreground">
           {rows.length} rows · {counts.success} without error · {counts.failed} with error
