@@ -177,7 +177,7 @@ function SignInBlock() {
   async function oauth(provider: "apple" | "google") {
     setErr(null);
     const res = await lovable.auth.signInWithOAuth(provider, {
-      redirect_uri: window.location.href,
+      redirect_uri: `${window.location.origin}/auth/callback`,
     });
     if (res.error) setErr(res.error.message ?? `${provider} sign-in failed`);
   }
@@ -189,7 +189,7 @@ function SignInBlock() {
     try {
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: { shouldCreateUser: true, emailRedirectTo: window.location.href },
+        options: { shouldCreateUser: true, emailRedirectTo: `${window.location.origin}/auth/callback` },
       });
       if (error) throw error;
       setSent(true);

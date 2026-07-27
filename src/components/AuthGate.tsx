@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { useSession } from "@/hooks/use-session";
-import { authStorageSnapshot, authTrace, clearAuthTrace, getAuthGateMountCount, installAuthDebug, readAuthTrace, registerAuthGateMount } from "@/lib/auth-debug";
+import { authStorageSnapshot, authTrace, clearAuthTrace, clearRawLanding, getAuthGateMountCount, installAuthDebug, readAuthTrace, readRawLanding, registerAuthGateMount } from "@/lib/auth-debug";
 import { AppShell } from "./AppShell";
 import { NameGate } from "./NameGate";
 
@@ -49,6 +49,10 @@ export function AuthGate({ children }: { children: ReactNode }) {
 
 type Mode = "login" | "recover" | "create";
 
+function authCallbackUrl(origin = window.location.origin) {
+  return `${origin}/auth/callback`;
+}
+
 function AuthScreen() {
   const [mode, setMode] = useState<Mode>("login");
   const [email, setEmail] = useState("");
@@ -63,7 +67,7 @@ function AuthScreen() {
   async function oauth(provider: "apple" | "google", overrideRedirect?: string) {
     setErr(null);
     installAuthDebug(supabase);
-    const redirect_uri = overrideRedirect ?? window.location.origin;
+    const redirect_uri = overrideRedirect ?? authCallbackUrl();
     authTrace("oauth click", {
       provider,
       origin: window.location.origin,
@@ -101,7 +105,7 @@ function AuthScreen() {
           email,
           options: {
             shouldCreateUser: true,
-            emailRedirectTo: window.location.origin,
+              emailRedirectTo: authCallbackUrl(),
             data: { display_name: trimmed },
           },
         });
@@ -113,7 +117,7 @@ function AuthScreen() {
           email,
           options: {
             shouldCreateUser: false,
-            emailRedirectTo: window.location.origin,
+            emailRedirectTo: authCallbackUrl(),
           },
         });
         // Ignore the error deliberately — identical response either way.
@@ -252,7 +256,7 @@ function AuthScreen() {
         )}
       </div>
 
-      <AuthTracePanel onTestAltOrigin={() => oauth("google", "https://palatematchapp.lovable.app")} />
+      <AuthTracePanel onTestAltOrigin={() => oauth("google", authCallbackUrl("https://palatematchapp.lovable.app"))} />
     </ScreenShell>
   );
 }
@@ -265,6 +269,7 @@ function AuthTracePanel({ onTestAltOrigin }: { onTestAltOrigin: () => void }) {
     return () => window.clearInterval(id);
   }, []);
   const trace = readAuthTrace();
+  const rawLanding = readRawLanding();
   const build = (typeof document !== "undefined" && document.currentScript?.getAttribute("src")) || "n/a";
   void tick;
   return (
@@ -274,7 +279,7 @@ function AuthTracePanel({ onTestAltOrigin }: { onTestAltOrigin: () => void }) {
         onClick={() => setOpen((o) => !o)}
         className="underline decoration-dotted hover:text-foreground"
       >
-        [auth-debug] {trace.length} events · {open ? "hide" : "show"}
+        [auth-debug] {trace.length} events · {rawLanding.length} landings · {open ? "hide" : "show"}
       </button>
       {open && (
         <div className="mt-2 rounded-md border border-border bg-card/80 p-3 space-y-2 font-mono text-[10px] leading-snug">
@@ -283,13 +288,13 @@ function AuthTracePanel({ onTestAltOrigin }: { onTestAltOrigin: () => void }) {
           <div className="flex gap-2 flex-wrap">
             <button
               type="button"
-              onClick={() => { clearAuthTrace(); setTick((t) => t + 1); }}
+              onClick={() => { clearAuthTrace(); clearRawLanding(); setTick((t) => t + 1); }}
               className="rounded border border-border px-2 py-1 hover:bg-accent"
             >clear</button>
             <button
               type="button"
               onClick={() => {
-                const text = JSON.stringify(readAuthTrace(), null, 2);
+                const text = JSON.stringify({ rawLanding: readRawLanding(), trace: readAuthTrace() }, null, 2);
                 navigator.clipboard?.writeText(text);
                 toast.success("Trace copied");
               }}
@@ -299,9 +304,22 @@ function AuthTracePanel({ onTestAltOrigin }: { onTestAltOrigin: () => void }) {
               type="button"
               onClick={onTestAltOrigin}
               className="rounded border border-amber-500/50 text-amber-500 px-2 py-1 hover:bg-amber-500/10"
-              title="Sign in with redirect_uri forced to https://palatematchapp.lovable.app"
+              title="Sign in with redirect_uri forced to https://palatematchapp.lovable.app/auth/callback"
             >test .lovable.app origin</button>
           </div>
+          <div>
+            <div className="text-foreground">raw landings before app code</div>
+            <div className="max-h-[22vh] overflow-auto space-y-1">
+              {rawLanding.length === 0 && <div className="opacity-60">(no raw landings yet)</div>}
+              {rawLanding.map((e, i) => (
+                <div key={i} className="border-t border-border/50 pt-1">
+                  <div>{new Date(e.t).toISOString().slice(11, 19)} · {e.href}</div>
+                  <pre className="whitespace-pre-wrap break-all opacity-80">{JSON.stringify({ hash: e.hash, search: e.search, ref: e.ref })}</pre>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div className="text-foreground">auth events</div>
           <div className="max-h-[40vh] overflow-auto space-y-1">
             {trace.length === 0 && <div className="opacity-60">(no events yet)</div>}
             {trace.map((e, i) => (
