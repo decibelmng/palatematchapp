@@ -20,6 +20,7 @@ import {
   type BatchImage,
   type BatchState,
 } from "@/lib/scan-helpers";
+import { prepareImageForScan } from "@/lib/image-downscale";
 
 export type ScanStatus = "idle" | "running" | "partial" | "complete" | "failed";
 
