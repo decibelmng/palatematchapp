@@ -1,46 +1,73 @@
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-export type Theme = "light" | "dark" | "service";
-const STORAGE_KEY = "pm-theme";
-const THEMES: Theme[] = ["light", "dark", "service"];
+/**
+ * Two independent axes:
+ *   - `base`: user's light/dark preference. Persists across sessions.
+ *   - `service`: contextual overlay for dark restaurants. True-black + max contrast.
+ *     Persists separately so toggling it OFF restores the user's base preference,
+ *     not a default.
+ *
+ * The applied data-theme is "service" when the overlay is on, otherwise base.
+ */
+export type BaseTheme = "light" | "dark";
+export type AppliedTheme = BaseTheme | "service";
+
+const BASE_KEY = "pm-theme";           // kept as "pm-theme" for back-compat
+const SERVICE_KEY = "pm-service-mode"; // "1" | "0"
 
 type Ctx = {
-  theme: Theme;
-  setTheme: (t: Theme) => void;
-  toggle: () => void;
+  base: BaseTheme;
+  service: boolean;
+  theme: AppliedTheme;                     // the theme actually applied
+  setBase: (t: BaseTheme) => void;
+  toggleBase: () => void;
+  setService: (on: boolean) => void;
+  toggleService: () => void;
 };
 const ThemeContext = createContext<Ctx | null>(null);
 
-function isTheme(v: unknown): v is Theme {
-  return v === "light" || v === "dark" || v === "service";
+function isBase(v: unknown): v is BaseTheme {
+  return v === "light" || v === "dark";
 }
 
-function readInitial(): Theme {
+function readInitialBase(): BaseTheme {
   if (typeof window === "undefined") return "light";
   try {
-    const saved = window.localStorage.getItem(STORAGE_KEY);
-    if (isTheme(saved)) return saved;
+    const saved = window.localStorage.getItem(BASE_KEY);
+    if (isBase(saved)) return saved;
+    // Back-compat: an older build persisted "service" here. Drop it — service
+    // is now a separate axis; treat that user as having no base preference.
   } catch {}
   if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) return "dark";
   return "light";
 }
 
-function apply(theme: Theme) {
+function readInitialService(): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return window.localStorage.getItem(SERVICE_KEY) === "1";
+  } catch { return false; }
+}
+
+function apply(base: BaseTheme, service: boolean) {
   if (typeof document === "undefined") return;
-  document.documentElement.dataset.theme = theme;
-  // "service" is a dark theme variant for color-scheme purposes.
-  document.documentElement.style.colorScheme = theme === "light" ? "light" : "dark";
+  const applied: AppliedTheme = service ? "service" : base;
+  document.documentElement.dataset.theme = applied;
+  document.documentElement.style.colorScheme = applied === "light" ? "light" : "dark";
 }
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("light");
+  const [base, setBaseState] = useState<BaseTheme>("light");
+  const [service, setServiceState] = useState<boolean>(false);
   const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
-    const initial = readInitial();
-    setThemeState(initial);
-    apply(initial);
+    const b = readInitialBase();
+    const s = readInitialService();
+    setBaseState(b);
+    setServiceState(s);
+    apply(b, s);
     setHydrated(true);
   }, []);
 
@@ -51,10 +78,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     async function loadFromProfile(uid: string) {
       const { data } = await supabase.from("profiles").select("theme").eq("id", uid).maybeSingle();
       const t = (data as { theme?: string | null } | null)?.theme;
-      if (!cancelled && isTheme(t)) {
-        setThemeState(t);
-        apply(t);
-        try { window.localStorage.setItem(STORAGE_KEY, t); } catch {}
+      // Only accept a base value from the profile. Service is device-local.
+      if (!cancelled && isBase(t)) {
+        setBaseState(t);
+        apply(t, service);
+        try { window.localStorage.setItem(BASE_KEY, t); } catch {}
       }
     }
 
@@ -65,27 +93,35 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
       if (event === "SIGNED_IN" && session) loadFromProfile(session.user.id);
     });
     return () => { cancelled = true; sub.subscription.unsubscribe(); };
-  }, [hydrated]);
+  }, [hydrated, service]);
 
-  const setTheme = useCallback((t: Theme) => {
-    setThemeState(t);
-    apply(t);
-    try { window.localStorage.setItem(STORAGE_KEY, t); } catch {}
+  const setBase = useCallback((t: BaseTheme) => {
+    setBaseState(t);
+    apply(t, service);
+    try { window.localStorage.setItem(BASE_KEY, t); } catch {}
     supabase.auth.getSession().then(({ data }) => {
       if (data.session) {
         supabase.from("profiles").update({ theme: t }).eq("id", data.session.user.id);
       }
     });
-  }, []);
+  }, [service]);
 
-  const toggle = useCallback(() => {
-    const idx = THEMES.indexOf(theme);
-    const next = THEMES[(idx + 1) % THEMES.length];
-    setTheme(next);
-  }, [theme, setTheme]);
+  const toggleBase = useCallback(() => {
+    setBase(base === "light" ? "dark" : "light");
+  }, [base, setBase]);
+
+  const setService = useCallback((on: boolean) => {
+    setServiceState(on);
+    apply(base, on);
+    try { window.localStorage.setItem(SERVICE_KEY, on ? "1" : "0"); } catch {}
+  }, [base]);
+
+  const toggleService = useCallback(() => setService(!service), [service, setService]);
+
+  const applied: AppliedTheme = service ? "service" : base;
 
   return (
-    <ThemeContext.Provider value={{ theme, setTheme, toggle }}>
+    <ThemeContext.Provider value={{ base, service, theme: applied, setBase, toggleBase, setService, toggleService }}>
       {children}
     </ThemeContext.Provider>
   );
@@ -94,10 +130,13 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 export function useTheme(): Ctx {
   const ctx = useContext(ThemeContext);
   if (!ctx) {
-    return { theme: "light", setTheme: () => {}, toggle: () => {} };
+    return {
+      base: "light", service: false, theme: "light",
+      setBase: () => {}, toggleBase: () => {}, setService: () => {}, toggleService: () => {},
+    };
   }
   return ctx;
 }
 
 /** Inline boot script — sets data-theme before paint to prevent FOUC. */
-export const themeBootstrapScript = `(function(){try{var s=localStorage.getItem('${STORAGE_KEY}');var t=(s==='light'||s==='dark'||s==='service')?s:(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');document.documentElement.dataset.theme=t;document.documentElement.style.colorScheme=(t==='light')?'light':'dark';}catch(e){document.documentElement.dataset.theme='light';}})();`;
+export const themeBootstrapScript = `(function(){try{var b=localStorage.getItem('${BASE_KEY}');var s=localStorage.getItem('${SERVICE_KEY}')==='1';var base=(b==='light'||b==='dark')?b:(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');var t=s?'service':base;document.documentElement.dataset.theme=t;document.documentElement.style.colorScheme=(t==='light')?'light':'dark';}catch(e){document.documentElement.dataset.theme='light';}})();`;

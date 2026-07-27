@@ -148,7 +148,7 @@
   --gold-dim: #8A5D18;
 
   --border-color: #B6A28A;      /* internal dividers */
-  --border-strong: #9B846B;     /* card & container outlines, 3.25:1 vs --surface */
+  --border-strong: #8F775C;     /* min 3.30:1 (vs --surface-2 #ECE2D3) — passes 3.0 on --bg/--surface/--surface-2 */
 
   --axis-body: #b07e22;
   --axis-fruit: #b1485d;
@@ -201,7 +201,7 @@
   --surface: #171012;
   --surface-2: #241619;
   --border-color: #3A2A2E;
-  --border-strong: #7A5A63;     /* 3.10:1 vs --surface */
+  --border-strong: #8A666F;     /* min 3.50:1 (vs --surface-2 #241619) — passes 3.0 on --bg/--surface/--surface-2 */
   --text: #F2ECE3;              /* ≥ 15:1 vs surfaces */
   --text-muted: #C7BBA9;        /* ≥ 9:1 vs surfaces */
   --text-tertiary: #A2937F;     /* ≥ 6:1 vs surfaces */
@@ -264,7 +264,7 @@
   --surface: #0C0C0C;
   --surface-2: #161616;
   --border-color: #2A2A2A;
-  --border-strong: #4A4A4A;      /* ≥ 3.0:1 vs --surface */
+  --border-strong: #6A6A6A;      /* min 3.35:1 (vs --surface-2 #161616) — passes 3.0 on --bg/--surface/--surface-2 */
   --text: #FFFFFF;               /* 21:1 vs --bg */
   --text-muted: #D6D6D6;         /* ≥ 12:1 vs surfaces */
   --text-tertiary: #B8B8B8;      /* ≥ 8:1 vs surfaces */

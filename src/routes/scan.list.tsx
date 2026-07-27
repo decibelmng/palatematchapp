@@ -8,6 +8,7 @@ import { PastScansHistory } from "@/components/PastScansHistory";
 import { PrescanRestaurantPicker, RestaurantAttribution } from "@/components/RestaurantPickers";
 import { DrinkingGroupSelector } from "@/components/DrinkingGroupSelector";
 import { ScanEntryButtons, StagedPhotos, BatchProgress } from "@/components/ScanCaptureShell";
+import { ServiceModeSwitch } from "@/components/ServiceModeSwitch";
 import { useScanCapture } from "@/hooks/use-scan-capture";
 import { useScanRanking } from "@/hooks/use-scan-ranking";
 
@@ -56,6 +57,10 @@ function Scan() {
 
   return (
     <div className="pt-2">
+      <div className="flex justify-end mb-2">
+        <ServiceModeSwitch />
+      </div>
+
       {showResumeBanner && (
         <div className="mt-2 rounded-md border border-primary/40 bg-primary/5 p-3 text-sub flex items-start justify-between gap-3">
           <div>
