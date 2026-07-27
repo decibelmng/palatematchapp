@@ -95,7 +95,7 @@ function CanonsPage() {
 
   const handleRemove = useCallback(
     (row: Row) => {
-      const verb = row.canon.tier === "canon" ? "Favorite" : "Avoid";
+      const verb = row.canon.tier === "canon" ? "Benchmark" : "Dealbreaker";
       demote.mutate(row.canon.id, {
         onSuccess: () => {
           armUndo({
@@ -135,14 +135,14 @@ function CanonsPage() {
 
   return (
     <div className="pt-2">
-      <p className="text-meta uppercase text-muted-foreground">Favorites &amp; Avoid list</p>
+      <p className="text-meta uppercase text-muted-foreground">Your benchmarks &amp; dealbreakers</p>
       <h1 className="font-serif text-3xl mt-2 flex items-center gap-2">
         <Crown size={26} strokeWidth={2.2} fill="currentColor" className="text-foreground" />
         Your true north
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Benchmark wines you've marked for each region &amp; type. Favorites anchor your matches;
-        wines to avoid steer us away from styles you don't want to see again.
+        The wines you've marked as your reference points for each region &amp; type. Benchmarks anchor your matches;
+        dealbreakers steer us away from styles you don't want to see again.
       </p>
 
       {isLoading && totalAll === 0 ? (
@@ -150,11 +150,12 @@ function CanonsPage() {
       ) : totalAll === 0 ? (
         <div className="mt-8 rounded-xl border border-dashed border-border bg-card p-6 text-center">
           <Crown size={28} strokeWidth={2.2} className="mx-auto text-foreground" />
-          <p className="mt-3 font-serif text-lg">No benchmarks yet.</p>
+          <p className="mt-3 font-serif text-lg">No benchmarks yet. Mark a wine you love as one.</p>
           <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
-            When a wine is <em>the one</em> for a region, mark it as a favorite — or mark a 1–2★
-            bottle as one to avoid so we steer around its style.
+            When a wine is <em>the one</em> for a region, set it as a benchmark — or mark a 1–2★
+            bottle as a dealbreaker so we steer around its style.
           </p>
+
 
           <Link
             to="/rate"
@@ -197,12 +198,13 @@ function CanonsPage() {
             <div className="mt-14">
               <div className="flex items-center gap-2">
                 <Skull size={20} strokeWidth={2.2} className="text-destructive" />
-                <h2 className="font-serif text-2xl">Wines to avoid</h2>
+                <h2 className="font-serif text-2xl">Dealbreakers</h2>
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
                 We steer away from anything that shares this style — with a wider berth than the
-                pull toward a favorite.
+                pull toward a benchmark.
               </p>
+
 
               <div className="mt-6 space-y-10">
                 {TYPE_ORDER.flatMap((t) => {
@@ -253,7 +255,7 @@ function CanonsPage() {
           wineType={swapTarget.wineType}
           currentBottle={swapTarget.currentBottle}
           onSwapped={(newBottle, previousBottle) => {
-            const verb = swapTarget.tier === "canon" ? "Favorite" : "Avoid";
+            const verb = swapTarget.tier === "canon" ? "Benchmark" : "Dealbreaker";
             armUndo({
               tier: swapTarget.tier,
               previousBottle,
@@ -307,7 +309,7 @@ function TierSection({
                   type="button"
                   onClick={() => onSwap(row)}
                   className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-meta font-medium hover:bg-accent"
-                  aria-label={`Swap ${tier === "canon" ? "favorite" : "wine to avoid"} for ${canon.region}`}
+                  aria-label={`Swap ${tier === "canon" ? "benchmark" : "dealbreaker"} for ${canon.region}`}
                 >
                   <ArrowLeftRight size={12} />
                   Swap
@@ -316,7 +318,8 @@ function TierSection({
                   type="button"
                   onClick={() => onRemove(row)}
                   className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-card px-2 py-1 text-meta font-medium text-muted-foreground hover:text-destructive hover:border-destructive/40"
-                  aria-label={`Remove ${tier === "canon" ? "favorite" : "avoid"} status from ${bottle.name}`}
+                  aria-label={`Remove as a ${tier === "canon" ? "benchmark" : "dealbreaker"}: ${bottle.name}`}
+
 
                 >
                   <X size={12} />
