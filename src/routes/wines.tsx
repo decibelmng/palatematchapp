@@ -85,10 +85,11 @@ function BenchmarkList({ tier }: { tier: "canon" | "nemesis" }) {
   if (rows.length === 0) {
     return (
       <div className="rounded-lg border border-border bg-card p-6 text-center">
-        <p className="text-sm">No {tier === "canon" ? "Canons" : "Nemeses"} yet.</p>
+        <p className="text-sm">No {tier === "canon" ? "favorites" : "wines to avoid"} yet.</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Rate a wine 5 stars and mark it as a Canon — or 1 star and mark it as a Nemesis — to anchor your palate.
+          Rate a wine 5 stars and mark it as a favorite — or 1 star and mark it as one to avoid — to anchor your palate.
         </p>
+
       </div>
     );
   }
