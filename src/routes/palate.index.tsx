@@ -171,7 +171,7 @@ function PalateHome() {
   return (
     <div className="pt-2 pb-8 max-w-md mx-auto">
       {showReveal && (
-        <PalateReveal code={revealCode} type={scope} onDismiss={() => setShowReveal(false)} />
+        <PalateReveal code={revealCode} type={scope} answers={(profile as { quiz_answers?: unknown } | null)?.quiz_answers as never} onDismiss={() => setShowReveal(false)} />
       )}
 
       {/* Identity */}
