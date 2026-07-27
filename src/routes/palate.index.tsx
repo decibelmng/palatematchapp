@@ -212,11 +212,12 @@ function PalateHome() {
         <Link to="/wines" search={{ tab: "rated" }} aria-label="See wines you've rated" className="block rounded-md hover:bg-muted/40 py-1">
           <Stat n={totalRated} label="Rated" />
         </Link>
-        <Link to="/wines" search={{ tab: "canons" }} aria-label="See your favorites" className="block rounded-md hover:bg-muted/40 py-1">
-          <Stat n={canonsCount} label="Favorites" />
+        <Link to="/wines" search={{ tab: "canons" }} aria-label="See your benchmarks" className="block rounded-md hover:bg-muted/40 py-1">
+          <Stat n={canonsCount} label="Benchmarks" />
         </Link>
-        <Link to="/wines" search={{ tab: "nemeses" }} aria-label="See wines you avoid" className="block rounded-md hover:bg-muted/40 py-1">
-          <Stat n={nemesesCount} label="Avoid" />
+        <Link to="/wines" search={{ tab: "nemeses" }} aria-label="See your dealbreakers" className="block rounded-md hover:bg-muted/40 py-1">
+          <Stat n={nemesesCount} label="Dealbreakers" />
+
         </Link>
 
         <Link to="/wines" search={{ tab: "scored" }} aria-label="Open palate detail" className="block rounded-md hover:bg-muted/40 py-1">
@@ -249,7 +250,7 @@ function PalateHome() {
           </div>
         )}
         <div className="mt-2 flex items-center justify-between px-2 pb-1">
-          <div className="text-meta text-muted-foreground">Palate code: <span className="font-mono text-foreground">{scopedCode}</span></div>
+          <div className="text-meta text-muted-foreground">Your mnemonic: <span className="font-mono text-foreground">{scopedCode}</span></div>
         </div>
       </div>
 

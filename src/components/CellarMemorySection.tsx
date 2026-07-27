@@ -80,7 +80,7 @@ function Tier1Card({ m }: { m: Extract<CellarMatch, { tier: 1 }> }) {
         </p>
         {m.isNemesis ? (
           <p className="mt-1 text-meta text-destructive">
-            Avoid ✕ — this is your Nemesis. You rated it {m.stars}★.
+            Skip — you'd marked this as a dealbreaker. You rated it {m.stars}★.
           </p>
         ) : isWarn ? (
           <p className="mt-1 text-meta text-destructive">
@@ -101,7 +101,8 @@ function Tier1Card({ m }: { m: Extract<CellarMatch, { tier: 1 }> }) {
       </div>
       <div className="shrink-0 text-right">
         {m.isNemesis ? (
-          <span className="font-serif text-destructive text-sm uppercase tracking-label">Avoid ✕</span>
+          <span className="font-serif text-destructive text-sm uppercase tracking-label">Skip</span>
+
         ) : (
           <>
             <span className={`font-serif text-xl ${isWarn ? "text-destructive" : "text-primary"}`}>{m.stars}</span>
@@ -153,12 +154,12 @@ function Tier2Card({
         </p>
         {pred && listedVintage && (
           <p className="mt-0.5 text-meta text-muted-foreground">
-            This {listedVintage}: predicted {pred.predicted.toFixed(1)}★
+            This {listedVintage}: {pred.predicted.toFixed(1)}★ for you
           </p>
         )}
         {pred && !listedVintage && (
           <p className="mt-0.5 text-meta text-muted-foreground">
-            This bottling: predicted {pred.predicted.toFixed(1)}★
+            This bottling: {pred.predicted.toFixed(1)}★ for you
           </p>
         )}
       </div>
@@ -168,9 +169,10 @@ function Tier2Card({
         <p className="text-meta text-muted-foreground">your history</p>
         {pred && (
           <p className="text-meta text-muted-foreground mt-0.5">
-            pred {pred.predicted.toFixed(1)}★
+            {pred.predicted.toFixed(1)}★ for you
           </p>
         )}
+
       </div>
     </div>
   );

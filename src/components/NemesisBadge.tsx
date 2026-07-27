@@ -2,13 +2,13 @@ import { Skull } from "lucide-react";
 
 type Props = { size?: "sm" | "md"; title?: string; className?: string };
 
-/** Muted dark badge marking a Nemesis wine — the visual mirror of the Canon crown. */
-export function NemesisBadge({ size = "sm", title = "Nemesis — your dealbreaker for this region", className = "" }: Props) {
+/** Muted dark badge marking a dealbreaker wine (the tier internally named "nemesis"). */
+export function NemesisBadge({ size = "sm", title = "Dealbreaker — a wine you avoid, steering us off this style", className = "" }: Props) {
   const px = size === "md" ? 16 : 12;
   return (
     <span
       title={title}
-      aria-label="Nemesis wine"
+      aria-label="Dealbreaker"
       className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-meta uppercase tracking-label font-semibold ${className}`}
       style={{
         color: "var(--destructive)",
@@ -17,7 +17,8 @@ export function NemesisBadge({ size = "sm", title = "Nemesis — your dealbreake
       }}
     >
       <Skull size={px} strokeWidth={2.2} />
-      Nemesis
+      Dealbreaker
     </span>
   );
 }
+
