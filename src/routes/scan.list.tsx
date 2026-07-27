@@ -1,37 +1,22 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { ScanLine, ArrowRight, Image as ImageIcon } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import { useServerFn } from "@tanstack/react-start";
-import { ListControls } from "@/components/ListControls";
-import { DrinkingGroupSelector } from "@/components/DrinkingGroupSelector";
-import { useRatings, useBottlesByIds, bottleToFp, bottleType, useRate } from "@/hooks/use-palate-data";
-import { StarTap } from "@/components/StarTap";
+import { useRatings, useBottlesByIds, bottleToFp, bottleType } from "@/hooks/use-palate-data";
+import { useMyCanons } from "@/hooks/use-canon";
 import { useSession } from "@/hooks/use-session";
 import { useGroupSelection, useGroupPredict, type GroupCandidateInput } from "@/hooks/use-friends";
 import { recommend, type BottleFp, type RatedFp, type Recommendation, type WineType } from "@/lib/recommender";
-import {
-  createScanRecord,
-  scanWineBatch,
-  finalizeScan,
-  loadRecentScan,
-  type ResolvedWine,
-} from "@/lib/scan.functions";
-import { listUserScans } from "@/lib/scans-history.functions";
-import { searchRestaurantsFn, createRestaurantFn, attributeScanFn } from "@/lib/restaurants.functions";
 import { aggregateRated } from "@/lib/cuvee";
-import { applyControls, normalizePrice, isGreatValue, DEFAULT_CONTROLS, type Controls, type Priced } from "@/lib/list-controls";
-import type { GroupScored } from "@/lib/group.functions";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import { useMyCanons } from "@/hooks/use-canon";
-import { computeCellarMemory, producerLookup } from "@/lib/cellar-memory";
+import { applyControls, normalizePrice, isGreatValue, DEFAULT_CONTROLS, type Controls } from "@/lib/list-controls";
+import { computeCellarMemory } from "@/lib/cellar-memory";
 import { CellarMemorySection } from "@/components/CellarMemorySection";
 import { SommelierBriefDialog } from "@/components/SommelierBriefDialog";
-import { priceVerdict, type PriceVerdict } from "@/lib/price-verdict";
-import { FingerprintSpoke } from "@/components/FingerprintSpoke";
-
-
+import { priceVerdict } from "@/lib/price-verdict";
+import { VerdictSurface, type ScanRow, type Ranked } from "@/components/verdict";
+import { PastScansHistory } from "@/components/PastScansHistory";
+import { PrescanRestaurantPicker, RestaurantAttribution } from "@/components/RestaurantPickers";
+import { DrinkingGroupSelector } from "@/components/DrinkingGroupSelector";
+import { useScanCapture } from "@/hooks/use-scan-capture";
 
 export const Route = createFileRoute("/scan/list")({
   ssr: false,
@@ -44,76 +29,6 @@ export const Route = createFileRoute("/scan/list")({
   component: Scan,
 });
 
-async function fileToBase64(file: File): Promise<{ base64: string; mediaType: string }> {
-  const buf = await file.arrayBuffer();
-  const bytes = new Uint8Array(buf);
-  let binary = "";
-  const chunk = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunk) {
-    binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunk)));
-  }
-  const base64 = btoa(binary);
-  let mt = file.type || "image/jpeg";
-  if (!["image/jpeg", "image/png", "image/webp", "image/heic"].includes(mt)) mt = "image/jpeg";
-  return { base64, mediaType: mt };
-}
-
-type Ranked = Recommendation & { scanned: ResolvedWine };
-
-type ScanRow = Priced & {
-  key: string;
-  ranked: Ranked;
-  type: WineType;
-  isCatalog: boolean;
-  greatValue: boolean;
-  verdict: PriceVerdict | null;
-};
-
-
-const TYPE_LABEL: Record<WineType, string> = {
-  red: "Reds for you",
-  white: "Whites for you",
-  rose: "Rosés for you",
-  sparkling: "Sparkling for you",
-  dessert: "Dessert wines for you",
-};
-
-type BatchImage = { image_base64: string; media_type: "image/jpeg" | "image/png" | "image/webp" | "image/heic" };
-type BatchState = {
-  index: number;
-  pageNumbers: number[];
-  status: "pending" | "running" | "done" | "failed";
-  images: BatchImage[]; // kept in memory to allow same-session retry
-  image_paths: string[];
-  error?: string;
-};
-
-function chunk<T>(arr: T[], n: number): T[][] {
-  const out: T[][] = [];
-  for (let i = 0; i < arr.length; i += n) out.push(arr.slice(i, i + n));
-  return out;
-}
-
-function rowToResolved(r: any): ResolvedWine {
-  return {
-    producer: r.producer ?? null,
-    wine_name: r.cuvee ?? null,
-    vintage: r.vintage ?? null,
-    region: r.region ?? null,
-    grape: r.grape ?? null,
-    price: r.price ?? null,
-    type: (r.wine_type ?? null) as any,
-    fp: null,
-    confidence: null,
-    fp_resolved: r.fp ?? null,
-    fp_source: (r.fp_source ?? "estimated") as any,
-    matched_bottle_id: r.matched_bottle_id ?? null,
-    matched_bottle_name: null,
-    match_score: r.match_score ?? 0,
-    match_reasons: (r.match_reasons ?? []) as string[] | undefined,
-  };
-}
-
 function Scan() {
   const session = useSession();
   const { data: ratings } = useRatings();
@@ -121,38 +36,25 @@ function Scan() {
   const { data: ratedBottles } = useBottlesByIds(ratedIds);
   const { data: myCanons } = useMyCanons();
 
-  const createScan = useServerFn(createScanRecord);
-  const runBatch = useServerFn(scanWineBatch);
-  const finalize = useServerFn(finalizeScan);
-  const loadRecent = useServerFn(loadRecentScan);
-
   const cameraRef = useRef<HTMLInputElement>(null);
   const libraryRef = useRef<HTMLInputElement>(null);
-  const [staged, setStaged] = useState<{ file: File; url: string }[]>([]);
-  const [elapsed, setElapsed] = useState(0);
   const [sommOpen, setSommOpen] = useState(false);
   const [boosted, setBoosted] = useState(false);
-  const [detailFor, setDetailFor] = useState<ScanRow | null>(null);
   const [controls, setControls] = useState<Controls>(DEFAULT_CONTROLS);
 
-
-
-  // Scan session state
-  const [scanId, setScanId] = useState<string | null>(null);
-  const [batches, setBatches] = useState<BatchState[]>([]);
-  const [wines, setWines] = useState<ResolvedWine[]>([]);
-  const [scanLogId, setScanLogId] = useState<string | null>(null);
-  const [status, setStatus] = useState<"idle" | "running" | "partial" | "complete" | "failed">("idle");
-  const [resumedAt, setResumedAt] = useState<string | null>(null);
-  const [dismissedResume, setDismissedResume] = useState(false);
-  const finalizingRef = useRef(false);
+  const cap = useScanCapture();
+  const {
+    staged, wines, batches, scanLogId, status, isRunning, elapsed,
+    resumedAt, dismissedResume, prescanRestaurant, autoAttributedTo, mutation,
+    setPrescanRestaurant, addFiles, removeAt, submit, retryFailed, startOver,
+  } = cap;
+  const scanId = cap.scanId;
 
   // Auto-open camera when arriving from the center-scan chooser (?capture=1).
   useEffect(() => {
     if (typeof window === "undefined") return;
     const params = new URLSearchParams(window.location.search);
     if (params.get("capture") !== "1") return;
-    // Strip so a refresh doesn't re-trigger.
     const url = new URL(window.location.href);
     url.searchParams.delete("capture");
     window.history.replaceState({}, "", url.toString());
@@ -160,203 +62,14 @@ function Scan() {
     return () => clearTimeout(t);
   }, []);
 
-  // Pre-scan restaurant selection (optional): stored here so `finalizeScan`
-  // can auto-attribute without a second UI trip.
-  const [prescanRestaurant, setPrescanRestaurant] = useState<{ id: string; name: string } | null>(null);
-  const [autoAttributedTo, setAutoAttributedTo] = useState<string | null>(null);
-  const attributeFn = useServerFn(attributeScanFn);
-
-  const isRunning = status === "running";
-
-  // ---------- Resume: hydrate any scan from the last 4h ----------
-  const resumeQuery = useQuery({
-    queryKey: ["recent-scan"],
-    queryFn: () => loadRecent(),
-    enabled: !!session,
-    staleTime: 60_000,
-    refetchOnWindowFocus: false,
-  });
-
-  useEffect(() => {
-    if (!resumeQuery.data || scanId || dismissedResume) return;
-    const { scan, wines: rows } = resumeQuery.data as any;
-    if (!scan?.id) return;
-    setScanId(scan.id);
-    setResumedAt(scan.created_at);
-    setWines((rows ?? []).map(rowToResolved));
-    // Reconstruct minimal batch list (images gone after refresh, so no retry).
-    const failed = new Set<number>(((scan.batches_failed ?? []) as number[]));
-    const total = scan.batch_count ?? 0;
-    const list: BatchState[] = [];
-    for (let i = 0; i < total; i++) {
-      list.push({
-        index: i,
-        pageNumbers: [i * 2 + 1, Math.min(scan.page_count, i * 2 + 2)].filter((n, idx, arr) => arr.indexOf(n) === idx),
-        status: failed.has(i) ? "failed" : "done",
-        images: [],
-        image_paths: [],
-      });
-    }
-    setBatches(list);
-    setStatus(scan.status === "processing" ? "partial" : scan.status);
-    // If the earlier session created a scan_log id (via finalizeScan), we can't easily recover it here.
-    // Restaurant attribution requires a scan_log id; skip on resume unless a fresh finalize happens.
-  }, [resumeQuery.data, scanId, dismissedResume]);
-
-  // ---------- Kick off a fresh scan ----------
-  const mutation = useMutation({
-    mutationFn: async (files: File[]) => {
-      if (files.length === 0) throw new Error("Add at least one photo first.");
-      const uid = session?.user.id;
-      const scanUuid = crypto.randomUUID();
-
-      // Upload originals + encode base64 for vision, in parallel.
-      const prepared = await Promise.all(
-        files.map(async (file, i) => {
-          const { base64, mediaType } = await fileToBase64(file);
-          let storagePath: string | null = null;
-          if (uid) {
-            const ext = (file.name.split(".").pop() ?? "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
-            const path = `${uid}/${scanUuid}/page-${i + 1}.${ext}`;
-            const { error } = await supabase.storage
-              .from("scan-images")
-              .upload(path, file, { contentType: mediaType, upsert: true });
-            if (!error) storagePath = path;
-          }
-          return {
-            image_base64: base64,
-            media_type: mediaType as BatchImage["media_type"],
-            storagePath,
-          };
-        }),
-      );
-
-      const image_paths_all = prepared.map((p) => p.storagePath).filter((p): p is string => !!p);
-
-      // Split into batches of 2 pages.
-      const preparedBatches = chunk(prepared, 2);
-      const created = await createScan({
-        data: { page_count: files.length, batch_count: preparedBatches.length, image_paths: image_paths_all },
-      });
-
-      const initial: BatchState[] = preparedBatches.map((group, i) => ({
-        index: i,
-        pageNumbers: group.map((_, k) => i * 2 + k + 1),
-        status: "pending",
-        images: group.map((g) => ({ image_base64: g.image_base64, media_type: g.media_type })),
-        image_paths: group.map((g) => g.storagePath).filter((p): p is string => !!p),
-      }));
-
-      setScanId(created.scan_id);
-      setBatches(initial);
-      setWines([]);
-      setScanLogId(null);
-      setStatus("running");
-      setResumedAt(null);
-
-      await runBatchesWithPool(created.scan_id, initial);
-      return created.scan_id;
-    },
-    onError: (e) => {
-      toast.error((e as Error).message ?? "Scan failed");
-      setStatus("failed");
-    },
-  });
-
-  async function runBatchesWithPool(sid: string, list: BatchState[]) {
-    const concurrency = 3;
-    const queue = list.map((b) => b.index);
-    let cursor = 0;
-
-    const runOne = async (index: number) => {
-      const batch = list.find((b) => b.index === index)!;
-      setBatches((prev) => prev.map((b) => (b.index === index ? { ...b, status: "running" } : b)));
-      try {
-        const res = await runBatch({
-          data: {
-            scan_id: sid,
-            batch_index: index,
-            images: batch.images,
-            image_paths: batch.image_paths,
-          },
-        });
-        setBatches((prev) => prev.map((b) => (b.index === index ? { ...b, status: "done", error: undefined } : b)));
-        setWines((prev) => [...prev, ...res.wines]);
-      } catch (e) {
-        const msg = (e as Error).message ?? "Batch failed";
-        setBatches((prev) => prev.map((b) => (b.index === index ? { ...b, status: "failed", error: msg } : b)));
-      }
-    };
-
-    const workers: Promise<void>[] = [];
-    const next = async () => {
-      while (cursor < queue.length) {
-        const idx = queue[cursor++];
-        await runOne(idx);
-      }
-    };
-    for (let w = 0; w < Math.min(concurrency, queue.length); w++) workers.push(next());
-    await Promise.all(workers);
-
-    // Finalize once
-    if (finalizingRef.current) return;
-    finalizingRef.current = true;
-    try {
-      const fin = await finalize({ data: { scan_id: sid } });
-      setScanLogId(fin.scan_log_id ?? null);
-      setStatus(fin.status as any);
-      if (fin.status === "partial") toast.warning("Some pages didn't parse — retry them below.");
-      else if (fin.status === "failed") toast.error("Scan failed — try again.");
-      // Auto-attribute when the user picked a restaurant before scanning.
-      if (fin.scan_log_id && prescanRestaurant) {
-        try {
-          const res = await attributeFn({ data: { scan_id: fin.scan_log_id, restaurant_id: prescanRestaurant.id } });
-          setAutoAttributedTo(res.restaurant_name);
-          toast.success(`Added to ${res.restaurant_name}`);
-        } catch (e: any) {
-          toast.error(e?.message ?? "Couldn't attribute to restaurant");
-        }
-      }
-    } finally {
-      finalizingRef.current = false;
-    }
-  }
-
-  async function retryFailed() {
-    if (!scanId) return;
-    const failed = batches.filter((b) => b.status === "failed" && b.images.length > 0);
-    if (failed.length === 0) {
-      toast.error("Can't retry after refresh — start a new scan.");
-      return;
-    }
-    setStatus("running");
-    finalizingRef.current = false;
-    await runBatchesWithPool(scanId, failed);
-  }
-
-  useEffect(() => {
-    if (!isRunning) return;
-    setElapsed(0);
-    const start = Date.now();
-    const id = setInterval(() => setElapsed(Math.floor((Date.now() - start) / 1000)), 250);
-    return () => clearInterval(id);
-  }, [isRunning]);
-
-  // ---------- Dedup, categorize ----------
+  // Dedup + categorize scanned wines
   const dedupWines = useMemo(() => {
-    const key = (w: ResolvedWine) =>
-      [w.producer, w.wine_name, w.vintage ?? ""].map((s) => String(s ?? "").toLowerCase().trim()).join("|");
+    const key = (w: any) => [w.producer, w.wine_name, w.vintage ?? ""].map((s) => String(s ?? "").toLowerCase().trim()).join("|");
     const seen = new Set<string>();
-    const out: ResolvedWine[] = [];
-    for (const w of wines) {
-      const k = key(w);
-      if (seen.has(k)) continue;
-      seen.add(k);
-      out.push(w);
-    }
+    const out: typeof wines = [];
+    for (const w of wines) { const k = key(w); if (seen.has(k)) continue; seen.add(k); out.push(w); }
     return out;
   }, [wines]);
-
   const readable = dedupWines.filter((w) => w.fp_resolved);
   const unreadable = dedupWines.filter((w) => !w.fp_resolved);
   const matchedCount = dedupWines.filter((w) => w.fp_source === "catalog").length;
@@ -375,40 +88,30 @@ function Scan() {
     }));
   }, [ratedBottles, ratings]);
 
-  // Cellar-memory matches (Tier 1 exact / Tier 2 same cuvée). Recomputed
-  // whenever ratings or scanned wines change — so a wine rated AFTER the scan
-  // was saved will appear when the scan is reopened.
-  const cellar = useMemo(() => {
-    return computeCellarMemory({
-      readable,
-      ratedBottles: ratedBottles ?? [],
-      ratings: ratings ?? [],
-      canons: myCanons ?? [],
-    });
-  }, [readable, ratedBottles, ratings, myCanons]);
+  const cellar = useMemo(() => computeCellarMemory({
+    readable, ratedBottles: ratedBottles ?? [], ratings: ratings ?? [], canons: myCanons ?? [],
+  }), [readable, ratedBottles, ratings, myCanons]);
 
   const ranked: Ranked[] = useMemo(() => {
     if (readable.length === 0) return [];
     const candidates: BottleFp[] = readable.map((w, i) => ({
       id: `scan-${i}`,
       name: [w.producer, w.wine_name, w.vintage].filter(Boolean).join(" ") || "Unknown wine",
-      producer: w.producer ?? null,
-      region: w.region ?? null,
-      type: (w.type ?? "red") as WineType,
-      fp: w.fp_resolved!,
+      producer: w.producer ?? null, region: w.region ?? null,
+      type: (w.type ?? "red") as WineType, fp: w.fp_resolved!,
     }));
     if (ratedRows.length === 0) {
       return candidates.map((b, i) => ({
-        bottle: b, predicted: 0, nearest: null, nearestIsCanon: false, maxSimilarity: 0, confidence: 0, evidence: 0, evidenceTier: "exploratory" as const, vetoed: false, vetoReason: null, contested: false, contestedReason: null, scanned: readable[i],
+        bottle: b, predicted: 0, nearest: null, nearestIsCanon: false, maxSimilarity: 0, confidence: 0,
+        evidence: 0, evidenceTier: "exploratory" as const, vetoed: false, vetoReason: null,
+        contested: false, contestedReason: null, scanned: readable[i],
       }));
     }
-
     const recs = recommend(ratedRows, candidates);
     const byId = new Map(readable.map((w, i) => [`scan-${i}`, w]));
     return recs.map((r) => ({ ...r, scanned: byId.get(r.bottle.id)! }));
   }, [readable, ratedRows]);
 
-  // Predictions keyed by scanned index (for Tier 2 hybrid card).
   const predictionsByIndex = useMemo(() => {
     const m = new Map<number, Recommendation>();
     for (const r of ranked) {
@@ -420,8 +123,6 @@ function Scan() {
 
   const enoughRatings = ratedRows.length >= 3;
 
-  // Per-type cold-start: soft confidence note when the user has fewer than
-  // MIN_PER_TYPE ratings for a type that appears on the scanned list.
   const MIN_PER_TYPE = 8;
   const perTypeRated = useMemo(() => {
     const m = new Map<string, number>();
@@ -431,9 +132,7 @@ function Scan() {
   const lowConfTypes = useMemo(() => {
     const scanned = new Set(readable.map((w) => (w.type ?? "red") as string));
     const low: string[] = [];
-    for (const t of scanned) {
-      if ((perTypeRated.get(t) ?? 0) < MIN_PER_TYPE) low.push(t);
-    }
+    for (const t of scanned) if ((perTypeRated.get(t) ?? 0) < MIN_PER_TYPE) low.push(t);
     return low;
   }, [readable, perTypeRated]);
 
@@ -448,38 +147,7 @@ function Scan() {
     return m;
   }, [matchedBottleRows]);
 
-  const grouped: { type: WineType; rows: ScanRow[] }[] = useMemo(() => {
-    const buckets = new Map<WineType, ScanRow[]>();
-    ranked.forEach((r, i) => {
-      const idx = Number(r.bottle.id.replace("scan-", ""));
-      // Skip anything already surfaced in cellar memory (both tiers).
-      if (cellar.byIndex.has(idx)) return;
-      const t = (r.scanned.type ?? "red") as WineType;
-      const p = normalizePrice(r.scanned.price ?? null);
-      const isCatalog = r.scanned.fp_source === "catalog";
-      const matchedId = r.scanned.matched_bottle_id;
-      const band = matchedId ? priceBandByBottleId.get(matchedId) ?? null : null;
-      const row: ScanRow = {
-        key: r.bottle.id + "-" + i,
-        ranked: r,
-        type: t,
-        isCatalog,
-        price_amount: p.amount,
-        price_band: p.band,
-        price_display: p.display,
-        predicted: r.predicted,
-        greatValue: false,
-        verdict: priceVerdict(p.amount, band),
-      };
-      row.greatValue = isGreatValue(row);
-      if (!buckets.has(t)) buckets.set(t, []);
-      buckets.get(t)!.push(row);
-    });
-    const order: WineType[] = ["red", "white", "rose", "sparkling", "dessert"];
-    return order.filter((t) => buckets.has(t)).map((t) => ({ type: t, rows: buckets.get(t)! }));
-  }, [ranked, cellar, priceBandByBottleId]);
-
-
+  // Group overlay
   const group = useGroupSelection();
   const groupCandidates: GroupCandidateInput[] = useMemo(() => {
     if (group.friendIds.length === 0) return [];
@@ -493,158 +161,73 @@ function Scan() {
   const groupScores = groupPred.data ?? null;
   const groupActive = group.friendIds.length > 0;
 
-  function flagFor(r: Ranked): { label: string; tone: "good" | "bad" | "warn" } | null {
-    if (!enoughRatings) return null;
-    if (r.maxSimilarity < 0.35 || r.scanned.confidence === "low")
-      return { label: "uncertain — unlike anything you've rated", tone: "warn" };
-    if (r.predicted >= 3.8) return { label: "strong match", tone: "good" };
-    if (r.predicted <= 2.6) return { label: "likely not your style", tone: "bad" };
-    return null;
-  }
-
-  function onPick(fileList: FileList | null, inputEl: HTMLInputElement | null) {
-    if (!fileList || fileList.length === 0) return;
-    const incoming = Array.from(fileList);
-    setStaged((prev) => {
-      const next = [...prev];
-      for (const f of incoming) {
-        if (next.length >= 8) break;
-        next.push({ file: f, url: URL.createObjectURL(f) });
-      }
-      return next;
-    });
-    if (inputEl) inputEl.value = "";
-  }
-
-  function removeAt(i: number) {
-    setStaged((prev) => {
-      const next = [...prev];
-      const [removed] = next.splice(i, 1);
-      if (removed) URL.revokeObjectURL(removed.url);
-      return next;
-    });
-  }
-
-  function startOver() {
-    staged.forEach((s) => URL.revokeObjectURL(s.url));
-    setStaged([]);
-    setScanId(null);
-    setBatches([]);
-    setWines([]);
-    setScanLogId(null);
-    setStatus("idle");
-    setResumedAt(null);
-    setDismissedResume(true);
-    setPrescanRestaurant(null);
-    setAutoAttributedTo(null);
-    mutation.reset();
-  }
-
-  function submit() {
-    setDismissedResume(true);
-    mutation.mutate(staged.map((s) => s.file));
-  }
-
-  const totalWines = dedupWines.length;
-  const showResumeBanner = !!resumedAt && !!scanId && batches.length > 0 && staged.length === 0 && !dismissedResume;
-
-  const failedBatches = batches.filter((b) => b.status === "failed");
-  const anyBatchInFlight = batches.some((b) => b.status === "running" || b.status === "pending");
-
-  // ---------- Phase 3: unified decision surface ----------
-  // Flatten every type into a single decision list, apply group overlay,
-  // apply user filters (but NOT sort — hero always uses predicted-desc),
-  // then partition hero / rest / vetoed.
+  // Assemble ScanRow[] with cellar exclusion + optional group overlay
   const allRowsFlat: ScanRow[] = useMemo(() => {
-    const flat = grouped.flatMap((g) => g.rows);
-    if (!groupActive || !groupScores) return flat;
-    return flat.map((r) => {
+    const rows: ScanRow[] = [];
+    ranked.forEach((r, i) => {
+      const idx = Number(r.bottle.id.replace("scan-", ""));
+      if (cellar.byIndex.has(idx)) return;
+      const t = (r.scanned.type ?? "red") as WineType;
+      const p = normalizePrice(r.scanned.price ?? null);
+      const matchedId = r.scanned.matched_bottle_id;
+      const band = matchedId ? priceBandByBottleId.get(matchedId) ?? null : null;
+      const row: ScanRow = {
+        key: r.bottle.id + "-" + i,
+        ranked: r,
+        type: t,
+        isCatalog: r.scanned.fp_source === "catalog",
+        price_amount: p.amount, price_band: p.band, price_display: p.display,
+        predicted: r.predicted, greatValue: false,
+        verdict: priceVerdict(p.amount, band),
+      };
+      row.greatValue = isGreatValue(row);
+      rows.push(row);
+    });
+    if (!groupActive || !groupScores) return rows;
+    return rows.map((r) => {
       const g = groupScores.get(r.ranked.bottle.id);
       if (!g) return r;
       const next: ScanRow = { ...r, predicted: g.group_min };
       next.greatValue = isGreatValue(next);
       return next;
     });
-  }, [grouped, groupActive, groupScores]);
+  }, [ranked, cellar, priceBandByBottleId, groupActive, groupScores]);
 
-  // Filter (never sort) so hero remains the best predicted within constraints.
-  const filteredNoSort = useMemo(() => {
-    return applyControls(allRowsFlat, { ...controls, sort: "best" });
-  }, [allRowsFlat, controls]);
-
-  const sortedForList = useMemo(() => applyControls(allRowsFlat, controls), [allRowsFlat, controls]);
-
-  const heroes: ScanRow[] = useMemo(() => {
-    if (!enoughRatings) return [];
-    const eligible = filteredNoSort
-      .filter((r) => !r.ranked.vetoed)
-      .sort((a, b) => b.predicted - a.predicted);
-    if (eligible.length === 0) return [];
-    const top = eligible[0];
-    const out = [top];
-    if (eligible[1] && Math.abs(eligible[1].predicted - top.predicted) <= 0.1) out.push(eligible[1]);
-    return out;
-  }, [filteredNoSort, enoughRatings]);
-
-  const heroKeys = useMemo(() => new Set(heroes.map((h) => h.key)), [heroes]);
-  const restNonVeto = useMemo(
-    () => sortedForList.filter((r) => !r.ranked.vetoed && !heroKeys.has(r.key)),
-    [sortedForList, heroKeys],
-  );
-  const vetoedRows = useMemo(
-    () => sortedForList.filter((r) => r.ranked.vetoed),
-    [sortedForList],
-  );
-
-  // Estimate skeleton row count from in-flight batches (avg ~4 wines/page).
+  const surfaceRows = useMemo(() => applyControls(allRowsFlat, controls), [allRowsFlat, controls]);
   const pendingSkeletons = useMemo(() => {
     const inflight = batches.filter((b) => b.status === "pending" || b.status === "running").length;
     return Math.min(inflight * 4, 8);
   }, [batches]);
-
-  const zeroStrong = enoughRatings && heroes.length > 0 && heroes[0].predicted < 4.0;
-  const readFailed = !isRunning && status !== "idle" && readable.length === 0 && !anyBatchInFlight;
+  const anyBatchInFlight = batches.some((b) => b.status === "running" || b.status === "pending");
   const showDecisionSurface = enoughRatings && (readable.length > 0 || anyBatchInFlight);
-
-  // Phase 3 dev acceptance: no explore chrome on this route.
-  useEffect(() => {
-    if (typeof window === "undefined" || !import.meta.env.DEV) return;
-    const bans = ["TasteMap", "TasteCube", "palate-slider-editor"];
-    const found = bans.filter((s) => document.querySelector(`[data-component="${s}"]`));
-    if (found.length) console.warn("[phase3] forbidden chrome on /scan/list:", found);
-    // eslint-disable-next-line no-console
-    console.log("[phase3-scan] heroes:", heroes.length, "rest:", restNonVeto.length, "vetoed:", vetoedRows.length, "skeletons:", pendingSkeletons);
-  }, [heroes.length, restNonVeto.length, vetoedRows.length, pendingSkeletons]);
-
-
-
+  const readFailed = !isRunning && status !== "idle" && readable.length === 0 && !anyBatchInFlight;
+  const totalWines = dedupWines.length;
+  const failedBatches = batches.filter((b) => b.status === "failed");
+  const showResumeBanner = !!resumedAt && !!scanId && batches.length > 0 && staged.length === 0 && !dismissedResume;
   const inScanFlow = staged.length > 0 || isRunning || !!scanId;
+  const scannedAtMs = scanLogId ? Date.now() : resumedAt ? new Date(resumedAt).getTime() : null;
 
   return (
     <div className="pt-2">
       {showResumeBanner && (
-        <div className="mt-2 rounded-md border border-primary/40 bg-primary/5 p-3 text-sm flex items-start justify-between gap-3">
+        <div className="mt-2 rounded-md border border-primary/40 bg-primary/5 p-3 text-sub flex items-start justify-between gap-3">
           <div>
             <p className="font-medium">Resuming your last scan · {new Date(resumedAt!).toLocaleTimeString()}</p>
-            <p className="text-xs text-muted-foreground mt-0.5">
+            <p className="text-meta text-muted-foreground mt-0.5">
               {totalWines} wine{totalWines === 1 ? "" : "s"} loaded from earlier today.
             </p>
           </div>
-          <button
-            onClick={startOver}
-            className="shrink-0 rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium"
-          >
+          <button onClick={startOver} className="shrink-0 rounded-md border border-border bg-card px-3 py-1.5 text-meta font-medium">
             Start a new scan
           </button>
         </div>
       )}
 
       <input ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden"
-        onChange={(e) => onPick(e.target.files, e.currentTarget)} />
+        onChange={(e) => addFiles(e.target.files, e.currentTarget)} />
       <input ref={libraryRef} type="file" accept="image/*" multiple className="hidden"
-        onChange={(e) => onPick(e.target.files, e.currentTarget)} />
+        onChange={(e) => addFiles(e.target.files, e.currentTarget)} />
 
-      {/* PRIMARY: Scan a wine list — matches Rate tab's "Scan a bottle" hero */}
       <button
         type="button"
         onClick={() => cameraRef.current?.click()}
@@ -658,62 +241,46 @@ function Scan() {
             <ScanLine size={24} strokeWidth={1.8} />
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="font-serif text-heading leading-tight text-foreground">
-              Scan a wine list
-            </h3>
-            <p className="mt-0.5 text-meta text-muted-foreground">
-              Point the camera at the list — I'll rank every bottle.
-            </p>
+            <h3 className="font-serif text-heading leading-tight text-foreground">Scan a wine list</h3>
+            <p className="mt-0.5 text-meta text-muted-foreground">Point the camera at the list — I'll rank every bottle.</p>
           </div>
           <ArrowRight className="shrink-0 text-primary" size={18} />
         </div>
       </button>
 
-      {/* SECONDARY: upload existing photos */}
       <button
         type="button"
         onClick={() => libraryRef.current?.click()}
         disabled={isRunning || staged.length >= 8}
         data-testid="scan-entry-library"
-        className="mt-2 inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground disabled:opacity-60"
+        className="mt-2 inline-flex items-center gap-1.5 text-meta text-muted-foreground hover:text-foreground disabled:opacity-60"
       >
         <ImageIcon size={14} /> Upload photos instead (up to 8 pages)
       </button>
 
-      {/* Setup (restaurant / drinking group) — only inside an active scan flow */}
       {inScanFlow && (
         <>
-          <PrescanRestaurantPicker
-            value={prescanRestaurant}
-            onChange={setPrescanRestaurant}
-            disabled={isRunning || !!scanId}
-          />
+          <PrescanRestaurantPicker value={prescanRestaurant} onChange={setPrescanRestaurant} disabled={isRunning || !!scanId} />
           {!scanId && !isRunning && (
             <div className="mt-4">
-              <DrinkingGroupSelector
-                selectedIds={group.friendIds}
-                onToggle={group.toggle}
-                onClear={group.clear}
-                onSet={group.set}
-              />
+              <DrinkingGroupSelector selectedIds={group.friendIds} onToggle={group.toggle} onClear={group.clear} onSet={group.set} />
             </div>
           )}
         </>
       )}
 
-      {/* Past scans history — shown when idle, mirrors Rate's "your ratings" list */}
       {!inScanFlow && !showResumeBanner && <PastScansHistory />}
 
       {(staged.length > 0 || (scanId && !isRunning)) && (
         <div className="mt-3 flex flex-wrap gap-3">
           {staged.length > 0 && (
             <button onClick={submit} disabled={isRunning}
-              className="rounded-md bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium disabled:opacity-60">
+              className="rounded-md bg-primary text-primary-foreground px-4 py-2.5 text-sub font-medium disabled:opacity-60">
               {isRunning ? "Reading…" : `Scan ${staged.length} photo${staged.length > 1 ? "s" : ""}`}
             </button>
           )}
           {(staged.length > 0 || scanId) && !isRunning && (
-            <button onClick={startOver} className="rounded-md border border-border bg-card px-4 py-2.5 text-sm font-medium">
+            <button onClick={startOver} className="rounded-md border border-border bg-card px-4 py-2.5 text-sub font-medium">
               Start over
             </button>
           )}
@@ -727,37 +294,29 @@ function Scan() {
               <img src={s.url} alt={`page ${i + 1}`} className="h-24 rounded-md border border-border object-cover" />
               {!isRunning && (
                 <button onClick={() => removeAt(i)} aria-label={`Remove photo ${i + 1}`}
-                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-background border border-border text-xs leading-none flex items-center justify-center shadow">×</button>
+                  className="absolute -top-2 -right-2 h-6 w-6 rounded-full bg-background border border-border text-meta leading-none flex items-center justify-center shadow">×</button>
               )}
             </div>
           ))}
         </div>
       )}
 
-      {/* Per-batch progress */}
       {batches.length > 0 && (isRunning || anyBatchInFlight || failedBatches.length > 0) && (
         <div className="mt-4 rounded-md border border-border bg-card p-3">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium">
+            <p className="text-sub font-medium">
               {isRunning ? "Reading pages…" : failedBatches.length > 0 ? "Some pages failed" : "Reading complete"}
             </p>
             {isRunning && <p className="text-meta text-muted-foreground">{elapsed}s</p>}
           </div>
-          <ul className="mt-2 space-y-1 text-xs">
+          <ul className="mt-2 space-y-1 text-meta">
             {batches.map((b) => {
-              const label = `Pages ${b.pageNumbers.join("–")}`;
-              const icon =
-                b.status === "done" ? "✓" :
-                b.status === "failed" ? "✕" :
-                b.status === "running" ? "…" : "·";
-              const tone =
-                b.status === "done" ? "text-primary" :
-                b.status === "failed" ? "text-destructive" :
-                b.status === "running" ? "text-foreground" : "text-muted-foreground";
+              const icon = b.status === "done" ? "✓" : b.status === "failed" ? "✕" : b.status === "running" ? "…" : "·";
+              const tone = b.status === "done" ? "text-primary" : b.status === "failed" ? "text-destructive" : b.status === "running" ? "text-foreground" : "text-muted-foreground";
               return (
                 <li key={b.index} className={`flex items-center gap-2 ${tone}`}>
                   <span className="font-mono w-4 text-center">{icon}</span>
-                  <span>{label}</span>
+                  <span>Pages {b.pageNumbers.join("–")}</span>
                   {b.status === "running" && (
                     <span aria-hidden className="inline-block h-3 w-3 rounded-full border-2 border-current border-r-transparent animate-spin" />
                   )}
@@ -771,7 +330,7 @@ function Scan() {
           {failedBatches.length > 0 && !isRunning && (
             <div className="mt-3">
               <button onClick={retryFailed}
-                className="rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-xs font-medium">
+                className="rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-meta font-medium">
                 Retry {failedBatches.length} failed page{failedBatches.length === 1 ? "" : "s"}
               </button>
               {failedBatches.some((b) => b.images.length === 0) && (
@@ -786,150 +345,75 @@ function Scan() {
 
       {mutation.isError && (
         <div className="mt-4 rounded-md border border-destructive/40 bg-destructive/10 p-3">
-          <p className="text-sm text-destructive">{(mutation.error as Error).message}</p>
+          <p className="text-sub text-destructive">{(mutation.error as Error).message}</p>
         </div>
       )}
 
       {!isRunning && status !== "idle" && readable.length === 0 && (
-        <p className="mt-6 text-sm text-muted-foreground">
+        <p className="mt-6 text-sub text-muted-foreground">
           Couldn't read anything from those photos — try a clearer, straight-on shot in good light.
         </p>
       )}
 
       {!enoughRatings && readable.length > 0 && (
-        <div className="mt-5 rounded-md border border-border bg-card p-3 text-xs text-muted-foreground">
+        <div className="mt-5 rounded-md border border-border bg-card p-3 text-meta text-muted-foreground">
           Rate a few wines first so I can match this list to your taste. Showing the list in the order it was read.
         </div>
       )}
 
       {enoughRatings && readable.length > 0 && lowConfTypes.length > 0 && (
-        <div className="mt-5 rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-xs text-muted-foreground">
+        <div className="mt-5 rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-meta text-muted-foreground">
           <span className="text-foreground font-medium">Low confidence on {lowConfTypes.join(" & ")}</span> — you've rated{" "}
           {lowConfTypes.map((t) => `${perTypeRated.get(t) ?? 0} ${t}`).join(", ")} so far. Rankings will sharpen once you're past {MIN_PER_TYPE} per type.{" "}
           <Link to="/rate" className="text-primary underline underline-offset-2">Rate more →</Link>
         </div>
       )}
 
-      {/* ============ PHASE 3: Restaurant decision surface ============ */}
       {showDecisionSurface && (
-        <div
-          data-boost={boosted ? "on" : "off"}
-          className="scan-decision mt-6 bg-background pb-6"
-        >
-          {/* Group toggle lives in the setup flow above; results screen honors it silently. */}
-
-
-          {/* HERO(ES) */}
-          {heroes.length === 0 && anyBatchInFlight && (
-            <HeroSkeleton />
-          )}
-          {heroes.length > 0 && (
-            <div className="grid gap-3">
-              {heroes.map((h) => (
-                <HeroCard
-                  key={h.key}
-                  row={h}
-                  isTie={heroes.length > 1}
-                  zeroStrong={zeroStrong}
-                  currentStars={h.ranked.scanned.matched_bottle_id ? (ratings?.find((r) => r.bottle_id === h.ranked.scanned.matched_bottle_id)?.stars ?? null) : null}
-                  onOpen={() => setDetailFor(h)}
-                />
-              ))}
-            </div>
-          )}
-
-          {/* THE REST */}
-          {(restNonVeto.length > 0 || vetoedRows.length > 0 || pendingSkeletons > 0) && (
-            <div className="mt-8">
-              <p className="text-meta uppercase tracking-label text-muted-foreground">
-                The rest of the list
-                {anyBatchInFlight && <span className="ml-2 normal-case tracking-normal text-muted-foreground">· still reading…</span>}
-              </p>
-              <ul className="mt-3 divide-y divide-border">
-                {restNonVeto.map((r) => (
-                  <ResultRow key={r.key} row={r} currentStars={r.ranked.scanned.matched_bottle_id ? (ratings?.find((x) => x.bottle_id === r.ranked.scanned.matched_bottle_id)?.stars ?? null) : null} onOpen={() => setDetailFor(r)} />
-                ))}
-                {Array.from({ length: pendingSkeletons }).map((_, i) => (
-                  <SkeletonRow key={`sk-${i}`} />
-                ))}
-                {vetoedRows.map((r) => (
-                  <ResultRow key={r.key} row={r} currentStars={r.ranked.scanned.matched_bottle_id ? (ratings?.find((x) => x.bottle_id === r.ranked.scanned.matched_bottle_id)?.stars ?? null) : null} onOpen={() => setDetailFor(r)} />
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {/* Zero-strong honest absence */}
-          {zeroStrong && (
-            <p className="mt-6 rounded-md border border-border bg-card p-3 text-xs text-muted-foreground">
-              Nothing here is a strong match. Your closest is <span className="text-foreground">{heroes[0].ranked.bottle.name}</span> at {heroes[0].predicted.toFixed(1)}★.
-            </p>
-          )}
-
-          {/* Subordinate context */}
-          <div className="mt-8 space-y-4">
-            <CellarMemorySection matches={cellar.matches} predictionsByIndex={predictionsByIndex} />
-            {autoAttributedTo && (
-              <div className="rounded-md border border-primary/40 bg-primary/5 p-3 text-sm">
-                Added to <span className="font-medium">{autoAttributedTo}</span>.
-              </div>
-            )}
-            {scanLogId && totalWines > 0 && !autoAttributedTo && (
-              <RestaurantAttribution scanId={scanLogId} />
-            )}
-            {totalWines > 0 && (
-              <p className="text-meta text-muted-foreground">
-                Read {totalWines} wine{totalWines > 1 ? "s" : ""} · {matchedCount} matched · {estimatedCount} estimated
-                {unreadable.length > 0 ? ` · ${unreadable.length} unreadable` : ""}.
-              </p>
-            )}
-            {totalWines > 0 && (
-              <button
-                type="button"
-                onClick={() => setSommOpen(true)}
-                className="text-meta uppercase text-muted-foreground hover:text-primary"
-                style={{  }}
-              >
-                Show your palate to the somm →
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      {readFailed && (
-        <div className="mt-6 rounded-md border border-border bg-card p-4 text-sm">
-          <p className="text-foreground">Couldn't read that list.</p>
-          <p className="mt-1 text-xs text-muted-foreground">Try again with more light, or hold the phone closer.</p>
-          <button
-            onClick={startOver}
-            className="mt-3 rounded-md bg-primary text-primary-foreground px-3 py-2 text-xs font-medium min-h-11"
-          >
-            Re-scan
-          </button>
-        </div>
-      )}
-
-      {/* Bottom thumb bar (thumb-zone actions only) */}
-      {showDecisionSurface && (
-        <ScanThumbBar
+        <VerdictSurface
+          rows={surfaceRows}
+          pendingSkeletons={pendingSkeletons}
+          stillReading={anyBatchInFlight}
+          scannedAt={scannedAtMs}
+          onRescan={startOver}
           boosted={boosted}
           onBoost={() => setBoosted((b) => !b)}
-          onRescan={startOver}
           controls={controls}
           setControls={setControls}
         />
       )}
 
-      {/* Detail sheet */}
-      <ScanDetailSheet row={detailFor} onClose={() => setDetailFor(null)} />
+      {showDecisionSurface && (
+        <div className="mt-8 space-y-4">
+          <CellarMemorySection matches={cellar.matches} predictionsByIndex={predictionsByIndex} />
+          {autoAttributedTo && (
+            <div className="rounded-md border border-primary/40 bg-primary/5 p-3 text-sub">
+              Added to <span className="font-medium">{autoAttributedTo}</span>.
+            </div>
+          )}
+          {scanLogId && totalWines > 0 && !autoAttributedTo && <RestaurantAttribution scanId={scanLogId} />}
+          {totalWines > 0 && (
+            <button type="button" onClick={() => setSommOpen(true)} className="text-label uppercase text-muted-foreground hover:text-primary">
+              Show your palate to the somm →
+            </button>
+          )}
+        </div>
+      )}
 
-
+      {readFailed && (
+        <div className="mt-6 rounded-md border border-border bg-card p-4 text-sub">
+          <p className="text-foreground">Couldn't read that list.</p>
+          <p className="mt-1 text-meta text-muted-foreground">Try again with more light, or hold the phone closer.</p>
+          <button onClick={startOver} className="mt-3 rounded-md bg-primary text-primary-foreground px-3 py-2 text-meta font-medium min-h-11">
+            Re-scan
+          </button>
+        </div>
+      )}
 
       {unreadable.length > 0 && (
         <div className="mt-8">
           <h2 className="font-serif text-base">Couldn't read these</h2>
-          <ul className="mt-2 text-xs text-muted-foreground space-y-1">
+          <ul className="mt-2 text-meta text-muted-foreground space-y-1">
             {unreadable.map((w, i) => (
               <li key={i}>{[w.producer, w.wine_name, w.vintage].filter(Boolean).join(" ") || "(illegible)"}</li>
             ))}
@@ -937,831 +421,7 @@ function Scan() {
         </div>
       )}
 
-      <p className="mt-10 text-meta text-muted-foreground">
-        Long lists are read in parallel batches of 2 pages. Your photos and results are saved privately so a
-        refresh, tab close, or dropped connection never loses a restaurant session.
-      </p>
-
       <SommelierBriefDialog open={sommOpen} onClose={() => setSommOpen(false)} />
     </div>
   );
 }
-
-function PrescanRestaurantPicker({
-  value, onChange, disabled,
-}: {
-  value: { id: string; name: string } | null;
-  onChange: (v: { id: string; name: string } | null) => void;
-  disabled: boolean;
-}) {
-  const searchFn = useServerFn(searchRestaurantsFn);
-  const createFn = useServerFn(createRestaurantFn);
-  const [q, setQ] = useState("");
-  const [debounced, setDebounced] = useState("");
-  const [city, setCity] = useState("");
-
-  useEffect(() => {
-    const t = setTimeout(() => setDebounced(q.trim()), 250);
-    return () => clearTimeout(t);
-  }, [q]);
-
-  const results = useQuery({
-    queryKey: ["restaurants", "prescan-search", debounced],
-    enabled: debounced.length >= 2 && !value,
-    queryFn: () => searchFn({ data: { q: debounced } }),
-    staleTime: 30_000,
-  });
-
-  const create = useMutation({
-    mutationFn: async (name: string) => createFn({ data: { name, city: city.trim() || null } }),
-    onSuccess: (row) => {
-      onChange({ id: row.id, name: row.name });
-      setQ("");
-      toast.success(`Selected ${row.name}`);
-    },
-    onError: (e: any) => toast.error(e?.message ?? "Couldn't create"),
-  });
-
-  if (value) {
-    return (
-      <div className="mt-4 rounded-md border border-primary/40 bg-primary/5 p-3 flex items-center justify-between gap-3">
-        <div className="text-sm">
-          <p className="text-meta uppercase tracking-label text-primary">Attributing to</p>
-          <p className="font-medium">{value.name}</p>
-        </div>
-        {!disabled && (
-          <button
-            type="button"
-            onClick={() => onChange(null)}
-            className="text-meta text-muted-foreground hover:text-foreground underline underline-offset-2"
-          >
-            Change
-          </button>
-        )}
-      </div>
-    );
-  }
-
-  const showCreate = debounced.length >= 2 && results.data && results.data.length === 0;
-
-  return (
-    <div className="mt-4 rounded-md border border-border bg-card p-3">
-      <p className="text-sm font-medium">Where are you? <span className="text-muted-foreground font-normal">(optional)</span></p>
-      <p className="text-meta text-muted-foreground">Pick a restaurant now to attribute this list automatically.</p>
-      <input
-        type="text"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
-        placeholder="Restaurant name…"
-        disabled={disabled}
-        className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring disabled:opacity-60"
-      />
-      {results.data && results.data.length > 0 && (
-        <ul className="mt-2 divide-y divide-border rounded-md border border-border overflow-hidden">
-          {results.data.map((r) => (
-            <li key={r.id}>
-              <button
-                type="button"
-                disabled={disabled}
-                onClick={() => { onChange({ id: r.id, name: r.name }); setQ(""); }}
-                className="w-full text-left px-3 py-2 text-sm hover:bg-accent/60 disabled:opacity-60"
-              >
-                <span className="font-medium">{r.name}</span>
-                {r.city && <span className="text-muted-foreground"> · {r.city}</span>}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      {showCreate && (
-        <div className="mt-2 space-y-2">
-          <p className="text-xs text-muted-foreground">No match — create it:</p>
-          <input
-            type="text"
-            value={city}
-            onChange={(e) => setCity(e.target.value)}
-            placeholder="City (optional)"
-            disabled={disabled || create.isPending}
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm"
-          />
-          <button
-            type="button"
-            disabled={disabled || create.isPending || !debounced}
-            onClick={() => create.mutate(debounced)}
-            className="rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-sm font-medium disabled:opacity-60"
-          >
-            {create.isPending ? "Creating…" : `Create "${debounced}"`}
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function RestaurantAttribution({ scanId }: { scanId: string }) {
-  const searchFn = useServerFn(searchRestaurantsFn);
-  const createFn = useServerFn(createRestaurantFn);
-  const attributeFn = useServerFn(attributeScanFn);
-  const [q, setQ] = useState("");
-  const [debounced, setDebounced] = useState("");
-  const [city, setCity] = useState("");
-  const [attributed, setAttributed] = useState<{ name: string; id: string } | null>(null);
-  const [dismissed, setDismissed] = useState(false);
-
-  useEffect(() => {
-    const t = setTimeout(() => setDebounced(q.trim()), 250);
-    return () => clearTimeout(t);
-  }, [q]);
-
-  const results = useQuery({
-    queryKey: ["restaurants", "search", debounced],
-    enabled: debounced.length >= 2 && !attributed,
-    queryFn: () => searchFn({ data: { q: debounced } }),
-    staleTime: 30_000,
-  });
-
-  const attribute = useMutation({
-    mutationFn: async ({ id, name }: { id: string; name: string }) => {
-      const res = await attributeFn({ data: { scan_id: scanId, restaurant_id: id } });
-      return { ...res, name };
-    },
-    onSuccess: (res) => {
-      setAttributed({ id: res.restaurant_id, name: res.restaurant_name });
-      toast.success(`Saved ${res.upserted} wine${res.upserted === 1 ? "" : "s"} to ${res.restaurant_name}`);
-    },
-    onError: (e: any) => toast.error(e?.message ?? "Couldn't save"),
-  });
-
-  const createAndAttribute = useMutation({
-    mutationFn: async (name: string) => {
-      const created = await createFn({ data: { name, city: city.trim() || null } });
-      const res = await attributeFn({ data: { scan_id: scanId, restaurant_id: created.id } });
-      return { ...res, name: created.name };
-    },
-    onSuccess: (res) => {
-      setAttributed({ id: res.restaurant_id, name: res.restaurant_name });
-      toast.success(`Created ${res.restaurant_name} and saved ${res.upserted} wines`);
-    },
-    onError: (e: any) => toast.error(e?.message ?? "Couldn't create restaurant"),
-  });
-
-  const busy = attribute.isPending || createAndAttribute.isPending;
-
-  if (dismissed) return null;
-  if (attributed) {
-    return (
-      <div className="mt-4 rounded-md border border-primary/40 bg-primary/5 p-3 text-xs">
-        <p className="text-foreground">Saved to <span className="font-medium">{attributed.name}</span>.</p>
-      </div>
-    );
-  }
-
-  const showCreate = debounced.length >= 2 && results.data && results.data.length === 0;
-
-  return (
-    <div className="mt-4 rounded-md border border-border bg-card p-3">
-      <div className="flex items-baseline justify-between gap-2">
-        <div>
-          <p className="text-sm font-medium">Where are you?</p>
-          <p className="text-meta text-muted-foreground">Optional — attribute this list to a restaurant.</p>
-        </div>
-        <button onClick={() => setDismissed(true)}
-          className="text-meta text-muted-foreground hover:text-foreground underline underline-offset-2">
-          Skip
-        </button>
-      </div>
-      <input type="text" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Restaurant name…"
-        disabled={busy}
-        className="mt-2 w-full rounded-md border border-input bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-ring" />
-      {results.data && results.data.length > 0 && (
-        <ul className="mt-2 divide-y divide-border rounded-md border border-border overflow-hidden">
-          {results.data.map((r) => (
-            <li key={r.id}>
-              <button disabled={busy} onClick={() => attribute.mutate({ id: r.id, name: r.name })}
-                className="w-full text-left px-3 py-2 text-sm hover:bg-accent/60 disabled:opacity-60">
-                <span className="font-medium">{r.name}</span>
-                {r.city && <span className="text-muted-foreground"> · {r.city}</span>}
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-      {showCreate && (
-        <div className="mt-2 space-y-2">
-          <p className="text-xs text-muted-foreground">No match — create it:</p>
-          <input type="text" value={city} onChange={(e) => setCity(e.target.value)} placeholder="City (optional)"
-            disabled={busy} className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm" />
-          <button disabled={busy || !debounced} onClick={() => createAndAttribute.mutate(debounced)}
-            className="rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-sm font-medium disabled:opacity-60">
-            {createAndAttribute.isPending ? "Creating…" : `Create "${debounced}"`}
-          </button>
-        </div>
-      )}
-      {busy && !createAndAttribute.isPending && (
-        <p className="mt-2 text-meta text-muted-foreground">Saving…</p>
-      )}
-    </div>
-  );
-}
-
-function ScanSection({
-  type, rows, enoughRatings, flagFor, groupScores, groupActive, groupLoading, producers,
-}: {
-  type: WineType;
-  rows: ScanRow[];
-  enoughRatings: boolean;
-  flagFor: (r: Ranked) => { label: string; tone: "good" | "bad" | "warn" } | null;
-  groupScores: Map<string, GroupScored> | null;
-  groupActive: boolean;
-  groupLoading: boolean;
-  producers: Map<string, { avg: number; n: number; name: string }>;
-}) {
-  const [controls, setControls] = useState<Controls>(DEFAULT_CONTROLS);
-
-  const overlaidRows: ScanRow[] = useMemo(() => {
-    if (!groupActive || !groupScores) return rows;
-    return rows.map((r) => {
-      const g = groupScores.get(r.ranked.bottle.id);
-      if (!g) return r;
-      const next: ScanRow = { ...r, predicted: g.group_min };
-      next.greatValue = isGreatValue(next);
-      return next;
-    });
-  }, [rows, groupActive, groupScores]);
-
-  const scoreAvailable = enoughRatings || groupActive;
-  const effective: Controls = !scoreAvailable && (controls.sort === "best" || controls.sort === "value" || controls.sort === "confident")
-    ? { ...controls, sort: "best" }
-    : controls;
-  const filtered = useMemo(() => {
-    const out = applyControls(overlaidRows, effective);
-    if (!scoreAvailable && effective.sort === "best") {
-      const idx = new Map(overlaidRows.map((r, i) => [r.key, i]));
-      return [...out].sort((a, b) => (idx.get(a.key) ?? 0) - (idx.get(b.key) ?? 0));
-    }
-    return out;
-  }, [overlaidRows, effective, scoreAvailable]);
-  const visible = filtered.slice(0, 40);
-  const hidden = Math.max(0, filtered.length - visible.length);
-
-  return (
-    <section>
-      <h2 className="font-serif text-xl">{TYPE_LABEL[type]}</h2>
-      {groupActive && (
-        <p className="mt-1 text-meta uppercase tracking-label text-primary">
-          Group picks · ranked by worst-case ★{groupLoading ? " · scoring…" : ""}
-        </p>
-      )}
-      <ListControls value={controls} onChange={setControls} idPrefix={`scan-${type}`} />
-      {visible.length === 0 ? (
-        <p className="mt-4 text-sm text-muted-foreground">No wines in this section match those filters.</p>
-      ) : (
-        <ul className="mt-3 divide-y divide-border">
-          {visible.map(({ ranked: r, isCatalog, greatValue, price_display, verdict }) => {
-            const flag = groupActive ? null : flagFor(r);
-            const g = groupActive && groupScores ? groupScores.get(r.bottle.id) ?? null : null;
-            const prodFam = producerLookup(producers, r.bottle.producer);
-            const verdictTone =
-              verdict?.tone === "good"
-                ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-                : verdict?.tone === "warn"
-                ? "border-amber-500/40 bg-amber-500/10 text-foreground dark:text-foreground"
-                : "border-destructive/40 bg-destructive/10 text-destructive";
-            return (
-              <li key={r.bottle.id} className="py-4 flex items-start justify-between gap-3">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <p className="font-medium leading-tight truncate">{r.bottle.name}</p>
-                    <span
-                      className={`shrink-0 inline-block rounded-full px-1.5 py-0.5 text-meta uppercase tracking-label border ${
-                        isCatalog ? "border-primary/40 bg-primary/10 text-primary" : "border-border bg-muted text-muted-foreground"
-                      }`}
-                      title={isCatalog ? `Matched: ${r.scanned.matched_bottle_name}` : "No catalog match — calibrated LLM estimate"}>
-                      {isCatalog ? "catalog" : "estimated"}
-                    </span>
-                    {greatValue && (
-                      <span className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-meta uppercase tracking-label border border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300">
-                        great value
-                      </span>
-                    )}
-                    {verdict && (
-                      <span
-                        className={`shrink-0 inline-block rounded-full px-1.5 py-0.5 text-meta uppercase tracking-label border ${verdictTone}`}
-                        title={`Menu price ≈ ${verdict.markup?.toFixed(2)}× typical retail for this bottle's price band`}
-                      >
-                        {verdict.label}
-                      </span>
-                    )}
-                    {prodFam && (
-                      <span
-                        className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-meta uppercase tracking-label border border-border bg-muted text-muted-foreground"
-                        title={`You've rated ${prodFam.n} wine${prodFam.n === 1 ? "" : "s"} from ${prodFam.name} (avg ${prodFam.avg.toFixed(1)}★)`}
-                      >
-                        producer you know · {prodFam.avg.toFixed(1)}★
-                      </span>
-                    )}
-                  </div>
-
-                  <p className="text-xs text-muted-foreground truncate">
-                    {[r.bottle.region, r.scanned.grape, price_display].filter(Boolean).join(" · ")}
-                  </p>
-                  {g && (
-                    <p className="mt-1 text-meta text-muted-foreground leading-relaxed">
-                      {g.per_person.map((p, i) => (
-                        <span key={p.user_id}>
-                          {i > 0 && <span className="opacity-50"> · </span>}
-                          <span className="text-foreground/80">{p.display_name}</span>{" "}
-                          {p.predicted.toFixed(1)}
-                          {p.still_learning && <span className="ml-0.5 opacity-70">(still learning)</span>}
-                        </span>
-                      ))}
-                    </p>
-                  )}
-                  {!g && enoughRatings && r.nearest && (
-                    <p className="mt-1 text-meta text-muted-foreground">
-                      like your {r.nearest.stars}★ <span className="text-foreground/80">{r.nearest.name}</span>
-                    </p>
-                  )}
-                  {flag && (
-                    <p className={`mt-1 text-meta ${
-                      flag.tone === "good" ? "text-primary" :
-                      flag.tone === "bad" ? "text-destructive" : "text-muted-foreground italic"
-                    }`}>
-                      {flag.label}
-                    </p>
-                  )}
-                </div>
-                {g ? (
-                  <div className="shrink-0 text-right">
-                    <span className="font-serif text-primary text-xl">{g.group_min.toFixed(1)}</span>
-                    <span className="text-primary text-sm">★</span>
-                    <p className="text-meta text-muted-foreground">avg {g.group_avg.toFixed(1)}</p>
-                  </div>
-                ) : enoughRatings ? (
-                  <div className="shrink-0 text-right">
-                    <span className="font-serif text-primary text-xl">{r.predicted.toFixed(1)}</span>
-                    <span className="text-primary text-sm">★</span>
-                  </div>
-                ) : null}
-              </li>
-            );
-          })}
-        </ul>
-      )}
-      {hidden > 0 && (
-        <p className="mt-2 text-meta text-muted-foreground">+{hidden} more match these filters.</p>
-      )}
-    </section>
-  );
-}
-
-// ================= PHASE 3 COMPONENTS =================
-
-function priceLabel(row: ScanRow): string {
-  return row.price_display ?? "—";
-}
-
-function reasonLine(row: ScanRow): string {
-  const r = row.ranked;
-  if (r.vetoed) return "avoid — a nemesis lives here";
-  if (r.contested) return "close to a dealbreaker for you";
-  if (r.nearest) {
-    const words = r.nearest.name.split(/\s+/).filter(Boolean).slice(0, 3).join(" ");
-    return `like your ${r.nearest.stars}★ ${words}`;
-  }
-  if (r.predicted >= 4.3) return "your kind of wine";
-  if (r.predicted >= 3.8) return "strong match";
-  if (r.predicted <= 2.6) return "likely not your style";
-  return "";
-}
-
-function HeroCard({
-  row, isTie, zeroStrong, currentStars, onOpen,
-}: {
-  row: ScanRow;
-  isTie: boolean;
-  zeroStrong: boolean;
-  currentStars: number | null;
-  onOpen: () => void;
-}) {
-  const score = row.predicted.toFixed(1);
-  const reason = reasonLine(row);
-  const price = priceLabel(row);
-  const nameId = `hero-${row.key}`;
-  const rate = useRate();
-  const bottleId = row.ranked.scanned.matched_bottle_id;
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={onOpen}
-      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
-      aria-labelledby={nameId}
-      className="scan-hero relative w-full text-left rounded-xl border border-[--accent-color] p-5 bg-[--surface] cursor-pointer focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[--accent-color]"
-      style={{ boxShadow: "0 0 0 1px var(--accent-color), 0 12px 40px -12px color-mix(in oklab, var(--accent-color) 40%, transparent)" }}
-    >
-      <p className="text-meta uppercase tracking-label text-[--accent-color] font-medium">
-        {isTie ? "Top picks" : zeroStrong ? "Closest match" : "Top pick"}
-      </p>
-      <div className="mt-3 flex items-baseline gap-3">
-        <span
-          className="font-serif text-[--accent-color] leading-none"
-          style={{ fontSize: "48px", fontWeight: 600 }}
-        >
-          {score}
-        </span>
-        <span className="text-[--accent-color] text-2xl leading-none">★</span>
-      </div>
-      <p
-        id={nameId}
-        className="mt-3 text-foreground break-words"
-        style={{ fontSize: "22px", lineHeight: 1.2, fontWeight: 600 }}
-      >
-        {row.ranked.bottle.name}
-      </p>
-      {row.ranked.bottle.region && (
-        <p className="mt-1 text-xs text-muted-foreground">{row.ranked.bottle.region}</p>
-      )}
-      <p className="mt-3 text-sm text-foreground">
-        <span className="text-[--accent-color] font-medium">{price}</span>
-        {reason && <span className="text-muted-foreground"> · {reason}</span>}
-      </p>
-      <div
-        className="mt-4 pt-3 border-t border-[--accent-color]/30 flex items-center justify-between gap-3"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <span className="text-meta uppercase tracking-label text-muted-foreground">
-          {bottleId == null
-            ? "Estimated — couldn't identify to rate"
-            : currentStars != null
-              ? row.isCatalog ? "Your rating" : "Your rating · estimated"
-              : row.isCatalog ? "Tried it? Rate now" : "Estimated — tried it? Rate now"}
-        </span>
-        {bottleId != null && (
-          <StarTap
-            value={currentStars}
-            size="sm"
-            onChange={(stars) => {
-              if (stars == null || stars === currentStars) return;
-              rate.mutate(
-                { bottleId, stars },
-                {
-                  onSuccess: () => toast.success(`Rated ${stars}★`),
-                  onError: (e) => {
-                    const msg = (e as any)?.message ?? (typeof e === "string" ? e : "Couldn't save rating");
-                    if (!/canceled/i.test(msg)) toast.error(msg || "Couldn't save rating");
-                  },
-                },
-              );
-            }}
-          />
-        )}
-      </div>
-    </div>
-  );
-}
-
-function HeroSkeleton() {
-  return (
-    <div
-      aria-hidden
-      className="rounded-xl border border-[--accent-color]/40 p-5 bg-[--surface] animate-pulse"
-      style={{ minHeight: 160 }}
-    >
-      <div className="h-3 w-24 rounded bg-[--surface-2]" />
-      <div className="mt-4 h-12 w-24 rounded bg-[--surface-2]" />
-      <div className="mt-4 h-5 w-3/4 rounded bg-[--surface-2]" />
-      <div className="mt-2 h-4 w-1/2 rounded bg-[--surface-2]" />
-    </div>
-  );
-}
-
-function ResultRow({ row, currentStars, onOpen }: { row: ScanRow; currentStars: number | null; onOpen: () => void }) {
-  const r = row.ranked;
-  const score = r.predicted > 0 ? r.predicted.toFixed(1) : null;
-  const reason = reasonLine(row);
-  const price = priceLabel(row);
-  const rate = useRate();
-  const edge = r.vetoed
-    ? "before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-[--crimson] before:content-['']"
-    : r.contested
-    ? "before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-[--amber] before:content-['']"
-    : "";
-  return (
-    <li className="list-none">
-      <div
-        role="button"
-        tabIndex={0}
-        onClick={onOpen}
-        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onOpen(); } }}
-        aria-label={`Details for ${r.bottle.name}`}
-        className={`relative w-full text-left py-4 pl-4 pr-3 flex items-start gap-4 min-h-11 hover:bg-accent/40 transition-colors cursor-pointer ${edge}`}
-      >
-        <div className="shrink-0 flex flex-col items-center justify-center w-14 h-14 rounded-xl border border-border bg-[--surface-2]">
-          {score ? (
-            <>
-              <span className="font-serif text-[--accent-color] leading-none" style={{ fontSize: "22px" }}>{score}</span>
-              <span className="mt-0.5 text-sm text-[--accent-color] leading-none">★</span>
-            </>
-          ) : (
-            <span className="text-meta uppercase tracking-label text-muted-foreground">n/a</span>
-          )}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start gap-2">
-            {r.vetoed && (
-              <span className="shrink-0 mt-0.5 rounded-sm bg-[--crimson] text-white text-meta font-bold uppercase tracking-label px-1.5 py-0.5">
-                Avoid
-              </span>
-            )}
-            <p
-              className="text-foreground break-words"
-              style={{
-                fontSize: "15px",
-                lineHeight: 1.35,
-                fontWeight: 500,
-                display: "-webkit-box",
-                WebkitLineClamp: 2,
-                WebkitBoxOrient: "vertical",
-                overflow: "hidden",
-              }}
-            >
-              {r.bottle.name}
-            </p>
-          </div>
-          {reason && (
-            <p className={`mt-1 text-meta ${r.vetoed ? "text-[--crimson]" : "text-muted-foreground"}`}>{reason}</p>
-          )}
-          <div className="mt-2" onClick={(e) => e.stopPropagation()}>
-            {r.scanned.matched_bottle_id ? (
-              <StarTap
-                value={currentStars}
-                size="sm"
-                onChange={(stars) => {
-                  if (stars == null || stars === currentStars) return;
-                  rate.mutate(
-                    { bottleId: r.scanned.matched_bottle_id!, stars },
-                    {
-                      onSuccess: () => toast.success(`Rated ${stars}★`),
-                      onError: (e) => {
-                        const msg = (e as any)?.message ?? (typeof e === "string" ? e : "Couldn't save rating");
-                        if (!/canceled/i.test(msg)) toast.error(msg || "Couldn't save rating");
-                      },
-                    },
-                  );
-                }}
-              />
-            ) : (
-              <p className="text-meta uppercase tracking-label text-muted-foreground/70">Estimated — no catalog match to rate</p>
-            )}
-          </div>
-        </div>
-        <div className="shrink-0 text-right pt-1">
-          <p className="text-sm text-foreground font-medium">{price}</p>
-          {row.greatValue && !r.vetoed && (
-            <p className="mt-0.5 flex items-center justify-end gap-1 text-meta text-[--value]">
-              <span aria-hidden className="inline-block w-1.5 h-1.5 rounded-full bg-[--value]" /> value
-            </p>
-          )}
-        </div>
-      </div>
-    </li>
-  );
-}
-
-function SkeletonRow() {
-  return (
-    <li className="list-none py-4 pl-4 pr-3 flex items-start gap-4 animate-pulse">
-      <div className="shrink-0 w-14 h-14 rounded-xl bg-[--surface-2]" />
-      <div className="flex-1 space-y-2">
-        <div className="h-4 w-3/4 rounded bg-[--surface-2]" />
-        <div className="h-3 w-1/3 rounded bg-[--surface-2]" />
-        <p className="text-meta text-muted-foreground italic">still reading…</p>
-      </div>
-      <div className="w-12 h-4 rounded bg-[--surface-2]" />
-    </li>
-  );
-}
-
-function ScanThumbBar({
-  boosted, onBoost, onRescan, controls, setControls,
-}: {
-  boosted: boolean;
-  onBoost: () => void;
-  onRescan: () => void;
-  controls: Controls;
-  setControls: (c: Controls) => void;
-}) {
-  // Static inline toolbar that lives in the content flow (no fixed overlay).
-  return (
-    <div
-      className="mt-6 rounded-xl border border-border bg-card"
-      role="toolbar"
-      aria-label="Scan result actions"
-    >
-      <div className="flex items-center gap-2 px-3 py-2">
-        <button
-          type="button"
-          onClick={onRescan}
-          aria-label="Re-scan"
-          className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-background text-foreground text-sm font-medium min-h-11 px-3 whitespace-nowrap overflow-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary active:bg-accent"
-        >
-          <span aria-hidden>↻</span>
-          <span className="truncate">Re-scan</span>
-        </button>
-        <button
-          type="button"
-          onClick={onBoost}
-          aria-pressed={boosted}
-          aria-label={boosted ? "Turn brightness boost off" : "Turn brightness boost on"}
-          className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border text-sm font-medium min-h-11 px-3 whitespace-nowrap overflow-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
-            boosted
-              ? "border-primary bg-primary text-primary-foreground"
-              : "border-border bg-background text-foreground active:bg-accent"
-          }`}
-        >
-          <span aria-hidden>☀</span>
-          <span className="truncate">{boosted ? "Boost on" : "Boost"}</span>
-        </button>
-        <div className="flex-1 [&>div]:mt-0 [&>div]:justify-stretch [&_button]:w-full [&_button]:justify-center">
-          <ListControls value={controls} onChange={setControls} idPrefix="scan-decision" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ScanDetailSheet({ row, onClose }: { row: ScanRow | null; onClose: () => void }) {
-  const { data: ratings } = useRatings();
-  const rate = useRate();
-  useEffect(() => {
-    if (!row) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [row, onClose]);
-  if (!row) return null;
-  const r = row.ranked;
-  const bottleId = r.scanned.matched_bottle_id;
-  const currentStars = bottleId ? (ratings?.find((x) => x.bottle_id === bottleId)?.stars ?? null) : null;
-  const reason = reasonLine(row);
-  return (
-    <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label={`Detail for ${r.bottle.name}`}>
-      <button
-        aria-label="Close detail"
-        onClick={onClose}
-        className="absolute inset-0 bg-black/60 motion-safe:animate-in motion-safe:fade-in"
-      />
-      <div
-        className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-[--surface] border-t border-border p-5 pb-8 motion-safe:animate-in motion-safe:slide-in-from-bottom max-h-[85vh] overflow-y-auto"
-        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)" }}
-      >
-        <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-border" aria-hidden />
-        <div className="flex items-start justify-between gap-3">
-          <div className="min-w-0">
-            <p className="font-serif text-heading leading-tight text-foreground break-words">{r.bottle.name}</p>
-            {r.bottle.region && <p className="mt-1 text-xs text-muted-foreground">{r.bottle.region}</p>}
-          </div>
-          <div className="shrink-0 text-right">
-            {r.predicted > 0 ? (
-              <>
-                <span className="font-serif text-[--accent-color] text-3xl leading-none">{r.predicted.toFixed(1)}</span>
-                <span className="text-[--accent-color] text-lg leading-none">★</span>
-              </>
-            ) : (
-              <span className="text-xs text-muted-foreground">no score</span>
-            )}
-          </div>
-        </div>
-        <p className="mt-3 text-sm">
-          <span className="text-[--accent-color] font-medium">{priceLabel(row)}</span>
-          {row.isCatalog ? <span className="ml-2 text-meta uppercase tracking-label text-muted-foreground">catalog match</span>
-            : <span className="ml-2 text-meta uppercase tracking-label text-muted-foreground">estimated</span>}
-        </p>
-        {reason && (
-          <p className={`mt-2 text-xs ${r.vetoed ? "text-[--crimson]" : "text-muted-foreground"}`}>{reason}</p>
-        )}
-        <div className="mt-4 pt-3 border-t border-border flex items-center justify-between gap-3">
-          <span className="text-meta uppercase tracking-label text-muted-foreground">
-            {bottleId == null
-              ? "Estimated — couldn't identify to rate"
-              : currentStars != null
-                ? row.isCatalog ? "Your rating" : "Your rating · estimated"
-                : row.isCatalog ? "Tried it? Rate now" : "Estimated — tried it? Rate now"}
-          </span>
-          {bottleId != null && (
-            <StarTap
-              value={currentStars}
-              size="md"
-              onChange={(stars) => {
-                if (stars == null || stars === currentStars) return;
-                rate.mutate(
-                  { bottleId, stars },
-                  {
-                    onSuccess: () => toast.success(`Rated ${stars}★`),
-                    onError: (e) => {
-                      const msg = (e as any)?.message ?? (typeof e === "string" ? e : "Couldn't save rating");
-                      if (!/canceled/i.test(msg)) toast.error(msg || "Couldn't save rating");
-                    },
-                  },
-                );
-              }}
-            />
-          )}
-        </div>
-        <div className="mt-5 flex items-center gap-4">
-          <FingerprintSpoke fp={r.bottle.fp} size={72} />
-          <div className="min-w-0 text-xs text-muted-foreground">
-            {r.nearest ? (
-              <p>
-                Closest to your{" "}
-                <span className="text-foreground">{r.nearest.stars}★ {r.nearest.name}</span>
-                {r.nearestIsCanon && <span className="ml-1 text-[--accent-color]">· Benchmark</span>}
-              </p>
-            ) : (
-              <p>No close neighbor in your rated wines yet.</p>
-            )}
-            {r.vetoed && r.vetoReason && (
-              <p className="mt-2 text-[--crimson]">Avoid — close to your nemesis {r.vetoReason.nemesis.name}</p>
-            )}
-            {!r.vetoed && r.contested && r.contestedReason && (
-              <p className="mt-2 text-[--amber]">Contested — near {r.contestedReason.nemesis.name}, but closer to your love {r.contestedReason.nearestPositive.name}</p>
-            )}
-
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function fmtScanDate(iso: string): string {
-  const d = new Date(iso);
-  return d.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-}
-
-function PastScansHistory() {
-  const list = useServerFn(listUserScans);
-  const q = useQuery({ queryKey: ["user-scans"], queryFn: () => list(), staleTime: 30_000 });
-
-  if (q.isLoading) {
-    return <div className="mt-8 text-sm text-muted-foreground">Loading past scans…</div>;
-  }
-  if (q.error) {
-    return <div className="mt-8 text-sm text-destructive">Couldn't load past scans.</div>;
-  }
-  const scans = q.data ?? [];
-
-  return (
-    <section aria-labelledby="past-scans-heading" className="mt-8">
-      <div className="flex items-baseline justify-between">
-        <h2 id="past-scans-heading" className="font-serif text-lg">Past scans</h2>
-        {scans.length > 0 && (
-          <span className="text-meta text-muted-foreground">
-            {scans.length} scan{scans.length === 1 ? "" : "s"}
-          </span>
-        )}
-      </div>
-      <p className="mt-1 text-xs text-muted-foreground">
-        Facts saved once — each scan re-ranks against your current palate when you open it.
-      </p>
-
-      {scans.length === 0 ? (
-        <div className="mt-3 rounded-lg border border-dashed border-border bg-muted/30 p-4 text-sm text-muted-foreground">
-          No scans yet. Point the camera at a wine list above to capture your first one.
-        </div>
-      ) : (
-        <ul className="mt-3 space-y-2">
-          {scans.map((s) => (
-            <li key={s.id}>
-              <Link
-                to="/scan/$id"
-                params={{ id: s.id }}
-                className="block rounded-lg border border-border bg-card p-4 hover:bg-accent/40 active:bg-accent/60 transition-colors"
-              >
-                <div className="flex items-baseline justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="font-medium truncate">
-                      {s.restaurant_name ?? s.venue_raw_text ?? "Unattributed scan"}
-                    </div>
-                    <div className="text-xs text-muted-foreground mt-0.5">
-                      {fmtScanDate(s.scanned_at)} · {s.wine_count} wine{s.wine_count === 1 ? "" : "s"}
-                      {s.matched_count > 0 && <> · {s.matched_count} matched</>}
-                    </div>
-                  </div>
-                  {s.status !== "complete" && s.status !== "parsed" && (
-                    <span className="shrink-0 text-meta uppercase tracking-label text-muted-foreground rounded px-1.5 py-0.5 border border-border">
-                      {s.status}
-                    </span>
-                  )}
-                </div>
-              </Link>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
-  );
-}
-
-
