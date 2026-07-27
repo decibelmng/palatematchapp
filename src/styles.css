@@ -142,10 +142,10 @@
   --value: #1F6440;
   --bad: #8A2F3B;               /* 5.20:1 vs --surface — destructive text on light */
   --crimson: #8A2F3B;
-
-  /* NON-TEXT ONLY. Never used as color on a text node in light mode.
-     Reserved for left-edge rails, icon fills, and borders on warning states. */
+  /* Non-text ONLY (~3.5:1 min across surfaces at accent use, ~4.5:1 on --surface).
+     Use as rail/border/icon/tint; labels must resolve to --text. */
   --amber: #8A5D18;
+
   --gold-dim: #8A5D18;
 
   --border-color: #B6A28A;      /* internal dividers */
