@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/error-message";
 import { getInvite, redeemInvite, type InviteInfo } from "@/lib/invites.functions";
 import { useSession } from "@/hooks/use-session";
 import { supabase } from "@/integrations/supabase/client";
@@ -86,7 +87,7 @@ function InvitePage() {
         nav({ to: "/friends" });
       }
     } catch (e) {
-      toast.error((e as Error).message ?? "Couldn't connect");
+      toast.error(friendlyError(e, "Couldn't connect"));
     } finally {
       setRedeeming(false);
     }
@@ -193,7 +194,7 @@ function SignInBlock() {
       if (error) throw error;
       setSent(true);
     } catch (e) {
-      setErr((e as Error).message ?? "Something went wrong");
+      setErr(friendlyError(e, "Something went wrong"));
     } finally {
       setBusy(false);
     }

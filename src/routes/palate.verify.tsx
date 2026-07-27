@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/error-message";
 import { ChevronLeft, GraduationCap } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AuthGate } from "@/components/AuthGate";
@@ -35,7 +36,7 @@ function VerifyPage() {
       qc.invalidateQueries({ queryKey: ["my-profile"] });
       setCode("");
     },
-    onError: (e: Error) => toast.error(e.message || "Invalid code"),
+    onError: (e: Error) => toast.error(friendlyError(e, "Invalid code")),
   });
 
   const verified = profile?.somm_status === "verified";
