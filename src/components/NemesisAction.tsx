@@ -54,21 +54,22 @@ export function NemesisAction({ bottle, stars, compact = false }: Props) {
     if (isNemesis) {
       void (async () => {
         const ok = await confirmDialog({
-          title: "Remove Nemesis status?",
+          title: "Remove avoid status?",
           description: (
             <>
-              Remove Nemesis status from{" "}
+              Stop steering away from{" "}
               <span className="font-semibold text-foreground">{bottle.name}</span>?
               It'll revert to its {stars ?? 1}★ rating.
             </>
           ),
-          confirmLabel: "Remove Nemesis",
+          confirmLabel: "Remove",
           destructive: true,
         });
         if (ok) demote.mutate(myNemesisForThis!.id);
       })();
       return;
     }
+
     setDialog(conflicting ? "replace" : "confirm");
   }
 
