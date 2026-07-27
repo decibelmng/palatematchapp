@@ -24,7 +24,11 @@ export const Route = createFileRoute("/brief")({
  */
 function BriefFullScreen() {
   const brief = useSommelierBrief();
+  const { data: profile } = useMyProfile();
   const [locked, setLocked] = useState(false);
+
+  const quiz = (profile?.quiz_answers ?? null) as QuizAnswers | null;
+  const archetype = quiz && "votes" in quiz ? archetypeFor(quiz, quiz.type === "white" ? "white" : "red").name : null;
 
   useEffect(() => {
     if (!locked) return;
