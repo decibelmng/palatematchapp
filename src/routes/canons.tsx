@@ -107,7 +107,7 @@ function CanonsPage() {
           });
         },
         onError: (err) =>
-          toast.error((err as Error).message || `Couldn't remove ${verb.toLowerCase()} status`),
+          toast.error(friendlyError(err, `Couldn't remove ${verb.toLowerCase()} status`)),
       });
     },
     [demote, armUndo],

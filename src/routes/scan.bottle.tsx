@@ -149,7 +149,7 @@ function BottleScan() {
   const resolveMut = useMutation({
     mutationFn: async (read: BottleExtract) => resolveFn({ data: { read } }),
     onSuccess: (r) => { setOverride(r); setConfirmed(true); },
-    onError: (e: Error) => { toast.error(e.message || "Couldn't re-check the catalog."); },
+    onError: (e: Error) => { toast.error(friendlyError(e, "Couldn't re-check the catalog.")); },
   });
 
   useEffect(() => {
@@ -237,7 +237,7 @@ function BottleScan() {
     });
 
     if (error) {
-      toast.error(error.message || `Couldn't rate ${c.name}`);
+      toast.error(friendlyError(error, `Couldn't rate ${c.name}`));
       return;
     }
     qc.invalidateQueries({ queryKey: ["ratings"] });
