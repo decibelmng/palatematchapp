@@ -99,7 +99,10 @@ export function computeCode(rated: RatedBottle[], axes: AxisDef[]): { code: stri
     let letter: string;
     let descriptor: string;
     if (bimodal) {
-      letter = "X"; descriptor = "loves both poles";
+      // Bimodal renders as a muted middot ("·") — same glyph the reader uses
+      // for "not resolved yet", but with a distinct meaning surfaced via the
+      // `bimodal` flag. An X reads as an error in every UI convention.
+      letter = "·"; descriptor = "loves both poles";
     } else if (mean <= 0.42) {
       letter = axisDef.low; descriptor = axisDef.lowName;
     } else if (mean >= 0.55) {
