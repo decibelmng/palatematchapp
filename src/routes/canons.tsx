@@ -307,7 +307,7 @@ function TierSection({
                   type="button"
                   onClick={() => onSwap(row)}
                   className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-meta font-medium hover:bg-accent"
-                  aria-label={`Swap ${tier} for ${canon.region}`}
+                  aria-label={`Swap ${tier === "canon" ? "favorite" : "wine to avoid"} for ${canon.region}`}
                 >
                   <ArrowLeftRight size={12} />
                   Swap
@@ -316,7 +316,8 @@ function TierSection({
                   type="button"
                   onClick={() => onRemove(row)}
                   className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-card px-2 py-1 text-meta font-medium text-muted-foreground hover:text-destructive hover:border-destructive/40"
-                  aria-label={`Remove ${tier} status from ${bottle.name}`}
+                  aria-label={`Remove ${tier === "canon" ? "favorite" : "avoid"} status from ${bottle.name}`}
+
                 >
                   <X size={12} />
                   Remove
