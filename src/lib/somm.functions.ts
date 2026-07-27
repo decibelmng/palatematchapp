@@ -480,7 +480,12 @@ export const sommCorrectItem = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
     await requireVerifiedSomm(supabase, userId);
-    const patch: Record<string, unknown> = { corrected: true };
+    const patch: {
+      corrected: boolean;
+      raw_producer?: string | null;
+      raw_cuvee?: string | null;
+      raw_vintage?: number | null;
+    } = { corrected: true };
     if (data.producer !== undefined) patch.raw_producer = data.producer;
     if (data.cuvee !== undefined) patch.raw_cuvee = data.cuvee;
     if (data.vintage !== undefined) patch.raw_vintage = data.vintage;
