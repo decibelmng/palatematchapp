@@ -114,11 +114,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   useLastSeenPing((profile as { id?: string } | undefined)?.id);
   useAutoRedeemInvite();
 
-  // TEMPORARY GATE: /somm is hidden from the shipped build pending the
-  // consent-payload work. Everyone (including verified sommeliers) sees the
-  // Feed tab here. Restore the Table-for-somm branch once /somm ships.
-  void profile;
-  const rightTab: FlatTab = { to: "/feed", label: "Feed", Icon: Users };
+  // Verified sommeliers see the Table tab; everyone else sees Feed.
+  const isVerifiedSomm =
+    (profile as { somm_status?: string } | undefined)?.somm_status === "verified";
+  const rightTab: FlatTab = isVerifiedSomm
+    ? { to: "/somm/table", label: "Table", Icon: Users }
+    : { to: "/feed", label: "Feed", Icon: Users };
   const active = activeTabFor(pathname, rightTab.to);
 
   const { data: feedActivity } = useFeedActivity();

@@ -1,4 +1,4 @@
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AuthGate } from "@/components/AuthGate";
 import { useMyProfile } from "@/hooks/use-friends";
@@ -16,11 +16,6 @@ import type { Verdict } from "@/lib/table-call";
 
 export const Route = createFileRoute("/somm/table")({
   ssr: false,
-  // TEMPORARY GATE: /somm/table is hidden pending consent + payload work.
-  // Direct navigation redirects to /palate; the component below is retained.
-  beforeLoad: () => {
-    throw redirect({ to: "/palate" });
-  },
   head: () => ({
     meta: [
       { title: "Table mode — Palate Match" },

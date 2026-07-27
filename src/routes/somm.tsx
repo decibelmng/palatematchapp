@@ -1,16 +1,10 @@
-import { createFileRoute, Link, redirect } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { AuthGate } from "@/components/AuthGate";
 import { useMyProfile } from "@/hooks/use-friends";
 import { Users, ListChecks, BookOpen, GraduationCap } from "lucide-react";
 
 export const Route = createFileRoute("/somm")({
   ssr: false,
-  // TEMPORARY GATE: /somm is hidden from the shipped build pending consent +
-  // payload work. Direct navigation redirects to /palate. Code below is kept
-  // intact so the surface can be re-enabled by removing this beforeLoad.
-  beforeLoad: () => {
-    throw redirect({ to: "/palate" });
-  },
   head: () => ({
     meta: [
       { title: "Sommelier mode — Palate Match" },
