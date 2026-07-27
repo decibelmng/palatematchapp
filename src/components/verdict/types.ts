@@ -1,6 +1,6 @@
 import type { Recommendation, WineType } from "@/lib/recommender";
 import type { ResolvedWine } from "@/lib/scan.functions";
-import type { Priced } from "@/lib/list-controls";
+import type { Priced, ValueKind } from "@/lib/list-controls";
 import type { PriceVerdict } from "@/lib/price-verdict";
 
 export type Ranked = Recommendation & { scanned: ResolvedWine };
@@ -12,8 +12,10 @@ export type ScanRow = Priced & {
   isCatalog: boolean;
   greatValue: boolean;
   valueSentence: string | null;
+  valueKind: ValueKind | null;
   verdict: PriceVerdict | null;
 };
+
 
 export function priceLabel(row: ScanRow): string {
   return row.price_display ?? "\u2014";
