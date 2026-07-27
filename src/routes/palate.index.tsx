@@ -358,8 +358,8 @@ function Stat({ n, label }: { n: number; label: string }) {
   );
 }
 
-function CodeChip({ type, code, n, active, onClick }: { type: PaletteType; code: string; n: number; active: boolean; onClick: () => void }) {
-  const label = type === "red" ? "RED" : "WHITE";
+function CodeChip({ type, n, active, onClick }: { type: PaletteType; n: number; active: boolean; onClick: () => void }) {
+  const label = type === "red" ? "Red palate" : "White palate";
   return (
     <button
       type="button"
@@ -367,18 +367,14 @@ function CodeChip({ type, code, n, active, onClick }: { type: PaletteType; code:
       aria-pressed={active}
       className={`text-left rounded-[14px] border p-4 transition ${active ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary/40"}`}
     >
-      <div className="flex items-center justify-between">
-        <span className="text-meta uppercase text-muted-foreground" style={{  }}>{label}</span>
-        <span className="text-meta text-muted-foreground">{n === 0 ? "no ratings" : `${n} rated`}</span>
-      </div>
-      <div className="mt-3 mb-1 font-serif text-title text-primary leading-none" style={{  }}>
-        {code.split("").map((ch, i) => (
-          <span key={`${type}-${i}-${ch}`} className={ch === "·" ? "text-muted-foreground/60" : ""}>{ch}</span>
-        ))}
+      <div className="font-serif text-body leading-tight text-foreground">{label}</div>
+      <div className="mt-1 text-meta text-muted-foreground">
+        {n === 0 ? "no ratings yet" : `${n} rated`}
       </div>
     </button>
   );
 }
+
 
 function Rate5Progress({ redN, whiteN }: { redN: number; whiteN: number }) {
   const n = Math.max(redN, whiteN);
