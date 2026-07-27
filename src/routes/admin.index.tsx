@@ -22,9 +22,10 @@ const ADMIN_LINKS: Array<{
   { to: "/admin/inspect",       label: "Inspect",        description: "Read-only browse of tables.",             Icon: Search },
   { to: "/admin/somm-codes",    label: "Somm Codes",     description: "Issue and revoke sommelier invites.",     Icon: Ticket },
   { to: "/admin/feedback",      label: "Feedback",       description: "Bug / confusing / idea reports.",         Icon: MessageSquare },
-  { to: "/admin/corrections",   label: "Corrections",    description: "Catalog + fingerprint corrections.",      Icon: Wrench },
+  { to: "/admin/corrections",   label: "Corrections",    description: "Catalog + style-profile corrections.",    Icon: Wrench },
   { to: "/admin/consensus",     label: "Consensus",      description: "Shadow consensus runs.",                  Icon: Wand2 },
-  { to: "/admin/disputes",      label: "Disputes",       description: "Fingerprint disputes queue.",             Icon: Bug },
+  { to: "/admin/disputes",      label: "Disputes",       description: "Style-profile disputes queue.",           Icon: Bug },
+
   { to: "/admin/type-fix",      label: "Type Fixes",     description: "Bottle type review queue.",               Icon: Wrench },
 ];
 
