@@ -246,25 +246,28 @@ function PalateHome() {
         )}
         <div className="mt-2 flex items-center justify-between px-2 pb-1">
           <div className="text-meta text-muted-foreground">Palate code: <span className="font-mono text-foreground">{scopedCode}</span></div>
-          <Link to="/palate/$type" params={{ type: scope }} className="text-meta uppercase text-muted-foreground hover:text-primary" style={{  }}>
-            Detail + 3D →
-          </Link>
         </div>
       </div>
 
-      {/* Calibration meter — % pinned per color, derived from rating counts only. */}
+      {/* Calibration hint — one actionable sentence, or nothing. */}
       <div className="mt-4">
         <CalibrationMeter />
       </div>
-
 
       {/* Visibility */}
       <div className="mt-5">
         <VisibilityControl current={(profile?.visibility as "private" | "followers" | "public") ?? "private"} />
       </div>
 
-      {/* Verify / settings */}
+      {/* Rate + verify */}
       <div className="mt-4 flex flex-col gap-2">
+        <Link
+          to="/rate"
+          className="flex items-center justify-between rounded-[14px] border border-border bg-card p-4 hover:border-primary/40"
+        >
+          <div className="text-sm">Rate a wine</div>
+          <span className="text-primary text-sm">→</span>
+        </Link>
         {profile?.somm_status !== "verified" && (
           <Link
             to="/palate/verify"
@@ -273,27 +276,22 @@ function PalateHome() {
             <div className="flex items-center gap-3">
               <GraduationCap className="h-5 w-5 text-primary" />
               <div>
-                <div className="text-sm">Verify as a SOMM</div>
+                <div className="text-sm">Verify as a sommelier</div>
                 <div className="text-meta text-muted-foreground">Get the badge on your profile.</div>
               </div>
             </div>
             <span className="text-primary text-sm">→</span>
           </Link>
         )}
-        <Link
-          to="/friends"
-          className="flex items-center justify-between rounded-[14px] border border-border bg-card p-4 hover:border-primary/40"
-        >
-          <div className="flex items-center gap-3">
-            <Settings2 className="h-5 w-5 text-muted-foreground" />
-            <div className="text-sm">Friends &amp; account</div>
-          </div>
-          <span className="text-muted-foreground text-sm">→</span>
-        </Link>
       </div>
+
+      {/* Account — theme, past scans, friends, feedback, sign-out.
+          This is where the retired hamburger menu now lives. */}
+      <AccountSection />
     </div>
   );
 }
+
 
 function Stat({ n, label }: { n: number; label: string }) {
   return (
