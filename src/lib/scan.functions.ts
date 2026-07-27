@@ -339,7 +339,7 @@ export const scanWineBatch = createServerFn({ method: "POST" })
             grape: w.grape ?? null,
             price: w.price ?? null,
             price_amount: parsePriceAmount(w.price ?? null),
-            currency: "USD",
+            currency: detectCurrencyFromText(w.price ?? rawLine) ?? "USD",
             format: inferFormat(rawLine),
             raw_text: rawLine || null,
             raw_json: w as any,
