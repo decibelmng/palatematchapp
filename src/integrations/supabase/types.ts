@@ -100,24 +100,24 @@ export type Database = {
           critic_score?: number | null
           excluded_from_recs?: boolean
           fp_acid: number
-          fp_acid_prior: number
+          fp_acid_prior?: number
           fp_body: number
-          fp_body_prior: number
+          fp_body_prior?: number
           fp_dispute_count?: number
           fp_fresh: number
-          fp_fresh_prior: number
+          fp_fresh_prior?: number
           fp_fruit_dark: number
-          fp_fruit_dark_prior: number
+          fp_fruit_dark_prior?: number
           fp_harmonized_at?: string | null
           fp_oak: number
-          fp_oak_prior: number
+          fp_oak_prior?: number
           fp_prior_precision?: number
           fp_ripe: number
-          fp_ripe_prior: number
+          fp_ripe_prior?: number
           fp_savory: number
-          fp_savory_prior: number
+          fp_savory_prior?: number
           fp_tannin: number
-          fp_tannin_prior: number
+          fp_tannin_prior?: number
           fp_vec?: string | null
           grape?: string | null
           id?: string
