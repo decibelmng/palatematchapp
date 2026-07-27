@@ -353,3 +353,62 @@ function Rate5Progress({ redN, whiteN }: { redN: number; whiteN: number }) {
     </div>
   );
 }
+
+/**
+ * Account section. Absorbs everything that used to live in the header
+ * hamburger: theme toggle, past scans, friends, feedback, sign-out. One
+ * place for settings-shaped things.
+ */
+function AccountSection() {
+  const { base: theme, toggleBase: toggle } = useTheme();
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  return (
+    <div className="mt-6">
+      <div className="text-meta uppercase tracking-label text-muted-foreground px-1 mb-2">Account</div>
+      <div className="rounded-[14px] border border-border bg-card divide-y divide-border overflow-hidden">
+        <button
+          type="button"
+          onClick={toggle}
+          className="w-full flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-accent/40 text-left"
+        >
+          {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+          <span className="flex-1">{theme === "dark" ? "Light theme" : "Dark theme"}</span>
+        </button>
+        <Link
+          to="/scans"
+          className="flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-accent/40"
+        >
+          <Clock size={16} />
+          <span className="flex-1">Past scans</span>
+          <span className="text-muted-foreground">→</span>
+        </Link>
+        <Link
+          to="/friends"
+          className="flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-accent/40"
+        >
+          <Users size={16} />
+          <span className="flex-1">Friends</span>
+          <span className="text-muted-foreground">→</span>
+        </Link>
+        <button
+          type="button"
+          onClick={() => setFeedbackOpen(true)}
+          className="w-full flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-accent/40 text-left"
+        >
+          <MessageSquare size={16} />
+          <span className="flex-1">Send feedback</span>
+        </button>
+        <button
+          type="button"
+          onClick={async () => { await supabase.auth.signOut(); }}
+          className="w-full flex items-center gap-3 px-4 py-3 text-sm text-muted-foreground hover:bg-accent/40 text-left"
+        >
+          <LogOut size={16} />
+          <span className="flex-1">Sign out</span>
+        </button>
+      </div>
+      <FeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+    </div>
+  );
+}
+
