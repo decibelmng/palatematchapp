@@ -17,7 +17,7 @@ export const Route = createFileRoute("/scan/list")({
   head: () => ({
     meta: [
       { title: "Scan a wine list — Palate Match" },
-      { name: "description", content: "Photograph a restaurant wine list. We rank every bottle by predicted stars for your palate." },
+      { name: "description", content: "Photograph a restaurant wine list. We rank every bottle in plain English for the wine you'll actually love." },
     ],
   }),
   component: Scan,
