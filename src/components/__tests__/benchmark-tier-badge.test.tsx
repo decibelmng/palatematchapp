@@ -33,23 +33,28 @@ function benchmark(tier: CanonRow["tier"], bottleId = "bottle-1"): CanonRow {
 }
 
 describe("benchmark tier badges", () => {
-  it("renders a Nemesis tier row as Nemesis, never Canon", () => {
+  it("renders a nemesis-tier row as Dealbreaker, never Benchmark", () => {
     const html = renderToStaticMarkup(<BenchmarkTierBadge tier="nemesis" />);
 
-    expect(html).toContain("Nemesis");
+    expect(html).toContain("Dealbreaker");
+    expect(html).not.toContain("Benchmark");
+    // Internal tier words must never reach a user-facing string (CLAUDE.md voice rule).
+    expect(html).not.toContain("Nemesis");
     expect(html).not.toContain("Canon");
   });
 
-  it("does not derive Canon status from a matching benchmark row unless tier is canon", () => {
+  it("does not derive Benchmark status from a matching dealbreaker row unless tier is canon", () => {
     const html = renderToStaticMarkup(
       <BenchmarkTierBadges benchmarks={[benchmark("nemesis")]} bottleIds={["bottle-1"]} />,
     );
 
-    expect(html).toContain("Nemesis");
+    expect(html).toContain("Dealbreaker");
+    expect(html).not.toContain("Benchmark");
+    expect(html).not.toContain("Nemesis");
     expect(html).not.toContain("Canon");
   });
 
-  it("does not let CanonAction treat an existing Nemesis benchmark as an active Canon", () => {
+  it("does not treat an existing dealbreaker row as an active benchmark on a 1★ wine", () => {
     const bottle: BottleRow = {
       id: "bottle-1",
       name: "Marchesi di Barolo",
@@ -79,7 +84,9 @@ describe("benchmark tier badges", () => {
 
     const html = renderToStaticMarkup(<CanonAction bottle={bottle} stars={1} />);
 
+    // A 1★ wine offers no benchmark affordance, and the internal word never leaks.
+    expect(html).not.toContain("Set as a benchmark");
+    expect(html).not.toContain("Benchmark (tap to remove)");
     expect(html).not.toContain("Canon");
-    expect(html).not.toContain("Make Canon");
   });
 });

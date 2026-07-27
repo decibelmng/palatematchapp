@@ -404,7 +404,7 @@ describe("Engine v2 — acceptance", () => {
 // ---------- computeCode() ----------
 
 describe("computeCode()", () => {
-  it("returns 'X' + 'loves both poles' when ≥2 loved anchors sit at each pole and ≥6 rated wines exist", () => {
+  it("flags bimodal (rendered as '·') + 'loves both poles' when ≥2 loved anchors sit at each pole and ≥6 rated wines exist", () => {
     const rows = [
       { stars: 5, values: { body: 0.05, fruit_char: 0.5, tannin: 0.5, acidity: 0.5, sweet: 0 } },
       { stars: 5, values: { body: 0.95, fruit_char: 0.5, tannin: 0.5, acidity: 0.5, sweet: 0 } },
@@ -416,7 +416,9 @@ describe("computeCode()", () => {
     const { letters } = computeCode(rows, RED_AXES);
     const body = letters.find((l) => l.axis === "body")!;
     expect(body.bimodal).toBe(true);
-    expect(body.letter).toBe("X");
+    // Deliberately a muted middot, not "X" — an X reads as an error in the UI.
+    // The bimodal meaning is carried by the `bimodal` flag + descriptor. See palate.ts.
+    expect(body.letter).toBe("·");
     expect(body.descriptor).toBe("loves both poles");
   });
 

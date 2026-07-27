@@ -54,31 +54,60 @@ explain what Vosne-Romanée is.
 - `ax_body`, `ax_tannin`, `ax_acidity`, `ax_fruit_char` are
   `GENERATED ALWAYS AS (fp_*) STORED`. `ax_sweet` is independent.
 
-### Built but gated off
+### Sommelier — ungated and functional (was: gated off)
 
-All sommelier surfaces — `/somm`, `/somm/table`, `/somm/list` — redirect to
-`/palate`. The verify card on the palate screen is wrapped in `{false && …}`.
+The gating described in earlier versions of this doc is **gone**. `/somm`,
+`/somm/table`, `/somm/list` no longer redirect; each soft-gates in-component on
+`somm_status === "verified"`. The verify card on `/palate` is live (real
+`somm_status` check, not `{false && …}`). The full guest→consent-code→table-call
+loop works end to end.
 
-Gated pending privacy work, not because they are unfinished. What remains:
+All three former privacy blockers are resolved in-tree:
 
-1. An `expires_at` ambiguity in the consent-code SQL function.
-2. `sommCallTable` returns per-candidate verdicts for every guest across the
-   whole list. Must be narrowed to the winner, the alternates, and the split
-   pair only.
-3. Admin-client calls in `somm.functions.ts` bypass RLS and should be
-   consolidated into one audited helper.
+1. The `expires_at` ambiguity is fixed (migration `20260727033301…`: every table
+   aliased, every reference qualified, locals renamed `v_*`).
+2. `sommCallTable` now returns only `winner` + `alternates` (facts-only
+   `SlimBottle`, verdicts stripped) + `splitPair`. Scoring still runs over all
+   candidates server-side; only those leave the handler.
+3. The RLS-respecting `context.supabase` is used throughout the guest-scoring
+   path. The `service_role` client lives solely in `admin-somm.functions.ts`
+   behind `assertAdmin` (the invite-code surface), never the scoring path.
 
-Sommelier codes have been issued to real people. They currently redeem to a
-badge and a dead end.
+**Open product gaps (not privacy — finish before pushing somms hard):**
+
+- A verified somm with no `establishment` set hits a dead end: the house list is
+  required for a table call, but `establishment` is optional at verify.
+- The 30-min consent grant is re-validated at scoring time, so a call assembled
+  slowly can fail mid-session with no re-prompt path.
+- A guest who hasn't rated a candidate's type defaults to "not for them" (3.0 →
+  below FINE_MIN), so a red-only guest vetoes every white on the list.
+- The deterministic 10-second brief (`sommelier-brief.ts`) is the strongest
+  "read a palate fast" asset but is not reachable from the somm's table screen —
+  only via the guest's `/brief` or the scan-flow dialog.
+- The winner card omits region and price, which the rest of the app already has.
 
 ### Never built
 
 - Offline support. No caching, no upload queue. The core use case is restaurant
   basements with no signal.
 - Bottle scan persistence. List scans persist; bottle scans do not.
-- Venue-based feed content.
-- IA cleanup: five scan-related routes, two profile surfaces, a hamburger menu
-  duplicating tab destinations.
+
+### Built since — corrections to older "never built" notes
+
+- **Venue-based feed content is built and live-wired** (`getVenueActivity` →
+  `VenueActivityCard`), reading real `scans`/`scan_wines`/`restaurants` with an
+  8-wine attribution floor. It only *looks* absent on a thin database.
+- **The hamburger menu is retired.** Theme, feedback, sign-out, past scans and
+  friends now live on `/palate` under Account.
+
+### IA cleanup — still open
+
+- Reopening a saved scan renders `RankedScanList`, a flatter, downgraded surface
+  vs. the live `VerdictSurface` — same data, two visual languages.
+- Bottle-scan history rows self-link to a dead end (no persisted detail route).
+- Two profile surfaces (`/palate` and `/u/$username`) duplicate content; the
+  public one also renders the owner's own profile, so a share link shows a user
+  a second, differently-designed version of themselves.
 
 ---
 
@@ -211,6 +240,21 @@ Things commonly gotten wrong:
 - Catalog is ~118,000 wines. Never fetch unbounded. Lists over 50 rows are
   virtualised.
 
+### Local development
+
+Package manager is **Bun** (`bun.lock`, `bunfig.toml`) — not npm.
+
+- `bun install` — dependencies.
+- `bun run dev` — Vite dev server.
+- `bun run test` — vitest (73 tests; keep green).
+- `bunx tsc --noEmit` — type-check (must be clean).
+- `bun run lint` — eslint.
+
+The repo lives in a normal local folder, never inside Google Drive (Drive
+corrupts `.git`). `main` is production (palatematchapp.com) **and** live-synced
+to Lovable — do all work on a branch, never rewrite pushed history, keep `main`
+green. See `AGENTS.md`.
+
 ### Auth — read before touching routing
 
 `/` throws `redirect({ to: "/scan/list" })` in `beforeLoad`. **A thrown TanStack
@@ -318,8 +362,10 @@ missing model records.
    anchors from the scorer, re-run the 78-wine pilot. The gate is within-region
    discrimination — can two Barolos from different producers be told apart? — not
    between-region separation, which a grid already does.
-2. **Ungate the sommelier product.** Four items, real codes in the wild, and it
-   is the monetisation path.
+2. **Finish the sommelier product.** It is ungated and functional; close the
+   open product gaps above (establishment dead-end, grant expiry mid-call,
+   red-only-guest vetoes, brief not on the table screen, no price/region on the
+   winner). Real codes are in the wild, and it is the monetisation path.
 3. **Offline support.** The core use case has no signal and everything currently
    assumes the network works.
 
