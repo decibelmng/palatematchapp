@@ -8,6 +8,11 @@ import { NameGate } from "./NameGate";
 
 export function AuthGate({ children }: { children: ReactNode }) {
   const session = useSession();
+  console.log("[auth] AuthGate render", {
+    state: session === undefined ? "loading" : session ? "signed-in" : "signed-out",
+    origin: typeof window !== "undefined" ? window.location.origin : "ssr",
+    path: typeof window !== "undefined" ? window.location.pathname : "ssr",
+  });
 
   if (session === undefined) {
     return (
@@ -40,8 +45,18 @@ function AuthScreen() {
 
   async function oauth(provider: "apple" | "google") {
     setErr(null);
+    console.log("[auth] oauth click", {
+      provider,
+      origin: window.location.origin,
+      redirect_uri: window.location.origin,
+    });
     const res = await lovable.auth.signInWithOAuth(provider, {
       redirect_uri: window.location.origin,
+    });
+    console.log("[auth] oauth result", {
+      redirected: (res as any)?.redirected,
+      hasTokens: !!(res as any)?.tokens,
+      error: (res as any)?.error?.message ?? null,
     });
     if (res.error) {
       const message = res.error.message ?? `${provider} sign-in failed`;
