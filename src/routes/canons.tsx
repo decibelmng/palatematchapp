@@ -253,12 +253,13 @@ function CanonsPage() {
           wineType={swapTarget.wineType}
           currentBottle={swapTarget.currentBottle}
           onSwapped={(newBottle, previousBottle) => {
-            const verb = swapTarget.tier === "canon" ? "Canon" : "Nemesis";
+            const verb = swapTarget.tier === "canon" ? "Favorite" : "Avoid";
             armUndo({
               tier: swapTarget.tier,
               previousBottle,
               label: `${verb} swapped → ${newBottle.name}`,
             });
+
           }}
         />
       )}
