@@ -2,6 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AuthGate } from "@/components/AuthGate";
 import { useSommelierBrief } from "@/hooks/use-sommelier-brief";
+import { useMyProfile } from "@/hooks/use-friends";
+import { archetypeFor, type QuizAnswers } from "@/lib/quiz-seeds";
 import { ChevronLeft, Lock, Unlock } from "lucide-react";
 
 export const Route = createFileRoute("/brief")({
