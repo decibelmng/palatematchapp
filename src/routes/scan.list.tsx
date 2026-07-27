@@ -31,7 +31,17 @@ function Scan() {
 
 
   const cap = useScanCapture();
-  const rank = useScanRanking(cap.wines);
+  // Fetch the picked/attributed restaurant's locale so restaurant-country
+  // can enter the currency resolution chain (see useScanRanking). Fires
+  // only once a restaurant id is known — either from prescan or the
+  // server-side auto-attribution that runs during finalize. When it
+  // resolves, the ranking memo recomputes and the UI re-renders with the
+  // corrected currency; a symbol-free Paris list stops rendering as USD.
+  const restaurantId = cap.prescanRestaurant?.id ?? null;
+  const { data: restaurantLocale } = useRestaurantLocale(restaurantId);
+  const restaurantCountry = countryFromLocale(restaurantLocale);
+  const rank = useScanRanking(cap.wines, null, restaurantCountry);
+
 
   // Auto-open camera when arriving from the center-scan chooser (?capture=1).
   useEffect(() => {
