@@ -210,30 +210,20 @@ export const shareScan = createServerFn({ method: "POST" })
   });
 
 export const loadSharedScan = createServerFn({ method: "POST" })
-  .inputValidator((input: unknown) => z.object({ token: z.string().min(4).max(64) }).parse(input))
+  .inputValidator((input: unknown) => z.object({ token: z.string().min(8).max(64) }).parse(input))
   .handler(async ({ data }): Promise<ScanDetail | null> => {
     const supabase = await publicSupabase();
-    const { data: scan } = await supabase
-      .from("scans")
-      .select("id,scanned_at,status,restaurant_id,venue_raw_text,share_token,created_at")
-      .eq("share_token", data.token)
-      .maybeSingle();
-    if (!scan) return null;
-    const [{ data: wines }, restRes] = await Promise.all([
-      supabase.from("scan_wines")
-        .select("id,scan_id,batch_index,producer,cuvee,vintage,wine_type,region,grape,price,price_amount,currency,format,raw_text,fp,fp_source,matched_bottle_id,match_score")
-        .eq("scan_id", (scan as any).id),
-      (scan as any).restaurant_id
-        ? supabase.from("restaurants").select("id,name,city").eq("id", (scan as any).restaurant_id).maybeSingle()
-        : Promise.resolve({ data: null }),
-    ]);
+    const { data: payload, error } = await supabase.rpc("load_shared_scan", { p_token: data.token });
+    if (error) throw new Error(error.message);
+    if (!payload) return null;
+    const p = payload as any;
     return {
-      id: (scan as any).id,
-      scanned_at: (scan as any).scanned_at ?? (scan as any).created_at,
-      status: (scan as any).status,
-      restaurant: (restRes as any).data ?? null,
-      venue_raw_text: (scan as any).venue_raw_text,
-      share_token: (scan as any).share_token,
-      wines: ((wines as any[]) ?? []) as StoredScanRow[],
+      id: p.id,
+      scanned_at: p.scanned_at,
+      status: p.status,
+      restaurant: p.restaurant ?? null,
+      venue_raw_text: p.venue_raw_text,
+      share_token: p.share_token,
+      wines: (p.wines ?? []) as StoredScanRow[],
     };
   });
