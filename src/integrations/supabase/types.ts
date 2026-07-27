@@ -668,6 +668,8 @@ export type Database = {
           palate_code_white: string
           palate_shareable: boolean
           palate_version: number
+          quiz_answers: Json | null
+          quiz_completed_at: string | null
           recent_groups: Json
           scan_unlock_seen: boolean
           somm_role: string | null
@@ -695,6 +697,8 @@ export type Database = {
           palate_code_white?: string
           palate_shareable?: boolean
           palate_version?: number
+          quiz_answers?: Json | null
+          quiz_completed_at?: string | null
           recent_groups?: Json
           scan_unlock_seen?: boolean
           somm_role?: string | null
@@ -722,6 +726,8 @@ export type Database = {
           palate_code_white?: string
           palate_shareable?: boolean
           palate_version?: number
+          quiz_answers?: Json | null
+          quiz_completed_at?: string | null
           recent_groups?: Json
           scan_unlock_seen?: boolean
           somm_role?: string | null
