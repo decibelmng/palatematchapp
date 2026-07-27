@@ -65,9 +65,10 @@ describe("quiz seeds — cross-type isolation", () => {
 });
 
 describe("quiz seeds — bimodality preservation", () => {
-  it("a bimodal user with 1 seed + 6 real ratings resolves BOTH poles, not a midpoint", () => {
-    // Real ratings: 3 loves at a "silky/light" pole, 3 loves at a "firm/full" pole.
-    // Two 1★ negatives in the middle to teach the middle isn't the answer.
+  it("a bimodal user resolves BOTH poles, not a midpoint", () => {
+    // Loves at TWO separated poles + dislikes in the middle. Without the
+    // sharpened kernel, the middle would smear into the average and this
+    // test would fail.
     const real: RatedFp[] = [
       rated("silky1", 5, { body: 0.15, tannin: 0.15 }),
       rated("silky2", 5, { body: 0.18, tannin: 0.12 }),
@@ -75,15 +76,15 @@ describe("quiz seeds — bimodality preservation", () => {
       rated("firm1", 5, { body: 0.90, tannin: 0.90 }),
       rated("firm2", 5, { body: 0.85, tannin: 0.92 }),
       rated("firm3", 5, { body: 0.92, tannin: 0.88 }),
+      rated("mid1", 1, { body: 0.5, tannin: 0.5 }),
+      rated("mid2", 1, { body: 0.48, tannin: 0.52 }),
     ];
-    // Quiz seed leans toward the FIRM pole (unimodal by construction). If
-    // seeds were weighted like real ratings, the silky pole would collapse.
     const answers = {
       type: "red" as const,
       votes: { "r-tannin": 1 as const, "r-body": 1 as const },
     };
-    const seeds = seedRatedFpFor(answers, "red", real.length >= 5 ? 5 : real.length);
-    // With 6 real ratings we're past the fade threshold — seeds are empty.
+    const seeds = seedRatedFpFor(answers, "red", real.length);
+    // Past the fade threshold → empty. That is the design.
     expect(seeds).toHaveLength(0);
 
     const silkyCand = cand("c-silky", { body: 0.15, tannin: 0.15 });
@@ -91,11 +92,10 @@ describe("quiz seeds — bimodality preservation", () => {
     const midCand = cand("c-mid", { body: 0.5, tannin: 0.5 });
     const [silky, firm, mid] = recommend([...seeds, ...real], [silkyCand, firmCand, midCand]);
 
-    // BOTH poles should score high; the midpoint should NOT — otherwise the
-    // engine has collapsed the two modes.
-    expect(silky.predicted).toBeGreaterThan(4.3);
-    expect(firm.predicted).toBeGreaterThan(4.3);
-    expect(mid.predicted).toBeLessThan(Math.min(silky.predicted, firm.predicted) - 0.4);
+    // BOTH poles score high; the midpoint is clearly lower.
+    expect(silky.predicted).toBeGreaterThan(4.0);
+    expect(firm.predicted).toBeGreaterThan(4.0);
+    expect(mid.predicted).toBeLessThan(Math.min(silky.predicted, firm.predicted) - 0.8);
   });
 
   it("under 5 real ratings, a single seed does not dominate the kernel", () => {
