@@ -32,7 +32,7 @@ export const Route = createFileRoute("/palate/")({
   head: () => ({
     meta: [
       { title: "Your profile — Palate Match" },
-      { name: "description", content: "Your Palate Match profile: taste identity, palate codes, stats, and visibility." },
+      { name: "description", content: "Your Palate Match profile: taste identity, taste profiles, stats, and visibility." },
     ],
   }),
   component: () => <AuthGate><PalateHome /></AuthGate>,
