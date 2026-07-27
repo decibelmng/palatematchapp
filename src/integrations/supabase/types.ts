@@ -541,6 +541,172 @@ export type Database = {
         }
         Relationships: []
       }
+      house_list_items: {
+        Row: {
+          bottle_id: string | null
+          corrected: boolean
+          created_at: string
+          currency: string | null
+          format: string
+          id: string
+          price_amount: number | null
+          raw_cuvee: string | null
+          raw_producer: string | null
+          raw_vintage: number | null
+          version_id: string
+        }
+        Insert: {
+          bottle_id?: string | null
+          corrected?: boolean
+          created_at?: string
+          currency?: string | null
+          format?: string
+          id?: string
+          price_amount?: number | null
+          raw_cuvee?: string | null
+          raw_producer?: string | null
+          raw_vintage?: number | null
+          version_id: string
+        }
+        Update: {
+          bottle_id?: string | null
+          corrected?: boolean
+          created_at?: string
+          currency?: string | null
+          format?: string
+          id?: string
+          price_amount?: number | null
+          raw_cuvee?: string | null
+          raw_producer?: string | null
+          raw_vintage?: number | null
+          version_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "house_list_items_bottle_id_fkey"
+            columns: ["bottle_id"]
+            isOneToOne: false
+            referencedRelation: "bottles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "house_list_items_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "house_list_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      house_list_stock: {
+        Row: {
+          bottle_id: string
+          house_list_id: string
+          out_of_stock: boolean
+          updated_at: string
+          updated_by: string
+        }
+        Insert: {
+          bottle_id: string
+          house_list_id: string
+          out_of_stock?: boolean
+          updated_at?: string
+          updated_by: string
+        }
+        Update: {
+          bottle_id?: string
+          house_list_id?: string
+          out_of_stock?: boolean
+          updated_at?: string
+          updated_by?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "house_list_stock_house_list_id_fkey"
+            columns: ["house_list_id"]
+            isOneToOne: false
+            referencedRelation: "house_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      house_list_versions: {
+        Row: {
+          created_at: string
+          created_by: string
+          house_list_id: string
+          id: string
+          scan_id: string | null
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          house_list_id: string
+          id?: string
+          scan_id?: string | null
+          version: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          house_list_id?: string
+          id?: string
+          scan_id?: string | null
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "house_list_versions_house_list_id_fkey"
+            columns: ["house_list_id"]
+            isOneToOne: false
+            referencedRelation: "house_lists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "house_list_versions_scan_id_fkey"
+            columns: ["scan_id"]
+            isOneToOne: false
+            referencedRelation: "scans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      house_lists: {
+        Row: {
+          active_version_id: string | null
+          created_at: string
+          establishment: string
+          id: string
+          owner_id: string
+          updated_at: string
+        }
+        Insert: {
+          active_version_id?: string | null
+          created_at?: string
+          establishment: string
+          id?: string
+          owner_id: string
+          updated_at?: string
+        }
+        Update: {
+          active_version_id?: string | null
+          created_at?: string
+          establishment?: string
+          id?: string
+          owner_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "house_lists_active_version_fk"
+            columns: ["active_version_id"]
+            isOneToOne: false
+            referencedRelation: "house_list_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       invites: {
         Row: {
           created_at: string
@@ -1409,6 +1575,10 @@ export type Database = {
           viewer_follow_status: string
           visibility: string
         }[]
+      }
+      is_same_establishment_verified_somm: {
+        Args: { _establishment: string; _user_id: string }
+        Returns: boolean
       }
       mark_scan_batch_done: {
         Args: { p_batch_index: number; p_scan_id: string }
