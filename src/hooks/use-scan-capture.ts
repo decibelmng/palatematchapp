@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/error-message";
 import {
   createScanRecord,
   scanWineBatch,
