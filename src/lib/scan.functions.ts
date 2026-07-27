@@ -402,6 +402,20 @@ export const finalizeScan = createServerFn({ method: "POST" })
       .eq("scan_id", data.scan_id);
     const rows = (rowsRaw ?? []) as any[];
 
+    // Aggregate the scan-wide currency from per-row detections and persist it
+    // on the scans row so downstream reads (list controls, price banding) can
+    // label chips in the currency the user actually saw on the list.
+    try {
+      const counts = new Map<string, number>();
+      for (const r of rows) {
+        const c = (r.currency as string | null) ?? null;
+        if (c) counts.set(c, (counts.get(c) ?? 0) + 1);
+      }
+      let winner: string | null = null; let best = 0;
+      for (const [k, v] of counts) if (v > best) { winner = k; best = v; }
+      if (winner) await supabase.from("scans").update({ currency: winner }).eq("id", data.scan_id);
+    } catch { /* non-fatal */ }
+
     // ---- C2 backfill: resolve/fingerprint unmatched scan lines on-demand ----
     // Any row still carrying matched_bottle_id=null after catalog resolution
     // now runs through resolveOrCreateOnDemandCore. This is the SAME LLM
