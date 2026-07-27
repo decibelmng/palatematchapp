@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AuthGate } from "@/components/AuthGate";
 import { useSession } from "@/hooks/use-session";
 import {
-  BarChart3, Database, Search, Ticket, MessageSquare, Wand2, Bug, Wrench, Map,
+  BarChart3, Database, Search, Ticket, MessageSquare, Wand2, Bug, Wrench, Map, ShieldCheck,
 } from "lucide-react";
 
 export const Route = createFileRoute("/admin/")({
@@ -18,6 +18,7 @@ const ADMIN_LINKS: Array<{
   Icon: typeof BarChart3;
 }> = [
   { to: "/admin/usage",         label: "Usage",          description: "Users, DAU, ratings, scans.",             Icon: BarChart3 },
+  { to: "/admin/auth-audit",    label: "Auth Audit",     description: "Read-only sign-in event trail.",          Icon: ShieldCheck },
   { to: "/admin/data-capture",  label: "Data Capture",   description: "Restaurants, listings, price obs.",       Icon: Database },
   { to: "/admin/inspect",       label: "Inspect",        description: "Read-only browse of tables.",             Icon: Search },
   { to: "/admin/somm-codes",    label: "Somm Codes",     description: "Issue and revoke sommelier invites.",     Icon: Ticket },

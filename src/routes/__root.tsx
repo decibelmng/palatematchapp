@@ -13,6 +13,7 @@ import { Toaster } from "sonner";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { supabase } from "@/integrations/supabase/client";
+import { authStorageSnapshot, installAuthDebug } from "@/lib/auth-debug";
 import { ThemeProvider, themeBootstrapScript } from "@/lib/theme";
 import { ConfirmDialogHost } from "@/components/confirm-dialog";
 
@@ -99,7 +100,12 @@ function RootShell({ children }: { children: ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   useEffect(() => {
+    installAuthDebug(supabase);
     const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      console.log("[auth] root onAuthStateChange", {
+        event,
+        storage: authStorageSnapshot(),
+      });
       if (event === "SIGNED_IN" || event === "SIGNED_OUT" || event === "USER_UPDATED") {
         queryClient.invalidateQueries();
       }
