@@ -150,7 +150,10 @@ export function useScanRanking(wines: ResolvedWine[], scanCurrency?: CurrencyCod
         predicted: r.predicted,
         greatValue: false,
         valueSentence: null,
-        verdict: priceVerdict(p.bottle ?? p.amount, band),
+        valueKind: null,
+        // Verdict is calibrated to the row's active format: glass rows use the
+        // glass price, bottle rows use the bottle price. Never mix.
+        verdict: priceVerdict(format === "glass" ? p.glass : (p.bottle ?? p.amount), band),
       };
       rows.push(row);
     });
@@ -163,13 +166,17 @@ export function useScanRanking(wines: ResolvedWine[], scanCurrency?: CurrencyCod
   }, [ranked, cellar, priceBandByBottleId, groupActive, groupScores, currency]);
 
   const allRowsFlat: ScanRow[] = useMemo(() => {
-    // Compute value context against the actual list.
-    const ctx = computeValueContext(prelimRows, "bottle");
+    // Independent value contexts per format — glass rows and bottle rows are
+    // scored against their own populations, never mixed.
+    const ctxBottle = computeValueContext(prelimRows, "bottle");
+    const ctxGlass = computeValueContext(prelimRows, "glass");
     return prelimRows.map((r) => {
+      const ctx = r.format === "glass" ? ctxGlass : ctxBottle;
       const v = valueTag(r, ctx, r.format);
-      return { ...r, greatValue: v.ok, valueSentence: v.sentence };
+      return { ...r, greatValue: v.ok, valueSentence: v.sentence, valueKind: v.kind };
     });
   }, [prelimRows]);
+
 
   const enoughRatings = ratedRows.length >= 3;
 
