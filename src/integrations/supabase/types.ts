@@ -1241,6 +1241,83 @@ export type Database = {
           },
         ]
       }
+      somm_access_log: {
+        Row: {
+          candidate_count: number
+          establishment: string | null
+          grant_id: string | null
+          guest_id: string
+          id: string
+          kind: string
+          occurred_at: string
+          somm_id: string
+          via: string
+        }
+        Insert: {
+          candidate_count: number
+          establishment?: string | null
+          grant_id?: string | null
+          guest_id: string
+          id?: string
+          kind?: string
+          occurred_at?: string
+          somm_id: string
+          via: string
+        }
+        Update: {
+          candidate_count?: number
+          establishment?: string | null
+          grant_id?: string | null
+          guest_id?: string
+          id?: string
+          kind?: string
+          occurred_at?: string
+          somm_id?: string
+          via?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "somm_access_log_grant_id_fkey"
+            columns: ["grant_id"]
+            isOneToOne: false
+            referencedRelation: "somm_consent_grants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      somm_consent_grants: {
+        Row: {
+          claimed_at: string | null
+          code: string
+          created_at: string
+          expires_at: string
+          granted_to_somm_id: string | null
+          guest_id: string
+          id: string
+          used_at: string | null
+        }
+        Insert: {
+          claimed_at?: string | null
+          code: string
+          created_at?: string
+          expires_at: string
+          granted_to_somm_id?: string | null
+          guest_id: string
+          id?: string
+          used_at?: string | null
+        }
+        Update: {
+          claimed_at?: string | null
+          code?: string
+          created_at?: string
+          expires_at?: string
+          granted_to_somm_id?: string | null
+          guest_id?: string
+          id?: string
+          used_at?: string | null
+        }
+        Relationships: []
+      }
       somm_invite_codes: {
         Row: {
           code: string
@@ -1778,6 +1855,47 @@ export type Database = {
           benchmark_id: string
           palate_version: number
           replaced_id: string
+        }[]
+      }
+      somm_grant_claim: {
+        Args: { p_code: string }
+        Returns: {
+          display_name: string
+          expires_at: string
+          grant_id: string
+          guest_id: string
+          quiz_answers: Json
+          username: string
+        }[]
+      }
+      somm_grant_generate: {
+        Args: never
+        Returns: {
+          code: string
+          expires_at: string
+          grant_id: string
+        }[]
+      }
+      somm_load_guest_scoring_bundle: {
+        Args: { p_grant_id: string; p_guest_id: string }
+        Returns: {
+          bottle_id: string
+          canon: boolean
+          fp_acid: number
+          fp_body: number
+          fp_fresh: number
+          fp_fruit_dark: number
+          fp_oak: number
+          fp_ripe: number
+          fp_savory: number
+          fp_tannin: number
+          name: string
+          nemesis: boolean
+          producer: string
+          region: string
+          stars: number
+          type: string
+          vintage: number
         }[]
       }
       submit_somm_observation: {
