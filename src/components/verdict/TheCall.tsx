@@ -62,6 +62,9 @@ export function TheCall({
         </p>
 
         <div className="mt-4 flex items-center gap-2 flex-wrap">
+          {row.ranked.vetoed && (
+            <span className="pm-skip-badge">Skip</span>
+          )}
           <span className="text-body text-foreground font-medium">{price}</span>
           {verdictTone && (
             <span
@@ -84,6 +87,7 @@ export function TheCall({
             </span>
           )}
         </div>
+
         {row.valueSentence && (
           <p className="mt-2 text-meta text-muted-foreground leading-snug">{row.valueSentence}</p>
         )}
