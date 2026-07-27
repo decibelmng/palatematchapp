@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { usePourCandidates, useBottlesByIds, useRatings, bottleToFp, bottleType } from "@/hooks/use-palate-data";
-import { recommend, type BottleFp, type RatedFp, type Recommendation } from "@/lib/recommender";
+import { useQuizAnswers } from "@/hooks/use-quiz";
+import { seedRatedFpFor } from "@/lib/quiz-seeds";
+import { recommend, type BottleFp, type RatedFp, type Recommendation, type WineType } from "@/lib/recommender";
 import { aggregateRated, aggregateCandidates, type CuveeCandidate, type CuveeRated } from "@/lib/cuvee";
 
 export type TopMatch = Recommendation & { cuvee: CuveeCandidate; nearestCuvee: CuveeRated | null };
