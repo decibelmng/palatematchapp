@@ -18,8 +18,6 @@ export function VerdictSurface({
   stillReading,
   scannedAt,
   onRescan,
-  boosted,
-  onBoost,
   controls,
   setControls,
 }: {
@@ -28,11 +26,10 @@ export function VerdictSurface({
   stillReading: boolean;
   scannedAt: number | null;
   onRescan: () => void;
-  boosted: boolean;
-  onBoost: () => void;
   controls: Controls;
   setControls: (c: Controls) => void;
 }) {
+
   const [detailKey, setDetailKey] = useState<string | null>(null);
   const detailFor = useMemo(
     () => rows.find((r) => r.key === detailKey) ?? null,
@@ -76,7 +73,7 @@ export function VerdictSurface({
   }
 
   return (
-    <div className="scan-decision mt-6 bg-background pb-6" data-boost={boosted ? "on" : "off"}>
+    <div className="scan-decision mt-6 bg-background pb-6">
       <TheCall row={call} kind={callKind} onOpen={() => setDetailKey(call.key)} />
       <Alternates items={alternates} onOpen={setDetailKey} />
       <TheRest
@@ -86,13 +83,12 @@ export function VerdictSurface({
         stillReading={stillReading}
       />
       <ScanThumbBar
-        boosted={boosted}
-        onBoost={onBoost}
         onRescan={onRescan}
         controls={controls}
         setControls={setControls}
       />
       <ScanDetailSheet row={detailFor} scannedAt={scannedAt} onClose={() => setDetailKey(null)} />
+
     </div>
   );
 }

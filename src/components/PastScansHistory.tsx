@@ -35,33 +35,48 @@ export function PastScansHistory() {
         </div>
       ) : (
         <ul className="mt-3 space-y-2">
-          {scans.map((s) => (
-            <li key={s.id}>
-              <Link
-                to="/scan/$id"
-                params={{ id: s.id }}
-                className="block rounded-lg border border-border bg-card p-4 hover:bg-accent/40 active:bg-accent/60 transition-colors"
-              >
-                <div className="flex items-baseline justify-between gap-3">
-                  <div className="min-w-0">
-                    <div className="font-medium truncate">
-                      {s.restaurant_name ?? s.venue_raw_text ?? "Unattributed scan"}
+          {scans.map((s) => {
+            const scannedMs = new Date(s.scanned_at).getTime();
+            const isPostMeal =
+              Number.isFinite(scannedMs) && (Date.now() - scannedMs) > 3 * 3600 * 1000;
+            const showRatePrompt = isPostMeal && s.wine_count > 0;
+            return (
+              <li key={s.id}>
+                <Link
+                  to="/scan/$id"
+                  params={{ id: s.id }}
+                  className="block rounded-lg border border-border bg-card p-4 hover:bg-accent/40 active:bg-accent/60 transition-colors"
+                >
+                  <div className="flex items-baseline justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="font-medium truncate">
+                        {s.restaurant_name ?? s.venue_raw_text ?? "Unattributed scan"}
+                      </div>
+                      <div className="text-meta text-muted-foreground mt-0.5">
+                        {fmtScanDate(s.scanned_at)} · {s.wine_count} wine{s.wine_count === 1 ? "" : "s"}
+                        {s.matched_count > 0 && <> · {s.matched_count} matched</>}
+                      </div>
                     </div>
-                    <div className="text-meta text-muted-foreground mt-0.5">
-                      {fmtScanDate(s.scanned_at)} · {s.wine_count} wine{s.wine_count === 1 ? "" : "s"}
-                      {s.matched_count > 0 && <> · {s.matched_count} matched</>}
-                    </div>
+                    {s.status !== "complete" && s.status !== "parsed" && (
+                      <span className="shrink-0 text-label uppercase tracking-label text-muted-foreground rounded px-1.5 py-0.5 border border-border">
+                        {s.status}
+                      </span>
+                    )}
                   </div>
-                  {s.status !== "complete" && s.status !== "parsed" && (
-                    <span className="shrink-0 text-label uppercase tracking-label text-muted-foreground rounded px-1.5 py-0.5 border border-border">
-                      {s.status}
-                    </span>
+                  {showRatePrompt && (
+                    <div className="mt-3 flex items-center justify-between gap-3 rounded-md border border-primary/40 bg-primary/5 px-3 py-2">
+                      <span className="text-meta text-foreground">Did you order something? Rate it.</span>
+                      <span className="shrink-0 text-label uppercase tracking-label text-primary font-medium">
+                        Rate wines →
+                      </span>
+                    </div>
                   )}
-                </div>
-              </Link>
-            </li>
-          ))}
+                </Link>
+              </li>
+            );
+          })}
         </ul>
+
       )}
     </section>
   );

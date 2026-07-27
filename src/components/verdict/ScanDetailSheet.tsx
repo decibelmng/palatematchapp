@@ -10,13 +10,15 @@ import { verdictLine, becauseLine } from "./reason";
 /**
  * Detail sheet — the ONLY place a decimal score is allowed to appear on
  * the verdict screen. Rating a wine you've drunk lives here too (not in
- * the Call or the rows), and only when the scan is more than 3 hours old.
+ * the Call or the rows). Rating has NO time gate: if you open a wine and
+ * want to record it, do it. The push to rate is what's deferred to the
+ * post-meal prompt in scan history, not the ability to rate.
  */
 export function ScanDetailSheet({
   row, scannedAt, onClose,
 }: {
   row: ScanRow | null;
-  /** epoch ms of the scan; when > 3h old the "rate it" prompt appears */
+  /** epoch ms of the scan; retained for prompt copy, not for gating rating */
   scannedAt: number | null;
   onClose: () => void;
 }) {
@@ -37,9 +39,11 @@ export function ScanDetailSheet({
   const because = becauseLine(row);
   const verdict = verdictLine(r.predicted);
 
+  // Rating is always available once we have a bottle to attach it to.
+  const canRate = bottleId != null;
   const nowMs = Date.now();
   const isPostMeal = scannedAt != null && (nowMs - scannedAt) > 3 * 3600 * 1000;
-  const canRate = bottleId != null && (isPostMeal || currentStars != null);
+
 
   return (
     <div className="fixed inset-0 z-50" role="dialog" aria-modal="true" aria-label={`Detail for ${r.bottle.name}`}>
@@ -81,8 +85,9 @@ export function ScanDetailSheet({
         {canRate && (
           <div className="mt-4 pt-3 border-t border-border flex items-center justify-between gap-3">
             <span className="text-label uppercase tracking-label text-muted-foreground">
-              {currentStars != null ? "Your rating" : "Did you order it? Rate it."}
+              {currentStars != null ? "Your rating" : isPostMeal ? "Did you order it? Rate it." : "Rate it"}
             </span>
+
             <StarTap
               value={currentStars}
               size="md"

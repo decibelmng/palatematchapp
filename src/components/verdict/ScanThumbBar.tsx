@@ -1,11 +1,16 @@
 import { ListControls } from "@/components/ListControls";
+import { ServiceModeSwitch } from "@/components/ServiceModeSwitch";
 import type { Controls } from "@/lib/list-controls";
 
+/**
+ * Docked toolbar at the base of the verdict surface.
+ * Actions: re-scan · dark-restaurant-mode · list controls.
+ * The old brightness "Boost" toggle was removed — its job is fully
+ * covered by dark-restaurant-mode (service theme).
+ */
 export function ScanThumbBar({
-  boosted, onBoost, onRescan, controls, setControls,
+  onRescan, controls, setControls,
 }: {
-  boosted: boolean;
-  onBoost: () => void;
   onRescan: () => void;
   controls: Controls;
   setControls: (c: Controls) => void;
@@ -22,20 +27,7 @@ export function ScanThumbBar({
           <span aria-hidden>↻</span>
           <span className="truncate">Re-scan</span>
         </button>
-        <button
-          type="button"
-          onClick={onBoost}
-          aria-pressed={boosted}
-          aria-label={boosted ? "Turn brightness boost off" : "Turn brightness boost on"}
-          className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg border text-sub font-medium min-h-11 px-3 whitespace-nowrap overflow-hidden focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${
-            boosted
-              ? "border-primary bg-primary text-primary-foreground"
-              : "border-border bg-background text-foreground active:bg-accent"
-          }`}
-        >
-          <span aria-hidden>☀</span>
-          <span className="truncate">{boosted ? "Boost on" : "Boost"}</span>
-        </button>
+        <ServiceModeSwitch variant="icon" className="shrink-0" />
         <div className="flex-1 [&>div]:mt-0 [&>div]:justify-stretch [&_button]:w-full [&_button]:justify-center">
           <ListControls value={controls} onChange={setControls} idPrefix="scan-decision" />
         </div>

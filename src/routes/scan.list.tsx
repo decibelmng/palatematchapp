@@ -27,8 +27,8 @@ function Scan() {
   const cameraRef = useRef<HTMLInputElement>(null);
   const libraryRef = useRef<HTMLInputElement>(null);
   const [sommOpen, setSommOpen] = useState(false);
-  const [boosted, setBoosted] = useState(false);
   const [controls, setControls] = useState<Controls>(DEFAULT_CONTROLS);
+
 
   const cap = useScanCapture();
   const rank = useScanRanking(cap.wines);
@@ -147,8 +147,7 @@ function Scan() {
           stillReading={anyBatchInFlight}
           scannedAt={scannedAtMs}
           onRescan={cap.startOver}
-          boosted={boosted}
-          onBoost={() => setBoosted((b) => !b)}
+
           controls={controls}
           setControls={setControls}
         />
