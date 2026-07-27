@@ -14,7 +14,6 @@ import { attributeScanFn } from "@/lib/restaurants.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
 import {
-  fileToBase64,
   chunkArr,
   rowToResolved,
   type BatchImage,
