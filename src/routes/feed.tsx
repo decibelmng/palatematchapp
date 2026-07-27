@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { UserPlus, Check, X } from "lucide-react";
+import { UserPlus, Check, X, Bookmark, BookmarkCheck } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { AuthGate } from "@/components/AuthGate";
@@ -9,6 +9,8 @@ import { VenueActivityCard } from "@/components/VenueActivityCard";
 import { FounderCard } from "@/components/FounderCard";
 import { useFriendsFeed, useFeedActivity, markFeedSeen } from "@/hooks/use-feed";
 import { getVenueActivity } from "@/lib/social-feed.functions";
+import { getFriendBottlesOnLists, type FriendBottleOnList } from "@/lib/feed.functions";
+import { useAddToWishlist, useRemoveFromWishlist, useWishlistIds } from "@/hooks/use-wishlist";
 import {
   useAcceptedFriends,
   useFriendships,
@@ -251,6 +253,84 @@ function VenueActivitySection() {
   );
 }
 
+/** ⭐ The nearby-list join: bottles friends love that are on a recently-scanned
+ *  venue list. No geolocation exists, so copy never claims distance. */
+function FriendLovesOnLists() {
+  const fn = useServerFn(getFriendBottlesOnLists);
+  const q = useQuery({
+    queryKey: ["friend-bottles-on-lists"],
+    queryFn: () => fn(),
+    staleTime: 60_000,
+  });
+  const items = q.data ?? [];
+  if (items.length === 0) return null;
+  return (
+    <section className="space-y-2">
+      <h2 className="text-sm font-medium text-muted-foreground">Your people love these — and they're on a list</h2>
+      <div className="space-y-3">
+        {items.map((it) => <OnListCard key={it.bottle.id} item={it} />)}
+      </div>
+    </section>
+  );
+}
+
+function OnListCard({ item }: { item: FriendBottleOnList }) {
+  const { bottle, friends, venues, friendCount } = item;
+  const wishIds = useWishlistIds();
+  const inWishlist = wishIds.has(bottle.id);
+  const add = useAddToWishlist();
+  const remove = useRemoveFromWishlist();
+  const busy = add.isPending || remove.isPending;
+
+  const lead = displayNameFor(friends[0]);
+  const friendPhrase =
+    friendCount === 1 ? lead
+    : friendCount === 2 ? `${lead} and 1 other friend`
+    : `${lead} and ${friendCount - 1} friends`;
+  const venuePhrase = venues.length === 1 ? venues[0] : `${venues[0]} and ${venues.length - 1} more`;
+
+  return (
+    <article className="rounded-lg border border-border bg-card p-4">
+      <Link to="/wine/$id" params={{ id: bottle.id }} className="block">
+        <div className="text-base font-medium leading-snug line-clamp-2">
+          {bottle.producer ? `${bottle.producer} · ` : ""}{bottle.name}{bottle.vintage ? ` ${bottle.vintage}` : ""}
+        </div>
+        {(bottle.region || bottle.grape) && (
+          <div className="mt-0.5 text-xs text-muted-foreground truncate">
+            {[bottle.grape, bottle.region].filter(Boolean).join(" · ")}
+          </div>
+        )}
+      </Link>
+      <p className="mt-2 text-sm text-foreground">
+        {friendPhrase} {friendCount === 1 ? "loves" : "love"} this — and it's on the list at {venuePhrase}.
+      </p>
+      <div className="mt-3 flex gap-2">
+        <button
+          type="button"
+          disabled={busy}
+          onClick={() => {
+            if (inWishlist) remove.mutate({ bottle_id: bottle.id });
+            else add.mutate({ bottle_id: bottle.id, source_context: "feed" });
+          }}
+          className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-sm font-medium transition-colors disabled:opacity-60 ${
+            inWishlist ? "border-primary/40 bg-primary/10 text-primary" : "border-border bg-background hover:bg-accent"
+          }`}
+        >
+          {inWishlist ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
+          {inWishlist ? "Saved" : "Want to try"}
+        </button>
+        <Link
+          to="/wine/$id"
+          params={{ id: bottle.id }}
+          className="flex-1 inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm font-medium"
+        >
+          See it
+        </Link>
+      </div>
+    </article>
+  );
+}
+
 function FeedContent() {
   const feed = useFriendsFeed(30);
   const activity = useFeedActivity();
@@ -269,6 +349,8 @@ function FeedContent() {
           Wishlist →
         </Link>
       </div>
+
+      <FriendLovesOnLists />
 
       <VenueActivitySection />
 
