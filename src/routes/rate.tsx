@@ -133,9 +133,9 @@ function Rate() {
         <>
           <div>
             <p className="text-xs uppercase tracking-label text-muted-foreground">Rate</p>
-            <h1 className="font-serif text-3xl mt-2">Have a bottle in front of you?</h1>
+            <h1 className="font-serif text-3xl mt-2">Sharpen your palate</h1>
             <p className="mt-2 text-sm text-muted-foreground">
-              Scan the label to rate it — no typing needed.
+              Scan a bottle you're drinking — no typing needed. Every real rating tunes your predictions past your style answers.
             </p>
           </div>
           <UnlockMeter />
