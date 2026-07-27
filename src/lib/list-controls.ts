@@ -257,7 +257,28 @@ export type ValueContext = {
   medianMarkup: number | null;
   topQuartilePredicted: number | null;
   bottomThirdPrice: number | null;
+  /** Price at the 2/3 quantile of the format population — anything at or
+   *  above this is in the top third for this list. Used only for a
+   *  relative "toward the high end" chip, never for a retail claim. */
+  topThirdPrice: number | null;
 };
+
+/** Relative price chip driven purely by this list's population. Returns
+ *  null when the population is too small to be meaningful, or when the
+ *  row sits in the middle third. Makes no claim about retail. */
+export function relativePriceChip(
+  activeAmt: number | null | undefined,
+  ctx: ValueContext,
+): { tone: "good" | "warn"; label: string } | null {
+  if (activeAmt == null || !Number.isFinite(activeAmt) || activeAmt <= 0) return null;
+  if (ctx.bottomThirdPrice != null && activeAmt <= ctx.bottomThirdPrice) {
+    return { tone: "good", label: "Bottom third on price" };
+  }
+  if (ctx.topThirdPrice != null && activeAmt >= ctx.topThirdPrice) {
+    return { tone: "warn", label: "Top third on price" };
+  }
+  return null;
+}
 
 /** Prepare list-level statistics used to decide value tags. Restricts the
  *  population to rows priced in the active format, so glass rows are
@@ -294,8 +315,9 @@ export function computeValueContext(
   }
   const topQuartilePredicted = predicted.length >= 4 ? quantile(predicted, 0.75) : null;
   const bottomThirdPrice = prices.length >= 4 ? quantile(prices, 1 / 3) : null;
+  const topThirdPrice = prices.length >= 4 ? quantile(prices, 2 / 3) : null;
 
-  return { format: fmt, rowMarkup, medianMarkup, topQuartilePredicted, bottomThirdPrice };
+  return { format: fmt, rowMarkup, medianMarkup, topQuartilePredicted, bottomThirdPrice, topThirdPrice };
 }
 
 /** Value verdict for one row, relative to the list. Returns a full sentence

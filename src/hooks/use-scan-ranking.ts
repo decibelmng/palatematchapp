@@ -9,6 +9,7 @@ import {
   normalizePrice,
   computeValueContext,
   valueTag,
+  relativePriceChip,
   type ServingFormat,
 } from "@/lib/list-controls";
 import { aggregateCurrency, DEFAULT_CURRENCY, resolveCurrency, type CurrencyCode } from "@/lib/currency";
@@ -207,7 +208,15 @@ export function useScanRanking(
     return prelimRows.map((r) => {
       const ctx = r.format === "glass" ? ctxGlass : ctxBottle;
       const v = valueTag(r, ctx, r.format);
-      return { ...r, greatValue: v.ok, valueSentence: v.sentence, valueKind: v.kind };
+      // Relative price chip: derived from this list's population only.
+      // Repurposes `row.verdict` — the retail markup path is dormant
+      // (see price-verdict.ts), so the chip carries the feature.
+      const activeAmt = r.format === "glass" ? r.price_glass : r.price_bottle ?? r.price_amount;
+      const chip = relativePriceChip(activeAmt, ctx);
+      const verdict = chip
+        ? { tone: chip.tone, label: chip.label, markup: null, retailSource: null as "band" | "price" | null }
+        : null;
+      return { ...r, greatValue: v.ok, valueSentence: v.sentence, valueKind: v.kind, verdict };
     });
   }, [prelimRows]);
 
