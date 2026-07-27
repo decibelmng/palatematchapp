@@ -270,10 +270,17 @@ export function computeValueContext(
   const rowMarkup = new Map<string, number>();
   const markups: number[] = [];
   for (const r of pop) {
-    const m = r.verdict?.markup;
-    if (m != null && Number.isFinite(m) && m > 0) {
-      rowMarkup.set(r.key, m);
-      markups.push(m);
+    const v = r.verdict;
+    // Retail-source guard: markup ratios derived from an ordinal band
+    // midpoint (price_band $/$$/$$$/$$$$) are false precision — a $55
+    // retail bottle in the $$$ bucket would be scored as $90 retail and
+    // publish a markup that's off by 60%+. Refuse them here so no caller
+    // can accidentally publish a "N.N× retail" sentence from a band. Only
+    // `retailSource: "price"` is accepted; today the catalog has no such
+    // column, so this path never fires.
+    if (v?.markup != null && Number.isFinite(v.markup) && v.markup > 0 && v.retailSource === "price") {
+      rowMarkup.set(r.key, v.markup);
+      markups.push(v.markup);
     }
   }
   const medianMarkup = markups.length >= 4 ? median(markups) : null;
@@ -293,7 +300,10 @@ export function computeValueContext(
 
 /** Value verdict for one row, relative to the list. Returns a full sentence
  *  when it fires and a `kind` telling primary (markup) from fallback
- *  (relative). Fallback sentence makes NO claim about retail. */
+ *  (relative). Fallback sentence makes NO claim about retail.
+ *
+ *  Markup path is currently dormant — see `computeValueContext` for why.
+ *  The relative path carries the feature until numeric retail exists. */
 export function valueTag(
   row: Priced & { key: string; verdict?: PriceVerdict | null },
   ctx: ValueContext,
@@ -305,7 +315,7 @@ export function valueTag(
   const rowM = ctx.rowMarkup.get(row.key);
   const activeAmt = fmt === "glass" ? row.price_glass : row.price_bottle ?? row.price_amount;
 
-  // Primary: markup vs list median. "Materially below" = at least 25% lower.
+  // Primary: markup vs list median. Only reachable when retailSource === "price".
   if (rowM != null && ctx.medianMarkup != null && ctx.medianMarkup > 0) {
     if (rowM <= ctx.medianMarkup * 0.75) {
       const s = `About ${rowM.toFixed(1)}\u00d7 retail \u2014 most of this list is ${ctx.medianMarkup.toFixed(1)}\u00d7.`;
@@ -313,6 +323,8 @@ export function valueTag(
     }
     return { ok: false, sentence: null, kind: null };
   }
+
+
 
   // Fallback: no retail known for this row. Top-quartile prediction AND
   // bottom-third price. Sentence must NOT imply retail knowledge.

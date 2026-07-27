@@ -11,6 +11,30 @@ import { ScanEntryButtons, StagedPhotos, BatchProgress } from "@/components/Scan
 import { ServiceModeSwitch } from "@/components/ServiceModeSwitch";
 import { useScanCapture } from "@/hooks/use-scan-capture";
 import { useScanRanking } from "@/hooks/use-scan-ranking";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+
+/** Fetch the restaurant's locale ("en-US", "fr-FR", ...) so currency
+ *  resolution can prefer restaurant country over browser locale. */
+function useRestaurantLocale(restaurantId: string | null) {
+  return useQuery({
+    queryKey: ["restaurant-locale", restaurantId],
+    enabled: !!restaurantId,
+    queryFn: async () => {
+      const { data } = await supabase.from("restaurants").select("locale").eq("id", restaurantId!).maybeSingle();
+      return (data?.locale as string | null) ?? null;
+    },
+  });
+}
+
+/** "fr-FR" → "FR"; bare "FR" → "FR"; null-ish → null. */
+function countryFromLocale(locale: string | null | undefined): string | null {
+  if (!locale) return null;
+  const parts = String(locale).split("-");
+  const tail = parts[parts.length - 1];
+  return tail && tail.length === 2 ? tail.toUpperCase() : null;
+}
+
 
 export const Route = createFileRoute("/scan/list")({
   ssr: false,
@@ -31,7 +55,17 @@ function Scan() {
 
 
   const cap = useScanCapture();
-  const rank = useScanRanking(cap.wines);
+  // Fetch the picked/attributed restaurant's locale so restaurant-country
+  // can enter the currency resolution chain (see useScanRanking). Fires
+  // only once a restaurant id is known — either from prescan or the
+  // server-side auto-attribution that runs during finalize. When it
+  // resolves, the ranking memo recomputes and the UI re-renders with the
+  // corrected currency; a symbol-free Paris list stops rendering as USD.
+  const restaurantId = cap.prescanRestaurant?.id ?? null;
+  const { data: restaurantLocale } = useRestaurantLocale(restaurantId);
+  const restaurantCountry = countryFromLocale(restaurantLocale);
+  const rank = useScanRanking(cap.wines, null, restaurantCountry);
+
 
   // Auto-open camera when arriving from the center-scan chooser (?capture=1).
   useEffect(() => {

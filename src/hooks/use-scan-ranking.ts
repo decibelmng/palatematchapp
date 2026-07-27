@@ -19,7 +19,11 @@ import type { ResolvedWine } from "@/lib/scan.functions";
 
 const MIN_PER_TYPE = 8;
 
-export function useScanRanking(wines: ResolvedWine[], scanCurrency?: CurrencyCode | null) {
+export function useScanRanking(
+  wines: ResolvedWine[],
+  scanCurrency?: CurrencyCode | null,
+  restaurantCountry?: string | null,
+) {
   const { data: ratings } = useRatings();
   const ratedIds = useMemo(() => (ratings ?? []).map((r) => r.bottle_id), [ratings]);
   const { data: ratedBottles } = useBottlesByIds(ratedIds);
@@ -37,20 +41,32 @@ export function useScanRanking(wines: ResolvedWine[], scanCurrency?: CurrencyCod
   const readable = useMemo(() => dedupWines.filter((w) => w.fp_resolved), [dedupWines]);
   const unreadable = useMemo(() => dedupWines.filter((w) => !w.fp_resolved), [dedupWines]);
 
-  // Currency resolution chain: explicit override → OCR text → browser locale
-  // → USD default. (Restaurant-country would slot between text and locale, but
-  // that record isn't available in this client hook — it's applied server-side
-  // in scan.functions.ts when the scan resolves to a restaurant.)
+  // Currency resolution chain, in strict priority order:
+  //   1. explicit scan override (already-computed)
+  //   2. per-row OCR text (symbols/ISO codes on the list itself)
+  //   3. restaurant country (from restaurants.locale, when resolved)
+  //   4. browser locale
+  //   5. USD default
+  // Restaurant country is passed in from the caller once the restaurant
+  // record is known (prescan pick or post-attribution). The memo below
+  // recomputes when `restaurantCountry` changes, so if the server later
+  // resolves a Paris restaurant while the client's initial guess was USD
+  // (US locale, symbol-free list), the UI re-renders with EUR. Text-level
+  // detection (step 2) still wins — a "$" on the actual list beats the
+  // restaurant's country, which is the correct behavior for symbol-full
+  // lists in mixed-currency venues.
   const currencyRes = useMemo(() => {
     return resolveCurrency({
       override: scanCurrency ?? null,
       samples: dedupWines.map((w) => w.price),
+      restaurantCountry: restaurantCountry ?? null,
       useLocale: true,
     });
-  }, [dedupWines, scanCurrency]);
+  }, [dedupWines, scanCurrency, restaurantCountry]);
   const currency: CurrencyCode = currencyRes.currency;
   // Legacy reference kept for callers that still want the aggregate-only view.
   void aggregateCurrency; void DEFAULT_CURRENCY;
+
 
 
   const ratedRows: RatedFp[] = useMemo(() => {
