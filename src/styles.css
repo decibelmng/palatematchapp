@@ -279,6 +279,7 @@
   --value: #6FBF9A;
   --good: var(--value);
   --crimson: #FF6B6F;
+  --skip-badge-fg: #000000;     /* 7.58:1 on #FF6B6F */
   --bad: var(--crimson);
   --amber: #F0B95A;
 
