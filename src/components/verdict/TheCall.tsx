@@ -69,9 +69,10 @@ export function TheCall({
                 verdictTone.tone === "good"
                   ? "border-[--good]/50 bg-[--good]/10 text-foreground"
                   : verdictTone.tone === "warn"
-                  ? "border-[--amber]/50 bg-[--amber]/10 text-foreground"
+                  ? "border-[color-mix(in_oklab,var(--crimson)_55%,transparent)] bg-[color-mix(in_oklab,var(--crimson)_10%,transparent)] text-foreground"
                   : "border-[--bad]/50 bg-[--bad]/10 text-foreground"
               }`}
+
             >
               {verdictTone.label}
             </span>

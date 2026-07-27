@@ -80,8 +80,9 @@
   --text-sm--line-height: 1.4;
   --text-base: var(--fs-body);
   --text-base--line-height: 1.45;
-  --text-lg: var(--fs-body);
-  --text-lg--line-height: 1.45;
+  --text-lg: var(--fs-heading);
+  --text-lg--line-height: 1.25;
+
   --text-xl: var(--fs-heading);
   --text-xl--line-height: 1.25;
   --text-2xl: var(--fs-title);
@@ -455,3 +456,60 @@
    Keep the container class as a no-op selector so existing markup doesn't
    error, but the visual mode is driven by [data-theme="service"] instead. */
 .scan-decision { /* no-op — was formerly a token override */ }
+
+/* ---------------------------------------------------------------
+   Doubt families — two visually distinct treatments so users can
+   act differently on "we're unsure what this wine is" vs. "we
+   know what it is and it sits near something you dislike". Shape
+   (dashed vs solid rail) carries the distinction, not just hue.
+   --------------------------------------------------------------- */
+
+/* UNCERTAIN IDENTITY — data-quality caveat. Amber, dashed, no fill.
+   Reads as a footnote, not an alarm. */
+@utility pm-uncertain {
+  border: 1px dashed var(--amber);
+  background: transparent;
+  color: var(--text);
+}
+@utility pm-uncertain-chip {
+  display: inline-block;
+  border: 1px dashed var(--amber);
+  background: transparent;
+  color: var(--text);
+  border-radius: 9999px;
+  padding: 0.125rem 0.5rem;
+  font-size: var(--fs-label);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* PALATE CONFLICT — this wine sits near something you dislike.
+   Crimson, solid left rail + filled tint. Reads as a warning. */
+@utility pm-conflict {
+  border: 1px solid color-mix(in oklab, var(--crimson) 55%, transparent);
+  background: color-mix(in oklab, var(--crimson) 8%, transparent);
+  color: var(--text);
+}
+@utility pm-conflict-rail {
+  position: relative;
+}
+.pm-conflict-rail::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 3px;
+  background: var(--crimson);
+}
+@utility pm-conflict-chip {
+  display: inline-block;
+  border: 1px solid color-mix(in oklab, var(--crimson) 55%, transparent);
+  background: color-mix(in oklab, var(--crimson) 10%, transparent);
+  color: var(--text);
+  border-radius: 9999px;
+  padding: 0.125rem 0.5rem;
+  font-size: var(--fs-label);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+

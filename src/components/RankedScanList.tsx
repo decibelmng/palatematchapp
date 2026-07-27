@@ -57,7 +57,8 @@ export function RankedScanList({ wines, ratedRows, emptyLabel = "No readable win
         const cls = r.vetoed
           ? "border-destructive/30 opacity-60"
           : r.contested
-            ? "border-amber-500/40"
+            ? "border-[color-mix(in_oklab,var(--crimson)_50%,transparent)]"
+
             : r.predicted >= 4
               ? "border-primary/50"
               : "border-border";

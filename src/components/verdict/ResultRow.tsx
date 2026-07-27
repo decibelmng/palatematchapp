@@ -14,8 +14,9 @@ export function ResultRow({ row, onOpen }: { row: ScanRow; onOpen: () => void })
   const edge = r.vetoed
     ? "before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-[--crimson] before:content-['']"
     : r.contested
-    ? "before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-[--amber] before:content-['']"
+    ? "before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-[--crimson] before:content-['']"
     : "";
+
   return (
     <li className="list-none">
       <button

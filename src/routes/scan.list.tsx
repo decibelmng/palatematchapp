@@ -133,7 +133,7 @@ function Scan() {
       )}
 
       {rank.enoughRatings && rank.readable.length > 0 && rank.lowConfTypes.length > 0 && (
-        <div className="mt-5 rounded-md border border-amber-500/40 bg-amber-500/5 p-3 text-meta text-muted-foreground">
+        <div className="pm-uncertain mt-5 rounded-md p-3 text-meta text-muted-foreground">
           <span className="text-foreground font-medium">Low confidence on {rank.lowConfTypes.join(" & ")}</span> — you've rated{" "}
           {rank.lowConfTypes.map((t) => `${rank.perTypeRated.get(t) ?? 0} ${t}`).join(", ")} so far. Rankings will sharpen once you're past {rank.MIN_PER_TYPE} per type.{" "}
           <Link to="/rate" className="text-primary underline underline-offset-2">Rate more →</Link>
