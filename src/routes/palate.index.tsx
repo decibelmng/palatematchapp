@@ -265,6 +265,9 @@ function PalateHome() {
         <VisibilityControl current={(profile?.visibility as "private" | "followers" | "public") ?? "private"} />
       </div>
 
+      {/* Per-occasion consent + access log */}
+      <SommShareCodeCard />
+
       {/* Rate + verify */}
       <div className="mt-4 flex flex-col gap-2">
         <Link
