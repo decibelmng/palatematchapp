@@ -27,6 +27,8 @@ const ADMIN_LINKS: Array<{
   { to: "/admin/disputes",      label: "Disputes",       description: "Style-profile disputes queue.",           Icon: Bug },
 
   { to: "/admin/type-fix",      label: "Type Fixes",     description: "Bottle type review queue.",               Icon: Wrench },
+  { to: "/admin/style-map",     label: "Style Map",      description: "Catalog QA — fingerprint scatter, region coherence.", Icon: Map },
+
 ];
 
 function AdminHub() {
