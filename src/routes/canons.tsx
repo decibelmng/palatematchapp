@@ -21,8 +21,8 @@ export const Route = createFileRoute("/canons")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Favorites & Avoid list — Palate Match" },
-      { name: "description", content: "Your benchmark wines: the definitive favorites you want more like, and the styles to steer clear of, per region & type." },
+      { title: "Your benchmarks & dealbreakers — Palate Match" },
+      { name: "description", content: "The wines you love that anchor your palate, and the styles you avoid, per region and type." },
     ],
   }),
   component: () => <AuthGate><CanonsPage /></AuthGate>,
@@ -30,19 +30,20 @@ export const Route = createFileRoute("/canons")({
 
 const TYPE_ORDER: WineType[] = ["red", "white", "sparkling", "rose", "dessert"];
 const CANON_TYPE_LABEL: Record<string, string> = {
-  red: "Red favorites",
-  white: "White favorites",
-  sparkling: "Sparkling favorites",
-  rose: "Rosé favorites",
-  dessert: "Dessert favorites",
+  red: "Red benchmarks",
+  white: "White benchmarks",
+  sparkling: "Sparkling benchmarks",
+  rose: "Rosé benchmarks",
+  dessert: "Dessert benchmarks",
 };
 const NEMESIS_TYPE_LABEL: Record<string, string> = {
-  red: "Reds to avoid",
-  white: "Whites to avoid",
-  sparkling: "Sparklings to avoid",
-  rose: "Rosés to avoid",
-  dessert: "Desserts to avoid",
+  red: "Red dealbreakers",
+  white: "White dealbreakers",
+  sparkling: "Sparkling dealbreakers",
+  rose: "Rosé dealbreakers",
+  dessert: "Dessert dealbreakers",
 };
+
 
 
 type Row = { canon: CanonRow; bottle: BottleRow };
