@@ -2,13 +2,16 @@ import type { ScanRow } from "./types";
 import type { FpKey } from "@/lib/recommender";
 import { VERDICT_NEG, describeVetoStyleFromFp } from "@/lib/axis-phrases";
 
-/** Maps predicted score to one of four plain-English verdict sentences. */
+/** Maps a for-you score to one of four plain-English verdict sentences.
+ *  This is the SHARED source of truth: scan.bottle and TheCall both call it,
+ *  so the two screens can never disagree about the same wine. */
 export function verdictLine(predicted: number): string {
   if (predicted >= 4.5) return "This is squarely your wine.";
   if (predicted >= 4.0) return "A strong match for your palate.";
   if (predicted >= 3.5) return "A good bet, not a bullseye.";
-  return "The closest thing here, but nothing on this list is really you.";
+  return "Not really your style.";
 }
+
 
 /**
  * Pick a complaint phrase for a wine sitting in the low-score basin, using

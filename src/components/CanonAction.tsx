@@ -50,15 +50,15 @@ export function CanonAction({ bottle, stars, compact = false }: Props) {
     if (isCanon) {
       void (async () => {
         const ok = await confirmDialog({
-          title: "Remove Canon status?",
+          title: "Remove favorite status?",
           description: (
             <>
-              Remove Canon status from{" "}
+              Remove favorite status from{" "}
               <span className="font-semibold text-foreground">{bottle.name}</span>?
               It'll revert to its {stars ?? 5}★ rating.
             </>
           ),
-          confirmLabel: "Remove Canon",
+          confirmLabel: "Remove favorite",
           destructive: true,
         });
         if (ok) demote.mutate(myCanonForThis!.id);
@@ -69,7 +69,7 @@ export function CanonAction({ bottle, stars, compact = false }: Props) {
   }
 
 
-  const label = isCanon ? "Canon (tap to remove)" : "Make this my Canon";
+  const label = isCanon ? "Favorite (tap to remove)" : "Mark as a favorite";
   const btnClasses = compact
     ? "inline-flex items-center justify-center rounded-full p-1.5 transition"
     : "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-meta font-semibold transition";
@@ -89,7 +89,7 @@ export function CanonAction({ bottle, stars, compact = false }: Props) {
         style={style}
       >
         <Crown size={compact ? 14 : 13} strokeWidth={2.2} fill={isCanon ? "currentColor" : "none"} />
-        {!compact && (isCanon ? "Canon" : "Make Canon")}
+        {!compact && (isCanon ? "Favorite" : "Mark favorite")}
       </button>
 
       {dialog !== "idle" && (
@@ -107,13 +107,14 @@ export function CanonAction({ bottle, stars, compact = false }: Props) {
               setDialog("idle");
             } catch (e) {
               const msg = e instanceof Error ? e.message : String(e);
-              toast.error(msg || "Couldn't crown Canon");
+              toast.error(msg || "Couldn't mark as favorite");
               setDialog("idle");
             }
           }}
           pending={promote.isPending}
         />
       )}
+
     </>
   );
 }
@@ -147,18 +148,18 @@ function ConfirmDialog({
         <div className="flex items-center gap-2 text-foreground">
           <Crown size={20} strokeWidth={2.2} fill="currentColor" />
           <h3 className="font-serif text-lg text-foreground">
-            {existing ? "Replace your Canon?" : "Crown your benchmark"}
+            {existing ? "Replace your favorite?" : "Mark as a favorite"}
           </h3>
         </div>
 
         {existing ? (
           <div className="mt-3 space-y-3 text-sm">
             <p className="text-muted-foreground">
-              You already have a Canon {region} {typeLabel}:
+              You already have a favorite {region} {typeLabel}:
             </p>
             <div className="rounded-md border border-border bg-muted/40 px-3 py-2">
               <p className="font-medium text-foreground text-sm">
-                {existingBottle?.name ?? "Current Canon"}
+                {existingBottle?.name ?? "Current favorite"}
               </p>
               {existingBottle && (
                 <p className="text-xs text-muted-foreground">
@@ -168,13 +169,13 @@ function ConfirmDialog({
             </div>
             <p className="text-sm text-muted-foreground">
               Replace it with <span className="text-foreground font-medium">{bottle.name}</span>?
-              The previous Canon reverts to its star rating.
+              The previous favorite reverts to its star rating.
             </p>
           </div>
         ) : (
           <p className="mt-3 text-sm text-muted-foreground">
             This becomes your definitive <span className="text-foreground font-medium">{region} {typeLabel}</span>.
-            The engine treats it as your perfect match for this region — you can only have one.
+            We'll steer matches toward its style — you can only have one per region.
           </p>
         )}
 
@@ -193,9 +194,10 @@ function ConfirmDialog({
             className="inline-flex items-center gap-1.5 rounded-md bg-amber-500 text-white px-4 py-2 text-sm font-semibold hover:bg-amber-600 disabled:opacity-60"
           >
             <Crown size={14} strokeWidth={2.2} fill="currentColor" />
-            {existing ? "Replace" : "Make it Canon"}
+            {existing ? "Replace" : "Mark favorite"}
           </button>
         </div>
+
       </div>
     </div>
   );

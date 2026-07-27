@@ -32,7 +32,7 @@ export const Route = createFileRoute("/palate/")({
   head: () => ({
     meta: [
       { title: "Your profile — Palate Match" },
-      { name: "description", content: "Your Palate Match profile: taste identity, palate codes, stats, and visibility." },
+      { name: "description", content: "Your Palate Match profile: taste identity, taste profiles, stats, and visibility." },
     ],
   }),
   component: () => <AuthGate><PalateHome /></AuthGate>,
@@ -206,12 +206,13 @@ function PalateHome() {
         <Link to="/wines" search={{ tab: "rated" }} aria-label="See wines you've rated" className="block rounded-md hover:bg-muted/40 py-1">
           <Stat n={totalRated} label="Rated" />
         </Link>
-        <Link to="/wines" search={{ tab: "canons" }} aria-label="See your Canons" className="block rounded-md hover:bg-muted/40 py-1">
-          <Stat n={canonsCount} label="Canons" />
+        <Link to="/wines" search={{ tab: "canons" }} aria-label="See your favorites" className="block rounded-md hover:bg-muted/40 py-1">
+          <Stat n={canonsCount} label="Favorites" />
         </Link>
-        <Link to="/wines" search={{ tab: "nemeses" }} aria-label="See your Nemeses" className="block rounded-md hover:bg-muted/40 py-1">
-          <Stat n={nemesesCount} label="Nemeses" />
+        <Link to="/wines" search={{ tab: "nemeses" }} aria-label="See wines you avoid" className="block rounded-md hover:bg-muted/40 py-1">
+          <Stat n={nemesesCount} label="Avoid" />
         </Link>
+
         <Link to="/wines" search={{ tab: "scored" }} aria-label="Open palate detail" className="block rounded-md hover:bg-muted/40 py-1">
           <Stat n={redRated.length + whiteRated.length} label="Scored" />
         </Link>

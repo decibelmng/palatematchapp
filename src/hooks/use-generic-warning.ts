@@ -87,14 +87,14 @@ export function useGenericWarning() {
 
       if (v.kind === "uncalibrated") {
         return confirmDialog({
-          title: "Uncalibrated fingerprint",
+          title: "Uncalibrated style read",
           description: createElement(
             Fragment,
             null,
             wineName,
-            " doesn't have a calibrated fingerprint yet — as a benchmark it would anchor your palate to estimated data. Crown anyway?",
+            " doesn't have a calibrated style profile yet — as a benchmark it would anchor your palate to estimated data. Mark anyway?",
           ),
-          confirmLabel: "Crown anyway",
+          confirmLabel: "Mark anyway",
         });
       }
       if (v.kind === "generic") {
@@ -109,17 +109,18 @@ export function useGenericWarning() {
               "p",
               null,
               wineName,
-              "'s profile looks generic in our catalog — its recommendations may be unfocused. Crown anyway?",
+              "'s profile looks generic in our catalog — its recommendations may be unfocused. Mark anyway?",
             ),
             createElement(
               "p",
               { className: "mt-3 text-xs" },
-              `(${pct}% of comparable wines sit within h=${v.h} of this fingerprint; threshold ${thr}%)`,
+              `(${pct}% of comparable wines sit within h=${v.h} of this style; threshold ${thr}%)`,
             ),
           ),
-          confirmLabel: "Crown anyway",
+          confirmLabel: "Mark anyway",
         });
       }
+
       return true;
     },
     [evaluate],

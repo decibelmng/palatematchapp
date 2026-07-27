@@ -11,10 +11,11 @@ import { WineTypeBadge } from "@/components/WineTypeBadge";
 type Tab = "rated" | "canons" | "nemeses" | "scored";
 const TABS: { id: Tab; label: string; Icon: typeof Star }[] = [
   { id: "rated", label: "Rated", Icon: Star },
-  { id: "canons", label: "Canons", Icon: Crown },
-  { id: "nemeses", label: "Nemeses", Icon: Skull },
+  { id: "canons", label: "Favorites", Icon: Crown },
+  { id: "nemeses", label: "Avoid", Icon: Skull },
   { id: "scored", label: "Scored", Icon: Sparkles },
 ];
+
 
 const searchSchema = z.object({
   tab: z.enum(["rated", "canons", "nemeses", "scored"]).optional(),
@@ -26,7 +27,7 @@ export const Route = createFileRoute("/wines")({
   head: () => ({
     meta: [
       { title: "Your wines — Palate Match" },
-      { name: "description", content: "All the wines you've rated, your Canons, your Nemeses, and your scored map." },
+      { name: "description", content: "All the wines you've rated, your favorites, the ones you avoid, and your scored map." },
     ],
   }),
   component: () => <AuthGate><WinesPage /></AuthGate>,
@@ -84,10 +85,11 @@ function BenchmarkList({ tier }: { tier: "canon" | "nemesis" }) {
   if (rows.length === 0) {
     return (
       <div className="rounded-lg border border-border bg-card p-6 text-center">
-        <p className="text-sm">No {tier === "canon" ? "Canons" : "Nemeses"} yet.</p>
+        <p className="text-sm">No {tier === "canon" ? "favorites" : "wines to avoid"} yet.</p>
         <p className="mt-1 text-xs text-muted-foreground">
-          Rate a wine 5 stars and mark it as a Canon — or 1 star and mark it as a Nemesis — to anchor your palate.
+          Rate a wine 5 stars and mark it as a favorite — or 1 star and mark it as one to avoid — to anchor your palate.
         </p>
+
       </div>
     );
   }

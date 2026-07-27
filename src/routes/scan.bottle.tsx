@@ -20,7 +20,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { StarTap } from "@/components/StarTap";
 import { WineTypeBadge } from "@/components/WineTypeBadge";
 import { AddBottleDialog } from "@/components/AddBottleDialog";
+import { verdictLine } from "@/components/verdict/reason";
 import { toast } from "sonner";
+
 
 export const Route = createFileRoute("/scan/bottle")({
   ssr: false,
@@ -513,7 +515,7 @@ function BottleScan() {
                       disabled={onDemandBusy || !extracted.producer || !(extracted.wine_name || extracted.region)}
                       className="w-full rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm font-medium disabled:opacity-60"
                     >
-                      {onDemandBusy ? "Working…" : "Add it for me →"}
+                      {onDemandBusy ? "Working…" : "Add it and work out its style."}
                     </button>
                     <button
                       onClick={() => setShowAdd(true)}
@@ -615,11 +617,12 @@ function ConfidentCard({
         <p className="mt-2 text-xs italic text-muted-foreground">"{c.tasting_note}"</p>
       )}
       {predicted != null && (
-        <p className="mt-2 text-sm">
-          For you: <span className="font-serif text-primary text-lg">{predicted.toFixed(1)}</span>
-          <span className="text-primary">★</span>
-        </p>
+        <div className="mt-2">
+          <p className="text-heading text-foreground leading-snug">{verdictLine(predicted)}</p>
+          <ForYouChip predicted={predicted} className="mt-2" />
+        </div>
       )}
+
       <ConfidenceMeter score={c.score} reasons={c.reasons} />
       <div className="mt-3">
         <p className="text-xs text-muted-foreground mb-1">Rate it (one tap)</p>
@@ -728,11 +731,12 @@ function CompareCard({
           )}
         </div>
         {predicted != null && (
-          <div className="shrink-0 text-right">
-            <p className="text-meta uppercase tracking-label text-muted-foreground">For you</p>
-            <p className="font-serif text-primary text-base leading-none">{predicted.toFixed(1)}<span className="text-xs">★</span></p>
+          <div className="shrink-0 max-w-[55%]">
+            <p className="text-body text-foreground leading-snug text-right">{verdictLine(predicted)}</p>
+            <div className="mt-1 flex justify-end"><ForYouChip predicted={predicted} /></div>
           </div>
         )}
+
       </div>
 
       <div className="mt-2.5 space-y-1 rounded border border-border/60 bg-background/40 p-2">
@@ -997,6 +1001,32 @@ function ConfirmField({
   );
 }
 
-
-
+/** Tap-to-reveal chip for the raw for-you score. Keeps the number available
+ *  without letting it be the primary readout (per the "no decimal as
+ *  primary" rule). Collapsed state shows only "★"; expanded shows one
+ *  decimal + label. */
+function ForYouChip({ predicted, className = "" }: { predicted: number; className?: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+      aria-expanded={open}
+      aria-label={open ? "Hide numeric score" : "Show numeric score"}
+      className={`inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-label uppercase tracking-label text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${className}`}
+    >
+      {open ? (
+        <>
+          <span className="font-serif text-foreground normal-case tracking-normal">{predicted.toFixed(1)}★</span>
+          <span aria-hidden>for you</span>
+        </>
+      ) : (
+        <>
+          <span aria-hidden>★</span>
+          <span>Show score</span>
+        </>
+      )}
+    </button>
+  );
+}
 

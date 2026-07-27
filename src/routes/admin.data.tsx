@@ -75,7 +75,7 @@ function AdminData() {
 
   return (
     <div style={{ padding: 24, fontFamily: "system-ui", maxWidth: 720 }}>
-      <h1 style={{ fontSize: 20, marginBottom: 16 }}>Cuvée re-fingerprinting</h1>
+      <h1 style={{ fontSize: 20, marginBottom: 16 }}>Cuvée profile refresh</h1>
       <p style={{ opacity: 0.7, fontSize: 13, marginBottom: 16 }}>
         Processes up to 15 unstamped cuvée groups per click. Priority: rated → on a menu → fully defaulted.
       </p>
@@ -85,7 +85,7 @@ function AdminData() {
           disabled={busy || loop}
           style={{ padding: "8px 12px", border: "1px solid #999", borderRadius: 6 }}
         >
-          {busy && !loop && mode === "all" ? "Working…" : "Re-fingerprint next 15 cuvées"}
+          {busy && !loop && mode === "all" ? "Working…" : "Refresh next 15 cuvée profiles"}
         </button>
         <button
           onClick={() => once("matches")}

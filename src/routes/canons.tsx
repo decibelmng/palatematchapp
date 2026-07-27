@@ -21,8 +21,8 @@ export const Route = createFileRoute("/canons")({
   ssr: false,
   head: () => ({
     meta: [
-      { title: "Canon Cellar — Palate Match" },
-      { name: "description", content: "Your benchmark wines: definitive loves (Canon) and dealbreakers (Nemesis) — the engine's true-north and never-again anchors." },
+      { title: "Favorites & Avoid list — Palate Match" },
+      { name: "description", content: "Your benchmark wines: the definitive favorites you want more like, and the styles to steer clear of, per region & type." },
     ],
   }),
   component: () => <AuthGate><CanonsPage /></AuthGate>,
@@ -30,19 +30,20 @@ export const Route = createFileRoute("/canons")({
 
 const TYPE_ORDER: WineType[] = ["red", "white", "sparkling", "rose", "dessert"];
 const CANON_TYPE_LABEL: Record<string, string> = {
-  red: "Red Canons",
-  white: "White Canons",
-  sparkling: "Sparkling Canons",
-  rose: "Rosé Canons",
-  dessert: "Dessert Canons",
+  red: "Red favorites",
+  white: "White favorites",
+  sparkling: "Sparkling favorites",
+  rose: "Rosé favorites",
+  dessert: "Dessert favorites",
 };
 const NEMESIS_TYPE_LABEL: Record<string, string> = {
-  red: "Red Nemeses",
-  white: "White Nemeses",
-  sparkling: "Sparkling Nemeses",
-  rose: "Rosé Nemeses",
-  dessert: "Dessert Nemeses",
+  red: "Reds to avoid",
+  white: "Whites to avoid",
+  sparkling: "Sparklings to avoid",
+  rose: "Rosés to avoid",
+  dessert: "Desserts to avoid",
 };
+
 
 type Row = { canon: CanonRow; bottle: BottleRow };
 
@@ -94,20 +95,21 @@ function CanonsPage() {
 
   const handleRemove = useCallback(
     (row: Row) => {
-      const verb = row.canon.tier === "canon" ? "Canon" : "Nemesis";
+      const verb = row.canon.tier === "canon" ? "Favorite" : "Avoid";
       demote.mutate(row.canon.id, {
         onSuccess: () => {
           armUndo({
             tier: row.canon.tier,
             previousBottle: row.bottle,
-            label: `${verb} removed: ${row.bottle.name}`,
+            label: `${verb} status removed: ${row.bottle.name}`,
           });
         },
         onError: (err) =>
-          toast.error((err as Error).message || `Couldn't remove ${verb}`),
+          toast.error((err as Error).message || `Couldn't remove ${verb.toLowerCase()} status`),
       });
     },
     [demote, armUndo],
+
   );
 
   const { canonGrouped, nemesisGrouped, totalCanons, totalNemeses } = useMemo(() => {
@@ -133,14 +135,14 @@ function CanonsPage() {
 
   return (
     <div className="pt-2">
-      <p className="text-meta uppercase text-muted-foreground" style={{  }}>Canon Cellar</p>
+      <p className="text-meta uppercase text-muted-foreground">Favorites &amp; Avoid list</p>
       <h1 className="font-serif text-3xl mt-2 flex items-center gap-2">
         <Crown size={26} strokeWidth={2.2} fill="currentColor" className="text-foreground" />
         Your true north
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Benchmark wines you've crowned for each region &amp; type. Canons anchor your matches;
-        Nemeses steer the engine away from styles you don't want to see again.
+        Benchmark wines you've marked for each region &amp; type. Favorites anchor your matches;
+        wines to avoid steer us away from styles you don't want to see again.
       </p>
 
       {isLoading && totalAll === 0 ? (
@@ -150,9 +152,10 @@ function CanonsPage() {
           <Crown size={28} strokeWidth={2.2} className="mx-auto text-foreground" />
           <p className="mt-3 font-serif text-lg">No benchmarks yet.</p>
           <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
-            When a wine is <em>the one</em> for a region, crown it — or mark a 1–2★ bottle as your
-            Nemesis so the engine steers around it.
+            When a wine is <em>the one</em> for a region, mark it as a favorite — or mark a 1–2★
+            bottle as one to avoid so we steer around its style.
           </p>
+
           <Link
             to="/rate"
             className="mt-5 inline-block rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium"
@@ -194,12 +197,13 @@ function CanonsPage() {
             <div className="mt-14">
               <div className="flex items-center gap-2">
                 <Skull size={20} strokeWidth={2.2} className="text-destructive" />
-                <h2 className="font-serif text-2xl">Nemesis List</h2>
+                <h2 className="font-serif text-2xl">Wines to avoid</h2>
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
-                The engine avoids anything that shares this style — asymmetric veto radius, wider than
-                the attraction zone.
+                We steer away from anything that shares this style — with a wider berth than the
+                pull toward a favorite.
               </p>
+
               <div className="mt-6 space-y-10">
                 {TYPE_ORDER.flatMap((t) => {
                   const rows = nemesisGrouped[t] ?? [];
@@ -249,12 +253,13 @@ function CanonsPage() {
           wineType={swapTarget.wineType}
           currentBottle={swapTarget.currentBottle}
           onSwapped={(newBottle, previousBottle) => {
-            const verb = swapTarget.tier === "canon" ? "Canon" : "Nemesis";
+            const verb = swapTarget.tier === "canon" ? "Favorite" : "Avoid";
             armUndo({
               tier: swapTarget.tier,
               previousBottle,
               label: `${verb} swapped → ${newBottle.name}`,
             });
+
           }}
         />
       )}
@@ -302,7 +307,7 @@ function TierSection({
                   type="button"
                   onClick={() => onSwap(row)}
                   className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-meta font-medium hover:bg-accent"
-                  aria-label={`Swap ${tier} for ${canon.region}`}
+                  aria-label={`Swap ${tier === "canon" ? "favorite" : "wine to avoid"} for ${canon.region}`}
                 >
                   <ArrowLeftRight size={12} />
                   Swap
@@ -311,7 +316,8 @@ function TierSection({
                   type="button"
                   onClick={() => onRemove(row)}
                   className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-card px-2 py-1 text-meta font-medium text-muted-foreground hover:text-destructive hover:border-destructive/40"
-                  aria-label={`Remove ${tier} status from ${bottle.name}`}
+                  aria-label={`Remove ${tier === "canon" ? "favorite" : "avoid"} status from ${bottle.name}`}
+
                 >
                   <X size={12} />
                   Remove
