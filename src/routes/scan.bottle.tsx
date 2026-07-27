@@ -146,14 +146,44 @@ function BottleScan() {
         ...prepared.map((p) => p.uploadPromise),
       ]);
       const image_paths = paths.filter((p): p is string => !!p);
-      return { ...result, image_paths };
+      // Order-preserving front/back attribution (front is index 0 because
+      // `files = [front, back].filter(Boolean)`).
+      const frontPath = paths[0] ?? null;
+      const backPath  = paths[1] ?? null;
+      return { ...result, image_paths, __frontPath: frontPath, __backPath: backPath };
     },
-    onSuccess: (r) => {
+    onSuccess: async (r) => {
       // Seed the editable confirm form from the raw read; require an
       // explicit confirm before any candidate is presented for rating.
       setEditedRead(r.extracted);
       setConfirmed(false);
       setOverride(null);
+      // Persist scan history in the background. Never blocks the UI.
+      if (session) {
+        try {
+          const initialMatch = r.candidates?.[0]?.id ?? null;
+          const persisted = await persistFn({
+            data: {
+              frontPath: (r as any).__frontPath ?? null,
+              backPath: (r as any).__backPath ?? null,
+              rawOcrText: r.extracted?.raw_text ?? null,
+              parsed: {
+                producer: r.extracted?.producer ?? null,
+                wine_name: r.extracted?.wine_name ?? null,
+                vintage: r.extracted?.vintage ?? null,
+                region: r.extracted?.region ?? null,
+                grape: r.extracted?.grape ?? null,
+                type: r.extracted?.type ?? null,
+              },
+              matchedBottleId: initialMatch,
+            },
+          });
+          scanWineIdRef.current = persisted.scanWineId;
+        } catch {
+          // Non-fatal — history is a nicety, not a dependency.
+          scanWineIdRef.current = null;
+        }
+      }
     },
   });
 
