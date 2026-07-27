@@ -1,9 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { UserPlus, Check, X } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { AuthGate } from "@/components/AuthGate";
 import { FeedCard } from "@/components/FeedCard";
+import { VenueActivityCard } from "@/components/VenueActivityCard";
+import { FounderCard } from "@/components/FounderCard";
+import { OverlapSuggestions } from "@/components/OverlapSuggestions";
 import { useFriendsFeed, useFeedActivity, markFeedSeen } from "@/hooks/use-feed";
+import { getVenueActivity } from "@/lib/social-feed.functions";
 import {
   useAcceptedFriends,
   useFriendships,
@@ -225,6 +231,27 @@ function FriendsSection() {
   );
 }
 
+function VenueActivitySection() {
+  const fn = useServerFn(getVenueActivity);
+  const q = useQuery({
+    queryKey: ["venue-activity"],
+    queryFn: () => fn({ data: { limit: 12 } }),
+    staleTime: 60_000,
+  });
+  const items = q.data ?? [];
+  if (items.length === 0) return null;
+  return (
+    <section className="space-y-2">
+      <h2 className="text-sm font-medium text-muted-foreground">Wine lists nearby</h2>
+      <div className="space-y-2">
+        {items.map((v) => (
+          <VenueActivityCard key={`${v.restaurant_id}-${v.scanned_day}`} item={v} />
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function FeedContent() {
   const feed = useFriendsFeed(30);
   const activity = useFeedActivity();
@@ -232,6 +259,8 @@ function FeedContent() {
   useEffect(() => {
     if (activity.data?.latest_at) markFeedSeen(activity.data.latest_at);
   }, [activity.data?.latest_at]);
+
+  const empty = !feed.isLoading && !feed.error && (feed.data ?? []).length === 0;
 
   return (
     <div className="pt-5 space-y-4">
@@ -242,28 +271,37 @@ function FeedContent() {
         </Link>
       </div>
 
-      <FriendsSection />
+      <VenueActivitySection />
 
-      {feed.isLoading ? (
-        <div className="text-sm text-muted-foreground">Loading…</div>
-      ) : feed.error ? (
-        <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
-          {(feed.error as Error).message}
-        </div>
-      ) : (feed.data ?? []).length === 0 ? (
-        <div className="rounded-lg border border-border bg-card p-6 text-center">
-          <p className="text-sm text-foreground">No friend activity yet.</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Add friends above to see wines they've rated, scored for your palate.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {(feed.data ?? []).map((item) => (
-            <FeedCard key={item.rating_id} item={item} />
-          ))}
-        </div>
-      )}
+      <section className="space-y-2">
+        <h2 className="text-sm font-medium text-muted-foreground">Friends</h2>
+        <FriendsSection />
+
+        {feed.isLoading ? (
+          <div className="text-sm text-muted-foreground">Loading…</div>
+        ) : feed.error ? (
+          <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm text-destructive">
+            {(feed.error as Error).message}
+          </div>
+        ) : empty ? (
+          <div className="space-y-3">
+            <div className="rounded-lg border border-border bg-card p-6 text-center">
+              <p className="text-sm text-foreground">No friend activity yet.</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Add friends above to see wines they've rated, scored for your palate.
+              </p>
+            </div>
+            <FounderCard />
+            <OverlapSuggestions />
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {(feed.data ?? []).map((item) => (
+              <FeedCard key={item.rating_id} item={item} />
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

@@ -32,6 +32,7 @@ async function publicSupabase() {
 
 export type ScanListItem = {
   id: string;
+  kind: "list" | "bottle";
   scanned_at: string;
   status: string;
   restaurant_id: string | null;
@@ -40,6 +41,10 @@ export type ScanListItem = {
   wine_count: number;
   matched_count: number;
   share_token: string | null;
+  // Bottle-scan-only:
+  front_thumb_url: string | null;
+  bottle_label: string | null; // "Producer — Cuvee, Vintage" or similar
+  rated_stars: number | null;
 };
 
 export const listUserScans = createServerFn({ method: "GET" })
@@ -48,7 +53,7 @@ export const listUserScans = createServerFn({ method: "GET" })
     const { supabase, userId } = context;
     const { data: scans, error } = await supabase
       .from("scans")
-      .select("id,scanned_at,status,restaurant_id,venue_raw_text,share_token,created_at")
+      .select("id,kind,scanned_at,status,restaurant_id,venue_raw_text,share_token,created_at,front_image_path")
       .eq("user_id", userId)
       .order("scanned_at", { ascending: false })
       .limit(100);
@@ -59,9 +64,9 @@ export const listUserScans = createServerFn({ method: "GET" })
     const ids = list.map((s) => s.id);
     const restaurantIds = list.map((s) => s.restaurant_id).filter(Boolean) as string[];
 
-    const [{ data: wineCounts }, { data: rests }] = await Promise.all([
+    const [{ data: wineRows }, { data: rests }] = await Promise.all([
       supabase.from("scan_wines")
-        .select("scan_id,matched_bottle_id")
+        .select("scan_id,matched_bottle_id,producer,cuvee,vintage,user_rated_stars,batch_index")
         .in("scan_id", ids),
       restaurantIds.length
         ? supabase.from("restaurants").select("id,name").in("id", restaurantIds)
@@ -71,17 +76,41 @@ export const listUserScans = createServerFn({ method: "GET" })
     const nameById = new Map<string, string>();
     for (const r of (rests as any[]) ?? []) nameById.set(r.id, r.name);
     const counts = new Map<string, { total: number; matched: number }>();
-    for (const row of (wineCounts as any[]) ?? []) {
+    const bottleByScan = new Map<string, any>();
+    for (const row of (wineRows as any[]) ?? []) {
       const c = counts.get(row.scan_id) ?? { total: 0, matched: 0 };
       c.total += 1;
       if (row.matched_bottle_id) c.matched += 1;
       counts.set(row.scan_id, c);
+      if (!bottleByScan.has(row.scan_id)) bottleByScan.set(row.scan_id, row);
+    }
+
+    // Sign label thumbnails (private bucket).
+    const thumbByScan = new Map<string, string>();
+    const withLabels = list.filter((s) => s.kind === "bottle" && s.front_image_path);
+    if (withLabels.length > 0) {
+      const paths = withLabels.map((s) => s.front_image_path as string);
+      const { data: signed } = await supabase.storage.from("scan-images")
+        .createSignedUrls(paths, 60 * 60);
+      const byPath = new Map<string, string>();
+      for (const s of signed ?? []) if ((s as any).path && (s as any).signedUrl) byPath.set((s as any).path, (s as any).signedUrl);
+      for (const s of withLabels) {
+        const u = byPath.get(s.front_image_path as string);
+        if (u) thumbByScan.set(s.id, u);
+      }
     }
 
     return list.map((s): ScanListItem => {
       const c = counts.get(s.id) ?? { total: 0, matched: 0 };
+      const kind: "list" | "bottle" = s.kind === "bottle" ? "bottle" : "list";
+      const bw = bottleByScan.get(s.id);
+      const label = bw
+        ? [bw.producer, bw.cuvee].filter(Boolean).join(" — ") +
+          (bw.vintage ? `, ${bw.vintage}` : "")
+        : null;
       return {
         id: s.id,
+        kind,
         scanned_at: s.scanned_at ?? s.created_at,
         status: s.status,
         restaurant_id: s.restaurant_id,
@@ -90,6 +119,9 @@ export const listUserScans = createServerFn({ method: "GET" })
         wine_count: c.total,
         matched_count: c.matched,
         share_token: s.share_token,
+        front_thumb_url: thumbByScan.get(s.id) ?? null,
+        bottle_label: kind === "bottle" ? (label || null) : null,
+        rated_stars: kind === "bottle" && bw?.user_rated_stars ? bw.user_rated_stars : null,
       };
     });
   });

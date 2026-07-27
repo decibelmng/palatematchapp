@@ -65,7 +65,7 @@ export const getFriendsFeed = createServerFn({ method: "POST" })
     )).filter((id) => id && id !== userId);
     if (friendIds.length === 0) return [];
 
-    // Step 2: recent ratings from those friends.
+    // Step 2: recent ratings from those friends, excluding per-rating opt-outs.
     let q = supabase
       .from("ratings")
       .select("id, user_id, bottle_id, stars, note, created_at")
@@ -75,7 +75,17 @@ export const getFriendsFeed = createServerFn({ method: "POST" })
     if (data.before) q = q.lt("created_at", data.before);
     const { data: rrows, error: rErr } = await q;
     if (rErr) throw new Error(rErr.message);
-    const ratings = rrows ?? [];
+    let ratings = rrows ?? [];
+    if (ratings.length === 0) return [];
+
+    // Hide rating rows the rater flagged as "don't share".
+    const ratingIds = ratings.map((r) => r.id);
+    const { data: optouts } = await supabase
+      .from("rating_share_optout")
+      .select("rating_id")
+      .in("rating_id", ratingIds);
+    const hidden = new Set((optouts ?? []).map((r: any) => r.rating_id));
+    if (hidden.size > 0) ratings = ratings.filter((r) => !hidden.has(r.id));
     if (ratings.length === 0) return [];
 
     const bottleIds = Array.from(new Set(ratings.map((r) => r.bottle_id)));

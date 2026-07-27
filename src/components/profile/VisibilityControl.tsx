@@ -7,9 +7,9 @@ import { updateMyProfile } from "@/lib/friends.functions";
 type Visibility = "private" | "followers" | "public";
 
 const OPTS: Array<{ value: Visibility; label: string; hint: string; Icon: typeof Eye }> = [
-  { value: "private",   label: "Private",   hint: "Only you can see your ratings + activity", Icon: EyeOff },
-  { value: "followers", label: "Followers", hint: "Only accepted followers see the full profile", Icon: Users },
-  { value: "public",    label: "Public",    hint: "Anyone with the link can see the full profile", Icon: Eye },
+  { value: "private",   label: "Private",   hint: "Only you see your profile and ratings. Nothing appears in anyone else's feed.", Icon: EyeOff },
+  { value: "followers", label: "Followers", hint: "Only accepted friends see your profile and ratings. Non-friends see nothing.", Icon: Users },
+  { value: "public",    label: "Public",    hint: "Anyone with the link sees your profile, and your ratings can appear in others' feeds.", Icon: Eye },
 ];
 
 /**

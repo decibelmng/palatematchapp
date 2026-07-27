@@ -15,6 +15,11 @@ import {
   type BottleScanResult,
   type BottleExtract,
 } from "@/lib/bottle-scan.functions";
+import {
+  persistBottleScan,
+  saveBottleScanCorrection,
+  markBottleScanRated,
+} from "@/lib/bottle-scan-history.functions";
 import { resolveOrCreateOnDemand } from "@/lib/on-demand-bottle.functions";
 import { createLovableVisionRecognizer } from "@/lib/recognizer";
 import { supabase } from "@/integrations/supabase/client";
@@ -51,6 +56,11 @@ function BottleScan() {
   // Provider-agnostic recognizer wrapper (Lovable vision LLM today; a
   // future bake-off winner can drop in behind the same interface).
   const recognizer = useMemo(() => createLovableVisionRecognizer(scan), [scan]);
+  const persistFn = useServerFn(persistBottleScan);
+  const correctFn = useServerFn(saveBottleScanCorrection);
+  const markRatedFn = useServerFn(markBottleScanRated);
+  // Scan-wine row id captured after identify — used by correction log and mark-rated.
+  const scanWineIdRef = useRef<string | null>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const libraryRef = useRef<HTMLInputElement>(null);
   const [front, setFront] = useState<{ file: File; url: string } | null>(null);
@@ -136,14 +146,44 @@ function BottleScan() {
         ...prepared.map((p) => p.uploadPromise),
       ]);
       const image_paths = paths.filter((p): p is string => !!p);
-      return { ...result, image_paths };
+      // Order-preserving front/back attribution (front is index 0 because
+      // `files = [front, back].filter(Boolean)`).
+      const frontPath = paths[0] ?? null;
+      const backPath  = paths[1] ?? null;
+      return { ...result, image_paths, __frontPath: frontPath, __backPath: backPath } as BottleScanResult & { __frontPath: string | null; __backPath: string | null };
     },
-    onSuccess: (r) => {
+    onSuccess: async (r) => {
       // Seed the editable confirm form from the raw read; require an
       // explicit confirm before any candidate is presented for rating.
       setEditedRead(r.extracted);
       setConfirmed(false);
       setOverride(null);
+      // Persist scan history in the background. Never blocks the UI.
+      if (session) {
+        try {
+          const initialMatch = r.candidates?.[0]?.id ?? null;
+          const persisted = await persistFn({
+            data: {
+              frontPath: (r as any).__frontPath ?? null,
+              backPath: (r as any).__backPath ?? null,
+              rawOcrText: (r.extracted as any)?.raw_text ?? null,
+              parsed: {
+                producer: r.extracted?.producer ?? null,
+                wine_name: r.extracted?.wine_name ?? null,
+                vintage: r.extracted?.vintage ?? null,
+                region: r.extracted?.region ?? null,
+                grape: r.extracted?.grape ?? null,
+                type: r.extracted?.type ?? null,
+              },
+              matchedBottleId: initialMatch,
+            },
+          });
+          scanWineIdRef.current = persisted.scanWineId;
+        } catch {
+          // Non-fatal — history is a nicety, not a dependency.
+          scanWineIdRef.current = null;
+        }
+      }
     },
   });
 
@@ -239,6 +279,10 @@ function BottleScan() {
     qc.invalidateQueries({ queryKey: ["ratings"] });
     qc.invalidateQueries({ queryKey: ["canons"] });
     qc.invalidateQueries({ queryKey: ["palate-version"] });
+    // Ground-truth: this bottle was actually rated post-scan.
+    if (scanWineIdRef.current) {
+      markRatedFn({ data: { scanWineId: scanWineIdRef.current, stars } }).catch(() => {});
+    }
     toast.success(`Rated ${c.name} ${stars}★`);
   }
 
@@ -317,6 +361,28 @@ function BottleScan() {
 
   function confirmRead() {
     if (!editedRead) return;
+    // Log corrections (append-only) — one row per field the user changed.
+    if (readChanged() && rawExtracted && scanWineIdRef.current) {
+      const swid = scanWineIdRef.current;
+      const norm = (v: unknown) => (v === null || v === undefined || v === "") ? null : String(v);
+      const fields: Array<[
+        "producer" | "cuvee" | "vintage" | "wine_type" | "region" | "grape",
+        string | null,
+        string | null,
+      ]> = [
+        ["producer",  norm(rawExtracted.producer),  norm(editedRead.producer)],
+        ["cuvee",     norm(rawExtracted.wine_name), norm(editedRead.wine_name)],
+        ["region",    norm(rawExtracted.region),    norm(editedRead.region)],
+        ["grape",     norm(rawExtracted.grape),     norm(editedRead.grape)],
+        ["wine_type", norm(rawExtracted.type),      norm(editedRead.type)],
+        ["vintage",   norm(rawExtracted.vintage),   norm(editedRead.vintage)],
+      ];
+      for (const [field, oldV, newV] of fields) {
+        if (oldV !== newV) {
+          correctFn({ data: { scanWineId: swid, field, oldValue: oldV, newValue: newV } }).catch(() => {});
+        }
+      }
+    }
     if (readChanged()) {
       resolveMut.mutate(editedRead);
     } else {

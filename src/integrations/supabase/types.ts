@@ -351,6 +351,32 @@ export type Database = {
         }
         Relationships: []
       }
+      founder_accounts: {
+        Row: {
+          added_at: string
+          id: string
+          tagline: string | null
+        }
+        Insert: {
+          added_at?: string
+          id: string
+          tagline?: string | null
+        }
+        Update: {
+          added_at?: string
+          id?: string
+          tagline?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "founder_accounts_id_fkey"
+            columns: ["id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fp_consensus_candidates: {
         Row: {
           axis: string
@@ -907,6 +933,32 @@ export type Database = {
         }
         Relationships: []
       }
+      rating_share_optout: {
+        Row: {
+          created_at: string
+          rating_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          rating_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          rating_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rating_share_optout_rating_id_fkey"
+            columns: ["rating_id"]
+            isOneToOne: false
+            referencedRelation: "ratings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ratings: {
         Row: {
           bottle_id: string
@@ -1096,6 +1148,44 @@ export type Database = {
         }
         Relationships: []
       }
+      scan_wine_corrections: {
+        Row: {
+          created_at: string
+          field: string
+          id: string
+          new_value: string | null
+          old_value: string | null
+          scan_wine_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          field: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          scan_wine_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          field?: string
+          id?: string
+          new_value?: string | null
+          old_value?: string | null
+          scan_wine_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scan_wine_corrections_scan_wine_id_fkey"
+            columns: ["scan_wine_id"]
+            isOneToOne: false
+            referencedRelation: "scan_wines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scan_wines: {
         Row: {
           batch_index: number
@@ -1114,11 +1204,14 @@ export type Database = {
           price: string | null
           price_amount: number | null
           producer: string | null
+          rated_at: string | null
           raw_json: Json | null
+          raw_ocr_text: string | null
           raw_text: string | null
           region: string | null
           scan_id: string
           user_id: string
+          user_rated_stars: number | null
           vintage: number | null
           wine_type: string | null
         }
@@ -1139,11 +1232,14 @@ export type Database = {
           price?: string | null
           price_amount?: number | null
           producer?: string | null
+          rated_at?: string | null
           raw_json?: Json | null
+          raw_ocr_text?: string | null
           raw_text?: string | null
           region?: string | null
           scan_id: string
           user_id: string
+          user_rated_stars?: number | null
           vintage?: number | null
           wine_type?: string | null
         }
@@ -1164,11 +1260,14 @@ export type Database = {
           price?: string | null
           price_amount?: number | null
           producer?: string | null
+          rated_at?: string | null
           raw_json?: Json | null
+          raw_ocr_text?: string | null
           raw_text?: string | null
           region?: string | null
           scan_id?: string
           user_id?: string
+          user_rated_stars?: number | null
           vintage?: number | null
           wine_type?: string | null
         }
@@ -1184,13 +1283,16 @@ export type Database = {
       }
       scans: {
         Row: {
+          back_image_path: string | null
           batch_count: number
           batches_done: number
           batches_failed: Json
           created_at: string
           currency: string | null
+          front_image_path: string | null
           id: string
           image_paths: Json
+          kind: string
           page_count: number
           restaurant_id: string | null
           scanned_at: string
@@ -1201,13 +1303,16 @@ export type Database = {
           venue_raw_text: string | null
         }
         Insert: {
+          back_image_path?: string | null
           batch_count?: number
           batches_done?: number
           batches_failed?: Json
           created_at?: string
           currency?: string | null
+          front_image_path?: string | null
           id?: string
           image_paths?: Json
+          kind?: string
           page_count?: number
           restaurant_id?: string | null
           scanned_at?: string
@@ -1218,13 +1323,16 @@ export type Database = {
           venue_raw_text?: string | null
         }
         Update: {
+          back_image_path?: string | null
           batch_count?: number
           batches_done?: number
           batches_failed?: Json
           created_at?: string
           currency?: string | null
+          front_image_path?: string | null
           id?: string
           image_paths?: Json
+          kind?: string
           page_count?: number
           restaurant_id?: string | null
           scanned_at?: string
