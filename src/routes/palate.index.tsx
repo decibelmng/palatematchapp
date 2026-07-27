@@ -169,10 +169,18 @@ function PalateHome() {
 
   const hasScope = scoped.length > 0;
 
+  const scopedLetters = scope === "red" ? red.letters : white.letters;
+  const bimodalLetters = scopedLetters.filter((l) => l.bimodal);
+  const quizAnswers = (profile as { quiz_answers?: unknown } | null)?.quiz_answers as QuizAnswers | null | undefined;
+  const archetype = quizAnswers ? archetypeFor(quizAnswers, scope) : null;
+
   return (
-    <div className="pt-2 pb-8 max-w-md mx-auto">
+    <div
+      className="pt-2 max-w-md mx-auto"
+      style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 7rem)" }}
+    >
       {showReveal && (
-        <PalateReveal code={revealCode} type={scope} answers={(profile as { quiz_answers?: unknown } | null)?.quiz_answers as never} onDismiss={() => setShowReveal(false)} />
+        <PalateReveal code={revealCode} type={scope} answers={quizAnswers ?? null} onDismiss={() => setShowReveal(false)} />
       )}
 
       {/* Identity */}
