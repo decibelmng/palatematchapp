@@ -1013,6 +1013,7 @@ export type Database = {
           batches_done: number
           batches_failed: Json
           created_at: string
+          currency: string | null
           id: string
           image_paths: Json
           page_count: number
@@ -1029,6 +1030,7 @@ export type Database = {
           batches_done?: number
           batches_failed?: Json
           created_at?: string
+          currency?: string | null
           id?: string
           image_paths?: Json
           page_count?: number
@@ -1045,6 +1047,7 @@ export type Database = {
           batches_done?: number
           batches_failed?: Json
           created_at?: string
+          currency?: string | null
           id?: string
           image_paths?: Json
           page_count?: number

@@ -1,0 +1,1 @@
+ALTER TABLE public.scans ADD COLUMN IF NOT EXISTS currency text;
