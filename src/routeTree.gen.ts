@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WishlistRouteImport } from './routes/wishlist'
 import { Route as WinesRouteImport } from './routes/wines'
+import { Route as SommRouteImport } from './routes/somm'
 import { Route as ScansRouteImport } from './routes/scans'
 import { Route as ScanRouteImport } from './routes/scan'
 import { Route as RateRouteImport } from './routes/rate'
@@ -51,6 +52,11 @@ const WishlistRoute = WishlistRouteImport.update({
 const WinesRoute = WinesRouteImport.update({
   id: '/wines',
   path: '/wines',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SommRoute = SommRouteImport.update({
+  id: '/somm',
+  path: '/somm',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ScansRoute = ScansRouteImport.update({
@@ -219,6 +225,7 @@ export interface FileRoutesByFullPath {
   '/rate': typeof RateRoute
   '/scan': typeof ScanRouteWithChildren
   '/scans': typeof ScansRoute
+  '/somm': typeof SommRoute
   '/wines': typeof WinesRoute
   '/wishlist': typeof WishlistRoute
   '/add-friend/$username': typeof AddFriendUsernameRoute
@@ -254,6 +261,7 @@ export interface FileRoutesByTo {
   '/rate': typeof RateRoute
   '/scan': typeof ScanRouteWithChildren
   '/scans': typeof ScansRoute
+  '/somm': typeof SommRoute
   '/wines': typeof WinesRoute
   '/wishlist': typeof WishlistRoute
   '/add-friend/$username': typeof AddFriendUsernameRoute
@@ -290,6 +298,7 @@ export interface FileRoutesById {
   '/rate': typeof RateRoute
   '/scan': typeof ScanRouteWithChildren
   '/scans': typeof ScansRoute
+  '/somm': typeof SommRoute
   '/wines': typeof WinesRoute
   '/wishlist': typeof WishlistRoute
   '/add-friend/$username': typeof AddFriendUsernameRoute
@@ -327,6 +336,7 @@ export interface FileRouteTypes {
     | '/rate'
     | '/scan'
     | '/scans'
+    | '/somm'
     | '/wines'
     | '/wishlist'
     | '/add-friend/$username'
@@ -362,6 +372,7 @@ export interface FileRouteTypes {
     | '/rate'
     | '/scan'
     | '/scans'
+    | '/somm'
     | '/wines'
     | '/wishlist'
     | '/add-friend/$username'
@@ -397,6 +408,7 @@ export interface FileRouteTypes {
     | '/rate'
     | '/scan'
     | '/scans'
+    | '/somm'
     | '/wines'
     | '/wishlist'
     | '/add-friend/$username'
@@ -433,6 +445,7 @@ export interface RootRouteChildren {
   RateRoute: typeof RateRoute
   ScanRoute: typeof ScanRouteWithChildren
   ScansRoute: typeof ScansRoute
+  SommRoute: typeof SommRoute
   WinesRoute: typeof WinesRoute
   WishlistRoute: typeof WishlistRoute
   AddFriendUsernameRoute: typeof AddFriendUsernameRoute
@@ -470,6 +483,13 @@ declare module '@tanstack/react-router' {
       path: '/wines'
       fullPath: '/wines'
       preLoaderRoute: typeof WinesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/somm': {
+      id: '/somm'
+      path: '/somm'
+      fullPath: '/somm'
+      preLoaderRoute: typeof SommRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/scans': {
@@ -716,6 +736,7 @@ const rootRouteChildren: RootRouteChildren = {
   RateRoute: RateRoute,
   ScanRoute: ScanRouteWithChildren,
   ScansRoute: ScansRoute,
+  SommRoute: SommRoute,
   WinesRoute: WinesRoute,
   WishlistRoute: WishlistRoute,
   AddFriendUsernameRoute: AddFriendUsernameRoute,
