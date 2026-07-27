@@ -731,11 +731,12 @@ function CompareCard({
           )}
         </div>
         {predicted != null && (
-          <div className="shrink-0 text-right">
-            <p className="text-meta uppercase tracking-label text-muted-foreground">For you</p>
-            <p className="font-serif text-primary text-base leading-none">{predicted.toFixed(1)}<span className="text-xs">★</span></p>
+          <div className="shrink-0 max-w-[55%]">
+            <p className="text-body text-foreground leading-snug text-right">{verdictLine(predicted)}</p>
+            <div className="mt-1 flex justify-end"><ForYouChip predicted={predicted} /></div>
           </div>
         )}
+
       </div>
 
       <div className="mt-2.5 space-y-1 rounded border border-border/60 bg-background/40 p-2">
