@@ -2,17 +2,32 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { cuveeKey } from "@/lib/price-verdict";
+import { detectCurrencyFromText } from "@/lib/currency";
 
 // ---------- Price + format parsing helpers ----------
 
-/** Extract numeric price (USD-ish). Returns null when nothing parses. */
+/** Extract numeric price. Handles "$120", "45,00", "€45", and "14 / 52"
+ *  (returns the larger — bottle — number when a glass/bottle pair is
+ *  present). Returns null when nothing parses. */
 export function parsePriceAmount(s: string | null | undefined): number | null {
   if (!s) return null;
-  const m = s.match(/(\d[\d.,]*)/);
-  if (!m) return null;
-  const n = Number(m[1].replace(/,/g, "").replace(/\.(?=\d{3}\b)/g, ""));
-  return Number.isFinite(n) && n > 0 ? n : null;
+  const nums: number[] = [];
+  const re = /(\d{1,3}(?:[.,]\d{3})+|\d+(?:[.,]\d{1,2})?)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(String(s)))) {
+    const raw = m[1];
+    const clean = /,\d{1,2}$/.test(raw) ? raw.replace(",", ".") : raw.replace(/[.,](?=\d{3}\b)/g, "");
+    const n = Number(clean);
+    if (Number.isFinite(n) && n > 0) nums.push(n);
+  }
+  if (nums.length === 0) return null;
+  // Glass / bottle pattern: pick the bottle (larger) number.
+  if (nums.length >= 2 && nums[1] > nums[0] && nums[1] / nums[0] >= 2 && nums[1] / nums[0] <= 8) {
+    return nums[1];
+  }
+  return nums[0];
 }
+
 
 /** Infer bottle/glass/half from OCR line cues. Defaults to bottle. */
 export function inferFormat(raw: string | null | undefined): "bottle" | "glass" | "half" {
