@@ -203,10 +203,16 @@ function buildFpFromVotes(pairs: QuizPair[], votes: Record<string, QuizVote>): R
   return fp;
 }
 
-/** Return the synthetic RatedFp seeds for use in the recommender.
- *  Empty when no quiz answers or when the user already has >= FADE ratings
- *  of the requested type (seeds fade out once real signal exists). */
+/** Return the synthetic RatedFp seed for use in the recommender KERNEL only.
+ *  Empty when no quiz answers or once the linear fade weight hits zero at 5
+ *  real ratings. Seeds carry isSeed:true so learnOmega filters them out of
+ *  the pairwise ridge fit — see Invariant 1 in recommender.ts. */
 export const SEED_FADE_THRESHOLD = 5;
+
+/** Linear fade: weight = max(0, 1 - realRated/5). See header comment. */
+export function seedWeightFor(realRatedCountForType: number): number {
+  return Math.max(0, 1 - realRatedCountForType / SEED_FADE_THRESHOLD);
+}
 
 export function seedRatedFpFor(
   answers: QuizAnswers | null | undefined,
@@ -214,7 +220,8 @@ export function seedRatedFpFor(
   realRatedCountForType: number,
 ): RatedFp[] {
   if (!answers) return [];
-  if (realRatedCountForType >= SEED_FADE_THRESHOLD) return [];
+  const w = seedWeightFor(realRatedCountForType);
+  if (w <= 0) return [];
   if (type !== "red" && type !== "white") return [];
   const t = answers.type;
   if (t !== "both" && t !== type) return [];
@@ -234,7 +241,8 @@ export function seedRatedFpFor(
       type,
       fp,
       stars: 4,
-      weight: 1,
+      weight: w,
+      isSeed: true,
     },
   ];
 }
