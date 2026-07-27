@@ -11,9 +11,10 @@ export type ScanRow = Priced & {
   type: WineType;
   isCatalog: boolean;
   greatValue: boolean;
+  valueSentence: string | null;
   verdict: PriceVerdict | null;
 };
 
 export function priceLabel(row: ScanRow): string {
-  return row.price_display ?? "—";
+  return row.price_display ?? "\u2014";
 }
