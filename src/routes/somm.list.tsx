@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { useState } from "react";
 import { AuthGate } from "@/components/AuthGate";
 import { useMyProfile } from "@/hooks/use-friends";
@@ -14,6 +14,11 @@ import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/somm/list")({
   ssr: false,
+  // TEMPORARY GATE: /somm/list is hidden pending consent + payload work.
+  // Direct navigation redirects to /palate; the component below is retained.
+  beforeLoad: () => {
+    throw redirect({ to: "/palate" });
+  },
   head: () => ({
     meta: [
       { title: "House list — Palate Match" },
