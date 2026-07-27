@@ -44,7 +44,6 @@ function ScansPage() {
       <ul className="space-y-2">
         {(q.data ?? []).map((s) => {
           const isBottle = s.kind === "bottle";
-          const to = isBottle ? "/scans" : "/scan/$id";
           return (
             <li key={s.id}>
               <Link
