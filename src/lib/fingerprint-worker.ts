@@ -29,8 +29,11 @@ export type CuveeResult =
 export async function refingerprintCuveeByBottleId(
   bottleId: string,
   supabaseAdmin: any,
+  jobId: string | null = null,
 ): Promise<CuveeResult> {
   const key = process.env.LOVABLE_API_KEY;
+  if (!key) return { skipped: true, reason: "missing LOVABLE_API_KEY" };
+
   if (!key) return { skipped: true, reason: "missing LOVABLE_API_KEY" };
 
   // 1. Fetch the seed bottle.
