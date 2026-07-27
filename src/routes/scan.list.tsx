@@ -11,6 +11,30 @@ import { ScanEntryButtons, StagedPhotos, BatchProgress } from "@/components/Scan
 import { ServiceModeSwitch } from "@/components/ServiceModeSwitch";
 import { useScanCapture } from "@/hooks/use-scan-capture";
 import { useScanRanking } from "@/hooks/use-scan-ranking";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+
+/** Fetch the restaurant's locale ("en-US", "fr-FR", ...) so currency
+ *  resolution can prefer restaurant country over browser locale. */
+function useRestaurantLocale(restaurantId: string | null) {
+  return useQuery({
+    queryKey: ["restaurant-locale", restaurantId],
+    enabled: !!restaurantId,
+    queryFn: async () => {
+      const { data } = await supabase.from("restaurants").select("locale").eq("id", restaurantId!).maybeSingle();
+      return (data?.locale as string | null) ?? null;
+    },
+  });
+}
+
+/** "fr-FR" → "FR"; bare "FR" → "FR"; null-ish → null. */
+function countryFromLocale(locale: string | null | undefined): string | null {
+  if (!locale) return null;
+  const parts = String(locale).split("-");
+  const tail = parts[parts.length - 1];
+  return tail && tail.length === 2 ? tail.toUpperCase() : null;
+}
+
 
 export const Route = createFileRoute("/scan/list")({
   ssr: false,
