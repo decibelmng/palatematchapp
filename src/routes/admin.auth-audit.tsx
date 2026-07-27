@@ -11,6 +11,10 @@ export const Route = createFileRoute("/admin/auth-audit")({
     meta: [
       { title: "Admin · Auth audit" },
       { name: "description", content: "Read-only authentication audit trail." },
+      { property: "og:title", content: "Admin · Auth audit" },
+      { property: "og:description", content: "Read-only authentication audit trail." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: () => (
@@ -28,7 +32,7 @@ function AdminAuthAudit() {
     queryFn: () => fetchEntries({ data: { hours, limit: 500 } }),
   });
 
-  const rows = query.data ?? [];
+  const rows = (query.data ?? []) as AdminAuthAuditEntry[];
   const counts = useMemo(() => {
     const success = rows.filter((row) => !row.error).length;
     return { success, failed: rows.length - success };

@@ -1,14 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-async function assertAdmin(context: { supabase: { rpc: Function }; userId: string }) {
-  const { data, error } = await context.supabase.rpc("has_role" as never, {
-    _user_id: context.userId,
-    _role: "admin",
-  } as never);
-  if (error || data !== true) throw new Error("Not authorized");
-}
-
 export type AdminAuthAuditEntry = {
   id: string;
   created_at: string;
@@ -19,7 +11,7 @@ export type AdminAuthAuditEntry = {
   provider: string | null;
   status: string | null;
   error: string | null;
-  payload: Record<string, unknown> | null;
+  payload: string | null;
 };
 
 export const adminAuthAuditEntries = createServerFn({ method: "POST" })
@@ -29,7 +21,12 @@ export const adminAuthAuditEntries = createServerFn({ method: "POST" })
     limit: Math.min(Math.max(Number(input?.limit ?? 300), 1), 1000),
   }))
   .handler(async ({ context, data }) => {
-    await assertAdmin(context);
+    const { data: isAdmin, error: roleError } = await context.supabase.rpc("has_role" as never, {
+      _user_id: context.userId,
+      _role: "admin",
+    } as never);
+    if (roleError || isAdmin !== true) throw new Error("Not authorized");
+
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const since = new Date(Date.now() - data.hours * 60 * 60 * 1000).toISOString();
     const { data: rows, error } = await supabaseAdmin.rpc("admin_auth_audit_entries" as never, {
@@ -37,5 +34,16 @@ export const adminAuthAuditEntries = createServerFn({ method: "POST" })
       p_limit: data.limit,
     } as never);
     if (error) throw new Error(error.message);
-    return (rows ?? []) as unknown as AdminAuthAuditEntry[];
+    return ((rows ?? []) as Array<Record<string, unknown>>).map((row) => ({
+      id: String(row.id ?? ""),
+      created_at: String(row.created_at ?? ""),
+      ip_address: typeof row.ip_address === "string" ? row.ip_address : null,
+      action: typeof row.action === "string" ? row.action : null,
+      method: typeof row.method === "string" ? row.method : null,
+      path: typeof row.path === "string" ? row.path : null,
+      provider: typeof row.provider === "string" ? row.provider : null,
+      status: typeof row.status === "string" ? row.status : null,
+      error: typeof row.error === "string" ? row.error : null,
+      payload: row.payload ? JSON.stringify(row.payload) : null,
+    })) satisfies AdminAuthAuditEntry[];
   });
