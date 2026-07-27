@@ -15,13 +15,13 @@ export function AuthGate({ children }: { children: ReactNode }) {
   }
   const session = useSession();
   useEffect(() => () => {
-    console.log("[auth] AuthGate unmount", {
+    authTrace("AuthGate unmount", {
       mountId: mountId.current,
       totalMountsSeen: getAuthGateMountCount(),
       storage: authStorageSnapshot(),
     });
   }, []);
-  console.log("[auth] AuthGate render", {
+  authTrace("AuthGate render", {
     mountId: mountId.current,
     totalMountsSeen: getAuthGateMountCount(),
     state: session === undefined ? "loading" : session ? "signed-in" : "signed-out",
@@ -63,7 +63,7 @@ function AuthScreen() {
   async function oauth(provider: "apple" | "google") {
     setErr(null);
     installAuthDebug(supabase);
-    console.log("[auth] oauth click", {
+    authTrace("oauth click", {
       provider,
       origin: window.location.origin,
       redirect_uri: window.location.origin,
@@ -73,7 +73,7 @@ function AuthScreen() {
     const res = await lovable.auth.signInWithOAuth(provider, {
       redirect_uri: window.location.origin,
     });
-    console.log("[auth] oauth result", {
+    authTrace("oauth result", {
       redirected: (res as any)?.redirected,
       hasTokens: !!(res as any)?.tokens,
       error: (res as any)?.error?.message ?? null,
