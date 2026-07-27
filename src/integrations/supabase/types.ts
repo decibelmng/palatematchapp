@@ -1843,6 +1843,7 @@ export type Database = {
         }[]
       }
       are_friends: { Args: { _a: string; _b: string }; Returns: boolean }
+      ct_eq: { Args: { a: string; b: string }; Returns: boolean }
       follow_user: {
         Args: { p_followee: string }
         Returns: {
@@ -1899,6 +1900,7 @@ export type Database = {
         Args: { _establishment: string; _user_id: string }
         Returns: boolean
       }
+      load_shared_scan: { Args: { p_token: string }; Returns: Json }
       mark_scan_batch_done: {
         Args: { p_batch_index: number; p_scan_id: string }
         Returns: undefined
