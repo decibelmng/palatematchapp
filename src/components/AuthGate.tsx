@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { useSession } from "@/hooks/use-session";
-import { authStorageSnapshot, getAuthGateMountCount, installAuthDebug, registerAuthGateMount } from "@/lib/auth-debug";
+import { authStorageSnapshot, authTrace, clearAuthTrace, getAuthGateMountCount, installAuthDebug, readAuthTrace, registerAuthGateMount } from "@/lib/auth-debug";
 import { AppShell } from "./AppShell";
 import { NameGate } from "./NameGate";
 
@@ -15,13 +15,13 @@ export function AuthGate({ children }: { children: ReactNode }) {
   }
   const session = useSession();
   useEffect(() => () => {
-    console.log("[auth] AuthGate unmount", {
+    authTrace("AuthGate unmount", {
       mountId: mountId.current,
       totalMountsSeen: getAuthGateMountCount(),
       storage: authStorageSnapshot(),
     });
   }, []);
-  console.log("[auth] AuthGate render", {
+  authTrace("AuthGate render", {
     mountId: mountId.current,
     totalMountsSeen: getAuthGateMountCount(),
     state: session === undefined ? "loading" : session ? "signed-in" : "signed-out",
@@ -60,20 +60,20 @@ function AuthScreen() {
   const NEUTRAL =
     "If that email is set up for Palate Match, we've sent a sign-in link. Check your inbox — and your spam folder.";
 
-  async function oauth(provider: "apple" | "google") {
+  async function oauth(provider: "apple" | "google", overrideRedirect?: string) {
     setErr(null);
     installAuthDebug(supabase);
-    console.log("[auth] oauth click", {
+    const redirect_uri = overrideRedirect ?? window.location.origin;
+    authTrace("oauth click", {
       provider,
       origin: window.location.origin,
-      redirect_uri: window.location.origin,
+      redirect_uri,
+      override: !!overrideRedirect,
       href: window.location.href,
       storage: authStorageSnapshot(),
     });
-    const res = await lovable.auth.signInWithOAuth(provider, {
-      redirect_uri: window.location.origin,
-    });
-    console.log("[auth] oauth result", {
+    const res = await lovable.auth.signInWithOAuth(provider, { redirect_uri });
+    authTrace("oauth result", {
       redirected: (res as any)?.redirected,
       hasTokens: !!(res as any)?.tokens,
       error: (res as any)?.error?.message ?? null,
@@ -251,7 +251,71 @@ function AuthScreen() {
           </button>
         )}
       </div>
+
+      <AuthTracePanel onTestAltOrigin={() => oauth("google", "https://palatematchapp.lovable.app")} />
     </ScreenShell>
+  );
+}
+
+function AuthTracePanel({ onTestAltOrigin }: { onTestAltOrigin: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [tick, setTick] = useState(0);
+  useEffect(() => {
+    const id = window.setInterval(() => setTick((t) => t + 1), 1500);
+    return () => window.clearInterval(id);
+  }, []);
+  const trace = readAuthTrace();
+  const build = (typeof document !== "undefined" && document.currentScript?.getAttribute("src")) || "n/a";
+  void tick;
+  return (
+    <div className="mt-10 text-[11px] text-muted-foreground">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="underline decoration-dotted hover:text-foreground"
+      >
+        [auth-debug] {trace.length} events · {open ? "hide" : "show"}
+      </button>
+      {open && (
+        <div className="mt-2 rounded-md border border-border bg-card/80 p-3 space-y-2 font-mono text-[10px] leading-snug">
+          <div>origin: {typeof window !== "undefined" ? window.location.origin : "ssr"}</div>
+          <div>build: {String(build)}</div>
+          <div className="flex gap-2 flex-wrap">
+            <button
+              type="button"
+              onClick={() => { clearAuthTrace(); setTick((t) => t + 1); }}
+              className="rounded border border-border px-2 py-1 hover:bg-accent"
+            >clear</button>
+            <button
+              type="button"
+              onClick={() => {
+                const text = JSON.stringify(readAuthTrace(), null, 2);
+                navigator.clipboard?.writeText(text);
+                toast.success("Trace copied");
+              }}
+              className="rounded border border-border px-2 py-1 hover:bg-accent"
+            >copy JSON</button>
+            <button
+              type="button"
+              onClick={onTestAltOrigin}
+              className="rounded border border-amber-500/50 text-amber-500 px-2 py-1 hover:bg-amber-500/10"
+              title="Sign in with redirect_uri forced to https://palatematchapp.lovable.app"
+            >test .lovable.app origin</button>
+          </div>
+          <div className="max-h-[40vh] overflow-auto space-y-1">
+            {trace.length === 0 && <div className="opacity-60">(no events yet)</div>}
+            {trace.map((e, i) => (
+              <div key={i} className="border-t border-border/50 pt-1">
+                <div className="text-foreground">
+                  {new Date(e.t).toISOString().slice(11, 19)} · {e.event} · <span className="opacity-70">{e.origin}</span>
+                </div>
+                <pre className="whitespace-pre-wrap break-all opacity-80">{JSON.stringify(e.data)}</pre>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 
