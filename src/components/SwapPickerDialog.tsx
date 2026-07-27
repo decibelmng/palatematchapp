@@ -45,7 +45,7 @@ export function SwapPickerDialog({
 
   if (!open) return null;
 
-  const tierLabel = tier === "canon" ? "Canon" : "Nemesis";
+  const tierLabel = tier === "canon" ? "Favorite" : "Wine to avoid";
   const starHint = tier === "canon" ? "5★" : "1–2★";
 
   const handlePick = async (b: BottleRow) => {
