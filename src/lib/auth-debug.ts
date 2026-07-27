@@ -1,6 +1,8 @@
 import type { Session, SupabaseClient } from "@supabase/supabase-js";
 
 export const AUTH_STORAGE_KEY = "sb-xyxanewatmrekdqowqao-auth-token";
+export const AUTH_TRACE_KEY = "pm.authTrace";
+const MAX_TRACE = 200;
 
 const INSTALL_FLAG = "__pmAuthDebugInstalled";
 
@@ -8,6 +10,32 @@ type AuthDebugWindow = Window & {
   [INSTALL_FLAG]?: boolean;
   __pmAuthGateMounts?: number;
 };
+
+/** Persist a trace event to sessionStorage so it survives OAuth redirects and
+ *  can be rendered on-page even if devtools/console is unavailable. */
+export function authTrace(event: string, data: Record<string, unknown> = {}) {
+  try { console.log(`[auth] ${event}`, data); } catch { /* ignore */ }
+  if (typeof window === "undefined") return;
+  try {
+    const raw = sessionStorage.getItem(AUTH_TRACE_KEY);
+    const arr: Array<{ t: number; origin: string; event: string; data: unknown }> = raw ? JSON.parse(raw) : [];
+    arr.push({ t: Date.now(), origin: window.location.origin, event, data });
+    while (arr.length > MAX_TRACE) arr.shift();
+    sessionStorage.setItem(AUTH_TRACE_KEY, JSON.stringify(arr));
+  } catch { /* ignore */ }
+}
+
+export function readAuthTrace(): Array<{ t: number; origin: string; event: string; data: unknown }> {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = sessionStorage.getItem(AUTH_TRACE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+export function clearAuthTrace() {
+  if (typeof window !== "undefined") sessionStorage.removeItem(AUTH_TRACE_KEY);
+}
 
 export function snapshotSbKeys() {
   if (typeof window === "undefined") return [];
