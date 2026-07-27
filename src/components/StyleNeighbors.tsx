@@ -225,7 +225,7 @@ function NeighborRow({
       </div>
       <div className="shrink-0 text-right">
         {vetoed ? (
-          <span className="font-serif text-destructive text-sm uppercase tracking-label">Avoid ✕</span>
+          <span aria-hidden="true" className="font-serif text-xl text-muted-foreground">—</span>
         ) : (
           <>
             <span className={`font-serif text-xl ${muted ? "text-muted-foreground" : "text-primary"}`}>
