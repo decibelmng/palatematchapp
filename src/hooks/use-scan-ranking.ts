@@ -9,9 +9,10 @@ import {
   valueTag,
   type ServingFormat,
 } from "@/lib/list-controls";
-import { aggregateCurrency, DEFAULT_CURRENCY, type CurrencyCode } from "@/lib/currency";
+import { aggregateCurrency, DEFAULT_CURRENCY, resolveCurrency, type CurrencyCode } from "@/lib/currency";
 import { computeCellarMemory } from "@/lib/cellar-memory";
 import { priceVerdict } from "@/lib/price-verdict";
+
 import { useGroupSelection, useGroupPredict, type GroupCandidateInput } from "@/hooks/use-friends";
 import type { ScanRow, Ranked } from "@/components/verdict";
 import type { ResolvedWine } from "@/lib/scan.functions";
@@ -36,12 +37,21 @@ export function useScanRanking(wines: ResolvedWine[], scanCurrency?: CurrencyCod
   const readable = useMemo(() => dedupWines.filter((w) => w.fp_resolved), [dedupWines]);
   const unreadable = useMemo(() => dedupWines.filter((w) => !w.fp_resolved), [dedupWines]);
 
-  // Detect scan-wide currency from the actual OCR strings. Never defaults to
-  // EUR — falls back to USD unless a symbol/code was seen.
-  const currency: CurrencyCode = useMemo(() => {
-    if (scanCurrency) return scanCurrency;
-    return aggregateCurrency(dedupWines.map((w) => w.price), DEFAULT_CURRENCY);
+  // Currency resolution chain: explicit override → OCR text → browser locale
+  // → USD default. (Restaurant-country would slot between text and locale, but
+  // that record isn't available in this client hook — it's applied server-side
+  // in scan.functions.ts when the scan resolves to a restaurant.)
+  const currencyRes = useMemo(() => {
+    return resolveCurrency({
+      override: scanCurrency ?? null,
+      samples: dedupWines.map((w) => w.price),
+      useLocale: true,
+    });
   }, [dedupWines, scanCurrency]);
+  const currency: CurrencyCode = currencyRes.currency;
+  // Legacy reference kept for callers that still want the aggregate-only view.
+  void aggregateCurrency; void DEFAULT_CURRENCY;
+
 
   const ratedRows: RatedFp[] = useMemo(() => {
     if (!ratedBottles || !ratings) return [];
@@ -140,7 +150,10 @@ export function useScanRanking(wines: ResolvedWine[], scanCurrency?: CurrencyCod
         predicted: r.predicted,
         greatValue: false,
         valueSentence: null,
-        verdict: priceVerdict(p.bottle ?? p.amount, band),
+        valueKind: null,
+        // Verdict is calibrated to the row's active format: glass rows use the
+        // glass price, bottle rows use the bottle price. Never mix.
+        verdict: priceVerdict(format === "glass" ? p.glass : (p.bottle ?? p.amount), band),
       };
       rows.push(row);
     });
@@ -153,13 +166,17 @@ export function useScanRanking(wines: ResolvedWine[], scanCurrency?: CurrencyCod
   }, [ranked, cellar, priceBandByBottleId, groupActive, groupScores, currency]);
 
   const allRowsFlat: ScanRow[] = useMemo(() => {
-    // Compute value context against the actual list.
-    const ctx = computeValueContext(prelimRows, "bottle");
+    // Independent value contexts per format — glass rows and bottle rows are
+    // scored against their own populations, never mixed.
+    const ctxBottle = computeValueContext(prelimRows, "bottle");
+    const ctxGlass = computeValueContext(prelimRows, "glass");
     return prelimRows.map((r) => {
+      const ctx = r.format === "glass" ? ctxGlass : ctxBottle;
       const v = valueTag(r, ctx, r.format);
-      return { ...r, greatValue: v.ok, valueSentence: v.sentence };
+      return { ...r, greatValue: v.ok, valueSentence: v.sentence, valueKind: v.kind };
     });
   }, [prelimRows]);
+
 
   const enoughRatings = ratedRows.length >= 3;
 

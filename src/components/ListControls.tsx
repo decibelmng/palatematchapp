@@ -35,9 +35,10 @@ export function ListControls({ value, onChange, idPrefix, currency, rows }: Prop
   const [open, setOpen] = useState(false);
 
   const cur: CurrencyCode = currency ?? DEFAULT_CURRENCY;
-  const priceOptions = useMemo(() => priceBandOptions(cur), [cur]);
+  const priceOptions = useMemo(() => priceBandOptions(cur, value.format), [cur, value.format]);
   const shortPrice = (v: Controls["price"]) =>
     priceOptions.find((o) => o.value === v)?.label ?? "Any price";
+
 
   const formatsPresent = rows ? detectFormatsPresent(rows) : { glass: false, bottle: true };
   const showFormatToggle = formatsPresent.glass && formatsPresent.bottle;
