@@ -12,9 +12,9 @@ export function ResultRow({ row, onOpen }: { row: ScanRow; onOpen: () => void })
   const reason = becauseLine(row);
   const price = priceLabel(row);
   const edge = r.vetoed
-    ? "before:absolute before:inset-y-0 before:left-0 before:w-1 before:bg-[--crimson] before:content-['']"
+    ? "pm-vetoed-rail bg-[color-mix(in_oklab,var(--crimson)_6%,transparent)]"
     : r.contested
-    ? "before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-[--crimson] before:content-['']"
+    ? "pm-contested-rail bg-[color-mix(in_oklab,var(--amber)_6%,transparent)]"
     : "";
 
   return (
@@ -42,6 +42,11 @@ export function ResultRow({ row, onOpen }: { row: ScanRow; onOpen: () => void })
                 Skip
               </span>
             )}
+            {r.contested && !r.vetoed && (
+              <span className="shrink-0 mt-0.5 rounded-sm border border-[color-mix(in_oklab,var(--amber)_60%,transparent)] bg-[color-mix(in_oklab,var(--amber)_15%,transparent)] text-foreground text-label font-bold uppercase tracking-label px-1.5 py-0.5">
+                Your call
+              </span>
+            )}
             <p
               className="text-sub text-foreground break-words leading-snug font-medium"
               style={{ display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden" }}
@@ -50,8 +55,9 @@ export function ResultRow({ row, onOpen }: { row: ScanRow; onOpen: () => void })
             </p>
           </div>
           {reason && (
-            <p className={`mt-1 text-meta leading-snug ${r.vetoed ? "text-[--crimson]" : "text-muted-foreground"}`}>{reason}</p>
+            <p className="mt-1 text-meta leading-snug text-muted-foreground">{reason}</p>
           )}
+
         </div>
         <div className="shrink-0 text-right pt-1">
           <p className="text-sub text-foreground font-medium">{price}</p>

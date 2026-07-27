@@ -185,20 +185,20 @@ function NeighborRow({
         <div className="flex items-center gap-2 flex-wrap">
           <WineTypeBadge type={type} />
           {vetoed && (
-            <span className="shrink-0 inline-block rounded-full px-1.5 py-0.5 text-meta uppercase tracking-label border border-destructive/50 bg-destructive/10 text-destructive">
+            <span className="pm-vetoed-chip shrink-0">
               avoid
             </span>
           )}
           {!vetoed && contested && contestedNemesisName && (
             <span
-              className="pm-conflict-chip shrink-0"
-              title="Inside your Nemesis's reach, but closer to a wine you love"
+              className="pm-contested-chip shrink-0"
+              title="Near a wine you avoid, but closer to one you love"
             >
-              near your Nemesis {contestedNemesisName}
+              close to one you avoid
             </span>
           )}
 
-          {!vetoed && nearestIsCanon && <CanonBadge size="sm" title="Nearest rated anchor is a Canon" />}
+          {!vetoed && nearestIsCanon && <CanonBadge size="sm" title="Close to a wine you love" />}
         </div>
         <Link
           to="/wine/$id"
@@ -211,11 +211,12 @@ function NeighborRow({
           {meta}{vl ? <span className="text-muted-foreground/80"> · {vl}</span> : null}
         </p>
         {vetoed && vetoNemesisName && (
-          <p className="mt-1 text-meta text-destructive">
-            Matches your Nemesis {vetoNemesisName}
+          <p className="mt-1 text-meta text-foreground">
+            Close to one you avoid
             {vetoAxes.length > 0 ? ` — ${vetoAxes.join(", ")}` : ""}
           </p>
         )}
+
       </div>
       <div className="shrink-0 text-right">
         {vetoed ? (
