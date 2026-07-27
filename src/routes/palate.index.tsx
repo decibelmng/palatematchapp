@@ -351,12 +351,15 @@ function PalateHome() {
 
 function Stat({ n, label }: { n: number; label: string }) {
   return (
-    <div>
+    <div className="min-w-0">
       <div className="font-serif text-body leading-tight">{n}</div>
-      <div className="text-meta uppercase text-muted-foreground" style={{  }}>{label}</div>
+      <div className="text-meta uppercase tracking-label text-muted-foreground leading-tight break-words">
+        {label}
+      </div>
     </div>
   );
 }
+
 
 function CodeChip({ type, n, active, onClick }: { type: PaletteType; n: number; active: boolean; onClick: () => void }) {
   const label = type === "red" ? "Red palate" : "White palate";
