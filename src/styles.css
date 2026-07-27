@@ -472,11 +472,33 @@
    labels always resolve to var(--text).
    --------------------------------------------------------------- */
 
-/* UNCERTAIN IDENTITY — data-quality caveat. Amber, dashed, no fill. */
+/* Three doubt states with THREE independent signals so they remain
+   separable in grayscale, in service mode, and for a colorblind user:
+     - dash pattern  (dashed vs solid)
+     - rail width    (2px vs 4px)
+     - text badge    ("Skip" only on vetoed)
+   Hue never carries the load alone.
+
+   UNCERTAIN — data-quality caveat. 2px DASHED amber, no fill, no badge. */
 @utility pm-uncertain {
   border: 1px dashed var(--amber);
   background: transparent;
   color: var(--text);
+}
+@utility pm-uncertain-rail {
+  position: relative;
+}
+.pm-uncertain-rail::before {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  width: 2px;
+  background: repeating-linear-gradient(
+    to bottom,
+    var(--amber) 0 4px,
+    transparent 4px 8px
+  );
 }
 @utility pm-uncertain-chip {
   display: inline-block;
@@ -490,8 +512,8 @@
   letter-spacing: 0.08em;
 }
 
-/* CONTESTED — near something you dislike, but closer to a love.
-   Amber, solid rail + filled tint. "Your call." */
+/* CONTESTED — near something you avoid, but closer to one you love.
+   2px SOLID amber rail + tint. No "Skip" badge. */
 @utility pm-contested {
   border: 1px solid color-mix(in oklab, var(--amber) 55%, transparent);
   background: color-mix(in oklab, var(--amber) 8%, transparent);
@@ -505,7 +527,7 @@
   position: absolute;
   inset-block: 0;
   left: 0;
-  width: 4px;
+  width: 2px;
   background: var(--amber);
 }
 @utility pm-contested-chip {
@@ -520,7 +542,7 @@
   letter-spacing: 0.08em;
 }
 
-/* VETOED — do not order. Crimson, solid rail + filled tint. */
+/* VETOED — do not order. 4px SOLID crimson rail + tint + "Skip" badge. */
 @utility pm-vetoed {
   border: 1px solid color-mix(in oklab, var(--crimson) 55%, transparent);
   background: color-mix(in oklab, var(--crimson) 10%, transparent);
@@ -549,22 +571,21 @@
   letter-spacing: 0.08em;
 }
 
-/* Back-compat aliases — pm-conflict = the vetoed family. */
-@utility pm-conflict {
-  border: 1px solid color-mix(in oklab, var(--crimson) 55%, transparent);
-  background: color-mix(in oklab, var(--crimson) 10%, transparent);
-  color: var(--text);
-}
-@utility pm-conflict-chip {
+/* The "Skip" text badge — bold, high-contrast, appears only on vetoed
+   surfaces so a colorblind user or a desaturated screenshot still names
+   the state correctly. */
+@utility pm-skip-badge {
   display: inline-block;
-  border: 1px solid color-mix(in oklab, var(--crimson) 55%, transparent);
-  background: color-mix(in oklab, var(--crimson) 12%, transparent);
-  color: var(--text);
-  border-radius: 9999px;
-  padding: 0.125rem 0.5rem;
+  border-radius: 0.125rem;
+  background: var(--crimson);
+  color: #fff;
   font-size: var(--fs-label);
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
+  padding: 0.125rem 0.375rem;
+  line-height: 1;
 }
+
 
 
