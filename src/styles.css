@@ -581,7 +581,7 @@
   display: inline-block;
   border-radius: 0.125rem;
   background: var(--crimson);
-  color: #fff;
+  color: var(--skip-badge-fg);
   font-size: var(--fs-label);
   font-weight: 700;
   text-transform: uppercase;
