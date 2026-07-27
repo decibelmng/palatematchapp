@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -7,10 +7,11 @@ import { friendlyError } from "@/lib/error-message";
 import { AuthGate } from "@/components/AuthGate";
 import { loadScanForRanking, shareScan } from "@/lib/scans-history.functions";
 import { createOrGetInvite } from "@/lib/invites.functions";
-import { useRatings, useBottlesByIds, bottleToFp, bottleType } from "@/hooks/use-palate-data";
-import { aggregateRated } from "@/lib/cuvee";
-import type { RatedFp } from "@/lib/recommender";
-import { RankedScanList } from "@/components/RankedScanList";
+import { useScanRanking } from "@/hooks/use-scan-ranking";
+import { VerdictSurface } from "@/components/verdict";
+import { applyControls, DEFAULT_CONTROLS, type Controls } from "@/lib/list-controls";
+import { storedRowToResolved, currencyOfStoredRows } from "@/lib/scan-row-adapt";
+import type { ResolvedWine } from "@/lib/scan.functions";
 import { HelpfulPrompt } from "@/components/feedback/HelpfulPrompt";
 
 export const Route = createFileRoute("/scan/$id")({
@@ -26,17 +27,29 @@ export const Route = createFileRoute("/scan/$id")({
 
 function ScanDetailPage() {
   const { id } = Route.useParams();
+  const nav = useNavigate();
   const load = useServerFn(loadScanForRanking);
   const share = useServerFn(shareScan);
   const invite = useServerFn(createOrGetInvite);
   const [shareLink, setShareLink] = useState<string | null>(null);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [controls, setControls] = useState<Controls>(DEFAULT_CONTROLS);
 
   const detail = useQuery({
     queryKey: ["scan-detail", id],
     queryFn: () => load({ data: { scan_id: id } }),
     staleTime: 60_000,
   });
+
+  // Same ranking pipeline the live scanner uses — hooks stay unconditional and
+  // simply see an empty list until the query resolves.
+  const mappedWines = useMemo<ResolvedWine[]>(
+    () => (detail.data?.wines ?? []).map(storedRowToResolved),
+    [detail.data],
+  );
+  const scanCurrency = useMemo(() => currencyOfStoredRows(detail.data?.wines ?? []), [detail.data]);
+  const rank = useScanRanking(mappedWines, scanCurrency, null);
+  const surfaceRows = useMemo(() => applyControls(rank.allRowsFlat, controls), [rank.allRowsFlat, controls]);
 
   const shareMut = useMutation({
     mutationFn: async () => share({ data: { scan_id: id } }),
@@ -60,24 +73,8 @@ function ScanDetailPage() {
     onError: (e: any) => toast.error(friendlyError(e, "Couldn't create invite")),
   });
 
-  const { data: ratings } = useRatings();
-  const ratedIds = useMemo(() => (ratings ?? []).map((r) => r.bottle_id), [ratings]);
-  const { data: ratedBottles } = useBottlesByIds(ratedIds);
-  const ratedRows: RatedFp[] = useMemo(() => {
-    if (!ratedBottles || !ratings) return [];
-    const raw = ratedBottles.map((b) => ({
-      id: b.id, name: b.name, producer: b.producer, region: b.region,
-      type: bottleType(b), vintage: b.vintage, fp: bottleToFp(b),
-      stars: ratings.find((r) => r.bottle_id === b.id)!.stars,
-    }));
-    return aggregateRated(raw).map((c) => ({
-      id: c.id, name: c.name, producer: c.producer, region: c.region,
-      type: c.type, fp: c.fp, stars: c.stars,
-    }));
-  }, [ratedBottles, ratings]);
-
-  if (detail.isLoading) return <div className="pt-6 text-sm text-muted-foreground">Loading scan…</div>;
-  if (detail.error || !detail.data) return <div className="pt-6 text-sm text-destructive">Couldn't load this scan.</div>;
+  if (detail.isLoading) return <div className="pt-6 text-sub text-muted-foreground">Loading scan…</div>;
+  if (detail.error || !detail.data) return <div className="pt-6 text-sub text-destructive">Couldn't load this scan.</div>;
 
   const s = detail.data;
   const date = new Date(s.scanned_at).toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
@@ -87,25 +84,25 @@ function ScanDetailPage() {
   return (
     <div className="pt-6 space-y-5">
       <header className="space-y-2">
-        <div className="text-xs text-muted-foreground">
+        <div className="text-meta text-muted-foreground">
           <Link to="/scans" className="underline">Past scans</Link> · {date}
         </div>
-        <h1 className="text-2xl font-semibold">{venue}</h1>
-        <p className="text-xs text-muted-foreground">
+        <h1 className="font-serif text-title text-foreground leading-tight">{venue}</h1>
+        <p className="text-meta text-muted-foreground">
           Facts stored once. This ranking recomputes against your current palate every time you open it.
         </p>
         <div className="flex flex-wrap gap-2">
           <button
             onClick={() => shareMut.mutate()}
             disabled={shareMut.isPending}
-            className="text-xs px-3 py-1.5 rounded border border-border bg-card hover:bg-accent/40 disabled:opacity-50"
+            className="text-meta px-3 py-1.5 rounded border border-border bg-card hover:bg-accent/40 disabled:opacity-50"
           >
             {share_token ? "Copy share link" : "Share this scan"}
           </button>
           <button
             onClick={() => inviteMut.mutate()}
             disabled={inviteMut.isPending}
-            className="text-xs px-3 py-1.5 rounded border border-primary/50 bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-50"
+            className="text-meta px-3 py-1.5 rounded border border-primary/50 bg-primary/10 text-primary hover:bg-primary/20 disabled:opacity-50"
             title="Share the list AND auto-connect the recipient as a friend"
           >
             {inviteLink ? "Copy invite link" : "Share as friend invite"}
@@ -121,7 +118,20 @@ function ScanDetailPage() {
         )}
       </header>
 
-      <RankedScanList wines={s.wines} ratedRows={ratedRows} />
+      {rank.readable.length > 0 ? (
+        <VerdictSurface
+          rows={surfaceRows}
+          pendingSkeletons={0}
+          stillReading={false}
+          scannedAt={new Date(s.scanned_at).getTime()}
+          onRescan={() => nav({ to: "/scan/list" })}
+          controls={controls}
+          setControls={setControls}
+          currency={rank.currency}
+        />
+      ) : (
+        <p className="text-sub text-muted-foreground">Couldn't re-read this scan against your palate.</p>
+      )}
 
       <div className="mt-4">
         <HelpfulPrompt

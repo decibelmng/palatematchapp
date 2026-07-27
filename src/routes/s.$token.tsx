@@ -1,13 +1,13 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { loadSharedScan } from "@/lib/scans-history.functions";
 import { useSession } from "@/hooks/use-session";
-import { useRatings, useBottlesByIds, bottleToFp, bottleType } from "@/hooks/use-palate-data";
-import { aggregateRated } from "@/lib/cuvee";
-import type { RatedFp } from "@/lib/recommender";
-import { RankedScanList } from "@/components/RankedScanList";
+import { useScanRanking } from "@/hooks/use-scan-ranking";
+import { VerdictSurface } from "@/components/verdict";
+import { applyControls, DEFAULT_CONTROLS, type Controls } from "@/lib/list-controls";
+import { storedRowToResolved, currencyOfStoredRows } from "@/lib/scan-row-adapt";
 
 export const Route = createFileRoute("/s/$token")({
   ssr: false,
@@ -22,63 +22,68 @@ export const Route = createFileRoute("/s/$token")({
 
 function SharedScanPage() {
   const { token } = Route.useParams();
+  const nav = useNavigate();
   const load = useServerFn(loadSharedScan);
   const session = useSession();
+  const [controls, setControls] = useState<Controls>(DEFAULT_CONTROLS);
+
   const q = useQuery({
     queryKey: ["shared-scan", token],
     queryFn: () => load({ data: { token } }),
     staleTime: 60_000,
   });
 
-  const { data: ratings } = useRatings();
-  const ratedIds = useMemo(() => (ratings ?? []).map((r) => r.bottle_id), [ratings]);
-  const { data: ratedBottles } = useBottlesByIds(ratedIds);
-  const ratedRows: RatedFp[] = useMemo(() => {
-    if (!ratedBottles || !ratings) return [];
-    const raw = ratedBottles.map((b) => ({
-      id: b.id, name: b.name, producer: b.producer, region: b.region,
-      type: bottleType(b), vintage: b.vintage, fp: bottleToFp(b),
-      stars: ratings.find((r) => r.bottle_id === b.id)!.stars,
-    }));
-    return aggregateRated(raw).map((c) => ({
-      id: c.id, name: c.name, producer: c.producer, region: c.region,
-      type: c.type, fp: c.fp, stars: c.stars,
-    }));
-  }, [ratedBottles, ratings]);
+  // Same live ranking pipeline as a reopened own-scan; scored against the
+  // VIEWER's palate (invariant: a shared scan is never scored for the sharer).
+  const mappedWines = useMemo(() => (q.data?.wines ?? []).map(storedRowToResolved), [q.data]);
+  const scanCurrency = useMemo(() => currencyOfStoredRows(q.data?.wines ?? []), [q.data]);
+  const rank = useScanRanking(mappedWines, scanCurrency, null);
+  const surfaceRows = useMemo(() => applyControls(rank.allRowsFlat, controls), [rank.allRowsFlat, controls]);
 
-  if (q.isLoading) return <div className="pt-6 text-sm text-muted-foreground">Loading…</div>;
-  if (!q.data) return <div className="pt-6 text-sm text-muted-foreground">This link is no longer valid.</div>;
+  if (q.isLoading) return <div className="pt-6 text-sub text-muted-foreground">Loading…</div>;
+  if (!q.data) return <div className="pt-6 text-sub text-muted-foreground">This link is no longer valid.</div>;
   const s = q.data;
   const venue = s.restaurant?.name ?? s.venue_raw_text ?? "Shared wine list";
 
   return (
     <div className="pt-6 space-y-5 max-w-xl w-full mx-auto px-5 pb-24">
       <header className="space-y-2">
-        <h1 className="text-2xl font-semibold">{venue}</h1>
-        <p className="text-xs text-muted-foreground">
+        <h1 className="font-serif text-title text-foreground leading-tight">{venue}</h1>
+        <p className="text-meta text-muted-foreground">
           Ranked for {session ? "your" : "the viewer's"} palate — never the sharer's.
         </p>
       </header>
 
       {!session && (
-        <div className="rounded-lg border border-border bg-card p-4 text-sm">
+        <div className="rounded-lg border border-border bg-card p-4 text-sub">
           <div className="font-medium mb-1">Sign in to rank this list</div>
           <div className="text-muted-foreground mb-3">
             Palate Match ranks every wine against your own taste. Sign in and it'll re-rank for you.
           </div>
-          <Link to="/" className="inline-block text-xs px-3 py-1.5 rounded bg-primary text-primary-foreground">
+          <Link to="/" className="inline-block text-meta px-3 py-1.5 rounded bg-primary text-primary-foreground">
             Open Palate Match
           </Link>
         </div>
       )}
 
-      {session && ratedRows.length < 3 && (
-        <div className="text-xs text-muted-foreground p-3 rounded border border-border bg-card">
+      {session && !rank.enoughRatings && (
+        <div className="text-meta text-muted-foreground p-3 rounded border border-border bg-card">
           Rate a few wines first so we can score this list for you.
         </div>
       )}
 
-      <RankedScanList wines={s.wines} ratedRows={ratedRows} />
+      {rank.readable.length > 0 && (
+        <VerdictSurface
+          rows={surfaceRows}
+          pendingSkeletons={0}
+          stillReading={false}
+          scannedAt={null}
+          onRescan={() => nav({ to: "/scan/list" })}
+          controls={controls}
+          setControls={setControls}
+          currency={rank.currency}
+        />
+      )}
     </div>
   );
 }
