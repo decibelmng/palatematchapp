@@ -150,7 +150,7 @@ function BottleScan() {
       // `files = [front, back].filter(Boolean)`).
       const frontPath = paths[0] ?? null;
       const backPath  = paths[1] ?? null;
-      return { ...result, image_paths, __frontPath: frontPath, __backPath: backPath };
+      return { ...result, image_paths, __frontPath: frontPath, __backPath: backPath } as BottleScanResult & { __frontPath: string | null; __backPath: string | null };
     },
     onSuccess: async (r) => {
       // Seed the editable confirm form from the raw read; require an
