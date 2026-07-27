@@ -165,15 +165,12 @@ export const attributeScanFn = createServerFn({ method: "POST" })
             fp_oak: w.fp_resolved.oak,
             fp_body: w.fp_resolved.body,
             fp_savory: w.fp_resolved.savory,
-            ax_body: w.fp_resolved.body,
-            ax_fruit_char: w.fp_resolved.savory,
-            ax_tannin: keepsTannin ? w.fp_resolved.tannin : 0,
-            ax_acidity: w.fp_resolved.acid,
+            // ax_body/ax_tannin/ax_acidity/ax_fruit_char are GENERATED from fp_* — do not write.
             ax_sweet: 0,
             source: "scan; unverified community bottle",
             added_by: userId,
             unverified: true,
-          })
+          } as never)
           .select("id")
           .single();
         if (bErr || !newB) continue;
