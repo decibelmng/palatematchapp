@@ -85,7 +85,15 @@ function BriefFullScreen() {
           </button>
         </div>
 
-        <p className="mt-8 text-[17px] leading-[1.7] font-serif whitespace-pre-wrap text-white">
+        {archetype && (
+          <h1
+            className="mt-8 font-serif text-white"
+            style={{ fontSize: "var(--fs-title, 28px)", lineHeight: 1.15 }}
+          >
+            {archetype}
+          </h1>
+        )}
+        <p className="mt-4 text-[17px] leading-[1.7] font-serif whitespace-pre-wrap text-white">
           {brief.text}
         </p>
 
