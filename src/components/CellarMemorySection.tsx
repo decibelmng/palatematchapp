@@ -154,12 +154,12 @@ function Tier2Card({
         </p>
         {pred && listedVintage && (
           <p className="mt-0.5 text-meta text-muted-foreground">
-            This {listedVintage}: predicted {pred.predicted.toFixed(1)}★
+            This {listedVintage}: {pred.predicted.toFixed(1)}★ for you
           </p>
         )}
         {pred && !listedVintage && (
           <p className="mt-0.5 text-meta text-muted-foreground">
-            This bottling: predicted {pred.predicted.toFixed(1)}★
+            This bottling: {pred.predicted.toFixed(1)}★ for you
           </p>
         )}
       </div>
@@ -169,9 +169,10 @@ function Tier2Card({
         <p className="text-meta text-muted-foreground">your history</p>
         {pred && (
           <p className="text-meta text-muted-foreground mt-0.5">
-            pred {pred.predicted.toFixed(1)}★
+            {pred.predicted.toFixed(1)}★ for you
           </p>
         )}
+
       </div>
     </div>
   );
