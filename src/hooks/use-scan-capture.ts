@@ -125,8 +125,8 @@ export function useScanCapture() {
           const res = await attributeFn({ data: { scan_id: fin.scan_log_id, restaurant_id: prescanRestaurant.id } });
           setAutoAttributedTo(res.restaurant_name);
           toast.success(`Added to ${res.restaurant_name}`);
-        } catch (e: any) {
-          toast.error(e?.message ?? "Couldn't attribute to restaurant");
+        } catch (e) {
+          toast.error(friendlyError(e, "Couldn't attribute to restaurant"));
         }
       }
     } finally {
