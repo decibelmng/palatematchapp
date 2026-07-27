@@ -89,8 +89,10 @@ export async function refingerprintCuveeByBottleId(
     key,
   );
 
-  // 5. Write to every row in the group.
+  // 5. Write to every row in the group. Provenance columns are NOT NULL —
+  // every fp_ write must record model + prompt hash + pipeline + scored_at.
   const ids = group.map((r: any) => r.id as string);
+  const nowIso = new Date().toISOString();
   const { error: uErr } = await supabaseAdmin
     .from("bottles")
     .update({
@@ -110,9 +112,15 @@ export async function refingerprintCuveeByBottleId(
       source: seed.source
         ? `${seed.source}; refingerprinted (cuvée-level)`
         : "refingerprinted (cuvée-level)",
-      refingerprinted_at: new Date().toISOString(),
+      refingerprinted_at: nowIso,
+      fp_model: FINGERPRINT_MODEL,
+      fp_prompt_hash: FINGERPRINT_PROMPT_HASH,
+      fp_pipeline: FINGERPRINT_PIPELINE,
+      fp_scored_at: nowIso,
+      fp_job_id: jobId,
     })
     .in("id", ids);
+
   if (uErr) return { skipped: true, reason: uErr.message };
 
   return { ok: true, groupSize: ids.length };
