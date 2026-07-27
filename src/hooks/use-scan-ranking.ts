@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { useBottlesByIds, bottleToFp, bottleType, useRatings } from "@/hooks/use-palate-data";
 import { useMyCanons } from "@/hooks/use-canon";
+import { useQuizAnswers } from "@/hooks/use-quiz";
+import { seedRatedFpFor } from "@/lib/quiz-seeds";
 import { recommend, type BottleFp, type RatedFp, type Recommendation, type WineType } from "@/lib/recommender";
 import { aggregateRated } from "@/lib/cuvee";
 import {
@@ -25,6 +27,7 @@ export function useScanRanking(
   restaurantCountry?: string | null,
 ) {
   const { data: ratings } = useRatings();
+  const { data: quizAnswers } = useQuizAnswers();
   const ratedIds = useMemo(() => (ratings ?? []).map((r) => r.bottle_id), [ratings]);
   const { data: ratedBottles } = useBottlesByIds(ratedIds);
   const { data: myCanons } = useMyCanons();
