@@ -6,7 +6,8 @@ import {
   type FpKey, type RatedFp, type BottleFp, type WineType,
 } from "@/lib/recommender";
 import { aggregateRated } from "@/lib/cuvee";
-import { archetypeFor, type QuizAnswers, type PaletteType } from "@/lib/quiz-seeds";
+import { archetypeFor, type QuizAnswers } from "@/lib/quiz-seeds";
+import type { PaletteType } from "@/lib/palate";
 import { summarize, pickTableCall, type CandidateResult, type WinnerPick } from "@/lib/table-call";
 
 // ────────── Shared: verified-somm gate ──────────
