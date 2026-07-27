@@ -213,6 +213,7 @@
   /* Non-text ONLY in dark (min 4.42:1 vs --surface-2). Use as rail/tint/icon;
      labels must resolve to --text. */
   --crimson: #E5484D;
+  --skip-badge-fg: #0A0808;     /* 5.37:1 on #E5484D */
   --amber: #E0A458;
 
   --value: #6FBF9A;
