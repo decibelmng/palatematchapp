@@ -156,18 +156,18 @@ function ConfirmDialog({
         <div className="flex items-center gap-2 text-destructive">
           <Skull size={20} strokeWidth={2.2} />
           <h3 className="font-serif text-lg text-foreground">
-            {existing ? "Replace your Nemesis?" : "Mark your dealbreaker"}
+            {existing ? "Replace your one to avoid?" : "Mark as one to avoid"}
           </h3>
         </div>
 
         {existing ? (
           <div className="mt-3 space-y-3 text-sm">
             <p className="text-muted-foreground">
-              You already have a Nemesis {region} {typeLabel}:
+              You already have a wine to avoid for {region} {typeLabel}:
             </p>
             <div className="rounded-md border border-border bg-muted/40 px-3 py-2">
               <p className="font-medium text-foreground text-sm">
-                {existingBottle?.name ?? "Current Nemesis"}
+                {existingBottle?.name ?? "Current"}
               </p>
               {existingBottle && (
                 <p className="text-xs text-muted-foreground">
@@ -177,14 +177,14 @@ function ConfirmDialog({
             </div>
             <p className="text-sm text-muted-foreground">
               Replace it with <span className="text-foreground font-medium">{bottle.name}</span>?
-              The previous Nemesis reverts to its star rating.
+              The previous one reverts to its star rating.
             </p>
           </div>
         ) : (
           <p className="mt-3 text-sm text-muted-foreground">
-            This becomes your definitive dealbreaker for{" "}
+            This becomes the style we steer you away from for{" "}
             <span className="text-foreground font-medium">{region} {typeLabel}</span>.
-            The engine will steer you away from anything in its style.
+            We'll flag wines that share its character.
           </p>
         )}
 
@@ -203,9 +203,10 @@ function ConfirmDialog({
             className="inline-flex items-center gap-1.5 rounded-md bg-destructive text-destructive-foreground px-4 py-2 text-sm font-semibold hover:opacity-90 disabled:opacity-60"
           >
             <Skull size={14} strokeWidth={2.2} />
-            {existing ? "Replace" : "Mark it Nemesis"}
+            {existing ? "Replace" : "Mark to avoid"}
           </button>
         </div>
+
       </div>
     </div>
   );
