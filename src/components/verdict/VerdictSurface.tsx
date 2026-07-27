@@ -7,6 +7,7 @@ import { TheRest } from "./TheRest";
 import { ScanDetailSheet } from "./ScanDetailSheet";
 import { ScanThumbBar } from "./ScanThumbBar";
 import type { Controls } from "@/lib/list-controls";
+import type { CurrencyCode } from "@/lib/currency";
 
 /**
  * The three-layer decision surface. Call → Alternates → collapsed rest.
@@ -20,6 +21,7 @@ export function VerdictSurface({
   onRescan,
   controls,
   setControls,
+  currency,
 }: {
   rows: ScanRow[];
   pendingSkeletons: number;
@@ -28,6 +30,7 @@ export function VerdictSurface({
   onRescan: () => void;
   controls: Controls;
   setControls: (c: Controls) => void;
+  currency?: CurrencyCode;
 }) {
 
   const [detailKey, setDetailKey] = useState<string | null>(null);
@@ -41,7 +44,6 @@ export function VerdictSurface({
       .filter((r) => !r.ranked.vetoed && r.ranked.predicted > 0)
       .sort((a, b) => b.ranked.predicted - a.ranked.predicted);
 
-    // Fallback when nothing has a real predicted score yet
     if (eligible.length === 0) {
       return { call: null as ScanRow | null, callKind: "your-pick" as const, alternates: [], restRows: rows };
     }
@@ -66,6 +68,7 @@ export function VerdictSurface({
           pendingSkeletons={pendingSkeletons}
           onOpen={setDetailKey}
           stillReading={stillReading}
+          currency={currency}
         />
         <ScanDetailSheet row={detailFor} scannedAt={scannedAt} onClose={() => setDetailKey(null)} />
       </div>
@@ -81,14 +84,18 @@ export function VerdictSurface({
         pendingSkeletons={pendingSkeletons}
         onOpen={setDetailKey}
         stillReading={stillReading}
+        currency={currency}
       />
       <ScanThumbBar
         onRescan={onRescan}
         controls={controls}
         setControls={setControls}
+        currency={currency}
+        rows={rows}
       />
       <ScanDetailSheet row={detailFor} scannedAt={scannedAt} onClose={() => setDetailKey(null)} />
 
     </div>
   );
 }
+

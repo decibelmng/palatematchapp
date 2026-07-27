@@ -3,7 +3,13 @@ import { useBottlesByIds, bottleToFp, bottleType, useRatings } from "@/hooks/use
 import { useMyCanons } from "@/hooks/use-canon";
 import { recommend, type BottleFp, type RatedFp, type Recommendation, type WineType } from "@/lib/recommender";
 import { aggregateRated } from "@/lib/cuvee";
-import { normalizePrice, isGreatValue } from "@/lib/list-controls";
+import {
+  normalizePrice,
+  computeValueContext,
+  valueTag,
+  type ServingFormat,
+} from "@/lib/list-controls";
+import { aggregateCurrency, DEFAULT_CURRENCY, type CurrencyCode } from "@/lib/currency";
 import { computeCellarMemory } from "@/lib/cellar-memory";
 import { priceVerdict } from "@/lib/price-verdict";
 import { useGroupSelection, useGroupPredict, type GroupCandidateInput } from "@/hooks/use-friends";
@@ -12,7 +18,7 @@ import type { ResolvedWine } from "@/lib/scan.functions";
 
 const MIN_PER_TYPE = 8;
 
-export function useScanRanking(wines: ResolvedWine[]) {
+export function useScanRanking(wines: ResolvedWine[], scanCurrency?: CurrencyCode | null) {
   const { data: ratings } = useRatings();
   const ratedIds = useMemo(() => (ratings ?? []).map((r) => r.bottle_id), [ratings]);
   const { data: ratedBottles } = useBottlesByIds(ratedIds);
@@ -29,6 +35,13 @@ export function useScanRanking(wines: ResolvedWine[]) {
 
   const readable = useMemo(() => dedupWines.filter((w) => w.fp_resolved), [dedupWines]);
   const unreadable = useMemo(() => dedupWines.filter((w) => !w.fp_resolved), [dedupWines]);
+
+  // Detect scan-wide currency from the actual OCR strings. Never defaults to
+  // EUR — falls back to USD unless a symbol/code was seen.
+  const currency: CurrencyCode = useMemo(() => {
+    if (scanCurrency) return scanCurrency;
+    return aggregateCurrency(dedupWines.map((w) => w.price), DEFAULT_CURRENCY);
+  }, [dedupWines, scanCurrency]);
 
   const ratedRows: RatedFp[] = useMemo(() => {
     if (!ratedBottles || !ratings) return [];
@@ -101,35 +114,52 @@ export function useScanRanking(wines: ResolvedWine[]) {
   const groupScores = groupPred.data ?? null;
   const groupActive = group.friendIds.length > 0;
 
-  const allRowsFlat: ScanRow[] = useMemo(() => {
-    const rows: ScanRow[] = [];
+  // Preliminary rows without value tag. Value context needs the full row set
+  // (median markup, price/predicted quantiles) so we build it first.
+  const prelimRows = useMemo(() => {
+    const rows: (ScanRow & { key: string })[] = [];
     ranked.forEach((r, i) => {
       const idx = Number(r.bottle.id.replace("scan-", ""));
       if (cellar.byIndex.has(idx)) return;
       const t = (r.scanned.type ?? "red") as WineType;
-      const p = normalizePrice(r.scanned.price ?? null);
+      const p = normalizePrice(r.scanned.price ?? null, currency);
       const matchedId = r.scanned.matched_bottle_id;
       const band = matchedId ? priceBandByBottleId.get(matchedId) ?? null : null;
+      const format: ServingFormat = p.glass != null && p.bottle == null ? "glass" : "bottle";
       const row: ScanRow = {
         key: r.bottle.id + "-" + i,
         ranked: r, type: t,
         isCatalog: r.scanned.fp_source === "catalog",
-        price_amount: p.amount, price_band: p.band, price_display: p.display,
-        predicted: r.predicted, greatValue: false,
-        verdict: priceVerdict(p.amount, band),
+        price_amount: p.amount,
+        price_band: p.band,
+        price_display: p.display,
+        currency: p.currency,
+        format,
+        price_glass: p.glass,
+        price_bottle: p.bottle,
+        predicted: r.predicted,
+        greatValue: false,
+        valueSentence: null,
+        verdict: priceVerdict(p.bottle ?? p.amount, band),
       };
-      row.greatValue = isGreatValue(row);
       rows.push(row);
     });
     if (!groupActive || !groupScores) return rows;
     return rows.map((r) => {
       const g = groupScores.get(r.ranked.bottle.id);
       if (!g) return r;
-      const next: ScanRow = { ...r, predicted: g.group_min };
-      next.greatValue = isGreatValue(next);
-      return next;
+      return { ...r, predicted: g.group_min };
     });
-  }, [ranked, cellar, priceBandByBottleId, groupActive, groupScores]);
+  }, [ranked, cellar, priceBandByBottleId, groupActive, groupScores, currency]);
+
+  const allRowsFlat: ScanRow[] = useMemo(() => {
+    // Compute value context against the actual list.
+    const ctx = computeValueContext(prelimRows, "bottle");
+    return prelimRows.map((r) => {
+      const v = valueTag(r, ctx, r.format);
+      return { ...r, greatValue: v.ok, valueSentence: v.sentence };
+    });
+  }, [prelimRows]);
 
   const enoughRatings = ratedRows.length >= 3;
 
@@ -152,6 +182,6 @@ export function useScanRanking(wines: ResolvedWine[]) {
     dedupWines, readable, unreadable, matchedCount, estimatedCount,
     ratedRows, enoughRatings, lowConfTypes, perTypeRated, MIN_PER_TYPE,
     ranked, predictionsByIndex, cellar,
-    group, allRowsFlat,
+    group, allRowsFlat, currency,
   };
 }

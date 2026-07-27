@@ -1,31 +1,53 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { SlidersHorizontal } from "lucide-react";
-import { SORT_OPTIONS, PRICE_BAND_OPTIONS, WINE_TYPE_OPTIONS, type Controls } from "@/lib/list-controls";
+import {
+  SORT_OPTIONS,
+  WINE_TYPE_OPTIONS,
+  detectFormatsPresent,
+  type Controls,
+  type Priced,
+  type ServingFormat,
+} from "@/lib/list-controls";
+import {
+  priceBandOptions,
+  DEFAULT_CURRENCY,
+  type CurrencyCode,
+} from "@/lib/currency";
 
 type Props = {
   value: Controls;
   onChange: (next: Controls) => void;
   idPrefix: string;
+  currency?: CurrencyCode;
+  /** Optional row set used to decide whether to show the format toggle. */
+  rows?: Priced[];
 };
 
 function shortSort(v: Controls["sort"]): string {
   return SORT_OPTIONS.find((o) => o.value === v)?.label ?? "Sort";
-}
-function shortPrice(v: Controls["price"]): string {
-  return PRICE_BAND_OPTIONS.find((o) => o.value === v)?.label ?? "Any price";
 }
 
 /**
  * Filter/sort surface. Renders as a single compact pill; opens a bottom
  * sheet with all controls. Thumb-zone friendly, one-handed.
  */
-export function ListControls({ value, onChange, idPrefix }: Props) {
+export function ListControls({ value, onChange, idPrefix, currency, rows }: Props) {
   const [open, setOpen] = useState(false);
+
+  const cur: CurrencyCode = currency ?? DEFAULT_CURRENCY;
+  const priceOptions = useMemo(() => priceBandOptions(cur), [cur]);
+  const shortPrice = (v: Controls["price"]) =>
+    priceOptions.find((o) => o.value === v)?.label ?? "Any price";
+
+  const formatsPresent = rows ? detectFormatsPresent(rows) : { glass: false, bottle: true };
+  const showFormatToggle = formatsPresent.glass && formatsPresent.bottle;
+
   const filterCount =
     (value.sort !== "best" ? 1 : 0) +
     (value.price !== "all" ? 1 : 0) +
     (value.wineType && value.wineType !== "all" ? 1 : 0) +
-    (value.catalogOnly ? 1 : 0);
+    (value.catalogOnly ? 1 : 0) +
+    (showFormatToggle && value.format !== "bottle" ? 1 : 0);
 
   useEffect(() => {
     if (!open) return;
@@ -40,11 +62,38 @@ export function ListControls({ value, onChange, idPrefix }: Props) {
   }, [open]);
 
   const typeLabel = WINE_TYPE_OPTIONS.find((o) => o.value === (value.wineType ?? "all"))?.label ?? "All types";
-  const label = `${shortSort(value.sort)} · ${typeLabel} · ${shortPrice(value.price)}${value.catalogOnly ? " · Catalog" : ""}`;
+  const label = `${shortSort(value.sort)} \u00b7 ${typeLabel} \u00b7 ${shortPrice(value.price)}${value.catalogOnly ? " \u00b7 Catalog" : ""}`;
+
+  const setFormat = (f: ServingFormat) => onChange({ ...value, format: f });
 
   return (
     <>
-      <div className="mt-2 flex justify-end">
+      <div className="mt-2 flex justify-end gap-2 items-center">
+        {showFormatToggle && (
+          <div
+            role="tablist"
+            aria-label="Serving format"
+            className="inline-flex rounded-full border border-border bg-card p-0.5 text-xs font-medium"
+          >
+            {(["bottle", "glass"] as const).map((f) => {
+              const active = value.format === f;
+              return (
+                <button
+                  key={f}
+                  role="tab"
+                  aria-selected={active}
+                  type="button"
+                  onClick={() => setFormat(f)}
+                  className={`min-h-9 rounded-full px-3 ${
+                    active ? "bg-primary text-primary-foreground" : "text-foreground"
+                  }`}
+                >
+                  {f === "bottle" ? "By the bottle" : "By the glass"}
+                </button>
+              );
+            })}
+          </div>
+        )}
         <button
           type="button"
           onClick={() => setOpen(true)}
@@ -105,6 +154,31 @@ export function ListControls({ value, onChange, idPrefix }: Props) {
                 </div>
               </fieldset>
 
+              {showFormatToggle && (
+                <fieldset>
+                  <legend className="text-xs font-semibold uppercase tracking-label text-muted-foreground mb-2">Serving</legend>
+                  <div className="flex flex-wrap gap-2">
+                    {(["bottle", "glass"] as const).map((f) => {
+                      const active = value.format === f;
+                      return (
+                        <button
+                          key={f}
+                          type="button"
+                          onClick={() => setFormat(f)}
+                          className={`min-h-11 rounded-full border px-4 text-sm font-medium ${
+                            active
+                              ? "border-primary bg-primary text-primary-foreground"
+                              : "border-border bg-card text-foreground hover:bg-accent"
+                          }`}
+                        >
+                          {f === "bottle" ? "By the bottle" : "By the glass"}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </fieldset>
+              )}
+
               <fieldset>
                 <legend className="text-xs font-semibold uppercase tracking-label text-muted-foreground mb-2">Wine type</legend>
                 <div className="flex flex-wrap gap-2">
@@ -131,7 +205,7 @@ export function ListControls({ value, onChange, idPrefix }: Props) {
               <fieldset>
                 <legend className="text-xs font-semibold uppercase tracking-label text-muted-foreground mb-2">Price</legend>
                 <div className="flex flex-wrap gap-2">
-                  {PRICE_BAND_OPTIONS.map((o) => {
+                  {priceOptions.map((o) => {
                     const active = value.price === o.value;
                     return (
                       <button

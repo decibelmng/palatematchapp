@@ -1,21 +1,18 @@
 import { useMemo, useState } from "react";
 import { ListControls } from "@/components/ListControls";
 import { applyControls, DEFAULT_CONTROLS, type Controls } from "@/lib/list-controls";
+import type { CurrencyCode } from "@/lib/currency";
 import type { ScanRow } from "./types";
 import { ResultRow, SkeletonRow } from "./ResultRow";
 
-/**
- * Layer 3 — collapsed by default. Reveals ranked list + ListControls.
- * No silent truncation: every hidden wine is either visible or gated behind
- * a "+N more" real control.
- */
 export function TheRest({
-  rows, pendingSkeletons, onOpen, stillReading,
+  rows, pendingSkeletons, onOpen, stillReading, currency,
 }: {
   rows: ScanRow[];
   pendingSkeletons: number;
   onOpen: (key: string) => void;
   stillReading: boolean;
+  currency?: CurrencyCode;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [controls, setControls] = useState<Controls>(DEFAULT_CONTROLS);
@@ -61,7 +58,7 @@ export function TheRest({
           Collapse
         </button>
       </div>
-      <ListControls value={controls} onChange={setControls} idPrefix="verdict-rest" />
+      <ListControls value={controls} onChange={setControls} idPrefix="verdict-rest" currency={currency} rows={rows} />
       {filtered.length === 0 ? (
         <p className="mt-4 text-sub text-muted-foreground">No wines match those filters.</p>
       ) : (
