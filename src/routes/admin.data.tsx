@@ -85,7 +85,7 @@ function AdminData() {
           disabled={busy || loop}
           style={{ padding: "8px 12px", border: "1px solid #999", borderRadius: 6 }}
         >
-          {busy && !loop && mode === "all" ? "Working…" : "Re-fingerprint next 15 cuvées"}
+          {busy && !loop && mode === "all" ? "Working…" : "Refresh next 15 cuvée profiles"}
         </button>
         <button
           onClick={() => once("matches")}
