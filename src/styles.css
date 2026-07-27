@@ -209,8 +209,11 @@
   --accent-color: #E8C87E;      /* gold */
   /* NON-TEXT ONLY — reserved for rails/borders/icons. */
   --gold-dim: #8A7448;          /* 4.17:1 vs --surface; do not use as text color */
+  /* Non-text ONLY in dark (min 4.42:1 vs --surface-2). Use as rail/tint/icon;
+     labels must resolve to --text. */
   --crimson: #E5484D;
   --amber: #E0A458;
+
   --value: #6FBF9A;
   --good: var(--value);
   --bad: var(--crimson);
