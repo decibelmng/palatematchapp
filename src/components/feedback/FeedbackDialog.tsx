@@ -3,6 +3,7 @@ import { useRouterState } from "@tanstack/react-router";
 import { useServerFn } from "@tanstack/react-start";
 import { X, Bug, HelpCircle, Lightbulb, Heart, MessageSquare, Camera, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/error-message";
 import { submitFeedback, CATEGORIES, type FeedbackCategory } from "@/lib/feedback.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
@@ -79,7 +80,7 @@ export function FeedbackDialog({ open, onClose }: { open: boolean; onClose: () =
       toast.success("Thanks — we read every one.");
       onClose();
     } catch (e) {
-      toast.error((e as Error).message ?? "Couldn't send feedback");
+      toast.error(friendlyError(e, "Couldn't send feedback"));
     } finally {
       setBusy(false);
     }

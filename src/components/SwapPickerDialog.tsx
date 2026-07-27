@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { X } from "lucide-react";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/error-message";
 import { useEligibleSwapCandidates } from "@/hooks/use-swap-candidates";
 import { usePromoteCanon, usePromoteNemesis, type BenchmarkTier } from "@/hooks/use-canon";
 import type { BottleRow } from "@/hooks/use-palate-data";
@@ -65,7 +66,7 @@ export function SwapPickerDialog({
       onClose();
     } catch (err) {
       const msg = (err as Error).message || `Couldn't swap ${tierLabel}`;
-      toast.error(msg);
+      toast.error(friendlyError(msg));
     } finally {
       pickInFlight.current = false;
       setPendingId(null);

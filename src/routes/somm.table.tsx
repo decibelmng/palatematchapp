@@ -5,6 +5,7 @@ import { useMyProfile } from "@/hooks/use-friends";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/error-message";
 import { X, Plus, ChevronLeft, ScanLine, Users, KeyRound } from "lucide-react";
 import {
   sommClaimCode, sommResolvePublicGuest, sommCallTable,
@@ -56,13 +57,13 @@ function TablePage() {
   const claim = useMutation({
     mutationFn: (c: string) => claimFn({ data: { code: c } }),
     onSuccess: (g) => { addGuest(g as ResolvedGuest); setCode(""); },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(friendlyError(e)),
   });
 
   const resolvePublic = useMutation({
     mutationFn: (u: string) => resolvePublicFn({ data: { username: u } }),
     onSuccess: (g) => { addGuest(g as ResolvedGuest); setUsername(""); },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(friendlyError(e)),
   });
 
   const houseListQ = useQuery({
@@ -95,7 +96,7 @@ function TablePage() {
       });
     },
     onSuccess: (r) => setResult(r as TableCallOutput),
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(friendlyError(e)),
   });
 
   if (profile && profile.somm_status !== "verified") {

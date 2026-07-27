@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useCallback, useMemo, useState } from "react";
 import { Crown, Skull, ArrowLeftRight, X } from "lucide-react";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/error-message";
 import { AuthGate } from "@/components/AuthGate";
 import {
   useMyCanons,
@@ -84,7 +85,7 @@ function CanonsPage() {
               {
                 onSuccess: () => toast.success("Restored."),
                 onError: (err) =>
-                  toast.error((err as Error).message || "Couldn't undo."),
+                  toast.error(friendlyError(err, "Couldn't undo.")),
               },
             );
           },

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Crown } from "lucide-react";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/error-message";
 import type { BottleRow } from "@/hooks/use-palate-data";
 import {
   canonScopeType,
@@ -107,7 +108,7 @@ export function CanonAction({ bottle, stars, compact = false }: Props) {
               setDialog("idle");
             } catch (e) {
               const msg = e instanceof Error ? e.message : String(e);
-              toast.error(msg || "Couldn't set as a benchmark");
+              toast.error(friendlyError(msg, "Couldn't set as a benchmark"));
               setDialog("idle");
             }
           }}

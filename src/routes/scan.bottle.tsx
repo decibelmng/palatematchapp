@@ -22,6 +22,7 @@ import { WineTypeBadge } from "@/components/WineTypeBadge";
 import { AddBottleDialog } from "@/components/AddBottleDialog";
 import { verdictLine } from "@/components/verdict/reason";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/error-message";
 
 
 export const Route = createFileRoute("/scan/bottle")({
@@ -284,7 +285,7 @@ function BottleScan() {
       // scoreable and searchable.
       window.location.href = `/wine/${res.bottle_id}`;
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't add this wine.");
+      toast.error(friendlyError(err, "Couldn't add this wine."));
     } finally {
       setOnDemandBusy(false);
     }

@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 import { Camera, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/error-message";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
@@ -42,7 +43,7 @@ export function AvatarUpload({
       qc.invalidateQueries({ queryKey: ["my-profile"] });
       toast.success("Photo updated.");
     } catch (err) {
-      toast.error((err as Error).message || "Upload failed.");
+      toast.error(friendlyError(err, "Upload failed."));
     } finally {
       setBusy(false);
     }

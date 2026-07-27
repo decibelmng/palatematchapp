@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/error-message";
 import { addToWishlist, removeFromWishlist, listWishlist } from "@/lib/wishlist.functions";
 import { useSession } from "./use-session";
 
@@ -31,7 +32,7 @@ export function useAddToWishlist() {
       qc.invalidateQueries({ queryKey: ["wishlist"] });
       toast.success("Saved to your wishlist");
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Couldn't save."),
+    onError: (e) => toast.error(friendlyError(e, "Couldn't save.")),
   });
 }
 
@@ -43,6 +44,6 @@ export function useRemoveFromWishlist() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["wishlist"] });
     },
-    onError: (e) => toast.error(e instanceof Error ? e.message : "Couldn't remove."),
+    onError: (e) => toast.error(friendlyError(e, "Couldn't remove.")),
   });
 }

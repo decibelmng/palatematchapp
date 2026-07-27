@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/error-message";
 import { searchRestaurantsFn, createRestaurantFn, attributeScanFn } from "@/lib/restaurants.functions";
 
 export function PrescanRestaurantPicker({
@@ -36,7 +37,7 @@ export function PrescanRestaurantPicker({
       setQ("");
       toast.success(`Selected ${row.name}`);
     },
-    onError: (e: any) => toast.error(e?.message ?? "Couldn't create"),
+    onError: (e: any) => toast.error(friendlyError(e, "Couldn't create")),
   });
 
   if (value) {
@@ -146,7 +147,7 @@ export function RestaurantAttribution({ scanId }: { scanId: string }) {
       setAttributed({ id: res.restaurant_id, name: res.restaurant_name });
       toast.success(`Saved ${res.upserted} wine${res.upserted === 1 ? "" : "s"} to ${res.restaurant_name}`);
     },
-    onError: (e: any) => toast.error(e?.message ?? "Couldn't save"),
+    onError: (e: any) => toast.error(friendlyError(e, "Couldn't save")),
   });
 
   const createAndAttribute = useMutation({
@@ -159,7 +160,7 @@ export function RestaurantAttribution({ scanId }: { scanId: string }) {
       setAttributed({ id: res.restaurant_id, name: res.restaurant_name });
       toast.success(`Created ${res.restaurant_name} and saved ${res.upserted} wines`);
     },
-    onError: (e: any) => toast.error(e?.message ?? "Couldn't create restaurant"),
+    onError: (e: any) => toast.error(friendlyError(e, "Couldn't create restaurant")),
   });
 
   const busy = attribute.isPending || createAndAttribute.isPending;

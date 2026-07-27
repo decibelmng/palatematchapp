@@ -2,6 +2,7 @@
 // Handles both new signups (before/after this rule shipped) and legacy users.
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/error-message";
 import { useMyProfile, useUpdateProfile } from "@/hooks/use-friends";
 
 const PENDING_KEY = "pm.pendingDisplayName";
@@ -39,7 +40,7 @@ export function NameGate({ children }: { children: React.ReactNode }) {
     try {
       await update.mutateAsync({ display_name: trimmed });
     } catch (err) {
-      toast.error((err as Error).message ?? "Couldn't save name");
+      toast.error(friendlyError(err, "Couldn't save name"));
     }
   };
 

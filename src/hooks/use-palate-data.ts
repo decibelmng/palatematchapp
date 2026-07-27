@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/error-message";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "./use-session";
 import type { PaletteType } from "@/lib/palate";
@@ -326,7 +327,7 @@ export function useRate() {
               });
 
               if (error) {
-                toast.error(error.message || "Couldn't undo.");
+                toast.error(friendlyError(error, "Couldn't undo."));
                 return;
               }
               qc.invalidateQueries({ queryKey: ["ratings"] });
