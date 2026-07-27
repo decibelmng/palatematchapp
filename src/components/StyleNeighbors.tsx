@@ -185,7 +185,12 @@ function NeighborRow({
         <div className="flex items-center gap-2 flex-wrap">
           <WineTypeBadge type={type} />
           {vetoed && (
-            <span className="pm-skip-badge shrink-0">Skip</span>
+            <span
+              className="pm-contested-chip shrink-0"
+              title="Near a wine you avoid"
+            >
+              close to one you avoid
+            </span>
           )}
 
           {!vetoed && contested && contestedNemesisName && (
@@ -196,6 +201,7 @@ function NeighborRow({
               close to one you avoid
             </span>
           )}
+
 
           {!vetoed && nearestIsCanon && <CanonBadge size="sm" title="Close to a wine you love" />}
         </div>
