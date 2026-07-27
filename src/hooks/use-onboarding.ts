@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMyProfile } from "./use-friends";
 import { updateMyProfile } from "@/lib/friends.functions";
 
-export type OnboardingStage = "intro" | "rate5" | "done";
+export type OnboardingStage = "intro" | "quiz" | "rate5" | "done";
 
 export function useOnboardingStage(): {
   stage: OnboardingStage;
@@ -16,7 +16,8 @@ export function useOnboardingStage(): {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["my-profile"] }),
   });
   const raw = (data?.onboarding_stage as OnboardingStage | undefined) ?? "done";
-  const stage: OnboardingStage = raw === "intro" || raw === "rate5" || raw === "done" ? raw : "done";
+  const stage: OnboardingStage =
+    raw === "intro" || raw === "quiz" || raw === "rate5" || raw === "done" ? raw : "done";
   return {
     stage,
     isLoading,
