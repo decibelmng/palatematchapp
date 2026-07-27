@@ -75,10 +75,21 @@ function AuthScreen() {
 
   async function oauth(provider: "apple" | "google") {
     setErr(null);
+    // Preserve the path the user was trying to reach so we can restore it
+    // after the broker's full-page redirect back to the origin.
+    captureIntendedPath();
     const res = await lovable.auth.signInWithOAuth(provider, {
       redirect_uri: window.location.origin,
     });
-    if (res.error) setErr(res.error.message ?? `${provider} sign-in failed`);
+    if (res.error) {
+      const message = res.error.message ?? `${provider} sign-in failed`;
+      toast.error(message);
+    }
+  }
+
+  async function submitEmailCapture() {
+    // Magic-link users come back via emailRedirectTo; capture path for them too.
+    captureIntendedPath();
   }
 
   async function submitEmail(e: React.FormEvent) {
