@@ -14,6 +14,7 @@ import { Route as WinesRouteImport } from './routes/wines'
 import { Route as ScansRouteImport } from './routes/scans'
 import { Route as ScanRouteImport } from './routes/scan'
 import { Route as RateRouteImport } from './routes/rate'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as FriendsRouteImport } from './routes/friends'
 import { Route as FeedRouteImport } from './routes/feed'
 import { Route as CanonsRouteImport } from './routes/canons'
@@ -65,6 +66,11 @@ const ScanRoute = ScanRouteImport.update({
 const RateRoute = RateRouteImport.update({
   id: '/rate',
   path: '/rate',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FriendsRoute = FriendsRouteImport.update({
@@ -209,6 +215,7 @@ export interface FileRoutesByFullPath {
   '/canons': typeof CanonsRoute
   '/feed': typeof FeedRoute
   '/friends': typeof FriendsRoute
+  '/onboarding': typeof OnboardingRoute
   '/rate': typeof RateRoute
   '/scan': typeof ScanRouteWithChildren
   '/scans': typeof ScansRoute
@@ -243,6 +250,7 @@ export interface FileRoutesByTo {
   '/canons': typeof CanonsRoute
   '/feed': typeof FeedRoute
   '/friends': typeof FriendsRoute
+  '/onboarding': typeof OnboardingRoute
   '/rate': typeof RateRoute
   '/scan': typeof ScanRouteWithChildren
   '/scans': typeof ScansRoute
@@ -278,6 +286,7 @@ export interface FileRoutesById {
   '/canons': typeof CanonsRoute
   '/feed': typeof FeedRoute
   '/friends': typeof FriendsRoute
+  '/onboarding': typeof OnboardingRoute
   '/rate': typeof RateRoute
   '/scan': typeof ScanRouteWithChildren
   '/scans': typeof ScansRoute
@@ -314,6 +323,7 @@ export interface FileRouteTypes {
     | '/canons'
     | '/feed'
     | '/friends'
+    | '/onboarding'
     | '/rate'
     | '/scan'
     | '/scans'
@@ -348,6 +358,7 @@ export interface FileRouteTypes {
     | '/canons'
     | '/feed'
     | '/friends'
+    | '/onboarding'
     | '/rate'
     | '/scan'
     | '/scans'
@@ -382,6 +393,7 @@ export interface FileRouteTypes {
     | '/canons'
     | '/feed'
     | '/friends'
+    | '/onboarding'
     | '/rate'
     | '/scan'
     | '/scans'
@@ -417,6 +429,7 @@ export interface RootRouteChildren {
   CanonsRoute: typeof CanonsRoute
   FeedRoute: typeof FeedRoute
   FriendsRoute: typeof FriendsRoute
+  OnboardingRoute: typeof OnboardingRoute
   RateRoute: typeof RateRoute
   ScanRoute: typeof ScanRouteWithChildren
   ScansRoute: typeof ScansRoute
@@ -478,6 +491,13 @@ declare module '@tanstack/react-router' {
       path: '/rate'
       fullPath: '/rate'
       preLoaderRoute: typeof RateRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/friends': {
@@ -692,6 +712,7 @@ const rootRouteChildren: RootRouteChildren = {
   CanonsRoute: CanonsRoute,
   FeedRoute: FeedRoute,
   FriendsRoute: FriendsRoute,
+  OnboardingRoute: OnboardingRoute,
   RateRoute: RateRoute,
   ScanRoute: ScanRouteWithChildren,
   ScansRoute: ScansRoute,
@@ -720,13 +741,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

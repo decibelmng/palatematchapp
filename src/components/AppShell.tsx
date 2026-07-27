@@ -10,7 +10,7 @@ import { useLastSeenPing } from "@/hooks/use-last-seen";
 import { useAutoRedeemInvite } from "@/hooks/use-auto-redeem-invite";
 import { markScanUnlockSeen } from "@/lib/friends.functions";
 import { useTheme } from "@/lib/theme";
-import { useRatingsCount, UNLOCK_THRESHOLD } from "@/components/UnlockMeter";
+import { useCalibrationState } from "@/hooks/use-calibration";
 import { useFeedActivity, hasFreshActivity } from "@/hooks/use-feed";
 import { ScanChooserSheet } from "@/components/ScanChooserSheet";
 import { FeedbackDialog } from "@/components/feedback/FeedbackDialog";
@@ -102,7 +102,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   // server-persisted flag (profiles.scan_unlock_seen) so it survives reloads,
   // new devices, and cache resets. Local refs only guard against double-fire
   // within a single render loop.
-  const ratingsCount = useRatingsCount();
+  const { calibrated } = useCalibrationState();
   const celebratedRef = useRef(false);
   const navigate = useNavigate();
   const qc = useQueryClient();
@@ -112,7 +112,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     if (!profile) return;                       // wait for profile to hydrate
     if (celebratedRef.current) return;
     if (scanUnlockSeen) return;                 // already celebrated for this user
-    if (ratingsCount < UNLOCK_THRESHOLD) return;
+    if (!calibrated) return;
 
     celebratedRef.current = true;
     const dismissAndPersist = () => {
@@ -146,7 +146,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     });
     // Optimistic: persist immediately even if the user never touches the toast.
     dismissAndPersist();
-  }, [profile, scanUnlockSeen, ratingsCount, navigate, markSeen, qc]);
+  }, [profile, scanUnlockSeen, calibrated, navigate, markSeen, qc]);
 
 
 

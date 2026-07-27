@@ -208,7 +208,7 @@ export const updateMyProfile = createServerFn({ method: "POST" })
     z.object({
       username: z.string().regex(/^[a-z0-9_]{3,24}$/i).optional(),
       display_name: z.string().max(60).optional(),
-      onboarding_stage: z.enum(["intro", "rate5", "done"]).optional(),
+      onboarding_stage: z.enum(["intro", "quiz", "rate5", "done"]).optional(),
       visibility: z.enum(["private", "followers", "public"]).optional(),
       avatar_url: z.string().url().max(500).nullable().optional(),
       bio: z.string().max(280).nullable().optional(),

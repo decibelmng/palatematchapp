@@ -2,11 +2,11 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useRef } from "react";
-import { ScanLine, ArrowRight } from "lucide-react";
+import { ScanLine, ArrowRight, Sparkles } from "lucide-react";
 import { AuthGate } from "@/components/AuthGate";
 import { useSession } from "@/hooks/use-session";
 import { loadRecentScan } from "@/lib/scan.functions";
-import { useRatingsCount, UNLOCK_THRESHOLD } from "@/components/UnlockMeter";
+import { useCalibrationState } from "@/hooks/use-calibration";
 
 export const Route = createFileRoute("/")({
   ssr: false,
@@ -25,13 +25,11 @@ function Home() {
   const session = useSession();
   const loadRecent = useServerFn(loadRecentScan);
   const navigate = useNavigate();
-  const count = useRatingsCount();
-  const calibrated = count >= UNLOCK_THRESHOLD;
-  const remaining = Math.max(0, UNLOCK_THRESHOLD - count);
+  const { calibrated, provisional } = useCalibrationState();
 
-  // Cold-open routing: first landing this session with no ratings yet? Nudge
-  // to Rate so the palate has something to work with. Subsequent visits to
-  // "/" still show the scan hero — bottle/list scanning is never gated.
+  // Cold-open routing: no calibration yet → send them into the style quiz.
+  // The quiz is zero-recall and takes under a minute; it's a much softer
+  // first step than the old "rate 5 wines" search-box gate.
   const redirectedRef = useRef(false);
   useEffect(() => {
     if (redirectedRef.current) return;
@@ -43,7 +41,7 @@ function Home() {
       sessionStorage.setItem("pm-cold-opened", "1");
     } catch { /* noop */ }
     redirectedRef.current = true;
-    navigate({ to: "/rate" });
+    navigate({ to: "/onboarding" });
   }, [session, calibrated, navigate]);
 
   const recent = useQuery({
@@ -80,33 +78,37 @@ function Home() {
       </Link>
 
       {!calibrated && (
-        <div
-          className="mt-3 rounded-xl border border-primary/30 bg-primary/5 p-3"
+        <Link
+          to="/onboarding"
+          className="mt-3 block rounded-xl border-2 border-primary/40 bg-gradient-to-br from-primary/10 to-card p-3"
           data-testid="calibration-note"
         >
-          <p className="text-meta text-foreground">
-            <span className="font-semibold">Rankings warm up as you rate.</span>{" "}
-            <span className="text-muted-foreground">
-              {remaining === 1
-                ? "One more rating and I can rank any wine list for your taste."
-                : `${remaining} more ratings and I can rank any wine list for your taste.`}
-            </span>
+          <div className="flex items-center gap-2">
+            <Sparkles size={14} className="text-primary shrink-0" />
+            <p className="text-meta font-semibold text-foreground">
+              Finish calibration first
+            </p>
+          </div>
+          <p className="mt-1.5 text-meta text-muted-foreground">
+            Answer a few taste questions — no wine names — and I can rank any list. <span className="text-primary inline-flex items-center gap-0.5">Start <ArrowRight size={12} /></span>
           </p>
-          <div className="mt-2 h-1.5 w-full rounded-full bg-border/70 overflow-hidden">
-            <div
-              className="h-full bg-primary transition-all duration-500"
-              style={{ width: `${(count / UNLOCK_THRESHOLD) * 100}%` }}
-            />
-          </div>
-          <div className="mt-2 flex items-center justify-between text-meta">
-            <span className="tabular-nums text-muted-foreground">{count} / {UNLOCK_THRESHOLD} rated</span>
+        </Link>
+      )}
+
+      {provisional && (
+        <div
+          className="mt-3 rounded-xl border border-primary/30 bg-primary/5 p-3"
+          data-testid="provisional-note"
+        >
+          <p className="text-meta text-foreground">
+            <span className="font-semibold">Provisional</span>
+            <span className="text-muted-foreground"> — based on your style answers. Predictions sharpen with every real rating. </span>
             <Link to="/rate" className="text-primary font-medium inline-flex items-center gap-1">
-              Rate wines <ArrowRight size={12} />
+              Rate a wine <ArrowRight size={12} />
             </Link>
-          </div>
+          </p>
         </div>
       )}
     </div>
   );
 }
-

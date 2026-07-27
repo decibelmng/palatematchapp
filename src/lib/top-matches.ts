@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { usePourCandidates, useBottlesByIds, useRatings, bottleToFp, bottleType } from "@/hooks/use-palate-data";
-import { recommend, type BottleFp, type RatedFp, type Recommendation } from "@/lib/recommender";
+import { useQuizAnswers } from "@/hooks/use-quiz";
+import { seedRatedFpFor } from "@/lib/quiz-seeds";
+import { recommend, type BottleFp, type RatedFp, type Recommendation, type WineType } from "@/lib/recommender";
 import { aggregateRated, aggregateCandidates, type CuveeCandidate, type CuveeRated } from "@/lib/cuvee";
 
 export type TopMatch = Recommendation & { cuvee: CuveeCandidate; nearestCuvee: CuveeRated | null };
@@ -13,18 +15,22 @@ export function useTopMatches(limit = 5): { data: TopMatch[]; loading: boolean; 
   const ratedIds = useMemo(() => (ratings ?? []).map((r) => r.bottle_id), [ratings]);
   const { data: ratedBottles } = useBottlesByIds(ratedIds);
   const { data: pool } = usePourCandidates();
+  const { data: quizAnswers } = useQuizAnswers();
 
   const loading = !ratings || (ratedIds.length > 0 && !ratedBottles) || !pool;
-  const hasRatings = (ratings?.length ?? 0) > 0;
+  const hasRatings = (ratings?.length ?? 0) > 0 || !!quizAnswers?.completedAt;
 
   const data = useMemo<TopMatch[]>(() => {
-    if (!ratings || !pool || ratings.length === 0) return [];
+    if (!pool) return [];
+    const hasReal = !!ratings && ratings.length > 0;
+    const hasQuiz = !!quizAnswers?.completedAt;
+    if (!hasReal && !hasQuiz) return [];
 
     const ratedRowsRaw: RatedFp[] = (ratedBottles ?? []).map((b) => ({
       id: b.id, name: b.name, producer: b.producer, region: b.region,
       type: bottleType(b),
       fp: bottleToFp(b),
-      stars: ratings.find((r) => r.bottle_id === b.id)!.stars,
+      stars: (ratings ?? []).find((r) => r.bottle_id === b.id)!.stars,
     }));
     const ratedCuvees = aggregateRated(
       ratedRowsRaw.map((r, i) => ({ ...r, vintage: (ratedBottles ?? [])[i]?.vintage ?? null })),
@@ -38,22 +44,32 @@ export function useTopMatches(limit = 5): { data: TopMatch[]; loading: boolean; 
     }));
     const allCuvees = aggregateCandidates(candidatesRaw).filter((c) => !ratedCuveeKeys.has(c.cuvee));
 
-    // Per-type recommender pass, then merge & take top N by predicted stars.
+    // Per-type recommender pass. When the user is quiz-only, seed each palette
+    // type so the ranking has something to work with; seeds fade at 5+ real.
     const merged: TopMatch[] = [];
-    const ratedTypes = new Set(ratedCuvees.map((r) => r.type));
+    const perTypeReal = new Map<WineType, number>();
+    for (const r of ratedCuvees) perTypeReal.set(r.type, (perTypeReal.get(r.type) ?? 0) + 1);
+    const ratedTypes = new Set<WineType>(ratedCuvees.map((r) => r.type));
+    if (hasQuiz) {
+      if (quizAnswers!.type === "red" || quizAnswers!.type === "both") ratedTypes.add("red");
+      if (quizAnswers!.type === "white" || quizAnswers!.type === "both") ratedTypes.add("white");
+    }
     for (const type of ratedTypes) {
       const cands = allCuvees.filter((c) => c.type === type);
       const sameTypeRated = ratedCuvees.filter((r) => r.type === type);
-      if (cands.length === 0 || sameTypeRated.length === 0) continue;
+      if (cands.length === 0) continue;
       const ratedFp: RatedFp[] = sameTypeRated.map((r) => ({
         id: r.id, name: r.name, producer: r.producer, region: r.region,
         type: r.type, fp: r.fp, stars: r.stars,
       }));
+      const seeds = seedRatedFpFor(quizAnswers ?? null, type, perTypeReal.get(type) ?? 0);
+      const effective = [...seeds, ...ratedFp];
+      if (effective.length === 0) continue;
       const candFp: BottleFp[] = cands.map((c) => ({
         id: c.id, name: c.name, producer: c.producer, region: c.region,
         type: c.type, fp: c.fp,
       }));
-      const recs = recommend(ratedFp, candFp).slice(0, limit * 3);
+      const recs = recommend(effective, candFp).slice(0, limit * 3);
       const candById = new Map(cands.map((c) => [c.id, c]));
       const ratedById = new Map(sameTypeRated.map((r) => [r.id, r]));
       for (const r of recs) {
@@ -67,7 +83,7 @@ export function useTopMatches(limit = 5): { data: TopMatch[]; loading: boolean; 
       return (b.maxSimilarity ?? 0) - (a.maxSimilarity ?? 0);
     });
     return merged.slice(0, limit);
-  }, [ratings, ratedBottles, pool, limit]);
+  }, [ratings, ratedBottles, pool, limit, quizAnswers]);
 
   return { data, loading, hasRatings };
 }

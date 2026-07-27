@@ -95,9 +95,11 @@ function PalateHome() {
   useEffect(() => { setScope(defaultScope); }, [defaultScope]);
   const revealCode = scope === "red" ? red.code : white.code;
 
-  // Onboarding gates unchanged.
-  if (!stageLoading && stage === "intro" && totalRated === 0) {
-    return <OnboardingIntro onStart={() => { setStage("rate5").catch(() => { /* noop */ }); }} />;
+  // Onboarding: the "intro" stage now points at the style quiz, not at a
+  // recall-based first-rating flow. OnboardingIntro is retired.
+  if (!stageLoading && (stage === "intro" || stage === "quiz") && totalRated === 0) {
+    if (typeof window !== "undefined") window.location.replace("/onboarding");
+    return null;
   }
   if (!stageLoading && stage === "rate5" && !anyPalateReady) {
     return (

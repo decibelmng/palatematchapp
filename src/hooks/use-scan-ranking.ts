@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { useBottlesByIds, bottleToFp, bottleType, useRatings } from "@/hooks/use-palate-data";
 import { useMyCanons } from "@/hooks/use-canon";
+import { useQuizAnswers } from "@/hooks/use-quiz";
+import { seedRatedFpFor } from "@/lib/quiz-seeds";
 import { recommend, type BottleFp, type RatedFp, type Recommendation, type WineType } from "@/lib/recommender";
 import { aggregateRated } from "@/lib/cuvee";
 import {
@@ -25,6 +27,7 @@ export function useScanRanking(
   restaurantCountry?: string | null,
 ) {
   const { data: ratings } = useRatings();
+  const { data: quizAnswers } = useQuizAnswers();
   const ratedIds = useMemo(() => (ratings ?? []).map((r) => r.bottle_id), [ratings]);
   const { data: ratedBottles } = useBottlesByIds(ratedIds);
   const { data: myCanons } = useMyCanons();
@@ -94,17 +97,32 @@ export function useScanRanking(
       producer: w.producer ?? null, region: w.region ?? null,
       type: (w.type ?? "red") as WineType, fp: w.fp_resolved!,
     }));
-    if (ratedRows.length === 0) {
+    // Quiz seeds: inject one synthetic loved-bottle per scanned type when the
+    // user hasn't yet built up enough real ratings for that type. Seeds fade
+    // out automatically at >= SEED_FADE_THRESHOLD real ratings per type (see
+    // quiz-seeds.ts). This is the mechanism that lets a fresh account rank a
+    // list without ever typing a wine name — the verdict UI flags the
+    // result as "Provisional" (see useCalibrationState).
+    const perTypeReal = new Map<WineType, number>();
+    for (const r of ratedRows) perTypeReal.set(r.type, (perTypeReal.get(r.type) ?? 0) + 1);
+    const scannedTypes = new Set(candidates.map((c) => c.type));
+    const seeds: RatedFp[] = [];
+    for (const t of scannedTypes) {
+      seeds.push(...seedRatedFpFor(quizAnswers ?? null, t, perTypeReal.get(t) ?? 0));
+    }
+    const effective = seeds.length > 0 ? [...seeds, ...ratedRows] : ratedRows;
+
+    if (effective.length === 0) {
       return candidates.map((b, i) => ({
         bottle: b, predicted: 0, nearest: null, nearestIsCanon: false, maxSimilarity: 0, confidence: 0,
         evidence: 0, evidenceTier: "exploratory" as const, vetoed: false, vetoReason: null,
         contested: false, contestedReason: null, scanned: readable[i],
       }));
     }
-    const recs = recommend(ratedRows, candidates);
+    const recs = recommend(effective, candidates);
     const byId = new Map(readable.map((w, i) => [`scan-${i}`, w]));
     return recs.map((r) => ({ ...r, scanned: byId.get(r.bottle.id)! }));
-  }, [readable, ratedRows]);
+  }, [readable, ratedRows, quizAnswers]);
 
   const predictionsByIndex = useMemo(() => {
     const m = new Map<number, Recommendation>();
@@ -194,7 +212,11 @@ export function useScanRanking(
   }, [prelimRows]);
 
 
-  const enoughRatings = ratedRows.length >= 3;
+  const quizCompleted = !!quizAnswers?.completedAt;
+  // Quiz-seeded users clear the "enough" gate on day one: the recommender is
+  // running against the seed, and the verdict surface labels it provisional.
+  const enoughRatings = ratedRows.length >= 3 || quizCompleted;
+  const provisional = quizCompleted && ratedRows.length < 5;
 
   const perTypeRated = useMemo(() => {
     const m = new Map<string, number>();
@@ -213,7 +235,7 @@ export function useScanRanking(
 
   return {
     dedupWines, readable, unreadable, matchedCount, estimatedCount,
-    ratedRows, enoughRatings, lowConfTypes, perTypeRated, MIN_PER_TYPE,
+    ratedRows, enoughRatings, provisional, lowConfTypes, perTypeRated, MIN_PER_TYPE,
     ranked, predictionsByIndex, cellar,
     group, allRowsFlat, currency,
   };
