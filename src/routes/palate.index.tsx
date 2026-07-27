@@ -296,7 +296,9 @@ function PalateHome() {
           <div className="text-sm">Rate a wine</div>
           <span className="text-primary text-sm">→</span>
         </Link>
-        {profile?.somm_status !== "verified" && (
+        {/* TEMPORARY GATE: "Verify as a sommelier" card is hidden pending the
+            /somm consent + payload work. Restore this block when /somm ships. */}
+        {false && profile?.somm_status !== "verified" && (
           <Link
             to="/palate/verify"
             className="flex items-center justify-between rounded-[14px] border border-border bg-card p-4 hover:border-primary/40"
