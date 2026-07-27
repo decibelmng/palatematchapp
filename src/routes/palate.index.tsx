@@ -28,6 +28,7 @@ import { displayNameFor, initialsFor } from "@/lib/user-display";
 import { useTheme } from "@/lib/theme";
 import { supabase } from "@/integrations/supabase/client";
 import { FeedbackDialog } from "@/components/feedback/FeedbackDialog";
+import { SommShareCodeCard } from "@/components/SommShareCodeCard";
 
 
 
