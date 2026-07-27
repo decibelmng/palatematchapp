@@ -135,14 +135,14 @@ function CanonsPage() {
 
   return (
     <div className="pt-2">
-      <p className="text-meta uppercase text-muted-foreground" style={{  }}>Canon Cellar</p>
+      <p className="text-meta uppercase text-muted-foreground">Favorites &amp; Avoid list</p>
       <h1 className="font-serif text-3xl mt-2 flex items-center gap-2">
         <Crown size={26} strokeWidth={2.2} fill="currentColor" className="text-foreground" />
         Your true north
       </h1>
       <p className="mt-2 text-sm text-muted-foreground">
-        Benchmark wines you've crowned for each region &amp; type. Canons anchor your matches;
-        Nemeses steer the engine away from styles you don't want to see again.
+        Benchmark wines you've marked for each region &amp; type. Favorites anchor your matches;
+        wines to avoid steer us away from styles you don't want to see again.
       </p>
 
       {isLoading && totalAll === 0 ? (
@@ -152,9 +152,10 @@ function CanonsPage() {
           <Crown size={28} strokeWidth={2.2} className="mx-auto text-foreground" />
           <p className="mt-3 font-serif text-lg">No benchmarks yet.</p>
           <p className="mt-2 text-sm text-muted-foreground max-w-md mx-auto">
-            When a wine is <em>the one</em> for a region, crown it — or mark a 1–2★ bottle as your
-            Nemesis so the engine steers around it.
+            When a wine is <em>the one</em> for a region, mark it as a favorite — or mark a 1–2★
+            bottle as one to avoid so we steer around its style.
           </p>
+
           <Link
             to="/rate"
             className="mt-5 inline-block rounded-md bg-primary text-primary-foreground px-4 py-2 text-sm font-medium"
