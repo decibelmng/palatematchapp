@@ -55,13 +55,13 @@ export function RankedScanList({ wines, ratedRows, emptyLabel = "No readable win
           r.w.price,
         ].filter(Boolean).join(" · ");
         const cls = r.vetoed
-          ? "border-destructive/30 opacity-60"
+          ? "pm-vetoed-rail border-[color-mix(in_oklab,var(--crimson)_55%,transparent)] opacity-70"
           : r.contested
-            ? "border-[color-mix(in_oklab,var(--crimson)_50%,transparent)]"
-
+            ? "pm-contested-rail border-[color-mix(in_oklab,var(--amber)_55%,transparent)]"
             : r.predicted >= 4
               ? "border-primary/50"
               : "border-border";
+
         const content = (
           <div className={`flex items-center gap-3 rounded-lg border ${cls} bg-card p-3`}>
             <div className="w-11 text-center shrink-0">
