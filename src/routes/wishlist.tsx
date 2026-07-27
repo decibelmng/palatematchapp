@@ -11,9 +11,9 @@ export const Route = createFileRoute("/wishlist")({
   head: () => ({
     meta: [
       { title: "Wishlist — Palate Match" },
-      { name: "description", content: "Wines you've saved to try — each with a predicted-for-you score." },
+      { name: "description", content: "Wines you've saved to try — each scored for your palate." },
       { property: "og:title", content: "Palate Match — Wishlist" },
-      { property: "og:description", content: "Wines you've saved to try — each with a predicted-for-you score." },
+      { property: "og:description", content: "Wines you've saved to try — each scored for your palate." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
