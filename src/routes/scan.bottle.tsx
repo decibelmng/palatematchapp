@@ -1001,6 +1001,32 @@ function ConfirmField({
   );
 }
 
-
-
+/** Tap-to-reveal chip for the raw for-you score. Keeps the number available
+ *  without letting it be the primary readout (per the "no decimal as
+ *  primary" rule). Collapsed state shows only "★"; expanded shows one
+ *  decimal + label. */
+function ForYouChip({ predicted, className = "" }: { predicted: number; className?: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); setOpen((v) => !v); }}
+      aria-expanded={open}
+      aria-label={open ? "Hide numeric score" : "Show numeric score"}
+      className={`inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-label uppercase tracking-label text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${className}`}
+    >
+      {open ? (
+        <>
+          <span className="font-serif text-foreground normal-case tracking-normal">{predicted.toFixed(1)}★</span>
+          <span aria-hidden>for you</span>
+        </>
+      ) : (
+        <>
+          <span aria-hidden>★</span>
+          <span>Show score</span>
+        </>
+      )}
+    </button>
+  );
+}
 
