@@ -35,6 +35,7 @@ import { Route as STokenRouteImport } from './routes/s.$token'
 import { Route as PalateVerifyRouteImport } from './routes/palate.verify'
 import { Route as PalateTypeRouteImport } from './routes/palate.$type'
 import { Route as ITokenRouteImport } from './routes/i.$token'
+import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
 import { Route as AdminUsageRouteImport } from './routes/admin.usage'
 import { Route as AdminTypeFixRouteImport } from './routes/admin.type-fix'
 import { Route as AdminStyleMapRouteImport } from './routes/admin.style-map'
@@ -179,6 +180,11 @@ const ITokenRoute = ITokenRouteImport.update({
   path: '/i/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthCallbackRoute = AuthCallbackRouteImport.update({
+  id: '/auth/callback',
+  path: '/auth/callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminUsageRoute = AdminUsageRouteImport.update({
   id: '/admin/usage',
   path: '/admin/usage',
@@ -272,6 +278,7 @@ export interface FileRoutesByFullPath {
   '/admin/style-map': typeof AdminStyleMapRoute
   '/admin/type-fix': typeof AdminTypeFixRoute
   '/admin/usage': typeof AdminUsageRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/i/$token': typeof ITokenRoute
   '/palate/$type': typeof PalateTypeRoute
   '/palate/verify': typeof PalateVerifyRoute
@@ -313,6 +320,7 @@ export interface FileRoutesByTo {
   '/admin/style-map': typeof AdminStyleMapRoute
   '/admin/type-fix': typeof AdminTypeFixRoute
   '/admin/usage': typeof AdminUsageRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/i/$token': typeof ITokenRoute
   '/palate/$type': typeof PalateTypeRoute
   '/palate/verify': typeof PalateVerifyRoute
@@ -355,6 +363,7 @@ export interface FileRoutesById {
   '/admin/style-map': typeof AdminStyleMapRoute
   '/admin/type-fix': typeof AdminTypeFixRoute
   '/admin/usage': typeof AdminUsageRoute
+  '/auth/callback': typeof AuthCallbackRoute
   '/i/$token': typeof ITokenRoute
   '/palate/$type': typeof PalateTypeRoute
   '/palate/verify': typeof PalateVerifyRoute
@@ -398,6 +407,7 @@ export interface FileRouteTypes {
     | '/admin/style-map'
     | '/admin/type-fix'
     | '/admin/usage'
+    | '/auth/callback'
     | '/i/$token'
     | '/palate/$type'
     | '/palate/verify'
@@ -439,6 +449,7 @@ export interface FileRouteTypes {
     | '/admin/style-map'
     | '/admin/type-fix'
     | '/admin/usage'
+    | '/auth/callback'
     | '/i/$token'
     | '/palate/$type'
     | '/palate/verify'
@@ -480,6 +491,7 @@ export interface FileRouteTypes {
     | '/admin/style-map'
     | '/admin/type-fix'
     | '/admin/usage'
+    | '/auth/callback'
     | '/i/$token'
     | '/palate/$type'
     | '/palate/verify'
@@ -522,6 +534,7 @@ export interface RootRouteChildren {
   AdminStyleMapRoute: typeof AdminStyleMapRoute
   AdminTypeFixRoute: typeof AdminTypeFixRoute
   AdminUsageRoute: typeof AdminUsageRoute
+  AuthCallbackRoute: typeof AuthCallbackRoute
   ITokenRoute: typeof ITokenRoute
   PalateTypeRoute: typeof PalateTypeRoute
   PalateVerifyRoute: typeof PalateVerifyRoute
@@ -716,6 +729,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ITokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/auth/callback': {
+      id: '/auth/callback'
+      path: '/auth/callback'
+      fullPath: '/auth/callback'
+      preLoaderRoute: typeof AuthCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/usage': {
       id: '/admin/usage'
       path: '/admin/usage'
@@ -863,6 +883,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminStyleMapRoute: AdminStyleMapRoute,
   AdminTypeFixRoute: AdminTypeFixRoute,
   AdminUsageRoute: AdminUsageRoute,
+  AuthCallbackRoute: AuthCallbackRoute,
   ITokenRoute: ITokenRoute,
   PalateTypeRoute: PalateTypeRoute,
   PalateVerifyRoute: PalateVerifyRoute,
@@ -875,3 +896,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
