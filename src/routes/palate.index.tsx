@@ -4,6 +4,7 @@ import { AuthGate } from "@/components/AuthGate";
 import { useOnboardingStage } from "@/hooks/use-onboarding";
 import { OnboardingIntro } from "@/components/OnboardingIntro";
 import { PalateReveal } from "@/components/PalateReveal";
+import { PalateCodeReader } from "@/components/PalateCodeReader";
 import {
   useBottlesByIds,
   useRatings,
