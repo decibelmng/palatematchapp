@@ -37,12 +37,21 @@ export function useScanRanking(wines: ResolvedWine[], scanCurrency?: CurrencyCod
   const readable = useMemo(() => dedupWines.filter((w) => w.fp_resolved), [dedupWines]);
   const unreadable = useMemo(() => dedupWines.filter((w) => !w.fp_resolved), [dedupWines]);
 
-  // Detect scan-wide currency from the actual OCR strings. Never defaults to
-  // EUR — falls back to USD unless a symbol/code was seen.
-  const currency: CurrencyCode = useMemo(() => {
-    if (scanCurrency) return scanCurrency;
-    return aggregateCurrency(dedupWines.map((w) => w.price), DEFAULT_CURRENCY);
+  // Currency resolution chain: explicit override → OCR text → browser locale
+  // → USD default. (Restaurant-country would slot between text and locale, but
+  // that record isn't available in this client hook — it's applied server-side
+  // in scan.functions.ts when the scan resolves to a restaurant.)
+  const currencyRes = useMemo(() => {
+    return resolveCurrency({
+      override: scanCurrency ?? null,
+      samples: dedupWines.map((w) => w.price),
+      useLocale: true,
+    });
   }, [dedupWines, scanCurrency]);
+  const currency: CurrencyCode = currencyRes.currency;
+  // Legacy reference kept for callers that still want the aggregate-only view.
+  void aggregateCurrency; void DEFAULT_CURRENCY;
+
 
   const ratedRows: RatedFp[] = useMemo(() => {
     if (!ratedBottles || !ratings) return [];
