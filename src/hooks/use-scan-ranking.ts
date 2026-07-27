@@ -97,17 +97,32 @@ export function useScanRanking(
       producer: w.producer ?? null, region: w.region ?? null,
       type: (w.type ?? "red") as WineType, fp: w.fp_resolved!,
     }));
-    if (ratedRows.length === 0) {
+    // Quiz seeds: inject one synthetic loved-bottle per scanned type when the
+    // user hasn't yet built up enough real ratings for that type. Seeds fade
+    // out automatically at >= SEED_FADE_THRESHOLD real ratings per type (see
+    // quiz-seeds.ts). This is the mechanism that lets a fresh account rank a
+    // list without ever typing a wine name — the verdict UI flags the
+    // result as "Provisional" (see useCalibrationState).
+    const perTypeReal = new Map<WineType, number>();
+    for (const r of ratedRows) perTypeReal.set(r.type, (perTypeReal.get(r.type) ?? 0) + 1);
+    const scannedTypes = new Set(candidates.map((c) => c.type));
+    const seeds: RatedFp[] = [];
+    for (const t of scannedTypes) {
+      seeds.push(...seedRatedFpFor(quizAnswers ?? null, t, perTypeReal.get(t) ?? 0));
+    }
+    const effective = seeds.length > 0 ? [...seeds, ...ratedRows] : ratedRows;
+
+    if (effective.length === 0) {
       return candidates.map((b, i) => ({
         bottle: b, predicted: 0, nearest: null, nearestIsCanon: false, maxSimilarity: 0, confidence: 0,
         evidence: 0, evidenceTier: "exploratory" as const, vetoed: false, vetoReason: null,
         contested: false, contestedReason: null, scanned: readable[i],
       }));
     }
-    const recs = recommend(ratedRows, candidates);
+    const recs = recommend(effective, candidates);
     const byId = new Map(readable.map((w, i) => [`scan-${i}`, w]));
     return recs.map((r) => ({ ...r, scanned: byId.get(r.bottle.id)! }));
-  }, [readable, ratedRows]);
+  }, [readable, ratedRows, quizAnswers]);
 
   const predictionsByIndex = useMemo(() => {
     const m = new Map<number, Recommendation>();
