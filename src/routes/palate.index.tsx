@@ -362,15 +362,20 @@ function PalateHome() {
 
 
 function Stat({ n, label }: { n: number; label: string }) {
+  // At 320px each tile is ~93px wide. "Dealbreakers" and "Benchmarks"
+  // are single words with no break point, so uppercase + tracking-label
+  // would either overflow or hyphenate mid-word. Sentence case at
+  // tracking-normal keeps them on one line at 320/375/390px.
   return (
     <div className="min-w-0">
       <div className="font-serif text-body leading-tight">{n}</div>
-      <div className="text-meta uppercase tracking-label text-muted-foreground leading-tight break-words">
+      <div className="text-meta text-muted-foreground leading-tight">
         {label}
       </div>
     </div>
   );
 }
+
 
 
 function CodeChip({ type, n, active, onClick }: { type: PaletteType; n: number; active: boolean; onClick: () => void }) {
