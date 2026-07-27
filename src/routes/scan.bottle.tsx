@@ -272,16 +272,16 @@ function BottleScan() {
       if (res.reason === "identity-linked") {
         toast.success("Matched an existing catalog wine.");
       } else if (res.reason === "flat-flagged") {
-        toast.warning("Added — fingerprint looked thin and was flagged for review.");
+        toast.warning("Added — the style read was thin, so we flagged it for review.");
       } else {
-        toast.success("Fingerprinted and added to your catalog.");
+        toast.success("Added to your catalog.");
       }
       // Hand off to the manual dialog in "rate" phase by opening it with
       // the resolved id? Simpler: nudge them to /rate — the wine is now
       // scoreable and searchable.
       window.location.href = `/wine/${res.bottle_id}`;
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Fingerprint failed.");
+      toast.error(err instanceof Error ? err.message : "Couldn't add this wine.");
     } finally {
       setOnDemandBusy(false);
     }
