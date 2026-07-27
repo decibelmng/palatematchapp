@@ -150,6 +150,7 @@ function Scan() {
 
           controls={controls}
           setControls={setControls}
+          currency={rank.currency}
         />
       )}
 
