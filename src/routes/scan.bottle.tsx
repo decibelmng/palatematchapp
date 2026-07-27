@@ -219,8 +219,8 @@ function BottleScan() {
       (active.tier === "nemesis" && stars > 2)
     )) {
       const verb = active.tier === "canon"
-        ? `This is your Canon (${active.region}) — lowering the rating removes Canon status.`
-        : `This is your Nemesis (${active.region}) — raising the rating removes Nemesis status.`;
+        ? `You marked this as one of your favorites in ${active.region} — lowering the rating removes that.`
+        : `You marked this as one to avoid in ${active.region} — raising the rating removes that.`;
       if (typeof window !== "undefined" && !window.confirm(`${verb}\n\nContinue and update ${c.name}?`)) {
         return;
       }
