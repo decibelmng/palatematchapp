@@ -616,7 +616,7 @@ function ConfidentCard({
       )}
       {predicted != null && (
         <p className="mt-2 text-sm">
-          Predicted for you: <span className="font-serif text-primary text-lg">{predicted.toFixed(1)}</span>
+          For you: <span className="font-serif text-primary text-lg">{predicted.toFixed(1)}</span>
           <span className="text-primary">★</span>
         </p>
       )}
