@@ -80,8 +80,9 @@
   --text-sm--line-height: 1.4;
   --text-base: var(--fs-body);
   --text-base--line-height: 1.45;
-  --text-lg: var(--fs-body);
-  --text-lg--line-height: 1.45;
+  --text-lg: var(--fs-heading);
+  --text-lg--line-height: 1.25;
+
   --text-xl: var(--fs-heading);
   --text-xl--line-height: 1.25;
   --text-2xl: var(--fs-title);
