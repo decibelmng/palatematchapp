@@ -79,7 +79,7 @@ export function normalizePrice(
     return { amount: null, band: "unknown", display: s, currency, glass: null, bottle: null };
   }
 
-  // Extract numbers. Handles "14 / 52", "18|65", "45,00", "$120".
+  // Extract numbers. Handles "14 / 52", "52 / 14", "18|65", "45,00", "$120".
   const nums = extractNumbers(s);
   if (nums.length === 0) {
     return { amount: null, band: "unknown", display: s, currency, glass: null, bottle: null };
@@ -89,8 +89,12 @@ export function normalizePrice(
   let bottle: number | null = null;
   let primary: number;
   if (nums.length >= 2 && looksLikeGlassBottle(nums[0], nums[1])) {
-    glass = nums[0];
-    bottle = nums[1];
+    // Magnitude decides — the SMALLER number is the glass regardless of order.
+    // Handles "14 / 52", "52 / 14", "Glass 14 / Bottle 52", "14 gl · 52 btl".
+    const lo = Math.min(nums[0], nums[1]);
+    const hi = Math.max(nums[0], nums[1]);
+    glass = lo;
+    bottle = hi;
     primary = bottle;
   } else {
     primary = nums[0];
@@ -104,7 +108,7 @@ export function normalizePrice(
 
   return {
     amount: primary,
-    band: bandForAmount(primary, currency),
+    band: bandForAmount(primary, currency, bottle != null ? "bottle" : "glass"),
     display: formatAmount(primary, currency),
     currency,
     glass,
@@ -117,9 +121,6 @@ function extractNumbers(s: string): number[] {
   const re = /(\d{1,3}(?:[.,]\d{3})+|\d+(?:[.,]\d{1,2})?)/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(s))) {
-    // Treat a comma as decimal if it splits a short tail (","5 or ",50"),
-    // otherwise as thousands. Simpler heuristic: replace , with . when the
-    // segment after the comma is 1-2 digits, else strip it.
     const raw = m[1];
     let clean = raw;
     if (/,\d{1,2}$/.test(raw)) clean = raw.replace(",", ".");
@@ -131,12 +132,17 @@ function extractNumbers(s: string): number[] {
 }
 
 function looksLikeGlassBottle(a: number, b: number): boolean {
-  // "N / M" glass/bottle pattern: bottle is typically 2.5\u20135\u00d7 glass.
+  // Two positive amounts with a bottle-to-glass ratio in [2, 8]. Order-free:
+  // the smaller is the glass, the larger is the bottle. Enables "52 / 14"
+  // and "14 / 52" to resolve identically.
   if (a <= 0 || b <= 0) return false;
-  if (b <= a) return false;
-  const ratio = b / a;
+  if (a === b) return false;
+  const lo = Math.min(a, b);
+  const hi = Math.max(a, b);
+  const ratio = hi / lo;
   return ratio >= 2 && ratio <= 8;
 }
+
 
 export type Priced = {
   price_amount: number | null;
