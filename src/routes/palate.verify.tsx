@@ -132,7 +132,7 @@ function VerifyPage() {
       )}
 
       <p className="mt-6 text-meta text-muted-foreground text-center max-w-sm mx-auto">
-        The badge grants profile status only. Fingerprint influence is granted separately by
+        The badge grants profile status only. Influence on catalog corrections is granted separately by
         verification + calibration, capped per bottle, consensus-gated, and revocable.
       </p>
     </div>
