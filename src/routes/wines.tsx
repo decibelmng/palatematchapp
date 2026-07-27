@@ -11,10 +11,11 @@ import { WineTypeBadge } from "@/components/WineTypeBadge";
 type Tab = "rated" | "canons" | "nemeses" | "scored";
 const TABS: { id: Tab; label: string; Icon: typeof Star }[] = [
   { id: "rated", label: "Rated", Icon: Star },
-  { id: "canons", label: "Canons", Icon: Crown },
-  { id: "nemeses", label: "Nemeses", Icon: Skull },
+  { id: "canons", label: "Favorites", Icon: Crown },
+  { id: "nemeses", label: "Avoid", Icon: Skull },
   { id: "scored", label: "Scored", Icon: Sparkles },
 ];
+
 
 const searchSchema = z.object({
   tab: z.enum(["rated", "canons", "nemeses", "scored"]).optional(),
