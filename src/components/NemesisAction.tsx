@@ -116,7 +116,8 @@ export function NemesisAction({ bottle, stars, compact = false }: Props) {
               setDialog("idle");
             } catch (e) {
               const msg = e instanceof Error ? e.message : String(e);
-              toast.error(msg || "Couldn't mark Nemesis");
+              toast.error(msg || "Couldn't mark to avoid");
+
               setDialog("idle");
             }
           }}
