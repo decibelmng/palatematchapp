@@ -85,16 +85,20 @@ export function currencyFromLocale(): CurrencyCode | null {
 /**
  * Full currency-resolution chain, in priority order:
  *   1. explicit override (already-computed scan currency)
- *   2. per-row detection from OCR
- *   3. restaurant country
+ *   2. per-row detection from OCR text (symbols on the actual list)
+ *   3. restaurant.currency (learned from a prior symbol-bearing scan at this venue)
  *   4. browser locale
  *   5. USD default
+ *
+ * Restaurant currency is a direct fact, not a country guess: it is only ever
+ * populated by a scan whose currency source was "text". That keeps venues
+ * from inheriting the first scanner's default/locale guess.
  * Returns both the winning currency and which step fired, for logging.
  */
 export function resolveCurrency(opts: {
   override?: CurrencyCode | null;
   samples?: Array<string | null | undefined>;
-  restaurantCountry?: string | null;
+  restaurantCurrency?: CurrencyCode | null;
   useLocale?: boolean;
 }): { currency: CurrencyCode; source: "override" | "text" | "restaurant" | "locale" | "default" } {
   if (opts.override) return { currency: opts.override, source: "override" };
@@ -109,8 +113,7 @@ export function resolveCurrency(opts: {
       return { currency: winner, source: "text" };
     }
   }
-  const fromCountry = currencyFromCountry(opts.restaurantCountry ?? null);
-  if (fromCountry) return { currency: fromCountry, source: "restaurant" };
+  if (opts.restaurantCurrency) return { currency: opts.restaurantCurrency, source: "restaurant" };
   if (opts.useLocale !== false) {
     const fromLocale = currencyFromLocale();
     if (fromLocale) return { currency: fromLocale, source: "locale" };
