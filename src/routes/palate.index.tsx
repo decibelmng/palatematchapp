@@ -15,6 +15,7 @@ import {
 import { useMyCanons } from "@/hooks/use-canon";
 import { useMyProfile } from "@/hooks/use-friends";
 import { computeCode, axesFor, type RatedBottle, type PaletteType } from "@/lib/palate";
+import { archetypeFor, type QuizAnswers } from "@/lib/quiz-seeds";
 import { useLandmarks } from "@/hooks/use-landmarks";
 import { cuveeKey } from "@/lib/cuvee";
 import { TasteMap, type LovedPoint } from "@/components/TasteMap";
