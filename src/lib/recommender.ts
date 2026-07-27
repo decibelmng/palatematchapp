@@ -152,7 +152,12 @@ function learnOmega(rated: RatedFp[], type: WineType): OmegaFit {
   const uniform: Record<FpKey, number> = {} as Record<FpKey, number>;
   for (const a of RAX) uniform[a] = active.includes(a) ? 1 : 0;
 
-  if (rated.length < 4) return { omega: uniform, active };
+  // Invariant 1: omega comes from a per-axis ridge over REAL observations.
+  // Quiz seeds (isSeed) enter the kernel — they legitimately mark a region
+  // of style space — but they never generate |Δstars| contrasts. Their
+  // stars=4 label is a placeholder, not a measurement, so filter here.
+  const real = rated.filter((r) => !r.isSeed);
+  if (real.length < 4) return { omega: uniform, active };
 
   // Build pairs
   type Pair = { g: number; d2: Record<FpKey, number>; w: number };
