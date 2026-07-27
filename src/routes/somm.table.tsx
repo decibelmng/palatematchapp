@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { AuthGate } from "@/components/AuthGate";
 import { useMyProfile } from "@/hooks/use-friends";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -25,8 +25,30 @@ export const Route = createFileRoute("/somm/table")({
   component: () => <AuthGate><TablePage /></AuthGate>,
 });
 
+/** Coarse clock so consent countdowns re-render without a per-second timer. */
+function useNow(intervalMs = 20000): number {
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), intervalMs);
+    return () => clearInterval(id);
+  }, [intervalMs]);
+  return now;
+}
+
+function ExpiryNote({ expiresAt, now }: { expiresAt: string; now: number }) {
+  const msLeft = new Date(expiresAt).getTime() - now;
+  if (msLeft <= 0) {
+    return (
+      <div className="text-meta text-destructive">Code expired — ask for a new one.</div>
+    );
+  }
+  const min = Math.max(1, Math.round(msLeft / 60000));
+  return <div className="text-meta text-muted-foreground">Good for {min} more min</div>;
+}
+
 function TablePage() {
   const { data: profile } = useMyProfile();
+  const now = useNow();
   const [guests, setGuests] = useState<ResolvedGuest[]>([]);
   const [code, setCode] = useState("");
   const [username, setUsername] = useState("");
@@ -39,7 +61,14 @@ function TablePage() {
 
   const addGuest = (g: ResolvedGuest) => {
     if (guests.some((x) => x.userId === g.userId)) {
-      toast.info("Guest already at the table.");
+      // Re-hand-over: refresh this guest's consent (new grant + expiry) rather
+      // than reject the duplicate — this is how an expired code is renewed.
+      setGuests((prev) =>
+        prev.map((x) =>
+          x.userId === g.userId ? { ...x, grantId: g.grantId, via: g.via, expiresAt: g.expiresAt } : x,
+        ),
+      );
+      toast.success(`Refreshed ${g.displayName}'s code.`);
       return;
     }
     if (guests.length >= 6) {
@@ -121,6 +150,7 @@ function TablePage() {
                   <div className="text-meta text-muted-foreground">
                     {g.archetype} · {g.via === "code" ? "via code" : "public"}
                   </div>
+                  {g.via === "code" && g.expiresAt && <ExpiryNote expiresAt={g.expiresAt} now={now} />}
                 </div>
                 <button
                   type="button"
@@ -303,6 +333,9 @@ function TableResult({ result }: { result: TableCallOutput }) {
             {winner.producer ?? ""}{winner.producer && winner.region ? " · " : ""}{winner.region ?? ""}
           </div>
         )}
+        {winner.priceText && (
+          <div className="mt-1 text-sub text-foreground tabular-nums">{winner.priceText}</div>
+        )}
         <p className="mt-2 text-sub text-foreground">{result.reasoning}</p>
         <div className="mt-3 flex flex-wrap gap-2">
           {winner.guests.map((g) => (
@@ -319,7 +352,12 @@ function TableResult({ result }: { result: TableCallOutput }) {
           <div className="mt-2 grid gap-2">
             {result.alternates.map((c) => (
               <div key={c.candidateId} className="pm-card p-3">
-                <div className="text-sub text-foreground">{c.name}</div>
+                <div className="flex items-baseline justify-between gap-3">
+                  <div className="text-sub text-foreground">{c.name}</div>
+                  {c.priceText && (
+                    <div className="text-meta text-muted-foreground tabular-nums shrink-0">{c.priceText}</div>
+                  )}
+                </div>
                 <div className="text-meta text-muted-foreground">
                   {c.producer ?? ""}{c.producer && c.region ? " · " : ""}{c.region ?? ""}
                 </div>

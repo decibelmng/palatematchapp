@@ -8,6 +8,21 @@ import {
 import { aggregateRated } from "@/lib/cuvee";
 import { archetypeFor, type QuizAnswers } from "@/lib/quiz-seeds";
 import { summarize, pickTableCall, type CandidateResult, type Verdict } from "@/lib/table-call";
+import { formatAmount, DEFAULT_CURRENCY, type CurrencyCode } from "@/lib/currency";
+
+/** Archetype name from a guest's own quiz answers, honouring their primary
+ *  type (was hardcoded to red, mislabelling white-focused guests). */
+function guestArchetype(q: QuizAnswers | null): string {
+  if (q && typeof q === "object" && "votes" in q) {
+    const t = (q as QuizAnswers).type === "white" ? "white" : "red";
+    return archetypeFor(q as QuizAnswers, t).name;
+  }
+  return "Wine lover";
+}
+
+function toCurrencyCode(s: string | null | undefined): CurrencyCode {
+  return s === "EUR" || s === "GBP" || s === "USD" ? s : DEFAULT_CURRENCY;
+}
 
 // ────────── Shared: verified-somm gate ──────────
 
@@ -53,6 +68,8 @@ export type ResolvedGuest = {
    *  public + palate_shareable (no per-occasion grant needed). */
   grantId: string | null;
   via: "code" | "public";
+  /** ISO expiry of the consent grant (code path only; null for public). */
+  expiresAt: string | null;
 };
 
 export const sommClaimCode = createServerFn({ method: "POST" })
@@ -67,17 +84,14 @@ export const sommClaimCode = createServerFn({ method: "POST" })
     if (!row) throw new Error("Code invalid or expired.");
     const name = (row.display_name || row.username) as string;
     const q = row.quiz_answers as QuizAnswers | null;
-    let archetype = "Wine lover";
-    if (q && typeof q === "object" && "votes" in q) {
-      archetype = archetypeFor(q, "red").name;
-    }
     return {
       userId: row.guest_id as string,
       displayName: name,
-      archetype,
+      archetype: guestArchetype(q),
       initial: (name[0] || "?").toUpperCase(),
       grantId: row.grant_id as string,
       via: "code",
+      expiresAt: (row.expires_at as string) ?? null,
     };
   });
 
@@ -103,18 +117,15 @@ export const sommResolvePublicGuest = createServerFn({ method: "POST" })
       throw new Error("That guest isn't public. Ask them to hand you a code.");
     }
     const name = (prof.display_name || prof.username) as string;
-    let archetype = "Wine lover";
     const q = prof.quiz_answers as QuizAnswers | null;
-    if (q && typeof q === "object" && "votes" in q) {
-      archetype = archetypeFor(q, "red").name;
-    }
     return {
       userId: prof.id as string,
       displayName: name,
-      archetype,
+      archetype: guestArchetype(q),
       initial: (name[0] || "?").toUpperCase(),
       grantId: null,
       via: "public",
+      expiresAt: null,
     };
   });
 
@@ -182,6 +193,8 @@ const CandidateSchema = z.object({
   region: z.string().nullable().optional(),
   type: WineTypeSchema,
   fp: FpSchema,
+  priceAmount: z.number().nullable().optional(),
+  currency: z.string().nullable().optional(),
 });
 
 const GuestInSchema = z.object({
@@ -206,6 +219,8 @@ export type SlimBottle = {
   producer: string | null;
   region: string | null;
   type: WineType;
+  /** Pre-formatted price in the list's currency (e.g. "$120"); null if unpriced. */
+  priceText: string | null;
 };
 
 /** A winner or split-half — slim facts plus per-guest ordinal verdicts. */
@@ -275,7 +290,7 @@ export const sommCallTable = createServerFn({ method: "POST" })
     }
 
     // Score every candidate server-side, but return only the winner/alts/split.
-    const results: (CandidateResult & { name: string; producer: string | null; region: string | null; type: WineType })[] =
+    const results: (CandidateResult & { name: string; producer: string | null; region: string | null; type: WineType; priceText: string | null })[] =
       candidates.map((c) => {
         const guestScores = data.guests.map((g) => {
           const ratedTypes = perGuestRatedTypes.get(g.userId);
@@ -288,7 +303,10 @@ export const sommCallTable = createServerFn({ method: "POST" })
           return { userId: g.userId, archetype: g.archetype, initial: g.initial, predicted: pred, untested };
         });
         const s = summarize(c.id, guestScores);
-        return { ...s, name: c.name, producer: c.producer ?? null, region: c.region ?? null, type: c.type as WineType };
+        const priceText = typeof c.priceAmount === "number"
+          ? formatAmount(c.priceAmount, toCurrencyCode(c.currency))
+          : null;
+        return { ...s, name: c.name, producer: c.producer ?? null, region: c.region ?? null, type: c.type as WineType, priceText };
       });
 
     const call = pickTableCall(results);
@@ -297,7 +315,7 @@ export const sommCallTable = createServerFn({ method: "POST" })
     const toSlim = (id: string): SlimBottle | null => {
       const r = byId.get(id);
       if (!r) return null;
-      return { candidateId: r.candidateId, name: r.name, producer: r.producer, region: r.region, type: r.type };
+      return { candidateId: r.candidateId, name: r.name, producer: r.producer, region: r.region, type: r.type, priceText: r.priceText };
     };
     const toWithVerdicts = (cr: CandidateResult): BottleWithVerdicts | null => {
       const slim = toSlim(cr.candidateId);
@@ -327,7 +345,7 @@ export const sommCallTable = createServerFn({ method: "POST" })
       .filter((r) => !winnerIds.has(r.candidateId) && r.finePlus)
       .sort((a, b) => b.lovesCount - a.lovesCount)
       .slice(0, 3)
-      .map((r) => ({ candidateId: r.candidateId, name: r.name, producer: r.producer, region: r.region, type: r.type }));
+      .map((r) => ({ candidateId: r.candidateId, name: r.name, producer: r.producer, region: r.region, type: r.type, priceText: r.priceText }));
 
     // Access log: one row per guest included in the call. Written through
     // the somm's own client under an RLS INSERT policy that requires
@@ -668,8 +686,16 @@ export const sommHouseListCandidates = createServerFn({ method: "GET" })
     const { supabase, userId } = context;
     await requireVerifiedSomm(supabase, userId);
     const { data: items, error } = await supabase
-      .from("house_list_items").select("bottle_id").eq("version_id", data.houseListVersionId);
+      .from("house_list_items").select("bottle_id, price_amount, currency").eq("version_id", data.houseListVersionId);
     if (error) throw new Error(error.message);
+    // First-seen price per bottle (the list's own quoted price + currency).
+    const priceByBottle = new Map<string, { amount: number | null; currency: string | null }>();
+    for (const r of items ?? []) {
+      const bid = (r as any).bottle_id as string | null;
+      if (bid && !priceByBottle.has(bid)) {
+        priceByBottle.set(bid, { amount: (r as any).price_amount ?? null, currency: (r as any).currency ?? null });
+      }
+    }
     const ids = Array.from(new Set((items ?? []).map((r: any) => r.bottle_id).filter(Boolean))) as string[];
     if (ids.length === 0) return [];
     const out: Array<z.infer<typeof CandidateSchema>> = [];
@@ -681,6 +707,7 @@ export const sommHouseListCandidates = createServerFn({ method: "GET" })
         .in("id", chunk);
       if (bErr) throw new Error(bErr.message);
       for (const b of bs ?? []) {
+        const price = priceByBottle.get((b as any).id as string);
         out.push({
           id: (b as any).id, name: (b as any).name, producer: (b as any).producer, region: (b as any).region,
           type: (String((b as any).type ?? "red").toLowerCase()) as WineType,
@@ -688,6 +715,8 @@ export const sommHouseListCandidates = createServerFn({ method: "GET" })
             fresh: (b as any).fp_fresh, acid: (b as any).fp_acid, tannin: (b as any).fp_tannin, fruit_dark: (b as any).fp_fruit_dark,
             ripe: (b as any).fp_ripe, oak: (b as any).fp_oak, body: (b as any).fp_body, savory: (b as any).fp_savory,
           },
+          priceAmount: price?.amount ?? null,
+          currency: price?.currency ?? null,
         });
       }
     }
