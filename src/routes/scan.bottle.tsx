@@ -325,16 +325,28 @@ function BottleScan() {
   }
 
 
+  const router = useRouter();
+  function goBack() {
+    if (typeof window !== "undefined" && window.history.length > 1) {
+      router.history.back();
+    } else {
+      router.navigate({ to: "/" });
+    }
+  }
+
+  // Capture step is "one photo, one job": vertically centered in the space
+  // above the nav until the user has kicked off identification. Once a
+  // result, error, or in-flight scan exists, the layout scrolls normally.
+  const inCapturePhase = !mutation.isPending && !mutation.isError && !result;
+
   return (
     <div className="pt-2">
-      <div className="flex items-center gap-3 text-xs">
-        <Link to="/" className="text-muted-foreground hover:text-foreground">← Home</Link>
-      </div>
-      <p className="mt-3 text-xs uppercase tracking-label text-muted-foreground">Scan a bottle</p>
-      <h1 className="font-serif text-3xl mt-2">Point at the label</h1>
-      <p className="mt-2 text-sm text-muted-foreground">
-        One clear photo of the front label. Add the back if the front is sparse — it helps for obscure bottles.
-      </p>
+      <button
+        onClick={goBack}
+        className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground"
+      >
+        <ChevronLeft className="h-3 w-3" /> Back
+      </button>
 
       <input
         ref={cameraRef} type="file" accept="image/*" capture="environment" className="hidden"
@@ -345,42 +357,102 @@ function BottleScan() {
         onChange={(e) => onPick(e.target.files, e.currentTarget)}
       />
 
-      <div className="mt-5 grid grid-cols-2 gap-3">
-        <LabelSlot
-          title="Front label"
-          preview={front}
-          onCamera={() => { setPickTarget("front"); cameraRef.current?.click(); }}
-          onUpload={() => { setPickTarget("front"); libraryRef.current?.click(); }}
-          onRemove={() => { if (front) URL.revokeObjectURL(front.url); setFront(null); mutation.reset(); }}
-          disabled={mutation.isPending}
-        />
-        <LabelSlot
-          title="Back label (optional)"
-          preview={back}
-          onCamera={() => { setPickTarget("back"); cameraRef.current?.click(); }}
-          onUpload={() => { setPickTarget("back"); libraryRef.current?.click(); }}
-          onRemove={() => { if (back) URL.revokeObjectURL(back.url); setBack(null); mutation.reset(); }}
-          disabled={mutation.isPending}
-        />
-      </div>
+      {inCapturePhase && (
+        <div className="min-h-[calc(100dvh-14rem)] flex flex-col justify-center">
+          <div className="w-full max-w-sm mx-auto">
+            <p className="text-meta uppercase tracking-label text-muted-foreground">Scan a bottle</p>
+            <h1 className="font-serif text-3xl mt-2">
+              {front ? "Front label captured" : "Photograph the front label"}
+            </h1>
+            <p className="mt-2 text-sm text-muted-foreground">
+              {front
+                ? "Add the back if the front is sparse — helps for obscure bottles."
+                : "One clear photo of the front label."}
+            </p>
 
-      {(front || back) && (
-        <div className="mt-4 flex flex-wrap gap-3">
-          <button
-            onClick={() => mutation.mutate()}
-            disabled={mutation.isPending}
-            className="rounded-md bg-primary text-primary-foreground px-4 py-2.5 text-sm font-medium disabled:opacity-60"
-          >
-            {mutation.isPending ? "Reading label…" : "Identify this bottle"}
-          </button>
-          {!mutation.isPending && (
-            <button
-              onClick={startOver}
-              className="rounded-md border border-border bg-card px-4 py-2.5 text-sm font-medium"
-            >
-              Start over
-            </button>
-          )}
+            {!front ? (
+              <div className="mt-6">
+                <button
+                  onClick={() => { setPickTarget("front"); cameraRef.current?.click(); }}
+                  className="w-full rounded-md bg-primary text-primary-foreground px-4 py-3 text-sm font-medium"
+                >
+                  Take photo
+                </button>
+                <button
+                  onClick={() => { setPickTarget("front"); libraryRef.current?.click(); }}
+                  className="mt-3 mx-auto block text-xs text-muted-foreground hover:text-foreground underline underline-offset-2"
+                >
+                  Choose from library
+                </button>
+              </div>
+            ) : (
+              <div className="mt-6">
+                {/* Front label — captured, with Retake */}
+                <div className="relative">
+                  <img
+                    src={front.url}
+                    alt="Front label"
+                    className="w-full h-52 object-cover rounded-md border border-border"
+                  />
+                  <button
+                    onClick={() => { setPickTarget("front"); cameraRef.current?.click(); }}
+                    className="absolute top-2 right-2 rounded-md bg-background/95 border border-border px-2.5 py-1 text-xs font-medium"
+                  >
+                    Retake
+                  </button>
+                </div>
+
+                {/* Back label — progressive disclosure. Only appears once
+                    a front label exists. Outline-only secondary — the one
+                    gold button on the screen is Continue below. */}
+                {!back ? (
+                  <>
+                    <button
+                      onClick={() => { setPickTarget("back"); cameraRef.current?.click(); }}
+                      className="mt-4 w-full rounded-md border border-border bg-background text-foreground px-4 py-3 text-sm font-medium"
+                    >
+                      Add the back label
+                    </button>
+                    <p className="mt-1.5 text-meta text-muted-foreground text-center">
+                      Optional — helps with obscure bottles.
+                    </p>
+                  </>
+                ) : (
+                  <div className="mt-4 relative">
+                    <img
+                      src={back.url}
+                      alt="Back label"
+                      className="w-full h-36 object-cover rounded-md border border-border"
+                    />
+                    <button
+                      onClick={() => { setPickTarget("back"); cameraRef.current?.click(); }}
+                      className="absolute top-2 right-2 rounded-md bg-background/95 border border-border px-2.5 py-1 text-xs font-medium"
+                    >
+                      Retake
+                    </button>
+                    <button
+                      onClick={() => { if (back) URL.revokeObjectURL(back.url); setBack(null); }}
+                      className="absolute top-2 left-2 rounded-md bg-background/95 border border-border px-2.5 py-1 text-xs font-medium"
+                      aria-label="Remove back label"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+
+                <button
+                  onClick={() => mutation.mutate()}
+                  className="mt-5 w-full rounded-md bg-primary text-primary-foreground px-4 py-3 text-sm font-medium"
+                >
+                  Continue
+                </button>
+              </div>
+            )}
+
+            <p className="mt-8 text-meta text-muted-foreground text-center">
+              Your photo is stored privately to your account.
+            </p>
+          </div>
         </div>
       )}
 
@@ -395,8 +467,14 @@ function BottleScan() {
       )}
 
       {mutation.isError && (
-        <div className="mt-4 rounded-md border border-destructive/40 bg-destructive/10 p-3">
+        <div className="mt-4 rounded-md border border-destructive/40 bg-destructive/10 p-3 space-y-2">
           <p className="text-sm text-destructive">{(mutation.error as Error).message}</p>
+          <button
+            onClick={startOver}
+            className="rounded-md border border-border bg-card px-3 py-1.5 text-xs font-medium"
+          >
+            Try again
+          </button>
         </div>
       )}
 
