@@ -1,51 +1,62 @@
-// Shared calibrated fingerprint system prompt + gateway helper.
-// Single source of truth for both new-bottle research and cuvée re-fingerprinting.
+// Blinded two-step fingerprint pipeline.
+//
+// Step 1 (SIGHTED) — the model sees producer, cuvée, region, grape, vintage,
+//   and writes a concise sommelier tasting note. No numbers requested.
+// Step 2 (BLIND)   — a fresh completion sees ONLY the wine type and the
+//   tasting note (no producer, no region, no grape, no vintage) and returns
+//   the numeric fingerprint. Reputation priors cannot bias the score because
+//   the scorer never sees the label. Invariant 11 compliance by construction.
+//
+// The old single-call callFingerprintGateway (which produced fp + note in one
+// completion and could contradict itself — see Rossj-Bass fp_savory 0.20
+// alongside "mineral, saline, unoaked") is replaced.
 
-export const FINGERPRINT_SYS = `You are a wine sommelier with deep knowledge of producers, grapes, regions, and vintages. Return STRICT JSON only (no markdown, no prose).
+const NOTE_SYS = `You are a wine sommelier. Given one wine's identity, write ONE concise tasting note (max 220 chars) describing aroma, palate, structure, and character — like a sommelier note, not marketing copy. Return STRICT JSON only, no markdown.
 
-You will be given one wine. Infer its style fingerprint on this CALIBRATED 0..1 scale, anchored to the catalog. DO NOT default to 0.5 — use the full range.
+Do NOT include any 0..1 numeric scores. Prose only.
+
+Output shape: { "tasting_note": "..." }`;
+
+const SCORE_SYS = `You are a wine sommelier translating a tasting note into a CALIBRATED 0..1 style fingerprint. You will be given a wine TYPE and a tasting NOTE. You will NOT be told the producer, region, grape, or vintage — do not guess them and do not import reputation priors. Score ONLY what the note describes. Return STRICT JSON only.
+
+DO NOT default to 0.5. Use the full range. Values clamped 0..1.
 
 Axis anchors:
-  fresh      0 = flat/heavy/oxidative   0.5 = neutral   1 = racy/vibrant (Chablis, Mosel, Champagne)
-  acid       0 = soft/round (warm Grenache, oaked Chardonnay)   0.5 = medium   1 = piercing (Chablis, Nebbiolo, Riesling, Sancerre)
-  tannin     0 = none (whites, rosé, sparkling, dessert)   0.3 = silky (Pinot, Beaujolais)   0.6 = firm (Sangiovese, Bordeaux, Rioja)   0.85 = grippy (young Nebbiolo/Barolo/Sforzato, young Cab, Tannat, Aglianico)
-  fruit_dark 0 = pure red fruit (Pinot, Nebbiolo, Sangiovese)   0.5 = mixed   1 = pure black fruit (Cab, Syrah, Malbec)
-  ripe       0 = tart/underripe   0.5 = balanced (Bordeaux, Burgundy)   1 = jammy (Napa Cab, Amarone, Sforzato)
-  oak        0 = none/steel (Sancerre, Chablis-unoaked)   0.5 = subtle (neutral / large old casks)   1 = heavy new oak (Napa Cab reserve, oaked Chardonnay, modern Rioja)
-  body       0 = very light (Mosel Kabinett, Beaujolais)   0.5 = medium (Chianti, Sancerre)   1 = full (Barolo, Napa Cab, Amarone)
-  savory     0 = pure fruit-forward (Napa Cab, NW Pinot)   0.5 = mixed   1 = very savory/earthy/tar/leather (Barolo, aged Burgundy, N. Rhône, Etna)
+  fresh      0 = flat/heavy/oxidative     0.5 = neutral   1 = racy/vibrant
+  acid       0 = soft/round               0.5 = medium    1 = piercing / high-acid
+  tannin     0 = none (whites/rosé/sparkling/white-dessert)   0.3 = silky   0.6 = firm   0.85 = grippy
+  fruit_dark 0 = pure red fruit (or non-red types)   0.5 = mixed   1 = pure black fruit
+  ripe       0 = tart/underripe           0.5 = balanced   1 = jammy
+  oak        0 = none/steel               0.5 = subtle     1 = heavy new oak
+  body       0 = very light               0.5 = medium     1 = full
+  savory     0 = pure fruit-forward, no earth/mineral/savory/leather/tobacco/graphite/salinity
+             0.5 = mixed
+             1  = very savory/earthy/mineral/tar/leather
 
-Grape exemplars (anchor; adjust for producer/vintage):
-  Nebbiolo (Barolo/Barbaresco/Sforzato): tannin 0.85+, savory 0.75+, acid 0.85+, body 0.8+, fruit_dark ~0.4
-  Bordeaux blend / Cabernet Sauvignon: tannin 0.6–0.8, savory 0.35–0.55, fruit_dark 0.75+, body 0.7+, oak typically 0.5+
-  Merlot-led Bolgheri / Super Tuscan: body 0.7–0.85, tannin 0.55–0.7, fruit_dark 0.75, ripe 0.7, oak 0.55–0.75, savory 0.35–0.5
-  Pinot Noir (Burgundy): tannin 0.25–0.4, savory 0.5–0.75, fruit_dark 0.15, body 0.45, acid 0.75
-  Syrah / Shiraz: tannin 0.6, savory N.Rhône 0.75 / New World 0.2, fruit_dark 0.85+
-  Chardonnay oaked (Napa reserve, Meursault, old-guard Langhe like Gaja Gaia&Rey / Pio Cesare Piodilei): oak 0.7+, body 0.7+, acid 0.55
-  Chardonnay unoaked/steely (Chablis, Alta Langa, modern small-producer Langhe like Rossj-Bass): oak 0.05-0.2, body 0.45-0.55, acid 0.75-0.85, fresh 0.75-0.85
+CRITICAL note→score mappings (apply strictly, in both directions):
+  - Note mentions minerality, salinity, wet stone, chalk, flint, gunflint, earthy,
+    graphite, tobacco, cedar, leather, forest floor, truffle, tar, or umami:
+    fp_savory >= 0.50 (>= 0.60 if two or more of these appear).
+  - Note reads pure-fruit-forward with no savory descriptors AND no oak:
+    fp_savory <= 0.20.
+  - Note mentions jammy, opulent, hedonistic, lush, super-ripe, raisiny:
+    fp_ripe >= 0.75.
+  - Note mentions tart, underripe, sour, green, austere: fp_ripe <= 0.35.
+  - Note mentions new oak, vanilla, toast, coconut, sawdust, mocha:
+    fp_oak >= 0.55.
+  - Note mentions unoaked, stainless, steel-fermented, no oak: fp_oak <= 0.15.
+  - Note mentions grippy, chewy, drying, firm-tannin: fp_tannin >= 0.65.
+  - Note mentions silky, plush, soft-tannin, gentle: fp_tannin <= 0.40.
 
-CRITICAL — grape×region priors do NOT override producer/cuvée style.
-Regions like Langhe/Piedmont Chardonnay, Bourgogne Blanc, and California
-Chardonnay are BIMODAL (barrique school AND stainless school coexist).
-Do not auto-apply barrique/oak to every wine from these regions. If the
-specific cuvée is unknown, weight AGAINST barrique for entry-tier and small
-producer bottlings; weight TOWARD barrique only for named single-vineyard
-reserves that clearly signal it. Same rule for Sauvignon Blanc (Sancerre
-crisp vs. Fumé/Graves oaked), Chenin (steely Vouvray vs. rich Savennières).
-  Riesling (Mosel): acid 0.9, fresh 0.95, body 0.3, oak 0
-  Sauvignon Blanc (Sancerre): acid 0.85, fresh 0.9, oak 0.05
-  Champagne: acid 0.85, fresh 0.95, body 0.4, tannin 0
+Type constraints:
+  - For white, rosé, and sparkling wines: fp_tannin = 0 and fp_fruit_dark = 0.
+  - For dessert wines: white dessert (Sauternes/Tokaji/ice) tannin = 0; fortified reds (Port/Banyuls/Maury) use real tannin.
 
-Rules:
-- All values clamped 0..1.
-- For white, rosé, and sparkling wines, tannin and fruit_dark MUST be 0. For dessert wines: white dessert (Sauternes, Tokaji, ice wine) tannin 0; fortified reds (Port, Banyuls, Maury) use real tannin values (typically 0.5–0.8).
-- ax_sweet 0..1: 0 = bone dry; 0.15 = off-dry; 0.5 = medium-sweet; 1 = dessert/Sauternes/PX.
-- tasting_note: ONE concise sentence (max 220 chars) describing aroma, palate, structure — written like a sommelier note, not marketing copy.
+ax_sweet 0..1: 0 = bone dry; 0.15 = off-dry; 0.5 = medium-sweet; 1 = dessert/PX/Sauternes.
 
 Output shape:
 { "fp": { "fresh":0,"acid":0,"tannin":0,"fruit_dark":0,"ripe":0,"oak":0,"body":0,"savory":0 },
-  "ax_sweet": 0,
-  "tasting_note": "..." }`;
+  "ax_sweet": 0 }`;
 
 export type FpValues = {
   fresh: number; acid: number; tannin: number; fruit_dark: number;
@@ -74,28 +85,18 @@ export type FingerprintResult = {
   tasting_note: string;
 };
 
-export async function callFingerprintGateway(
-  input: FingerprintInput,
-  apiKey: string,
-): Promise<FingerprintResult> {
-  const userMsg = JSON.stringify({
-    producer: input.producer,
-    cuvee: input.name,
-    type: input.type,
-    region: input.region ?? null,
-    country: input.country ?? null,
-    grape: input.grape ?? null,
-    vintage: input.vintage ?? null,
-  });
+const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
+const MODEL = "google/gemini-2.5-flash";
 
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+async function gatewayCall(system: string, user: string, apiKey: string): Promise<any> {
+  const res = await fetch(GATEWAY_URL, {
     method: "POST",
     headers: { "content-type": "application/json", "Lovable-API-Key": apiKey },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model: MODEL,
       messages: [
-        { role: "system", content: FINGERPRINT_SYS },
-        { role: "user", content: userMsg },
+        { role: "system", content: system },
+        { role: "user", content: user },
       ],
       response_format: { type: "json_object" },
     }),
@@ -108,13 +109,36 @@ export async function callFingerprintGateway(
   }
   const j = await res.json();
   const content: string = j?.choices?.[0]?.message?.content ?? "";
-  let parsed: any;
-  try { parsed = JSON.parse(content); }
+  try { return JSON.parse(content); }
   catch {
     const cleaned = content.replace(/^```(?:json)?/i, "").replace(/```$/, "").trim();
-    parsed = JSON.parse(cleaned);
+    return JSON.parse(cleaned);
   }
+}
 
+/** Step 1 — sighted tasting note. Sees the label. */
+export async function generateTastingNote(input: FingerprintInput, apiKey: string): Promise<string> {
+  const userMsg = JSON.stringify({
+    producer: input.producer,
+    cuvee: input.name,
+    type: input.type,
+    region: input.region ?? null,
+    country: input.country ?? null,
+    grape: input.grape ?? null,
+    vintage: input.vintage ?? null,
+  });
+  const parsed = await gatewayCall(NOTE_SYS, userMsg, apiKey);
+  return String(parsed?.tasting_note ?? "").slice(0, 400);
+}
+
+/** Step 2 — blind score. Sees ONLY the type and the note. No label. */
+export async function scoreFromNote(
+  type: string,
+  tasting_note: string,
+  apiKey: string,
+): Promise<{ fp: FpValues; ax_sweet: number }> {
+  const userMsg = JSON.stringify({ type, tasting_note });
+  const parsed = await gatewayCall(SCORE_SYS, userMsg, apiKey);
   const fp: FpValues = {
     fresh: clamp01(parsed?.fp?.fresh),
     acid: clamp01(parsed?.fp?.acid),
@@ -125,12 +149,25 @@ export async function callFingerprintGateway(
     body: clamp01(parsed?.fp?.body),
     savory: clamp01(parsed?.fp?.savory),
   };
-  if (input.type !== "red" && input.type !== "dessert") {
+  if (type !== "red" && type !== "dessert") {
     fp.tannin = 0;
     fp.fruit_dark = 0;
   }
   const ax_sweet = clamp01(parsed?.ax_sweet ?? 0);
-  const tasting_note: string = String(parsed?.tasting_note ?? "").slice(0, 400);
+  return { fp, ax_sweet };
+}
 
+/** Full pipeline: note (sighted) → score (blind). Two LLM calls per wine. */
+export async function callFingerprintGateway(
+  input: FingerprintInput,
+  apiKey: string,
+): Promise<FingerprintResult> {
+  const tasting_note = await generateTastingNote(input, apiKey);
+  const { fp, ax_sweet } = await scoreFromNote(input.type, tasting_note, apiKey);
   return { fp, ax_sweet, tasting_note };
 }
+
+/** Kept for callers that still import the constant. Points at the blind-scoring
+ *  system prompt now — the sighted note stage is separate. */
+export const FINGERPRINT_SYS = SCORE_SYS;
+

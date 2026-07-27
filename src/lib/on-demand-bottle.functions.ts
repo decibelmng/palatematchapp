@@ -179,6 +179,9 @@ export async function resolveOrCreateOnDemandCore(
   //   ax_acidity  <- fp.acid
   //   ax_fruit_char <- fp.savory
   //   ax_sweet    <- gateway (untouched by fp_* mapping)
+  // Cast: ax_body/ax_tannin/ax_acidity/ax_fruit_char are GENERATED ALWAYS AS
+  // (fp_*) STORED after the ax-columns migration. Generated types still list
+  // them as required until types.ts regenerates; the runtime rejects writes.
   const { data: row, error } = await supabase
     .from("bottles")
     .insert({
@@ -193,16 +196,12 @@ export async function resolveOrCreateOnDemandCore(
       fp_fresh: fp.fresh, fp_acid: fp.acid, fp_tannin: fp.tannin,
       fp_fruit_dark: fp.fruit_dark, fp_ripe: fp.ripe, fp_oak: fp.oak,
       fp_body: fp.body, fp_savory: fp.savory,
-      ax_body: fp.body,
-      ax_tannin: fp.tannin,
-      ax_acidity: fp.acid,
-      ax_fruit_char: fp.savory,
       ax_sweet,
       tasting_note,
       source: flat ? "on-demand; flat-fingerprint flagged" : "on-demand",
       unverified: true,
       added_by: userId,
-    })
+    } as never)
     .select("id")
     .single();
   if (error) throw new Error((error as { message?: string }).message ?? "on-demand insert failed");
