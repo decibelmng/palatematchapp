@@ -19,12 +19,15 @@ import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as FriendsRouteImport } from './routes/friends'
 import { Route as FeedRouteImport } from './routes/feed'
 import { Route as CanonsRouteImport } from './routes/canons'
+import { Route as BriefRouteImport } from './routes/brief'
 import { Route as AuditRouteImport } from './routes/audit'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PalateIndexRouteImport } from './routes/palate.index'
 import { Route as AdminIndexRouteImport } from './routes/admin.index'
 import { Route as WineIdRouteImport } from './routes/wine.$id'
 import { Route as UUsernameRouteImport } from './routes/u.$username'
+import { Route as SommTableRouteImport } from './routes/somm.table'
+import { Route as SommListRouteImport } from './routes/somm.list'
 import { Route as ScanListRouteImport } from './routes/scan.list'
 import { Route as ScanBottleRouteImport } from './routes/scan.bottle'
 import { Route as ScanIdRouteImport } from './routes/scan.$id'
@@ -94,6 +97,11 @@ const CanonsRoute = CanonsRouteImport.update({
   path: '/canons',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BriefRoute = BriefRouteImport.update({
+  id: '/brief',
+  path: '/brief',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AuditRoute = AuditRouteImport.update({
   id: '/audit',
   path: '/audit',
@@ -123,6 +131,16 @@ const UUsernameRoute = UUsernameRouteImport.update({
   id: '/u/$username',
   path: '/u/$username',
   getParentRoute: () => rootRouteImport,
+} as any)
+const SommTableRoute = SommTableRouteImport.update({
+  id: '/table',
+  path: '/table',
+  getParentRoute: () => SommRoute,
+} as any)
+const SommListRoute = SommListRouteImport.update({
+  id: '/list',
+  path: '/list',
+  getParentRoute: () => SommRoute,
 } as any)
 const ScanListRoute = ScanListRouteImport.update({
   id: '/list',
@@ -218,6 +236,7 @@ const AddFriendUsernameRoute = AddFriendUsernameRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/audit': typeof AuditRoute
+  '/brief': typeof BriefRoute
   '/canons': typeof CanonsRoute
   '/feed': typeof FeedRoute
   '/friends': typeof FriendsRoute
@@ -225,7 +244,7 @@ export interface FileRoutesByFullPath {
   '/rate': typeof RateRoute
   '/scan': typeof ScanRouteWithChildren
   '/scans': typeof ScansRoute
-  '/somm': typeof SommRoute
+  '/somm': typeof SommRouteWithChildren
   '/wines': typeof WinesRoute
   '/wishlist': typeof WishlistRoute
   '/add-friend/$username': typeof AddFriendUsernameRoute
@@ -246,6 +265,8 @@ export interface FileRoutesByFullPath {
   '/scan/$id': typeof ScanIdRoute
   '/scan/bottle': typeof ScanBottleRoute
   '/scan/list': typeof ScanListRoute
+  '/somm/list': typeof SommListRoute
+  '/somm/table': typeof SommTableRoute
   '/u/$username': typeof UUsernameRoute
   '/wine/$id': typeof WineIdRoute
   '/admin/': typeof AdminIndexRoute
@@ -254,6 +275,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/audit': typeof AuditRoute
+  '/brief': typeof BriefRoute
   '/canons': typeof CanonsRoute
   '/feed': typeof FeedRoute
   '/friends': typeof FriendsRoute
@@ -261,7 +283,7 @@ export interface FileRoutesByTo {
   '/rate': typeof RateRoute
   '/scan': typeof ScanRouteWithChildren
   '/scans': typeof ScansRoute
-  '/somm': typeof SommRoute
+  '/somm': typeof SommRouteWithChildren
   '/wines': typeof WinesRoute
   '/wishlist': typeof WishlistRoute
   '/add-friend/$username': typeof AddFriendUsernameRoute
@@ -282,6 +304,8 @@ export interface FileRoutesByTo {
   '/scan/$id': typeof ScanIdRoute
   '/scan/bottle': typeof ScanBottleRoute
   '/scan/list': typeof ScanListRoute
+  '/somm/list': typeof SommListRoute
+  '/somm/table': typeof SommTableRoute
   '/u/$username': typeof UUsernameRoute
   '/wine/$id': typeof WineIdRoute
   '/admin': typeof AdminIndexRoute
@@ -291,6 +315,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/audit': typeof AuditRoute
+  '/brief': typeof BriefRoute
   '/canons': typeof CanonsRoute
   '/feed': typeof FeedRoute
   '/friends': typeof FriendsRoute
@@ -298,7 +323,7 @@ export interface FileRoutesById {
   '/rate': typeof RateRoute
   '/scan': typeof ScanRouteWithChildren
   '/scans': typeof ScansRoute
-  '/somm': typeof SommRoute
+  '/somm': typeof SommRouteWithChildren
   '/wines': typeof WinesRoute
   '/wishlist': typeof WishlistRoute
   '/add-friend/$username': typeof AddFriendUsernameRoute
@@ -319,6 +344,8 @@ export interface FileRoutesById {
   '/scan/$id': typeof ScanIdRoute
   '/scan/bottle': typeof ScanBottleRoute
   '/scan/list': typeof ScanListRoute
+  '/somm/list': typeof SommListRoute
+  '/somm/table': typeof SommTableRoute
   '/u/$username': typeof UUsernameRoute
   '/wine/$id': typeof WineIdRoute
   '/admin/': typeof AdminIndexRoute
@@ -329,6 +356,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/audit'
+    | '/brief'
     | '/canons'
     | '/feed'
     | '/friends'
@@ -357,6 +385,8 @@ export interface FileRouteTypes {
     | '/scan/$id'
     | '/scan/bottle'
     | '/scan/list'
+    | '/somm/list'
+    | '/somm/table'
     | '/u/$username'
     | '/wine/$id'
     | '/admin/'
@@ -365,6 +395,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/audit'
+    | '/brief'
     | '/canons'
     | '/feed'
     | '/friends'
@@ -393,6 +424,8 @@ export interface FileRouteTypes {
     | '/scan/$id'
     | '/scan/bottle'
     | '/scan/list'
+    | '/somm/list'
+    | '/somm/table'
     | '/u/$username'
     | '/wine/$id'
     | '/admin'
@@ -401,6 +434,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/audit'
+    | '/brief'
     | '/canons'
     | '/feed'
     | '/friends'
@@ -429,6 +463,8 @@ export interface FileRouteTypes {
     | '/scan/$id'
     | '/scan/bottle'
     | '/scan/list'
+    | '/somm/list'
+    | '/somm/table'
     | '/u/$username'
     | '/wine/$id'
     | '/admin/'
@@ -438,6 +474,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuditRoute: typeof AuditRoute
+  BriefRoute: typeof BriefRoute
   CanonsRoute: typeof CanonsRoute
   FeedRoute: typeof FeedRoute
   FriendsRoute: typeof FriendsRoute
@@ -445,7 +482,7 @@ export interface RootRouteChildren {
   RateRoute: typeof RateRoute
   ScanRoute: typeof ScanRouteWithChildren
   ScansRoute: typeof ScansRoute
-  SommRoute: typeof SommRoute
+  SommRoute: typeof SommRouteWithChildren
   WinesRoute: typeof WinesRoute
   WishlistRoute: typeof WishlistRoute
   AddFriendUsernameRoute: typeof AddFriendUsernameRoute
@@ -541,6 +578,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CanonsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/brief': {
+      id: '/brief'
+      path: '/brief'
+      fullPath: '/brief'
+      preLoaderRoute: typeof BriefRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/audit': {
       id: '/audit'
       path: '/audit'
@@ -582,6 +626,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/u/$username'
       preLoaderRoute: typeof UUsernameRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/somm/table': {
+      id: '/somm/table'
+      path: '/table'
+      fullPath: '/somm/table'
+      preLoaderRoute: typeof SommTableRouteImport
+      parentRoute: typeof SommRoute
+    }
+    '/somm/list': {
+      id: '/somm/list'
+      path: '/list'
+      fullPath: '/somm/list'
+      preLoaderRoute: typeof SommListRouteImport
+      parentRoute: typeof SommRoute
     }
     '/scan/list': {
       id: '/scan/list'
@@ -726,9 +784,22 @@ const ScanRouteChildren: ScanRouteChildren = {
 
 const ScanRouteWithChildren = ScanRoute._addFileChildren(ScanRouteChildren)
 
+interface SommRouteChildren {
+  SommListRoute: typeof SommListRoute
+  SommTableRoute: typeof SommTableRoute
+}
+
+const SommRouteChildren: SommRouteChildren = {
+  SommListRoute: SommListRoute,
+  SommTableRoute: SommTableRoute,
+}
+
+const SommRouteWithChildren = SommRoute._addFileChildren(SommRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuditRoute: AuditRoute,
+  BriefRoute: BriefRoute,
   CanonsRoute: CanonsRoute,
   FeedRoute: FeedRoute,
   FriendsRoute: FriendsRoute,
@@ -736,7 +807,7 @@ const rootRouteChildren: RootRouteChildren = {
   RateRoute: RateRoute,
   ScanRoute: ScanRouteWithChildren,
   ScansRoute: ScansRoute,
-  SommRoute: SommRoute,
+  SommRoute: SommRouteWithChildren,
   WinesRoute: WinesRoute,
   WishlistRoute: WishlistRoute,
   AddFriendUsernameRoute: AddFriendUsernameRoute,
