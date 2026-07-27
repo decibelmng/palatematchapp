@@ -112,10 +112,13 @@ describe("quiz seeds — bimodality preservation", () => {
     };
     const seeds = seedRatedFpFor(answers, "red", real.length);
     expect(seeds).toHaveLength(1);
-    // Seed weight = 1, real ratings weight = 1 each. Seed share = 1/(1+4) = 20%.
+    // Linear fade: seedWeight = 1 - realCount/5. At 4 real ratings that is
+    // 0.2, and share = 0.2 / (0.2 + 4) ≈ 4.8%. The seed is deliberately
+    // small at this point — real ratings dominate long before the cliff.
     const seedWeight = seeds[0].weight ?? 1;
     const totalWeight = seedWeight + real.reduce((s, r) => s + (r.weight ?? 1), 0);
-    expect(seedWeight / totalWeight).toBeCloseTo(0.2, 2);
+    expect(seedWeight).toBeCloseTo(0.2, 3);
+    expect(seedWeight / totalWeight).toBeCloseTo(0.2 / 4.2, 3);
 
     // The silky pole must still resolve — a single unimodal seed at the firm
     // pole must not swallow the silky mode.
