@@ -113,7 +113,7 @@ function WineDetail() {
         </div>
         {calibrated && (
           <div className="shrink-0 max-w-[55%]">
-            <p className="text-meta uppercase tracking-label text-muted-foreground">Fingerprint</p>
+            <p className="text-meta uppercase tracking-label text-muted-foreground">Style profile</p>
             <div className="mt-2 space-y-1">
               {RAX.map((k) => {
                 const v = fp[k];
