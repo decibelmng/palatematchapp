@@ -299,7 +299,7 @@ export function useRate() {
       if (result?.demotedTier) {
         qc.invalidateQueries({ queryKey: ["canons"] });
         // 10s undo — restores rating + benchmark in one atomic RPC (+1 version bump).
-        const verb = result.demotedTier === "canon" ? "Favorite" : "Avoid";
+        const verb = result.demotedTier === "canon" ? "Benchmark" : "Dealbreaker";
         toast(`${verb} status removed (rating changed).`, {
 
           duration: 10_000,

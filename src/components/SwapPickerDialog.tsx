@@ -45,8 +45,9 @@ export function SwapPickerDialog({
 
   if (!open) return null;
 
-  const tierLabel = tier === "canon" ? "Favorite" : "Wine to avoid";
+  const tierLabel = tier === "canon" ? "Benchmark" : "Dealbreaker";
   const starHint = tier === "canon" ? "5★" : "1–2★";
+
 
   const handlePick = async (b: BottleRow) => {
     if (pickInFlight.current || promote.isPending) return;

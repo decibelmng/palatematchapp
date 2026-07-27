@@ -93,10 +93,11 @@ export function validateBenchmarkPromotion(tier: BenchmarkTier, stars: number): 
     throw new Error(`Invalid tier: ${tier}`);
   }
   if (tier === "canon" && stars < 5) {
-    throw new Error("Only 5★ wines can be marked as a favorite.");
+    throw new Error("Only 5★ wines can be set as a benchmark.");
   }
   if (tier === "nemesis" && stars > 2) {
-    throw new Error("Only 1★ or 2★ wines can be marked as one to avoid.");
+    throw new Error("Only 1★ or 2★ wines can be marked as a dealbreaker.");
+
   }
 
 }
@@ -147,7 +148,7 @@ function usePromoteBenchmark(tier: BenchmarkTier) {
     }) => {
       if (!session) throw new Error("Not signed in");
       const region = (args.bottle.region ?? "").trim();
-      if (!region) throw new Error(`Bottle has no region — cannot ${tier === "canon" ? "mark as a favorite" : "mark as one to avoid"}.`);
+      if (!region) throw new Error(`Bottle has no region — cannot ${tier === "canon" ? "set as a benchmark" : "mark as a dealbreaker"}.`);
 
       // Client-side guard — server enforces regardless via set_benchmark.
       if ((args.bottle as { excluded_from_recs?: boolean }).excluded_from_recs) {
