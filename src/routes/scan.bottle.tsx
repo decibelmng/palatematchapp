@@ -15,6 +15,11 @@ import {
   type BottleScanResult,
   type BottleExtract,
 } from "@/lib/bottle-scan.functions";
+import {
+  persistBottleScan,
+  saveBottleScanCorrection,
+  markBottleScanRated,
+} from "@/lib/bottle-scan-history.functions";
 import { resolveOrCreateOnDemand } from "@/lib/on-demand-bottle.functions";
 import { createLovableVisionRecognizer } from "@/lib/recognizer";
 import { supabase } from "@/integrations/supabase/client";
