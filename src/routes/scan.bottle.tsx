@@ -166,7 +166,7 @@ function BottleScan() {
             data: {
               frontPath: (r as any).__frontPath ?? null,
               backPath: (r as any).__backPath ?? null,
-              rawOcrText: r.extracted?.raw_text ?? null,
+              rawOcrText: (r.extracted as any)?.raw_text ?? null,
               parsed: {
                 producer: r.extracted?.producer ?? null,
                 wine_name: r.extracted?.wine_name ?? null,
