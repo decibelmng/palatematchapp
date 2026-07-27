@@ -197,12 +197,13 @@ function CanonsPage() {
             <div className="mt-14">
               <div className="flex items-center gap-2">
                 <Skull size={20} strokeWidth={2.2} className="text-destructive" />
-                <h2 className="font-serif text-2xl">Nemesis List</h2>
+                <h2 className="font-serif text-2xl">Wines to avoid</h2>
               </div>
               <p className="mt-1 text-sm text-muted-foreground">
-                The engine avoids anything that shares this style — asymmetric veto radius, wider than
-                the attraction zone.
+                We steer away from anything that shares this style — with a wider berth than the
+                pull toward a favorite.
               </p>
+
               <div className="mt-6 space-y-10">
                 {TYPE_ORDER.flatMap((t) => {
                   const rows = nemesisGrouped[t] ?? [];
