@@ -3,19 +3,25 @@
 // The onboarding quiz replaces the "rate 5 wines" recall gate. It asks a
 // handful of forced-choice sensory questions (silky vs firm, bright vs dark
 // fruit, etc.), and each answer nudges a fingerprint axis. We aggregate the
-// answers into ONE synthetic "loved" bottle per palate type with a low
-// per-sample weight, so real ratings quickly override the quiz.
+// answers into ONE synthetic "loved" bottle per palate type, tagged
+// isSeed:true, and inject it into the KERNEL only. Seeds are excluded from
+// the omega ridge fit (see learnOmega in recommender.ts) — a fabricated
+// stars=4 is not a real observation.
 //
-// Weighting arithmetic (see acceptance criteria):
-//   - Seed bottle: stars=4, weight=1.0 → contributes 1.0 to Σw.
-//   - A real rating at 4★ has default weight 1 in the kernel (r.weight ?? 1),
-//     but computeCode/palate.ts uses (stars-2) so at 5★ it counts as 3.
-//   - In the RECOMMENDER (scoreOne), each rated row uses r.weight ?? 1, and
-//     the seed sits at weight 1. After 5 real ratings (weight 1 each) the
-//     seed contributes 1/(1+5) = 16.67% of the kernel — under 20%. ✓
+// Linear fade weight:   seedWeight = max(0, 1 - realRatedCountForType / 5)
 //
-// Seeds are only prepended when the user has < 5 REAL ratings of that type.
-// Past that threshold the quiz disappears from ranking entirely.
+//   real ratings │ seed weight │ seed share of Σw
+//   ─────────────┼─────────────┼───────────────────
+//        0       │    1.00     │  100%
+//        1       │    0.80     │   44%   (0.80 / (0.80 + 1))
+//        2       │    0.60     │   23%   (0.60 / (0.60 + 2))
+//        3       │    0.40     │   12%   (0.40 / (0.40 + 3))
+//        4       │    0.20     │   4.8%  (0.20 / (0.20 + 4))
+//        5       │    0.00     │   0%    — seed drops out entirely
+//
+// This replaces the earlier 1→1→1→1→0 cliff, which was visible to the user
+// as a discontinuous jump between ratings 4 and 5. The fade is monotone,
+// crosses under 20% by rating 4 (with room to spare), and hits zero at 5.
 
 import type { RatedFp, FpKey, WineType } from "@/lib/recommender";
 import type { PaletteType } from "@/lib/palate";
