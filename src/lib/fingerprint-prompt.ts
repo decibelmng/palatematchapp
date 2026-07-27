@@ -187,7 +187,22 @@ export type FingerprintResult = {
 };
 
 const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
-const MODEL = "google/gemini-2.5-flash";
+export const FINGERPRINT_MODEL = "google/gemini-2.5-flash";
+const MODEL = FINGERPRINT_MODEL;
+
+/**
+ * Provenance for the current blinded_v2 pipeline. The hash is the sha256 of
+ * `NOTE_SYS + "\n---\n" + SCORE_SYS`, computed at build time and mirrored in
+ * the `fingerprint_prompts` table (see migration 2026-07-27). Every fp_ write
+ * MUST record model, hash, pipeline, and scored_at — no defaults, no guesses.
+ * If the prompt text above is edited the hash changes; recompute with:
+ *   node -e 'const c=require("crypto");const fs=require("fs");const s=fs.readFileSync("src/lib/fingerprint-prompt.ts","utf8");const g=n=>s.match(new RegExp("const "+n+"\\\\s*=\\\\s*`([\\\\s\\\\S]*?)`;"))[1];console.log(c.createHash("sha256").update(g("NOTE_SYS")+"\\n---\\n"+g("SCORE_SYS")).digest("hex"));'
+ * and register the new hash + full prompt text in `fingerprint_prompts`.
+ */
+export const FINGERPRINT_PROMPT_HASH =
+  "4ed2de2f8b0d31da0df4abe957d2f39ab3bc850f236d60aeffcf0317dc0e0772";
+export const FINGERPRINT_PIPELINE = "blinded_v2";
+
 
 async function gatewayCall(system: string, user: string, apiKey: string): Promise<any> {
   const res = await fetch(GATEWAY_URL, {

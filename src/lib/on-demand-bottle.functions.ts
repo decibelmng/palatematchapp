@@ -25,7 +25,12 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { callFingerprintGateway } from "@/lib/fingerprint-prompt";
+import {
+  callFingerprintGateway,
+  FINGERPRINT_MODEL,
+  FINGERPRINT_PROMPT_HASH,
+} from "@/lib/fingerprint-prompt";
+
 
 const WineType = z.enum(["red", "white", "sparkling", "rose", "dessert"]);
 
@@ -201,7 +206,15 @@ export async function resolveOrCreateOnDemandCore(
       source: flat ? "on-demand; flat-fingerprint flagged" : "on-demand",
       unverified: true,
       added_by: userId,
+      // Provenance — NOT NULL columns. On-demand uses the blinded_v2 pipeline
+      // but a distinct pipeline label so cohort queries can separate it from
+      // bulk re-fingerprint runs.
+      fp_model: FINGERPRINT_MODEL,
+      fp_prompt_hash: FINGERPRINT_PROMPT_HASH,
+      fp_pipeline: "on_demand_blinded_v2",
+      fp_scored_at: new Date().toISOString(),
     } as never)
+
     .select("id")
     .single();
   if (error) throw new Error((error as { message?: string }).message ?? "on-demand insert failed");

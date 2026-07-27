@@ -65,13 +65,18 @@ export type Database = {
           fp_fruit_dark: number
           fp_fruit_dark_prior: number
           fp_harmonized_at: string | null
+          fp_job_id: string | null
+          fp_model: string
           fp_oak: number
           fp_oak_prior: number
+          fp_pipeline: string
           fp_prior_precision: number
+          fp_prompt_hash: string
           fp_ripe: number
           fp_ripe_prior: number
           fp_savory: number
           fp_savory_prior: number
+          fp_scored_at: string
           fp_tannin: number
           fp_tannin_prior: number
           fp_vec: string | null
@@ -109,13 +114,18 @@ export type Database = {
           fp_fruit_dark: number
           fp_fruit_dark_prior?: number
           fp_harmonized_at?: string | null
+          fp_job_id?: string | null
+          fp_model: string
           fp_oak: number
           fp_oak_prior?: number
+          fp_pipeline: string
           fp_prior_precision?: number
+          fp_prompt_hash: string
           fp_ripe: number
           fp_ripe_prior?: number
           fp_savory: number
           fp_savory_prior?: number
+          fp_scored_at: string
           fp_tannin: number
           fp_tannin_prior?: number
           fp_vec?: string | null
@@ -153,13 +163,18 @@ export type Database = {
           fp_fruit_dark?: number
           fp_fruit_dark_prior?: number
           fp_harmonized_at?: string | null
+          fp_job_id?: string | null
+          fp_model?: string
           fp_oak?: number
           fp_oak_prior?: number
+          fp_pipeline?: string
           fp_prior_precision?: number
+          fp_prompt_hash?: string
           fp_ripe?: number
           fp_ripe_prior?: number
           fp_savory?: number
           fp_savory_prior?: number
+          fp_scored_at?: string
           fp_tannin?: number
           fp_tannin_prior?: number
           fp_vec?: string | null
@@ -176,7 +191,15 @@ export type Database = {
           unverified?: boolean
           vintage?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "bottles_fp_job_id_fkey"
+            columns: ["fp_job_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_jobs"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       canon_wines: {
         Row: {
@@ -276,6 +299,53 @@ export type Database = {
           },
         ]
       }
+      catalog_jobs: {
+        Row: {
+          actor_id: string | null
+          commit_sha: string | null
+          finished_at: string | null
+          id: string
+          kind: string
+          model: string | null
+          note: string | null
+          prompt_hash: string | null
+          row_count: number | null
+          started_at: string
+        }
+        Insert: {
+          actor_id?: string | null
+          commit_sha?: string | null
+          finished_at?: string | null
+          id?: string
+          kind: string
+          model?: string | null
+          note?: string | null
+          prompt_hash?: string | null
+          row_count?: number | null
+          started_at?: string
+        }
+        Update: {
+          actor_id?: string | null
+          commit_sha?: string | null
+          finished_at?: string | null
+          id?: string
+          kind?: string
+          model?: string | null
+          note?: string | null
+          prompt_hash?: string | null
+          row_count?: number | null
+          started_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_jobs_prompt_hash_fkey"
+            columns: ["prompt_hash"]
+            isOneToOne: false
+            referencedRelation: "fingerprint_prompts"
+            referencedColumns: ["hash"]
+          },
+        ]
+      }
       feedback: {
         Row: {
           app_version: string | null
@@ -321,6 +391,24 @@ export type Database = {
           source?: string
           status?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      fingerprint_prompts: {
+        Row: {
+          first_seen_at: string
+          hash: string
+          text: string
+        }
+        Insert: {
+          first_seen_at?: string
+          hash: string
+          text: string
+        }
+        Update: {
+          first_seen_at?: string
+          hash?: string
+          text?: string
         }
         Relationships: []
       }
@@ -1913,13 +2001,18 @@ export type Database = {
           fp_fruit_dark: number
           fp_fruit_dark_prior: number
           fp_harmonized_at: string | null
+          fp_job_id: string | null
+          fp_model: string
           fp_oak: number
           fp_oak_prior: number
+          fp_pipeline: string
           fp_prior_precision: number
+          fp_prompt_hash: string
           fp_ripe: number
           fp_ripe_prior: number
           fp_savory: number
           fp_savory_prior: number
+          fp_scored_at: string
           fp_tannin: number
           fp_tannin_prior: number
           fp_vec: string | null

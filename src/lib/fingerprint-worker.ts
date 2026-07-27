@@ -5,7 +5,13 @@
 // The supabaseAdmin client is passed in so this module has no server-only
 // imports at module scope (safe to import from *.functions.ts).
 
-import { callFingerprintGateway } from "@/lib/fingerprint-prompt";
+import {
+  callFingerprintGateway,
+  FINGERPRINT_MODEL,
+  FINGERPRINT_PROMPT_HASH,
+  FINGERPRINT_PIPELINE,
+} from "@/lib/fingerprint-prompt";
+
 
 const CUVEE_GROUP_MAX = 40;
 
@@ -23,8 +29,11 @@ export type CuveeResult =
 export async function refingerprintCuveeByBottleId(
   bottleId: string,
   supabaseAdmin: any,
+  jobId: string | null = null,
 ): Promise<CuveeResult> {
   const key = process.env.LOVABLE_API_KEY;
+  if (!key) return { skipped: true, reason: "missing LOVABLE_API_KEY" };
+
   if (!key) return { skipped: true, reason: "missing LOVABLE_API_KEY" };
 
   // 1. Fetch the seed bottle.
@@ -80,8 +89,10 @@ export async function refingerprintCuveeByBottleId(
     key,
   );
 
-  // 5. Write to every row in the group.
+  // 5. Write to every row in the group. Provenance columns are NOT NULL —
+  // every fp_ write must record model + prompt hash + pipeline + scored_at.
   const ids = group.map((r: any) => r.id as string);
+  const nowIso = new Date().toISOString();
   const { error: uErr } = await supabaseAdmin
     .from("bottles")
     .update({
@@ -101,9 +112,15 @@ export async function refingerprintCuveeByBottleId(
       source: seed.source
         ? `${seed.source}; refingerprinted (cuvée-level)`
         : "refingerprinted (cuvée-level)",
-      refingerprinted_at: new Date().toISOString(),
+      refingerprinted_at: nowIso,
+      fp_model: FINGERPRINT_MODEL,
+      fp_prompt_hash: FINGERPRINT_PROMPT_HASH,
+      fp_pipeline: FINGERPRINT_PIPELINE,
+      fp_scored_at: nowIso,
+      fp_job_id: jobId,
     })
     .in("id", ids);
+
   if (uErr) return { skipped: true, reason: uErr.message };
 
   return { ok: true, groupSize: ids.length };
