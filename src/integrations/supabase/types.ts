@@ -90,11 +90,11 @@ export type Database = {
         }
         Insert: {
           added_by?: string | null
-          ax_acidity: number
-          ax_body: number
-          ax_fruit_char: number
+          ax_acidity?: number
+          ax_body?: number
+          ax_fruit_char?: number
           ax_sweet: number
-          ax_tannin: number
+          ax_tannin?: number
           country?: string | null
           created_at?: string
           critic_score?: number | null
