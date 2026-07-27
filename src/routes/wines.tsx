@@ -27,7 +27,7 @@ export const Route = createFileRoute("/wines")({
   head: () => ({
     meta: [
       { title: "Your wines — Palate Match" },
-      { name: "description", content: "All the wines you've rated, your Canons, your Nemeses, and your scored map." },
+      { name: "description", content: "All the wines you've rated, your favorites, the ones you avoid, and your scored map." },
     ],
   }),
   component: () => <AuthGate><WinesPage /></AuthGate>,
