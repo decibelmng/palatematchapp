@@ -96,6 +96,7 @@ function AuthScreen() {
     e.preventDefault();
     setErr(null);
     setBusy(true);
+    await submitEmailCapture();
     try {
       if (mode === "create") {
         const trimmed = displayName.trim();
