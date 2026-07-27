@@ -74,7 +74,7 @@ export function NemesisAction({ bottle, stars, compact = false }: Props) {
   }
 
 
-  const label = isNemesis ? "Nemesis (tap to remove)" : "Mark as my Nemesis";
+  const label = isNemesis ? "Marked to avoid (tap to remove)" : "Mark as one to avoid";
   const btnClasses = compact
     ? "inline-flex items-center justify-center rounded-full p-1.5 transition"
     : "inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1 text-meta font-semibold transition";
@@ -97,8 +97,9 @@ export function NemesisAction({ bottle, stars, compact = false }: Props) {
         style={style}
       >
         <Skull size={compact ? 14 : 13} strokeWidth={2.2} />
-        {!compact && (isNemesis ? "Nemesis" : "Mark Nemesis")}
+        {!compact && (isNemesis ? "Avoid" : "Mark to avoid")}
       </button>
+
 
       {dialog !== "idle" && (
         <ConfirmDialog
