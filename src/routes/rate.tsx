@@ -378,7 +378,7 @@ function Rate() {
 
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t border-border">
             <p className="text-meta text-muted-foreground">
-              We'll estimate a calibrated fingerprint on the same scale as the catalog.
+              We'll work out its style and add it to your catalog automatically.
             </p>
             <button
               type="submit"

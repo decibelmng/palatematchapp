@@ -219,8 +219,8 @@ function BottleScan() {
       (active.tier === "nemesis" && stars > 2)
     )) {
       const verb = active.tier === "canon"
-        ? `This is your Canon (${active.region}) — lowering the rating removes Canon status.`
-        : `This is your Nemesis (${active.region}) — raising the rating removes Nemesis status.`;
+        ? `You marked this as one of your favorites in ${active.region} — lowering the rating removes that.`
+        : `You marked this as one to avoid in ${active.region} — raising the rating removes that.`;
       if (typeof window !== "undefined" && !window.confirm(`${verb}\n\nContinue and update ${c.name}?`)) {
         return;
       }
@@ -272,16 +272,16 @@ function BottleScan() {
       if (res.reason === "identity-linked") {
         toast.success("Matched an existing catalog wine.");
       } else if (res.reason === "flat-flagged") {
-        toast.warning("Added — fingerprint looked thin and was flagged for review.");
+        toast.warning("Added — the style read was thin, so we flagged it for review.");
       } else {
-        toast.success("Fingerprinted and added to your catalog.");
+        toast.success("Added to your catalog.");
       }
       // Hand off to the manual dialog in "rate" phase by opening it with
       // the resolved id? Simpler: nudge them to /rate — the wine is now
       // scoreable and searchable.
       window.location.href = `/wine/${res.bottle_id}`;
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Fingerprint failed.");
+      toast.error(err instanceof Error ? err.message : "Couldn't add this wine.");
     } finally {
       setOnDemandBusy(false);
     }
@@ -513,7 +513,7 @@ function BottleScan() {
                       disabled={onDemandBusy || !extracted.producer || !(extracted.wine_name || extracted.region)}
                       className="w-full rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm font-medium disabled:opacity-60"
                     >
-                      {onDemandBusy ? "Fingerprinting…" : "Fingerprint & add automatically"}
+                      {onDemandBusy ? "Working…" : "Add it for me →"}
                     </button>
                     <button
                       onClick={() => setShowAdd(true)}
@@ -616,7 +616,7 @@ function ConfidentCard({
       )}
       {predicted != null && (
         <p className="mt-2 text-sm">
-          Predicted for you: <span className="font-serif text-primary text-lg">{predicted.toFixed(1)}</span>
+          For you: <span className="font-serif text-primary text-lg">{predicted.toFixed(1)}</span>
           <span className="text-primary">★</span>
         </p>
       )}

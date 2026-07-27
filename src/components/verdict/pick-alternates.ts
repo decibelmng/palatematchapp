@@ -25,15 +25,19 @@ function fpDistance(a: Record<FpKey, number> | null | undefined, b: Record<FpKey
 /**
  * Two structurally different alternates.
  *
- *   SPEND LESS         — highest predicted at ≥ 25% below the Call's price.
- *                        Omitted entirely if no such wine exists.
- *   DIFFERENT DIRECTION — of wines that also score well on this palate
- *                        (top quartile of the list OR ≥ 3.8, whichever is
- *                        lower — the more permissive bar of the two), the
- *                        one whose fingerprint is furthest from the Call.
- *                        Omitted rather than surfacing a weird wine that
- *                        happens to be far away.
+ *   SPEND LESS          — highest predicted at ≥ 25% below the Call's price.
+ *                         Omitted entirely if no such wine exists.
+ *   DIFFERENT DIRECTION — of wines with predicted ≥ 3.5, the one whose
+ *                         fingerprint is furthest from the Call. Omitted
+ *                         when no wine clears 3.5 — nothing else on the
+ *                         list is worth calling an alternate. When the
+ *                         pick lands more than 0.7★ below the Call, its
+ *                         label softens to "A notch below your pick,
+ *                         but a different style."
  */
+const DIFFERENT_DIRECTION_FLOOR = 3.5;
+const DIFFERENT_DIRECTION_SOFT_GAP = 0.7;
+
 export function pickAlternates(call: ScanRow, pool: ScanRow[]): Alternate[] {
   const out: Alternate[] = [];
   const others = pool.filter(
@@ -60,35 +64,31 @@ export function pickAlternates(call: ScanRow, pool: ScanRow[]): Alternate[] {
     }
   }
 
-  // DIFFERENT DIRECTION — constrained to real matches, not "the weirdest wine".
+  // DIFFERENT DIRECTION — flat 3.5 floor across all lists. No quartile math.
   const callFp = call.ranked.bottle.fp;
   const remaining = others.filter((r) => !out.some((o) => o.row.key === r.key));
 
-  // Top-quartile floor across the ranked list (call included, cap included).
-  const sortedScores = [call, ...others]
-    .map((r) => r.ranked.predicted)
-    .sort((a, b) => b - a);
-  const qIdx = Math.max(0, Math.floor(sortedScores.length / 4) - 1);
-  const topQuartileFloor = sortedScores[qIdx] ?? sortedScores[0];
-  // "top quartile OR ≥ 3.8, whichever is lower" = the more permissive bar.
-  const floor = Math.min(topQuartileFloor, 3.8);
-
   const scored = remaining
     .map((r) => ({ r, dist: fpDistance(callFp, r.ranked.bottle.fp) }))
-    .filter((x) => x.dist > 0 && x.r.ranked.predicted >= floor)
+    .filter((x) => x.dist > 0 && x.r.ranked.predicted >= DIFFERENT_DIRECTION_FLOOR)
     .sort((a, b) => b.dist - a.dist);
   const diff = scored[0]?.r;
   if (diff) {
+    const gap = call.ranked.predicted - diff.ranked.predicted;
+    const label = gap > DIFFERENT_DIRECTION_SOFT_GAP
+      ? "A notch below your pick, but a different style"
+      : "Different direction";
     out.push({
       row: diff,
       kind: "different-direction",
-      label: "Different direction",
+      label,
       reason: contrastLine(call, diff),
     });
   }
 
   return out;
 }
+
 
 /** Short style-contrast phrase. Wine vocabulary, not axis names. */
 function contrastLine(call: ScanRow, other: ScanRow): string {

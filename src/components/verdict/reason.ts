@@ -1,5 +1,6 @@
 import type { ScanRow } from "./types";
 import type { FpKey } from "@/lib/recommender";
+import { VERDICT_NEG, describeVetoStyleFromFp } from "@/lib/axis-phrases";
 
 /** Maps predicted score to one of four plain-English verdict sentences. */
 export function verdictLine(predicted: number): string {
@@ -9,36 +10,17 @@ export function verdictLine(predicted: number): string {
   return "The closest thing here, but nothing on this list is really you.";
 }
 
-// Sensory phrasing per fingerprint axis, at the "high" end. These describe
-// the WINE's character in language a person can check against the glass,
-// never in axis names.
-const AXIS_HIGH_PHRASE: Record<FpKey, string> = {
-  fresh: "bracing, high-tension",
-  acid: "sharp, high-acid",
-  tannin: "drying, grippy",
-  fruit_dark: "dark-fruited and brooding",
-  ripe: "jammy, over-ripe",
-  oak: "heavily oaked",
-  body: "big, full-bodied",
-  savory: "savory, earthy",
-};
-
 /**
- * Given a wine's fingerprint, name the most prominent sensory dimension —
- * whatever axis sits highest and clearest above the neutral midpoint.
- * Falls back to a generic phrase only when the fp is missing or truly flat.
+ * Pick a complaint phrase for a wine sitting in the low-score basin, using
+ * whichever direction of whichever axis is furthest from neutral AND is
+ * something a person actually complains about. Returns "" when no axis
+ * qualifies (the caller then falls back to a generic line).
  */
-function dominantStyleFromFp(fp: Record<FpKey, number> | null | undefined): string {
-  if (!fp) return "";
-  let bestKey: FpKey | null = null;
-  let bestExcess = 0;
-  for (const [k, v] of Object.entries(fp) as [FpKey, number][]) {
-    const excess = (v ?? 0.5) - 0.5;
-    if (excess > bestExcess) { bestExcess = excess; bestKey = k; }
-  }
-  // Require a real deviation from neutral — a flat fp gets a generic fallback.
-  if (!bestKey || bestExcess < 0.10) return "";
-  return AXIS_HIGH_PHRASE[bestKey];
+function dominantComplaint(
+  fp: Record<FpKey, number> | null | undefined,
+  drivingAxes: readonly FpKey[] = [],
+): string {
+  return describeVetoStyleFromFp(fp, drivingAxes);
 }
 
 /**
@@ -49,12 +31,12 @@ export function becauseLine(row: ScanRow): string {
   const r = row.ranked;
 
   if (r.vetoed) {
-    // Prefer the recommender's own driving axes; if that's absent, derive
-    // from the wine's fingerprint. Either way, the line names a specific
-    // sensory style the user can verify.
+    // Sign-aware: the recommender's driving axes tell us WHICH axes pushed
+    // this into the low basin; describeVetoStyleFromFp then reads the sign
+    // of the fp on those axes so the phrase matches the WINE, not a fixed
+    // "high side" assumption. Fallback line uses no axis vocabulary at all.
     const driving = r.vetoReason?.drivingAxes ?? [];
-    let style = driving.map((k) => AXIS_HIGH_PHRASE[k]).filter(Boolean)[0] ?? "";
-    if (!style) style = dominantStyleFromFp(r.bottle.fp);
+    const style = dominantComplaint(r.bottle.fp, driving);
     if (style) return `Skip this one — it's the ${style} style you've consistently rated low.`;
     return "Skip this one — it lands in the exact style you've consistently rated low.";
   }
@@ -75,10 +57,13 @@ export function becauseLine(row: ScanRow): string {
   if (r.predicted >= 4.3) return "Your kind of wine, from the shape of everything you've rated.";
   if (r.predicted >= 3.8) return "A strong match for your palate.";
   if (r.predicted <= 2.6) {
-    const style = dominantStyleFromFp(r.bottle.fp);
+    const style = dominantComplaint(r.bottle.fp);
     return style
       ? `Unlikely to land — it's the ${style} shape you tend to rate low.`
       : "Unlikely to land — it's the shape you tend to rate low.";
   }
   return "Nothing you've rated is close enough to say much yet.";
 }
+
+// Re-export for any legacy caller that imported the phrase table by name.
+export { VERDICT_NEG as AXIS_HIGH_PHRASE };
