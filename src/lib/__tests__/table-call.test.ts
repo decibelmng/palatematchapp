@@ -7,6 +7,11 @@ const g = (userId: string, predicted: number) => ({
   userId, archetype: "Silk & Perfume", initial: userId[0].toUpperCase(), predicted,
 });
 
+// A guest who has never rated this bottle's type → "cant-say".
+const gu = (userId: string) => ({
+  userId, archetype: "Silk & Perfume", initial: userId[0].toUpperCase(), predicted: 3.0, untested: true,
+});
+
 describe("classify", () => {
   it("maps to ordinals at the documented thresholds", () => {
     expect(classify(4.5)).toBe("loves");
@@ -75,6 +80,43 @@ describe("pickTableCall", () => {
 
   it("returns empty reasoning on empty input", () => {
     expect(pickTableCall([]).reasoning).toBe("");
+  });
+});
+
+describe("cant-say (untested type is neutral, never a veto)", () => {
+  it("summarize marks an untested guest 'cant-say' and excludes them from the math", () => {
+    const c = summarize("white-bottle", [g("a", 4.5), g("b", 4.3), gu("c")]);
+    expect(c.guests.find((p) => p.userId === "c")?.verdict).toBe("cant-say");
+    // The red-only guest doesn't drag it down: still fine+ with 2 loves.
+    expect(c.finePlus).toBe(true);
+    expect(c.lovesCount).toBe(2);
+    expect(c.worstVerdict).toBe("loves");
+  });
+
+  it("a red-only guest does NOT force a white into a split", () => {
+    // Old behaviour: gu('c') scored 3.0 → not-for-them → this bottle could never win.
+    const white = summarize("white", [g("a", 4.6), g("b", 4.4), gu("c")]);
+    const call = pickTableCall([white]);
+    expect(call.kind).toBe("one-bottle");
+    expect(call.winner?.candidateId).toBe("white");
+    expect(containsForbidden(call.reasoning)).toBeNull();
+  });
+
+  it("honest tail when some guests can't be read on this style", () => {
+    const c = summarize("c1", [g("a", 4.5), g("b", 4.4), gu("c")]);
+    expect(reasoningSentence(c)).toBe(
+      "Two guests love it, nobody dislikes it — the safest bottle on the list. One guest hasn't rated this style, so this reads the rest of the table.",
+    );
+  });
+
+  it("all-untested reads as an honest non-answer, not a rejection", () => {
+    const c = summarize("mystery", [gu("a"), gu("b")]);
+    expect(c.finePlus).toBe(false);
+    expect(c.worstVerdict).toBe("cant-say");
+    expect(reasoningSentence(c)).toBe(
+      "No one at this table has rated this style yet — I can't call it for them.",
+    );
+    expect(containsForbidden(reasoningSentence(c))).toBeNull();
   });
 });
 

@@ -255,8 +255,12 @@ export const sommCallTable = createServerFn({ method: "POST" })
     // the somm's own client; the SQL function enforces access.
     const perGuestPredicted = new Map<string, Map<string, number>>();
     const perGuestVetoed = new Map<string, Set<string>>();
+    // Which wine types has each guest actually rated? A candidate whose type is
+    // absent here reads as "cant-say" — never a cross-type guess (invariant #2).
+    const perGuestRatedTypes = new Map<string, Set<WineType>>();
     for (const g of data.guests) {
       const rated = await loadGuestRatedFpViaConsent(supabase, g.userId, g.grantId);
+      perGuestRatedTypes.set(g.userId, new Set(rated.map((r) => r.type)));
       const recs = rated.length > 0
         ? recommend(rated, bottleFps, { restrictToRatedTypes: false })
         : [];
@@ -274,12 +278,14 @@ export const sommCallTable = createServerFn({ method: "POST" })
     const results: (CandidateResult & { name: string; producer: string | null; region: string | null; type: WineType })[] =
       candidates.map((c) => {
         const guestScores = data.guests.map((g) => {
+          const ratedTypes = perGuestRatedTypes.get(g.userId);
+          const untested = !ratedTypes || !ratedTypes.has(c.type as WineType);
           const predRaw = perGuestPredicted.get(g.userId)?.get(c.id);
           const skipped = perGuestVetoed.get(g.userId)?.has(c.id) ?? false;
           const pred = skipped
             ? 1.5
             : (typeof predRaw === "number" && !Number.isNaN(predRaw) ? predRaw : 3.0);
-          return { userId: g.userId, archetype: g.archetype, initial: g.initial, predicted: pred };
+          return { userId: g.userId, archetype: g.archetype, initial: g.initial, predicted: pred, untested };
         });
         const s = summarize(c.id, guestScores);
         return { ...s, name: c.name, producer: c.producer ?? null, region: c.region ?? null, type: c.type as WineType };

@@ -7,10 +7,22 @@
  * server-side; the surface renders only "loves / fine / not-for-them".
  */
 
-export type Verdict = "loves" | "fine" | "not-for-them";
+export type Verdict = "loves" | "fine" | "not-for-them" | "cant-say";
 
 export const LOVES_MIN = 4.25;
 export const FINE_MIN = 3.5;
+
+// Ordinal ranking for maximin selection. "cant-say" — the guest has never rated
+// a wine of this bottle's type — is a neutral non-answer, not a strike: it is
+// excluded from the assessable set in summarize() and only sinks a bottle that
+// NO guest can be read for. Reds and whites are separate palates; we never fake
+// a score across types (engine invariant #2).
+const VERDICT_RANK: Record<Verdict, number> = {
+  loves: 3,
+  fine: 2,
+  "not-for-them": 1,
+  "cant-say": 0,
+};
 
 export function classify(predicted: number): Verdict {
   if (predicted >= LOVES_MIN) return "loves";
@@ -36,21 +48,27 @@ export type CandidateResult = {
 
 export function summarize(
   candidateId: string,
-  guests: Array<{ userId: string; archetype: string; initial: string; predicted: number }>,
+  guests: Array<{ userId: string; archetype: string; initial: string; predicted: number; untested?: boolean }>,
 ): CandidateResult {
   const picks: GuestPick[] = guests.map((g) => ({
     userId: g.userId,
     archetype: g.archetype,
     initial: g.initial,
-    verdict: classify(g.predicted),
+    // A guest who has never rated this bottle's type gets an honest "cant-say" —
+    // never a strike against the bottle.
+    verdict: g.untested ? "cant-say" : classify(g.predicted),
   }));
-  const lovesCount = picks.filter((p) => p.verdict === "loves").length;
-  const finePlus = picks.every((p) => p.verdict !== "not-for-them");
-  const rank = (v: Verdict) => (v === "loves" ? 2 : v === "fine" ? 1 : 0);
-  const worst = picks.reduce<Verdict>(
-    (acc, p) => (rank(p.verdict) < rank(acc) ? p.verdict : acc),
-    "loves",
-  );
+  // Only guests we can actually read count toward the verdict math.
+  const assessable = picks.filter((p) => p.verdict !== "cant-say");
+  const lovesCount = assessable.filter((p) => p.verdict === "loves").length;
+  const finePlus = assessable.length > 0 && assessable.every((p) => p.verdict !== "not-for-them");
+  const worst: Verdict =
+    assessable.length === 0
+      ? "cant-say"
+      : assessable.reduce<Verdict>(
+          (acc, p) => (VERDICT_RANK[p.verdict] < VERDICT_RANK[acc] ? p.verdict : acc),
+          "loves",
+        );
   return { candidateId, guests: picks, worstVerdict: worst, lovesCount, finePlus };
 }
 
@@ -59,21 +77,33 @@ export function reasoningSentence(r: CandidateResult): string {
   const n = r.guests.length;
   const loves = r.lovesCount;
   const misses = r.guests.filter((g) => g.verdict === "not-for-them").length;
+  const cantSay = r.guests.filter((g) => g.verdict === "cant-say").length;
+
+  // Nobody at the table has rated this bottle's style — an honest non-answer.
+  if (cantSay === n) {
+    return "No one at this table has rated this style yet — I can't call it for them.";
+  }
+
+  // Honest tail when some (but not all) guests can't be read on this style.
+  const tail =
+    cantSay > 0
+      ? ` ${cantSay === 1 ? "One guest hasn't" : `${cantSay} guests haven't`} rated this style, so this reads the rest of the table.`
+      : "";
 
   if (r.finePlus && loves >= 2) {
-    return "Two guests love it, nobody dislikes it — the safest bottle on the list.";
+    return "Two guests love it, nobody dislikes it — the safest bottle on the list." + tail;
   }
   if (r.finePlus && loves === 1) {
-    return "One guest loves it, nobody at this table rates it below a good match.";
+    return "One guest loves it, nobody at this table rates it below a good match." + tail;
   }
   if (r.finePlus && loves === 0) {
-    return "Everyone lands in the same middle — no one's disappointed.";
+    return "Everyone lands in the same middle — no one's disappointed." + tail;
   }
   // At least one miss. This candidate would only ship as part of a split.
   if (misses === 1 && n > 2) {
-    return `One guest at the table wouldn't enjoy this one.`;
+    return "One guest at the table wouldn't enjoy this one." + tail;
   }
-  return "This bottle doesn't work for the whole table.";
+  return "This bottle doesn't work for the whole table." + tail;
 }
 
 export type WinnerPick = {
@@ -92,7 +122,7 @@ export function pickTableCall(candidates: CandidateResult[]): WinnerPick {
       reasoning: "" };
   }
 
-  const rank = (v: Verdict) => (v === "loves" ? 2 : v === "fine" ? 1 : 0);
+  const rank = (v: Verdict) => VERDICT_RANK[v];
   const sorted = [...candidates].sort((a, b) => {
     // maximin first, then loves count.
     if (rank(a.worstVerdict) !== rank(b.worstVerdict)) return rank(b.worstVerdict) - rank(a.worstVerdict);

@@ -259,12 +259,14 @@ function VerifiedGate() {
 function verdictColor(v: Verdict): string {
   if (v === "loves") return "bg-primary text-primary-foreground";
   if (v === "fine") return "bg-muted text-foreground";
+  if (v === "cant-say") return "bg-muted/50 text-muted-foreground";
   return "bg-destructive/15 text-destructive";
 }
 
 function verdictLabel(v: Verdict): string {
   if (v === "loves") return "loves it";
   if (v === "fine") return "fine";
+  if (v === "cant-say") return "can't say";
   return "not for them";
 }
 
@@ -296,8 +298,10 @@ function TableResult({ result }: { result: TableCallOutput }) {
       <div className="text-meta uppercase text-muted-foreground">The call</div>
       <div className="pm-card mt-2 p-4">
         <div className="text-h2 text-foreground">{winner.name}</div>
-        {winner.producer && (
-          <div className="text-sub text-muted-foreground">{winner.producer}</div>
+        {(winner.producer || winner.region) && (
+          <div className="text-sub text-muted-foreground">
+            {winner.producer ?? ""}{winner.producer && winner.region ? " · " : ""}{winner.region ?? ""}
+          </div>
         )}
         <p className="mt-2 text-sub text-foreground">{result.reasoning}</p>
         <div className="mt-3 flex flex-wrap gap-2">
@@ -332,9 +336,13 @@ function SplitCard({ c, nameById }: { c: BottleWithVerdicts; nameById: Map<strin
   return (
     <div className="pm-card p-3">
       <div className="text-sub text-foreground">{c.name}</div>
-      {c.producer && <div className="text-meta text-muted-foreground">{c.producer}</div>}
+      {(c.producer || c.region) && (
+        <div className="text-meta text-muted-foreground">
+          {c.producer ?? ""}{c.producer && c.region ? " · " : ""}{c.region ?? ""}
+        </div>
+      )}
       <div className="mt-2 flex flex-wrap gap-1.5">
-        {c.guests.filter((g) => g.verdict !== "not-for-them").map((g) => (
+        {c.guests.filter((g) => g.verdict === "loves" || g.verdict === "fine").map((g) => (
           <span key={g.userId} className={`rounded-full px-2 py-0.5 text-meta ${verdictColor(g.verdict)}`}>
             {nameById.get(g.userId) ?? g.initial}
           </span>
