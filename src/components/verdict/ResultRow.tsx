@@ -38,10 +38,9 @@ export function ResultRow({ row, onOpen }: { row: ScanRow; onOpen: () => void })
         <div className="min-w-0 flex-1">
           <div className="flex items-start gap-2">
             {r.vetoed && (
-              <span className="shrink-0 mt-0.5 rounded-sm bg-[--crimson] text-white text-label font-bold uppercase tracking-label px-1.5 py-0.5">
-                Skip
-              </span>
+              <span className="pm-skip-badge shrink-0 mt-0.5">Skip</span>
             )}
+
             {r.contested && !r.vetoed && (
               <span className="shrink-0 mt-0.5 rounded-sm border border-[color-mix(in_oklab,var(--amber)_60%,transparent)] bg-[color-mix(in_oklab,var(--amber)_15%,transparent)] text-foreground text-label font-bold uppercase tracking-label px-1.5 py-0.5">
                 Your call

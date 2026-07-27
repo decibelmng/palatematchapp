@@ -185,10 +185,9 @@ function NeighborRow({
         <div className="flex items-center gap-2 flex-wrap">
           <WineTypeBadge type={type} />
           {vetoed && (
-            <span className="pm-vetoed-chip shrink-0">
-              avoid
-            </span>
+            <span className="pm-skip-badge shrink-0">Skip</span>
           )}
+
           {!vetoed && contested && contestedNemesisName && (
             <span
               className="pm-contested-chip shrink-0"
