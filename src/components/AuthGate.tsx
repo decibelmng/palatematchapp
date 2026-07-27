@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { useSession } from "@/hooks/use-session";
-import { authStorageSnapshot, getAuthGateMountCount, installAuthDebug, registerAuthGateMount } from "@/lib/auth-debug";
+import { authStorageSnapshot, authTrace, clearAuthTrace, getAuthGateMountCount, installAuthDebug, readAuthTrace, registerAuthGateMount } from "@/lib/auth-debug";
 import { AppShell } from "./AppShell";
 import { NameGate } from "./NameGate";
 
