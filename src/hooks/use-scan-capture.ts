@@ -186,7 +186,7 @@ export function useScanCapture() {
       return created.scan_id;
     },
     onError: (e) => {
-      toast.error((e as Error).message ?? "Scan failed");
+      toast.error(friendlyError(e, "Scan failed"));
       setStatus("failed");
     },
   });
