@@ -1,35 +1,13 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { useSession } from "@/hooks/use-session";
-import { authStorageSnapshot, authTrace, clearAuthTrace, clearRawLanding, getAuthGateMountCount, installAuthDebug, readAuthTrace, readRawLanding, registerAuthGateMount } from "@/lib/auth-debug";
 import { AppShell } from "./AppShell";
 import { NameGate } from "./NameGate";
 
 export function AuthGate({ children }: { children: ReactNode }) {
-  const mountId = useRef(0);
-  if (typeof window !== "undefined" && mountId.current === 0) {
-    installAuthDebug(supabase);
-    mountId.current = registerAuthGateMount();
-  }
   const session = useSession();
-  useEffect(() => () => {
-    authTrace("AuthGate unmount", {
-      mountId: mountId.current,
-      totalMountsSeen: getAuthGateMountCount(),
-      storage: authStorageSnapshot(),
-    });
-  }, []);
-  authTrace("AuthGate render", {
-    mountId: mountId.current,
-    totalMountsSeen: getAuthGateMountCount(),
-    state: session === undefined ? "loading" : session ? "signed-in" : "signed-out",
-    origin: typeof window !== "undefined" ? window.location.origin : "ssr",
-    path: typeof window !== "undefined" ? window.location.pathname : "ssr",
-    storage: authStorageSnapshot(),
-    decision: session === undefined ? "loading" : session ? "app" : "login",
-  });
 
   if (session === undefined) {
     return (
@@ -64,25 +42,9 @@ function AuthScreen() {
   const NEUTRAL =
     "If that email is set up for Palate Match, we've sent a sign-in link. Check your inbox — and your spam folder.";
 
-  async function oauth(provider: "apple" | "google", overrideRedirect?: string) {
+  async function oauth(provider: "apple" | "google") {
     setErr(null);
-    installAuthDebug(supabase);
-    const redirect_uri = overrideRedirect ?? authCallbackUrl();
-    authTrace("oauth click", {
-      provider,
-      origin: window.location.origin,
-      redirect_uri,
-      override: !!overrideRedirect,
-      href: window.location.href,
-      storage: authStorageSnapshot(),
-    });
-    const res = await lovable.auth.signInWithOAuth(provider, { redirect_uri });
-    authTrace("oauth result", {
-      redirected: (res as any)?.redirected,
-      hasTokens: !!(res as any)?.tokens,
-      error: (res as any)?.error?.message ?? null,
-      storage: authStorageSnapshot(),
-    });
+    const res = await lovable.auth.signInWithOAuth(provider, { redirect_uri: authCallbackUrl() });
     if (res.error) {
       const message = res.error.message ?? `${provider} sign-in failed`;
       toast.error(message);
@@ -255,85 +217,7 @@ function AuthScreen() {
           </button>
         )}
       </div>
-
-      <AuthTracePanel onTestAltOrigin={() => oauth("google", authCallbackUrl("https://palatematchapp.lovable.app"))} />
     </ScreenShell>
-  );
-}
-
-function AuthTracePanel({ onTestAltOrigin }: { onTestAltOrigin: () => void }) {
-  const [open, setOpen] = useState(false);
-  const [tick, setTick] = useState(0);
-  useEffect(() => {
-    const id = window.setInterval(() => setTick((t) => t + 1), 1500);
-    return () => window.clearInterval(id);
-  }, []);
-  const trace = readAuthTrace();
-  const rawLanding = readRawLanding();
-  const build = (typeof document !== "undefined" && document.currentScript?.getAttribute("src")) || "n/a";
-  void tick;
-  return (
-    <div className="mt-10 text-[11px] text-muted-foreground">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="underline decoration-dotted hover:text-foreground"
-      >
-        [auth-debug] {trace.length} events · {rawLanding.length} landings · {open ? "hide" : "show"}
-      </button>
-      {open && (
-        <div className="mt-2 rounded-md border border-border bg-card/80 p-3 space-y-2 font-mono text-[10px] leading-snug">
-          <div>origin: {typeof window !== "undefined" ? window.location.origin : "ssr"}</div>
-          <div>build: {String(build)}</div>
-          <div className="flex gap-2 flex-wrap">
-            <button
-              type="button"
-              onClick={() => { clearAuthTrace(); clearRawLanding(); setTick((t) => t + 1); }}
-              className="rounded border border-border px-2 py-1 hover:bg-accent"
-            >clear</button>
-            <button
-              type="button"
-              onClick={() => {
-                const text = JSON.stringify({ rawLanding: readRawLanding(), trace: readAuthTrace() }, null, 2);
-                navigator.clipboard?.writeText(text);
-                toast.success("Trace copied");
-              }}
-              className="rounded border border-border px-2 py-1 hover:bg-accent"
-            >copy JSON</button>
-            <button
-              type="button"
-              onClick={onTestAltOrigin}
-              className="rounded border border-amber-500/50 text-amber-500 px-2 py-1 hover:bg-amber-500/10"
-              title="Sign in with redirect_uri forced to https://palatematchapp.lovable.app/auth/callback"
-            >test .lovable.app origin</button>
-          </div>
-          <div>
-            <div className="text-foreground">raw landings before app code</div>
-            <div className="max-h-[22vh] overflow-auto space-y-1">
-              {rawLanding.length === 0 && <div className="opacity-60">(no raw landings yet)</div>}
-              {rawLanding.map((e, i) => (
-                <div key={i} className="border-t border-border/50 pt-1">
-                  <div>{new Date(e.t).toISOString().slice(11, 19)} · {e.href}</div>
-                  <pre className="whitespace-pre-wrap break-all opacity-80">{JSON.stringify({ hash: e.hash, search: e.search, ref: e.ref })}</pre>
-                </div>
-              ))}
-            </div>
-          </div>
-          <div className="text-foreground">auth events</div>
-          <div className="max-h-[40vh] overflow-auto space-y-1">
-            {trace.length === 0 && <div className="opacity-60">(no events yet)</div>}
-            {trace.map((e, i) => (
-              <div key={i} className="border-t border-border/50 pt-1">
-                <div className="text-foreground">
-                  {new Date(e.t).toISOString().slice(11, 19)} · {e.event} · <span className="opacity-70">{e.origin}</span>
-                </div>
-                <pre className="whitespace-pre-wrap break-all opacity-80">{JSON.stringify(e.data)}</pre>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
   );
 }
 

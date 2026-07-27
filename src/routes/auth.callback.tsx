@@ -1,7 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { authStorageSnapshot, authTrace, installAuthDebug, readRawLanding } from "@/lib/auth-debug";
 
 export const Route = createFileRoute("/auth/callback")({
   ssr: false,
@@ -35,7 +34,6 @@ function AuthCallback() {
 
   useEffect(() => {
     let cancelled = false;
-    installAuthDebug(supabase);
 
     const params = new URLSearchParams(window.location.search);
     const hashParams = new URLSearchParams(
@@ -48,21 +46,10 @@ function AuthCallback() {
       hashParams.get("error");
     const next = safeReturnPath(params.get("next") ?? hashParams.get("next"));
 
-    authTrace("auth callback mount", {
-      href: window.location.href,
-      hash: window.location.hash,
-      search: window.location.search,
-      providerError,
-      next,
-      rawLanding: readRawLanding().slice(-3),
-      storage: authStorageSnapshot(),
-    });
-
     // Provider bounced us with an explicit error — no session is coming.
     if (providerError) {
       setStatus("error");
       setDetail(decodeURIComponent(providerError));
-      authTrace("auth callback provider error", { providerError });
       return () => {
         cancelled = true;
       };
@@ -76,26 +63,13 @@ function AuthCallback() {
     const timeout = window.setTimeout(() => {
       if (cancelled) return;
       setStatus("timeout");
-      authTrace("auth callback timeout", { storage: authStorageSnapshot() });
     }, 10_000);
 
-    const { data: sub } = supabase.auth.onAuthStateChange((event, session) => {
-      authTrace("auth callback state", {
-        event,
-        hasSession: !!session,
-        userId: session?.user?.id ?? null,
-        storage: authStorageSnapshot(),
-      });
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session && !cancelled) goHome();
     });
 
     supabase.auth.getSession().then(({ data, error }) => {
-      authTrace("auth callback getSession", {
-        error: error?.message ?? null,
-        hasSession: !!data.session,
-        userId: data.session?.user?.id ?? null,
-        storage: authStorageSnapshot(),
-      });
       if (cancelled) return;
       if (data.session) {
         goHome();
