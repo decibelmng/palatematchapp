@@ -279,6 +279,10 @@ function BottleScan() {
     qc.invalidateQueries({ queryKey: ["ratings"] });
     qc.invalidateQueries({ queryKey: ["canons"] });
     qc.invalidateQueries({ queryKey: ["palate-version"] });
+    // Ground-truth: this bottle was actually rated post-scan.
+    if (scanWineIdRef.current) {
+      markRatedFn({ data: { scanWineId: scanWineIdRef.current, stars } }).catch(() => {});
+    }
     toast.success(`Rated ${c.name} ${stars}★`);
   }
 
