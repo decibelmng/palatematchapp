@@ -4,6 +4,7 @@ import { AuthGate } from "@/components/AuthGate";
 import { useOnboardingStage } from "@/hooks/use-onboarding";
 import { OnboardingIntro } from "@/components/OnboardingIntro";
 import { PalateReveal } from "@/components/PalateReveal";
+import { PalateCodeReader } from "@/components/PalateCodeReader";
 import {
   useBottlesByIds,
   useRatings,
@@ -170,7 +171,7 @@ function PalateHome() {
   return (
     <div className="pt-2 pb-8 max-w-md mx-auto">
       {showReveal && (
-        <PalateReveal code={revealCode} type={scope} onDismiss={() => setShowReveal(false)} />
+        <PalateReveal code={revealCode} type={scope} answers={(profile as { quiz_answers?: unknown } | null)?.quiz_answers as never} onDismiss={() => setShowReveal(false)} />
       )}
 
       {/* Identity */}
@@ -228,10 +229,28 @@ function PalateHome() {
 
 
 
-      {/* Palate codes */}
+      {/* Palate codes — scope switch. The active scope's code is rendered
+          large below with per-letter meanings (see PalateCodeReader). */}
       <div className="mt-5 grid grid-cols-2 gap-3">
         <CodeChip type="red"   code={red.code}   n={redRated.length}   active={scope === "red"}   onClick={() => setScope("red")} />
         <CodeChip type="white" code={white.code} n={whiteRated.length} active={scope === "white"} onClick={() => setScope("white")} />
+      </div>
+
+      {/* Code hero — the identity. Tap any letter for its meaning; on first
+          view after the reveal, cycles once automatically (guarded so it
+          plays exactly once per unique code + type). */}
+      <div className="mt-4 rounded-[14px] border border-border bg-card p-5 text-center">
+        <p className="text-meta uppercase tracking-label text-muted-foreground">
+          Your {scope} palate code
+        </p>
+        <div className="mt-3 flex justify-center">
+          <PalateCodeReader
+            code={scopedCode}
+            type={scope}
+            autoCycle={showReveal}
+            size="title"
+          />
+        </div>
       </div>
 
       {/* Inline viz — dominant scope; toggle changes it above */}
@@ -251,7 +270,7 @@ function PalateHome() {
           </div>
         )}
         <div className="mt-2 flex items-center justify-between px-2 pb-1">
-          <div className="text-meta text-muted-foreground">Your mnemonic: <span className="font-mono text-foreground">{scopedCode}</span></div>
+          <div className="text-meta text-muted-foreground">Palate code: <span className="font-mono text-foreground">{scopedCode}</span></div>
         </div>
       </div>
 

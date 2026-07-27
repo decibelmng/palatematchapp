@@ -3,19 +3,25 @@
 // The onboarding quiz replaces the "rate 5 wines" recall gate. It asks a
 // handful of forced-choice sensory questions (silky vs firm, bright vs dark
 // fruit, etc.), and each answer nudges a fingerprint axis. We aggregate the
-// answers into ONE synthetic "loved" bottle per palate type with a low
-// per-sample weight, so real ratings quickly override the quiz.
+// answers into ONE synthetic "loved" bottle per palate type, tagged
+// isSeed:true, and inject it into the KERNEL only. Seeds are excluded from
+// the omega ridge fit (see learnOmega in recommender.ts) — a fabricated
+// stars=4 is not a real observation.
 //
-// Weighting arithmetic (see acceptance criteria):
-//   - Seed bottle: stars=4, weight=1.0 → contributes 1.0 to Σw.
-//   - A real rating at 4★ has default weight 1 in the kernel (r.weight ?? 1),
-//     but computeCode/palate.ts uses (stars-2) so at 5★ it counts as 3.
-//   - In the RECOMMENDER (scoreOne), each rated row uses r.weight ?? 1, and
-//     the seed sits at weight 1. After 5 real ratings (weight 1 each) the
-//     seed contributes 1/(1+5) = 16.67% of the kernel — under 20%. ✓
+// Linear fade weight:   seedWeight = max(0, 1 - realRatedCountForType / 5)
 //
-// Seeds are only prepended when the user has < 5 REAL ratings of that type.
-// Past that threshold the quiz disappears from ranking entirely.
+//   real ratings │ seed weight │ seed share of Σw
+//   ─────────────┼─────────────┼───────────────────
+//        0       │    1.00     │  100%
+//        1       │    0.80     │   44%   (0.80 / (0.80 + 1))
+//        2       │    0.60     │   23%   (0.60 / (0.60 + 2))
+//        3       │    0.40     │   12%   (0.40 / (0.40 + 3))
+//        4       │    0.20     │   4.8%  (0.20 / (0.20 + 4))
+//        5       │    0.00     │   0%    — seed drops out entirely
+//
+// This replaces the earlier 1→1→1→1→0 cliff, which was visible to the user
+// as a discontinuous jump between ratings 4 and 5. The fade is monotone,
+// crosses under 20% by rating 4 (with room to spare), and hits zero at 5.
 
 import type { RatedFp, FpKey, WineType } from "@/lib/recommender";
 import type { PaletteType } from "@/lib/palate";
@@ -150,6 +156,17 @@ export const WHITE_PAIRS: QuizPair[] = [
     shifts: { acid: -0.20, body: 0.20 },
     archetype: "body",
   },
+  {
+    // 8th white pair — texture. The existing seven covered oak, acid,
+    // body, fruit, mineral character. Phenolic texture (skin-contact
+    // whites, extended-lees whites) was under-covered — this pair
+    // separates a silky, unimpeded mouthfeel from a grainy, chewy one.
+    id: "w-texture",
+    low: "Smooth and glassy",
+    high: "Grippy and textural",
+    shifts: { tannin: 0.25, savory: 0.15 },
+    archetype: "earth",
+  },
 ];
 
 export function pairsFor(type: PaletteType): QuizPair[] {
@@ -186,10 +203,16 @@ function buildFpFromVotes(pairs: QuizPair[], votes: Record<string, QuizVote>): R
   return fp;
 }
 
-/** Return the synthetic RatedFp seeds for use in the recommender.
- *  Empty when no quiz answers or when the user already has >= FADE ratings
- *  of the requested type (seeds fade out once real signal exists). */
+/** Return the synthetic RatedFp seed for use in the recommender KERNEL only.
+ *  Empty when no quiz answers or once the linear fade weight hits zero at 5
+ *  real ratings. Seeds carry isSeed:true so learnOmega filters them out of
+ *  the pairwise ridge fit — see Invariant 1 in recommender.ts. */
 export const SEED_FADE_THRESHOLD = 5;
+
+/** Linear fade: weight = max(0, 1 - realRated/5). See header comment. */
+export function seedWeightFor(realRatedCountForType: number): number {
+  return Math.max(0, 1 - realRatedCountForType / SEED_FADE_THRESHOLD);
+}
 
 export function seedRatedFpFor(
   answers: QuizAnswers | null | undefined,
@@ -197,7 +220,8 @@ export function seedRatedFpFor(
   realRatedCountForType: number,
 ): RatedFp[] {
   if (!answers) return [];
-  if (realRatedCountForType >= SEED_FADE_THRESHOLD) return [];
+  const w = seedWeightFor(realRatedCountForType);
+  if (w <= 0) return [];
   if (type !== "red" && type !== "white") return [];
   const t = answers.type;
   if (t !== "both" && t !== type) return [];
@@ -217,7 +241,8 @@ export function seedRatedFpFor(
       type,
       fp,
       stars: 4,
-      weight: 1,
+      weight: w,
+      isSeed: true,
     },
   ];
 }
