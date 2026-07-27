@@ -72,12 +72,20 @@ export function TheCall({
                   ? "border-[color-mix(in_oklab,var(--crimson)_55%,transparent)] bg-[color-mix(in_oklab,var(--crimson)_10%,transparent)] text-foreground"
                   : "border-[--bad]/50 bg-[--bad]/10 text-foreground"
               }`}
-
             >
               {verdictTone.label}
             </span>
           )}
+          {row.greatValue && (
+            <span className="inline-flex items-center gap-1 rounded-full border border-[--good]/50 bg-[--good]/10 px-2 py-0.5 text-label uppercase tracking-label text-foreground">
+              <span aria-hidden className="inline-block w-1.5 h-1.5 rounded-full bg-[--good]" />
+              Value
+            </span>
+          )}
         </div>
+        {row.valueSentence && (
+          <p className="mt-2 text-meta text-muted-foreground leading-snug">{row.valueSentence}</p>
+        )}
       </button>
 
       {/* Confidence chip sits OUTSIDE the Call button to avoid nested interactives */}

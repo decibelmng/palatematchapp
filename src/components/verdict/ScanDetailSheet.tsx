@@ -81,6 +81,9 @@ export function ScanDetailSheet({
             {row.isCatalog ? "Catalog match" : "Estimated"}
           </span>
         </p>
+        {row.valueSentence && (
+          <p className="mt-2 text-meta text-muted-foreground leading-snug">{row.valueSentence}</p>
+        )}
 
         {canRate && (
           <div className="mt-4 pt-3 border-t border-border flex items-center justify-between gap-3">
