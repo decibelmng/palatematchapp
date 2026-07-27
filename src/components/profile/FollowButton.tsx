@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/error-message";
 import { UserPlus, UserCheck, Clock } from "lucide-react";
 import { followUser, unfollowUser } from "@/lib/profile.functions";
 
@@ -21,7 +22,7 @@ export function FollowButton({
       qc.invalidateQueries({ queryKey: ["public-profile"] });
       onChange?.();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(friendlyError(e)),
   });
   const unfollow = useMutation({
     mutationFn: () => unfollowUser({ data: { followee_id: followeeId } }),
@@ -30,7 +31,7 @@ export function FollowButton({
       qc.invalidateQueries({ queryKey: ["public-profile"] });
       onChange?.();
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(friendlyError(e)),
   });
   const pending = follow.isPending || unfollow.isPending;
 

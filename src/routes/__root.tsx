@@ -111,15 +111,17 @@ function RootComponent() {
       <QueryClientProvider client={queryClient}>
         <Outlet />
         <ConfirmDialogHost />
-        {/* Offset clears the fixed bottom nav (56px) + ScanThumbBar / A2HS
-            hint (up to ~72px). At 120px the toast sits above every fixed
-            bottom UI at any viewport from 320px up. */}
+        {/* Offset = bottom-nav height (56px) + safe-area inset, so no toast
+            ever overlaps the fixed nav or its safe-area padding. Pages that
+            render interactive rows near the bottom of their own scroll
+            container (e.g. the Account list on /palate) add their own
+            bottom padding to stay clear of this zone. */}
         <Toaster
           position="bottom-center"
           closeButton
           richColors
-          offset="120px"
-          mobileOffset="120px"
+          offset="calc(56px + env(safe-area-inset-bottom, 0px) + 8px)"
+          mobileOffset="calc(56px + env(safe-area-inset-bottom, 0px) + 8px)"
         />
 
 

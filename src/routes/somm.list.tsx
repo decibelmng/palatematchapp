@@ -5,6 +5,7 @@ import { useMyProfile } from "@/hooks/use-friends";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/error-message";
 import { ChevronLeft, ScanLine, Ban, RotateCcw, Pencil, Check } from "lucide-react";
 import {
   sommGetMyHouseList, sommSaveHouseListFromScan, sommSetStock, sommCorrectItem,
@@ -49,7 +50,7 @@ function ListPage() {
       qc.invalidateQueries({ queryKey: ["somm-candidates"] });
       setSaving(false);
     },
-    onError: (e: Error) => { toast.error(e.message); setSaving(false); },
+    onError: (e: Error) => { toast.error(friendlyError(e)); setSaving(false); },
   });
 
   const onSaveLatestScan = async () => {
@@ -70,7 +71,7 @@ function ListPage() {
       }
       saveFromScan.mutate(data[0].id as string);
     } catch (e) {
-      toast.error((e as Error).message);
+      toast.error(friendlyError(e));
       setSaving(false);
     }
   };
@@ -159,7 +160,7 @@ function ItemRow({ item, houseListId }: { item: HouseListItem; houseListId: stri
       toast.success(item.outOfStock ? "Back in stock." : "Marked out of stock.");
       qc.invalidateQueries({ queryKey: ["somm-house-list"] });
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(friendlyError(e)),
   });
 
   const correct = useMutation({
@@ -176,7 +177,7 @@ function ItemRow({ item, houseListId }: { item: HouseListItem; houseListId: stri
       qc.invalidateQueries({ queryKey: ["somm-house-list"] });
       setEditing(false);
     },
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(friendlyError(e)),
   });
 
   return (

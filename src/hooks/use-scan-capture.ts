@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/error-message";
 import {
   createScanRecord,
   scanWineBatch,
@@ -125,8 +126,8 @@ export function useScanCapture() {
           const res = await attributeFn({ data: { scan_id: fin.scan_log_id, restaurant_id: prescanRestaurant.id } });
           setAutoAttributedTo(res.restaurant_name);
           toast.success(`Added to ${res.restaurant_name}`);
-        } catch (e: any) {
-          toast.error(e?.message ?? "Couldn't attribute to restaurant");
+        } catch (e) {
+          toast.error(friendlyError(e, "Couldn't attribute to restaurant"));
         }
       }
     } finally {
@@ -185,7 +186,7 @@ export function useScanCapture() {
       return created.scan_id;
     },
     onError: (e) => {
-      toast.error((e as Error).message ?? "Scan failed");
+      toast.error(friendlyError(e, "Scan failed"));
       setStatus("failed");
     },
   });

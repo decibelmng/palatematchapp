@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/error-message";
 import { useRate, useRatings } from "@/hooks/use-palate-data";
 import { StarTap } from "@/components/StarTap";
 import { FingerprintSpoke } from "@/components/FingerprintSpoke";
@@ -115,7 +116,7 @@ export function ScanDetailSheet({
                     onSuccess: () => toast.success(`Rated ${stars}★`),
                     onError: (e) => {
                       const msg = (e as any)?.message ?? (typeof e === "string" ? e : "Couldn't save rating");
-                      if (!/canceled/i.test(msg)) toast.error(msg || "Couldn't save rating");
+                      if (!/canceled/i.test(msg)) toast.error(friendlyError(msg, "Couldn't save rating"));
                     },
                   },
                 );

@@ -3,6 +3,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { KeyRound, Copy, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/error-message";
 import { sommGrantGenerate, getMyAccessLog, type AccessLogEntry } from "@/lib/somm.functions";
 
 /** Guest-side: generate a short-lived code to hand to a sommelier, plus
@@ -15,7 +16,7 @@ export function SommShareCodeCard() {
   const gen = useMutation({
     mutationFn: () => generateFn(),
     onSuccess: (r) => setIssued({ code: (r as any).code, expiresAt: (r as any).expiresAt }),
-    onError: (e: Error) => toast.error(e.message),
+    onError: (e: Error) => toast.error(friendlyError(e)),
   });
 
   const logQ = useQuery({

@@ -1,4 +1,5 @@
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/error-message";
 import { Eye, EyeOff, Users } from "lucide-react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { updateMyProfile } from "@/lib/friends.functions";
@@ -36,7 +37,7 @@ export function VisibilityControl({ current }: { current: Visibility }) {
     onError: (e: Error, _v, ctx) => {
       // Roll back optimistic patch.
       ctx?.snapshots?.forEach(([key, data]) => qc.setQueryData(key, data));
-      toast.error(e.message || "Failed to update visibility");
+      toast.error(friendlyError(e, "Failed to update visibility"));
     },
     onSuccess: () => {
       toast.success("Visibility updated");

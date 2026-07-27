@@ -22,6 +22,7 @@ import { WineTypeBadge } from "@/components/WineTypeBadge";
 import { AddBottleDialog } from "@/components/AddBottleDialog";
 import { verdictLine } from "@/components/verdict/reason";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/error-message";
 
 
 export const Route = createFileRoute("/scan/bottle")({
@@ -148,7 +149,7 @@ function BottleScan() {
   const resolveMut = useMutation({
     mutationFn: async (read: BottleExtract) => resolveFn({ data: { read } }),
     onSuccess: (r) => { setOverride(r); setConfirmed(true); },
-    onError: (e: Error) => { toast.error(e.message || "Couldn't re-check the catalog."); },
+    onError: (e: Error) => { toast.error(friendlyError(e, "Couldn't re-check the catalog.")); },
   });
 
   useEffect(() => {
@@ -236,7 +237,7 @@ function BottleScan() {
     });
 
     if (error) {
-      toast.error(error.message || `Couldn't rate ${c.name}`);
+      toast.error(friendlyError(error, `Couldn't rate ${c.name}`));
       return;
     }
     qc.invalidateQueries({ queryKey: ["ratings"] });
@@ -284,7 +285,7 @@ function BottleScan() {
       // scoreable and searchable.
       window.location.href = `/wine/${res.bottle_id}`;
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Couldn't add this wine.");
+      toast.error(friendlyError(err, "Couldn't add this wine."));
     } finally {
       setOnDemandBusy(false);
     }

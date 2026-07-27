@@ -3,6 +3,7 @@ import { useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/error-message";
 import { AuthGate } from "@/components/AuthGate";
 import { loadScanForRanking, shareScan } from "@/lib/scans-history.functions";
 import { createOrGetInvite } from "@/lib/invites.functions";
@@ -45,7 +46,7 @@ function ScanDetailPage() {
       try { navigator.clipboard.writeText(url); toast.success("Share link copied"); }
       catch { toast.success("Share link ready"); }
     },
-    onError: (e: any) => toast.error(e?.message ?? "Couldn't share"),
+    onError: (e: any) => toast.error(friendlyError(e, "Couldn't share")),
   });
 
   const inviteMut = useMutation({
@@ -56,7 +57,7 @@ function ScanDetailPage() {
       try { navigator.clipboard.writeText(url); toast.success("Invite link copied"); }
       catch { toast.success("Invite link ready"); }
     },
-    onError: (e: any) => toast.error(e?.message ?? "Couldn't create invite"),
+    onError: (e: any) => toast.error(friendlyError(e, "Couldn't create invite")),
   });
 
   const { data: ratings } = useRatings();

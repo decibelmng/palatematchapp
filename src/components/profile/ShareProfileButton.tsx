@@ -2,6 +2,7 @@ import { Share2 } from "lucide-react";
 import { useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { friendlyError } from "@/lib/error-message";
 import { createOrGetInvite } from "@/lib/invites.functions";
 import { displayNameFor } from "@/lib/user-display";
 
@@ -54,7 +55,7 @@ export function ShareProfileButton({
         toast.success("Invite link copied");
       } catch { toast.error(url); }
     } catch (e) {
-      toast.error((e as Error).message ?? "Couldn't create invite");
+      toast.error(friendlyError(e, "Couldn't create invite"));
     } finally {
       setBusy(false);
     }
