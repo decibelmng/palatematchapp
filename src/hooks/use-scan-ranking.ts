@@ -9,9 +9,10 @@ import {
   valueTag,
   type ServingFormat,
 } from "@/lib/list-controls";
-import { aggregateCurrency, DEFAULT_CURRENCY, type CurrencyCode } from "@/lib/currency";
+import { aggregateCurrency, DEFAULT_CURRENCY, resolveCurrency, type CurrencyCode } from "@/lib/currency";
 import { computeCellarMemory } from "@/lib/cellar-memory";
 import { priceVerdict } from "@/lib/price-verdict";
+
 import { useGroupSelection, useGroupPredict, type GroupCandidateInput } from "@/hooks/use-friends";
 import type { ScanRow, Ranked } from "@/components/verdict";
 import type { ResolvedWine } from "@/lib/scan.functions";
