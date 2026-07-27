@@ -228,7 +228,7 @@ function activeAmount(x: Priced, fmt: ServingFormat): number | null {
 function bandOfActive(x: Priced, fmt: ServingFormat): PriceBand {
   const amt = activeAmount(x, fmt);
   if (amt == null) return "unknown";
-  return bandForAmount(amt, x.currency);
+  return bandForAmount(amt, x.currency, fmt);
 }
 
 /** Whether the row set contains rows priced in each format. Used to decide
@@ -246,23 +246,30 @@ export function detectFormatsPresent(rows: Priced[]): { glass: boolean; bottle: 
 
 // ---------- Value tags: relative to the list in hand ----------
 
-export type ValueTag = { ok: boolean; sentence: string | null };
+export type ValueKind = "markup" | "relative";
+export type ValueTag = { ok: boolean; sentence: string | null; kind: ValueKind | null };
 
 export type ValueContext = {
+  /** Format the context was calibrated to. Glass and bottle populations
+   *  never share medians, quartiles, or markups. */
+  format: ServingFormat;
   rowMarkup: Map<string, number>;
   medianMarkup: number | null;
   topQuartilePredicted: number | null;
   bottomThirdPrice: number | null;
 };
 
-/** Prepare list-level statistics used to decide value tags. */
+/** Prepare list-level statistics used to decide value tags. Restricts the
+ *  population to rows priced in the active format, so glass rows are
+ *  compared to glass rows only. */
 export function computeValueContext(
   rows: Array<Priced & { key: string; verdict?: PriceVerdict | null }>,
   fmt: ServingFormat,
 ): ValueContext {
+  const pop = rows.filter((r) => (fmt === "glass" ? r.price_glass != null : (r.price_bottle ?? r.price_amount) != null));
   const rowMarkup = new Map<string, number>();
   const markups: number[] = [];
-  for (const r of rows) {
+  for (const r of pop) {
     const m = r.verdict?.markup;
     if (m != null && Number.isFinite(m) && m > 0) {
       rowMarkup.set(r.key, m);
@@ -273,7 +280,7 @@ export function computeValueContext(
 
   const prices: number[] = [];
   const predicted: number[] = [];
-  for (const r of rows) {
+  for (const r of pop) {
     const a = fmt === "glass" ? r.price_glass : r.price_bottle ?? r.price_amount;
     if (a != null && Number.isFinite(a) && a > 0) prices.push(a);
     if (r.predicted && r.predicted > 0) predicted.push(r.predicted);
@@ -281,16 +288,20 @@ export function computeValueContext(
   const topQuartilePredicted = predicted.length >= 4 ? quantile(predicted, 0.75) : null;
   const bottomThirdPrice = prices.length >= 4 ? quantile(prices, 1 / 3) : null;
 
-  return { rowMarkup, medianMarkup, topQuartilePredicted, bottomThirdPrice };
+  return { format: fmt, rowMarkup, medianMarkup, topQuartilePredicted, bottomThirdPrice };
 }
 
 /** Value verdict for one row, relative to the list. Returns a full sentence
- *  when it fires, otherwise ok=false. */
+ *  when it fires and a `kind` telling primary (markup) from fallback
+ *  (relative). Fallback sentence makes NO claim about retail. */
 export function valueTag(
   row: Priced & { key: string; verdict?: PriceVerdict | null },
   ctx: ValueContext,
   fmt: ServingFormat,
 ): ValueTag {
+  // Guard: never value a row against a context calibrated to another format.
+  if (ctx.format !== fmt) return { ok: false, sentence: null, kind: null };
+
   const rowM = ctx.rowMarkup.get(row.key);
   const activeAmt = fmt === "glass" ? row.price_glass : row.price_bottle ?? row.price_amount;
 
@@ -298,12 +309,13 @@ export function valueTag(
   if (rowM != null && ctx.medianMarkup != null && ctx.medianMarkup > 0) {
     if (rowM <= ctx.medianMarkup * 0.75) {
       const s = `About ${rowM.toFixed(1)}\u00d7 retail \u2014 most of this list is ${ctx.medianMarkup.toFixed(1)}\u00d7.`;
-      return { ok: true, sentence: s };
+      return { ok: true, sentence: s, kind: "markup" };
     }
-    return { ok: false, sentence: null };
+    return { ok: false, sentence: null, kind: null };
   }
 
-  // Fallback: no retail known. Top-quartile prediction AND bottom-third price.
+  // Fallback: no retail known for this row. Top-quartile prediction AND
+  // bottom-third price. Sentence must NOT imply retail knowledge.
   if (
     activeAmt != null &&
     row.predicted > 0 &&
@@ -315,12 +327,14 @@ export function valueTag(
     const priceStr = formatAmount(activeAmt, row.currency);
     return {
       ok: true,
-      sentence: `${priceStr} lands in the bottom third of this list \u2014 and it's one of your top-scoring bottles here.`,
+      sentence: `Among the better-scoring wines on this list, and in the bottom third on price at ${priceStr}.`,
+      kind: "relative",
     };
   }
 
-  return { ok: false, sentence: null };
+  return { ok: false, sentence: null, kind: null };
 }
+
 
 function median(xs: number[]): number {
   const s = [...xs].sort((a, b) => a - b);
