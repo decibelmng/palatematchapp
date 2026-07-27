@@ -9,6 +9,7 @@ import {
   normalizePrice,
   computeValueContext,
   valueTag,
+  relativePriceChip,
   type ServingFormat,
 } from "@/lib/list-controls";
 import { aggregateCurrency, DEFAULT_CURRENCY, resolveCurrency, type CurrencyCode } from "@/lib/currency";
@@ -213,7 +214,7 @@ export function useScanRanking(
       const activeAmt = r.format === "glass" ? r.price_glass : r.price_bottle ?? r.price_amount;
       const chip = relativePriceChip(activeAmt, ctx);
       const verdict = chip
-        ? { tone: chip.tone, label: chip.label, markup: null, retailSource: null as const }
+        ? { tone: chip.tone, label: chip.label, markup: null, retailSource: null as "band" | "price" | null }
         : null;
       return { ...r, greatValue: v.ok, valueSentence: v.sentence, valueKind: v.kind, verdict };
     });
