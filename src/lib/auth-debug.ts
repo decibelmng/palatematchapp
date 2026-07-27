@@ -116,7 +116,7 @@ export function installAuthDebug(supabase: SupabaseClient) {
   if (w[INSTALL_FLAG]) return;
   w[INSTALL_FLAG] = true;
 
-  console.log("[auth] debug install", {
+  authTrace("debug install", {
     ...authStorageSnapshot(),
     oauthReturn: oauthReturnState(),
   });
@@ -124,14 +124,14 @@ export function installAuthDebug(supabase: SupabaseClient) {
   const auth = supabase.auth;
   const originalSetSession = auth.setSession.bind(auth);
   auth.setSession = (async (sessionLike: Parameters<typeof auth.setSession>[0]) => {
-    console.log("[auth] setSession called", {
+    authTrace("setSession called", {
       origin: window.location.origin,
       hasAccessToken: !!sessionLike?.access_token,
       hasRefreshToken: !!sessionLike?.refresh_token,
       before: authStorageSnapshot(),
     });
     const result = await originalSetSession(sessionLike);
-    console.log("[auth] setSession resolved", {
+    authTrace("setSession resolved", {
       error: result.error?.message ?? null,
       ...sessionSummary(result.data.session),
       after: authStorageSnapshot(),
@@ -141,13 +141,13 @@ export function installAuthDebug(supabase: SupabaseClient) {
 
   const originalGetSession = auth.getSession.bind(auth);
   auth.getSession = (async (...args: Parameters<typeof auth.getSession>) => {
-    console.log("[auth] getSession called", {
+    authTrace("getSession called", {
       origin: window.location.origin,
       storage: authStorageSnapshot(),
       oauthReturn: oauthReturnState(),
     });
     const result = await originalGetSession(...args);
-    console.log("[auth] getSession returned", {
+    authTrace("getSession returned", {
       error: result.error?.message ?? null,
       ...sessionSummary(result.data.session),
       storage: authStorageSnapshot(),
@@ -158,7 +158,7 @@ export function installAuthDebug(supabase: SupabaseClient) {
   window.addEventListener("message", (event) => {
     if (!String(event.origin).includes("lovable") && event.origin !== window.location.origin) return;
     const data = event.data && typeof event.data === "object" ? event.data : null;
-    console.log("[auth] window message", {
+    authTrace("window message", {
       origin: event.origin,
       dataKeys: data ? Object.keys(data).slice(0, 12) : [],
       storage: authStorageSnapshot(),
