@@ -114,12 +114,12 @@ export function AppShell({ children }: { children: ReactNode }) {
   useLastSeenPing((profile as { id?: string } | undefined)?.id);
   useAutoRedeemInvite();
 
-  // Verified sommeliers see the Table tab; everyone else sees Feed.
+  // Feed is the 4th tab for EVERYONE — a verified somm is still a drinker and
+  // wants their feed. "Call the table" lives in the center Scan chooser instead
+  // of replacing Feed, so somms get both.
   const isVerifiedSomm =
     (profile as { somm_status?: string } | undefined)?.somm_status === "verified";
-  const rightTab: FlatTab = isVerifiedSomm
-    ? { to: "/somm/table", label: "Table", Icon: Users }
-    : { to: "/feed", label: "Feed", Icon: Users };
+  const rightTab: FlatTab = { to: "/feed", label: "Feed", Icon: Users };
   const active = activeTabFor(pathname, rightTab.to);
 
   const { data: feedActivity } = useFeedActivity();
@@ -195,7 +195,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <A2HSHint />
 
-      <ScanChooserSheet open={scanOpen} onClose={() => setScanOpen(false)} />
+      <ScanChooserSheet open={scanOpen} onClose={() => setScanOpen(false)} sommVerified={isVerifiedSomm} />
 
       <nav
         className="fixed bottom-0 inset-x-0 border-t border-border bg-background/95 backdrop-blur"

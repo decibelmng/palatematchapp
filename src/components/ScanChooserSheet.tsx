@@ -1,13 +1,15 @@
 import { Link } from "@tanstack/react-router";
-import { ScanLine, Camera, X } from "lucide-react";
+import { ScanLine, Camera, X, Users } from "lucide-react";
 import { useEffect } from "react";
 
 export function ScanChooserSheet({
   open,
   onClose,
+  sommVerified = false,
 }: {
   open: boolean;
   onClose: () => void;
+  sommVerified?: boolean;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -32,7 +34,7 @@ export function ScanChooserSheet({
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 2rem)" }}
       >
         <div className="flex items-center justify-between mb-4">
-          <h2 className="font-serif text-lg">What are you scanning?</h2>
+          <h2 className="font-serif text-lg">{sommVerified ? "What would you like to do?" : "What are you scanning?"}</h2>
           <button
             onClick={onClose}
             aria-label="Close"
@@ -73,6 +75,24 @@ export function ScanChooserSheet({
             </p>
           </Link>
         </div>
+
+        {sommVerified && (
+          <Link
+            to="/somm/table"
+            onClick={onClose}
+            className="mt-3 flex items-center gap-3 rounded-xl border-2 border-border bg-card p-4 hover:border-primary/60 transition text-left"
+          >
+            <div className="h-11 w-11 rounded-xl bg-accent/40 text-foreground flex items-center justify-center shrink-0">
+              <Users size={22} strokeWidth={1.8} />
+            </div>
+            <div>
+              <div className="font-serif text-base leading-tight">Call the table</div>
+              <p className="mt-1 text-meta text-muted-foreground">
+                Pick the bottle for a table of guests.
+              </p>
+            </div>
+          </Link>
+        )}
       </div>
     </div>
   );
