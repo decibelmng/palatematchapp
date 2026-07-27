@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
@@ -6,43 +6,8 @@ import { useSession } from "@/hooks/use-session";
 import { AppShell } from "./AppShell";
 import { NameGate } from "./NameGate";
 
-const RETURN_PATH_KEY = "pm.postLoginReturnTo";
-
-function sanitizeReturnPath(raw: string | null | undefined): string | null {
-  if (!raw) return null;
-  if (!raw.startsWith("/") || raw.startsWith("//")) return null;
-  // Never round-trip back to auth routes.
-  if (/^\/(auth|login|signin)\b/i.test(raw)) return null;
-  return raw;
-}
-
-function captureIntendedPath() {
-  if (typeof window === "undefined") return;
-  const path = window.location.pathname + window.location.search + window.location.hash;
-  const clean = sanitizeReturnPath(path);
-  if (clean) {
-    try { localStorage.setItem(RETURN_PATH_KEY, clean); } catch { /* noop */ }
-  }
-}
-
 export function AuthGate({ children }: { children: ReactNode }) {
   const session = useSession();
-
-  // When the session lands (after full-page OAuth redirect back), restore the
-  // originally requested path if we saved one before login.
-  useEffect(() => {
-    if (!session) return;
-    let saved: string | null = null;
-    try { saved = localStorage.getItem(RETURN_PATH_KEY); } catch { /* noop */ }
-    if (!saved) return;
-    try { localStorage.removeItem(RETURN_PATH_KEY); } catch { /* noop */ }
-    const target = sanitizeReturnPath(saved);
-    if (!target) return;
-    const current = window.location.pathname + window.location.search + window.location.hash;
-    if (current !== target) {
-      window.history.replaceState({}, "", target);
-    }
-  }, [session]);
 
   if (session === undefined) {
     return (
@@ -75,9 +40,6 @@ function AuthScreen() {
 
   async function oauth(provider: "apple" | "google") {
     setErr(null);
-    // Preserve the path the user was trying to reach so we can restore it
-    // after the broker's full-page redirect back to the origin.
-    captureIntendedPath();
     const res = await lovable.auth.signInWithOAuth(provider, {
       redirect_uri: window.location.origin,
     });
@@ -87,16 +49,10 @@ function AuthScreen() {
     }
   }
 
-  async function submitEmailCapture() {
-    // Magic-link users come back via emailRedirectTo; capture path for them too.
-    captureIntendedPath();
-  }
-
   async function submitEmail(e: React.FormEvent) {
     e.preventDefault();
     setErr(null);
     setBusy(true);
-    await submitEmailCapture();
     try {
       if (mode === "create") {
         const trimmed = displayName.trim();
