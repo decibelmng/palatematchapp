@@ -132,7 +132,7 @@ export function ListControls({ value, onChange, idPrefix, currency, rows }: Prop
                 onClick={() => setOpen(false)}
                 aria-label="Close"
                 className="min-h-11 min-w-11 -mr-2 rounded-md text-muted-foreground hover:text-foreground"
-              >\u2715</button>
+              >✕</button>
             </div>
 
             <div className="px-5 pb-2 space-y-4">
