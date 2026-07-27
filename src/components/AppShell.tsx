@@ -1,40 +1,72 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { ScanLine, Pencil, Star, Crown, Moon, Sun, Users, Bookmark, List as ListIcon } from "lucide-react";
+import { ScanLine, Star, Users, Library, Utensils, WifiOff } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
 import { useMyProfile, useFriendships } from "@/hooks/use-friends";
 import { useLastSeenPing } from "@/hooks/use-last-seen";
 import { useAutoRedeemInvite } from "@/hooks/use-auto-redeem-invite";
 import { markScanUnlockSeen } from "@/lib/friends.functions";
-import { useTheme } from "@/lib/theme";
 import { useCalibrationState } from "@/hooks/use-calibration";
 import { useFeedActivity, hasFreshActivity } from "@/hooks/use-feed";
 import { ScanChooserSheet } from "@/components/ScanChooserSheet";
-import { FeedbackDialog } from "@/components/feedback/FeedbackDialog";
+import { useOnline } from "@/hooks/use-online";
 
-type TabTo = "/palate" | "/rate" | "/scan/list" | "/feed";
+// The four primary destinations. Scan is the raised center button, so only
+// three flat tabs render on either side of it. Everyone gets the same nav
+// except that verified sommeliers see "Table" instead of "Feed" in the
+// right-most slot.
+type TabTo = "/palate" | "/wines" | "/feed" | "/somm/table";
+type FlatTab = { to: TabTo; label: string; Icon: typeof Star };
 
-const TABS_LEFT: ReadonlyArray<{ to: TabTo; label: string; Icon: typeof Star }> = [
+const LEFT_TABS: ReadonlyArray<FlatTab> = [
   { to: "/palate", label: "Palate", Icon: Star },
-  { to: "/rate", label: "Rate", Icon: Pencil },
-];
-const TABS_RIGHT: ReadonlyArray<{ to: TabTo; label: string; Icon: typeof Star }> = [
-  { to: "/scan/list", label: "List", Icon: ListIcon },
-  { to: "/feed", label: "Feed", Icon: Users },
+  { to: "/wines", label: "Cellar", Icon: Library },
 ];
 
-// Legacy shim — retained so downstream isActive/A2HS code below is unaffected.
-// Prefer initialsFor from @/lib/user-display for new callers.
-import { initialsFor as sharedInitialsFor } from "@/lib/user-display";
-function initialsFor(name: string | null | undefined): string {
-  return sharedInitialsFor({ display_name: name, username: null });
+// Route → active-tab resolver. Every route in the app maps to exactly one
+// primary destination — no route can render with zero tabs active.
+// The center Scan button is a modal, not a route, so /scan/* correctly
+// resolves to no highlighted tab (the raised button stands alone).
+function activeTabFor(pathname: string, sommRight: TabTo): TabTo | null {
+  // Palate group: profile, rate, onboarding, calibration.
+  if (pathname === "/palate" || pathname.startsWith("/palate/")) return "/palate";
+  if (pathname === "/rate" || pathname.startsWith("/rate/")) return "/palate";
+  if (pathname === "/onboarding" || pathname.startsWith("/onboarding/")) return "/palate";
+
+  // Cellar group: wines list, per-wine detail, favorites/avoid, wishlist, past scans.
+  if (pathname === "/wines" || pathname.startsWith("/wines/")) return "/wines";
+  if (pathname === "/wine" || pathname.startsWith("/wine/")) return "/wines";
+  if (pathname === "/canons") return "/wines";
+  if (pathname === "/wishlist") return "/wines";
+  if (pathname === "/scans" || pathname.startsWith("/scans/")) return "/wines";
+
+  // Right slot: Feed for guests, Table for sommeliers. All social routes
+  // resolve to whichever tab that user currently sees there.
+  if (pathname === "/feed" || pathname.startsWith("/feed/")) return sommRight;
+  if (pathname === "/friends" || pathname.startsWith("/friends/")) return sommRight;
+  if (pathname === "/u" || pathname.startsWith("/u/")) return sommRight;
+  if (pathname === "/somm" || pathname.startsWith("/somm/")) return sommRight;
+
+  // Scan flows are the center button — no flat tab lights up. Return null
+  // rather than a fallback so we never mis-highlight.
+  return null;
 }
 
-function isActive(pathname: string, to: TabTo): boolean {
-  return pathname === to || pathname.startsWith(to + "/");
+function OfflineBanner() {
+  const online = useOnline();
+  if (online) return null;
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="sticky top-0 z-40 flex items-center gap-2 bg-amber-500/95 text-black px-4 py-2 text-meta font-medium"
+    >
+      <WifiOff size={14} strokeWidth={2.2} />
+      Offline — showing your last scan.
+    </div>
+  );
 }
 
 function A2HSHint() {
@@ -60,7 +92,7 @@ function A2HSHint() {
     >
       <div className="flex items-start gap-3">
         <div className="flex-1">
-          <div className="font-medium text-foreground">Add Palate Match to your Home Screen</div>
+          <div className="font-medium text-foreground">Add Palate Match to your home screen</div>
           <div className="mt-0.5 text-xs text-muted-foreground">
             Tap Share <span aria-hidden>⎋</span> then "Add to Home Screen" for a full-screen app.
           </div>
@@ -77,19 +109,17 @@ function A2HSHint() {
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const [menuOpen, setMenuOpen] = useState(false);
   const [scanOpen, setScanOpen] = useState(false);
-  const [feedbackOpen, setFeedbackOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
   const { data: profile } = useMyProfile();
   useLastSeenPing((profile as { id?: string } | undefined)?.id);
   useAutoRedeemInvite();
-  const { base: theme, toggleBase: toggle } = useTheme();
-  const initials = sharedInitialsFor(
-    profile as { display_name?: string | null; username?: string | null } | undefined ?? null,
-  );
 
-  useEffect(() => { setMenuOpen(false); }, [pathname]);
+  const isVerifiedSomm =
+    (profile as { somm_status?: string } | undefined)?.somm_status === "verified";
+  const rightTab: FlatTab = isVerifiedSomm
+    ? { to: "/somm/table", label: "Table", Icon: Utensils }
+    : { to: "/feed", label: "Feed", Icon: Users };
+  const active = activeTabFor(pathname, rightTab.to);
 
   const { data: feedActivity } = useFeedActivity();
   const feedLatestAt = feedActivity?.latest_at ?? null;
@@ -98,10 +128,10 @@ export function AppShell({ children }: { children: ReactNode }) {
     (f) => f.status === "pending" && f.direction === "incoming",
   ).length;
 
-  // Unlock celebration: fire exactly once per user, ever. Gated on a
-  // server-persisted flag (profiles.scan_unlock_seen) so it survives reloads,
-  // new devices, and cache resets. Local refs only guard against double-fire
-  // within a single render loop.
+  // Unlock celebration: fire exactly once per user, ever. Gated on the
+  // server-persisted profiles.scan_unlock_seen flag so it survives reloads
+  // and new devices. Toast copy is plain — no jargon, one sentence, one
+  // action.
   const { calibrated } = useCalibrationState();
   const celebratedRef = useRef(false);
   const navigate = useNavigate();
@@ -109,9 +139,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const markSeen = useServerFn(markScanUnlockSeen);
   const scanUnlockSeen = (profile as { scan_unlock_seen?: boolean } | undefined)?.scan_unlock_seen;
   useEffect(() => {
-    if (!profile) return;                       // wait for profile to hydrate
+    if (!profile) return;
     if (celebratedRef.current) return;
-    if (scanUnlockSeen) return;                 // already celebrated for this user
+    if (scanUnlockSeen) return;
     if (!calibrated) return;
 
     celebratedRef.current = true;
@@ -133,117 +163,31 @@ export function AppShell({ children }: { children: ReactNode }) {
         (navigator as Navigator & { vibrate?: (p: number | number[]) => boolean }).vibrate?.([12, 40, 24]);
       }
     } catch { /* noop */ }
-    toast.success("List recommendations unlocked", {
-      description: "Scan a restaurant wine list — I'll rank every bottle for your palate.",
+    toast.success("You're set — scan any wine list to see it ranked.", {
       duration: 5000,
       action: {
         label: "Scan now",
-        onClick: () => { dismissAndPersist(); navigate({ to: "/" }); },
+        onClick: () => { dismissAndPersist(); setScanOpen(true); },
       },
-      // Any dismissal path (auto-close, swipe, tap-away) still persists the flag.
       onDismiss: dismissAndPersist,
       onAutoClose: dismissAndPersist,
     });
-    // Optimistic: persist immediately even if the user never touches the toast.
     dismissAndPersist();
   }, [profile, scanUnlockSeen, calibrated, navigate, markSeen, qc]);
 
-
-
-  useEffect(() => {
-    if (!menuOpen) return;
-    function onClick(e: MouseEvent) {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setMenuOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", onClick);
-    return () => document.removeEventListener("mousedown", onClick);
-  }, [menuOpen]);
-
   return (
     <div className="cellar-bg min-h-screen flex flex-col">
+      <OfflineBanner />
       <header
         className="sticky top-0 z-30 px-5 pb-3 flex items-center justify-between bg-background/85 backdrop-blur border-b border-border/60"
         style={{ paddingTop: "calc(env(safe-area-inset-top, 0px) + 1rem)" }}
       >
-        <Link to="/" className="font-serif text-xl tracking-tight">
+        <Link to="/palate" className="font-serif text-xl tracking-tight">
           Palate <span className="text-primary">Match</span>
         </Link>
-
-        <div className="flex items-center gap-1" ref={menuRef}>
-          <div className="relative">
-            <button
-              onClick={() => setMenuOpen((v) => !v)}
-              aria-haspopup="menu"
-              aria-expanded={menuOpen}
-              aria-label="Account menu"
-              className="h-11 w-11 rounded-full border border-border bg-card text-xs font-semibold text-foreground hover:bg-accent transition-colors flex items-center justify-center focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-            >
-              {initials}
-            </button>
-
-            {menuOpen && (
-              <div
-                role="menu"
-                className="absolute right-0 mt-2 w-52 rounded-lg border border-border bg-card shadow-xl overflow-hidden z-40"
-              >
-                <button
-                  role="menuitem"
-                  onClick={() => { toggle(); setMenuOpen(false); }}
-                  className="flex w-full items-center gap-2 px-3 py-3 text-sm text-foreground hover:bg-accent/60"
-                >
-                  {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
-                  {theme === "dark" ? "Light theme" : "Dark theme"}
-                </button>
-                <Link
-                  to="/canons"
-                  role="menuitem"
-                  className="flex items-center gap-2 px-3 py-3 text-sm text-foreground hover:bg-accent/60 border-t border-border"
-                >
-                  <Crown size={14} strokeWidth={2.2} fill="currentColor" className="text-primary" />
-                  Canon Cellar
-                </Link>
-                <Link
-                  to="/wishlist"
-                  role="menuitem"
-                  className="flex items-center gap-2 px-3 py-3 text-sm text-foreground hover:bg-accent/60 border-t border-border"
-                >
-                  <Bookmark size={14} />
-                  Wishlist
-                </Link>
-                <Link
-                  to="/scans"
-                  role="menuitem"
-                  className="block px-3 py-3 text-sm text-foreground hover:bg-accent/60 border-t border-border"
-                >
-                  Past scans
-                </Link>
-                <Link
-                  to="/friends"
-                  role="menuitem"
-                  className="block px-3 py-3 text-sm text-foreground hover:bg-accent/60"
-                >
-                  Friends
-                </Link>
-                <button
-                  role="menuitem"
-                  onClick={() => { setMenuOpen(false); setFeedbackOpen(true); }}
-                  className="w-full text-left px-3 py-3 text-sm text-foreground hover:bg-accent/60 border-t border-border"
-                >
-                  Send feedback
-                </button>
-                <button
-                  role="menuitem"
-                  onClick={async () => { await supabase.auth.signOut(); }}
-                  className="w-full text-left px-3 py-3 text-xs text-muted-foreground hover:bg-accent/60 border-t border-border"
-                >
-                  Sign out
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
+        {/* Header actions are gone. Theme, feedback, sign-out, past scans
+            and friends now live on /palate under "Account". One place, one
+            spec. */}
       </header>
 
       <main className="flex-1 px-5 pb-24 max-w-xl w-full mx-auto">{children}</main>
@@ -251,34 +195,34 @@ export function AppShell({ children }: { children: ReactNode }) {
       <A2HSHint />
 
       <ScanChooserSheet open={scanOpen} onClose={() => setScanOpen(false)} />
-      <FeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
 
       <nav
         className="fixed bottom-0 inset-x-0 border-t border-border bg-background/95 backdrop-blur"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
+        aria-label="Primary"
       >
-        <div className="max-w-xl mx-auto grid grid-cols-5 items-end">
-          {TABS_LEFT.map(({ to, label, Icon }) => {
-            const active = isActive(pathname, to);
+        <div className="max-w-xl mx-auto grid grid-cols-4 items-end">
+          {LEFT_TABS.map(({ to, label, Icon }) => {
+            const isActive = active === to;
             return (
               <Link
                 key={to}
                 to={to}
                 aria-label={label}
-                aria-current={active ? "page" : undefined}
+                aria-current={isActive ? "page" : undefined}
                 className={`flex flex-col items-center justify-center gap-1 min-h-11 py-2.5 text-meta transition-colors border-t-2 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary ${
-                  active
+                  isActive
                     ? "text-primary border-primary"
                     : "text-muted-foreground hover:text-foreground border-transparent"
                 }`}
               >
-                <Icon size={18} strokeWidth={active ? 2.2 : 1.8} />
+                <Icon size={18} strokeWidth={isActive ? 2.2 : 1.8} />
                 {label}
               </Link>
             );
           })}
 
-          {/* Center raised SCAN button */}
+          {/* Center raised SCAN button. Not a route — a modal launcher. */}
           <div className="flex justify-center">
             <button
               type="button"
@@ -291,28 +235,29 @@ export function AppShell({ children }: { children: ReactNode }) {
             </button>
           </div>
 
-          {TABS_RIGHT.map(({ to, label, Icon }) => {
-            const active = isActive(pathname, to);
-            const showBadge = to === "/feed" && pendingIncoming > 0;
-            const showDot = to === "/feed" && !showBadge && hasFreshActivity(feedLatestAt);
+          {(() => {
+            const { to, label, Icon } = rightTab;
+            const isActive = active === to;
+            const isFeed = to === "/feed";
+            const showBadge = isFeed && pendingIncoming > 0;
+            const showDot = isFeed && !showBadge && hasFreshActivity(feedLatestAt);
             return (
               <Link
-                key={to}
                 to={to}
                 aria-label={
                   showBadge
                     ? `${label} — ${pendingIncoming} pending friend request${pendingIncoming === 1 ? "" : "s"}`
                     : label
                 }
-                aria-current={active ? "page" : undefined}
+                aria-current={isActive ? "page" : undefined}
                 className={`flex flex-col items-center justify-center gap-1 min-h-11 py-2.5 text-meta transition-colors border-t-2 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-primary ${
-                  active
+                  isActive
                     ? "text-primary border-primary"
                     : "text-muted-foreground hover:text-foreground border-transparent"
                 }`}
               >
                 <span className="relative">
-                  <Icon size={18} strokeWidth={active ? 2.2 : 1.8} />
+                  <Icon size={18} strokeWidth={isActive ? 2.2 : 1.8} />
                   {showBadge && (
                     <span
                       aria-hidden
@@ -331,10 +276,9 @@ export function AppShell({ children }: { children: ReactNode }) {
                 {label}
               </Link>
             );
-          })}
+          })()}
         </div>
       </nav>
-
     </div>
   );
 }

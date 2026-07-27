@@ -22,9 +22,13 @@ import { VisibilityControl } from "@/components/profile/VisibilityControl";
 import { ShareProfileButton } from "@/components/profile/ShareProfileButton";
 import { NameWithHandle } from "@/components/profile/NameWithHandle";
 import { AvatarUpload } from "@/components/profile/AvatarUpload";
-import { GraduationCap, Settings2 } from "lucide-react";
+import { GraduationCap, Moon, Sun, MessageSquare, LogOut, Clock, Users } from "lucide-react";
 import { CalibrationMeter } from "@/components/CalibrationMeter";
 import { displayNameFor, initialsFor } from "@/lib/user-display";
+import { useTheme } from "@/lib/theme";
+import { supabase } from "@/integrations/supabase/client";
+import { FeedbackDialog } from "@/components/feedback/FeedbackDialog";
+
 
 
 export const Route = createFileRoute("/palate/")({
@@ -246,25 +250,28 @@ function PalateHome() {
         )}
         <div className="mt-2 flex items-center justify-between px-2 pb-1">
           <div className="text-meta text-muted-foreground">Palate code: <span className="font-mono text-foreground">{scopedCode}</span></div>
-          <Link to="/palate/$type" params={{ type: scope }} className="text-meta uppercase text-muted-foreground hover:text-primary" style={{  }}>
-            Detail + 3D →
-          </Link>
         </div>
       </div>
 
-      {/* Calibration meter — % pinned per color, derived from rating counts only. */}
+      {/* Calibration hint — one actionable sentence, or nothing. */}
       <div className="mt-4">
         <CalibrationMeter />
       </div>
-
 
       {/* Visibility */}
       <div className="mt-5">
         <VisibilityControl current={(profile?.visibility as "private" | "followers" | "public") ?? "private"} />
       </div>
 
-      {/* Verify / settings */}
+      {/* Rate + verify */}
       <div className="mt-4 flex flex-col gap-2">
+        <Link
+          to="/rate"
+          className="flex items-center justify-between rounded-[14px] border border-border bg-card p-4 hover:border-primary/40"
+        >
+          <div className="text-sm">Rate a wine</div>
+          <span className="text-primary text-sm">→</span>
+        </Link>
         {profile?.somm_status !== "verified" && (
           <Link
             to="/palate/verify"
@@ -273,27 +280,22 @@ function PalateHome() {
             <div className="flex items-center gap-3">
               <GraduationCap className="h-5 w-5 text-primary" />
               <div>
-                <div className="text-sm">Verify as a SOMM</div>
+                <div className="text-sm">Verify as a sommelier</div>
                 <div className="text-meta text-muted-foreground">Get the badge on your profile.</div>
               </div>
             </div>
             <span className="text-primary text-sm">→</span>
           </Link>
         )}
-        <Link
-          to="/friends"
-          className="flex items-center justify-between rounded-[14px] border border-border bg-card p-4 hover:border-primary/40"
-        >
-          <div className="flex items-center gap-3">
-            <Settings2 className="h-5 w-5 text-muted-foreground" />
-            <div className="text-sm">Friends &amp; account</div>
-          </div>
-          <span className="text-muted-foreground text-sm">→</span>
-        </Link>
       </div>
+
+      {/* Account — theme, past scans, friends, feedback, sign-out.
+          This is where the retired hamburger menu now lives. */}
+      <AccountSection />
     </div>
   );
 }
+
 
 function Stat({ n, label }: { n: number; label: string }) {
   return (
@@ -351,3 +353,62 @@ function Rate5Progress({ redN, whiteN }: { redN: number; whiteN: number }) {
     </div>
   );
 }
+
+/**
+ * Account section. Absorbs everything that used to live in the header
+ * hamburger: theme toggle, past scans, friends, feedback, sign-out. One
+ * place for settings-shaped things.
+ */
+function AccountSection() {
+  const { base: theme, toggleBase: toggle } = useTheme();
+  const [feedbackOpen, setFeedbackOpen] = useState(false);
+  return (
+    <div className="mt-6">
+      <div className="text-meta uppercase tracking-label text-muted-foreground px-1 mb-2">Account</div>
+      <div className="rounded-[14px] border border-border bg-card divide-y divide-border overflow-hidden">
+        <button
+          type="button"
+          onClick={toggle}
+          className="w-full flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-accent/40 text-left"
+        >
+          {theme === "dark" ? <Sun size={16} /> : <Moon size={16} />}
+          <span className="flex-1">{theme === "dark" ? "Light theme" : "Dark theme"}</span>
+        </button>
+        <Link
+          to="/scans"
+          className="flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-accent/40"
+        >
+          <Clock size={16} />
+          <span className="flex-1">Past scans</span>
+          <span className="text-muted-foreground">→</span>
+        </Link>
+        <Link
+          to="/friends"
+          className="flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-accent/40"
+        >
+          <Users size={16} />
+          <span className="flex-1">Friends</span>
+          <span className="text-muted-foreground">→</span>
+        </Link>
+        <button
+          type="button"
+          onClick={() => setFeedbackOpen(true)}
+          className="w-full flex items-center gap-3 px-4 py-3 text-sm text-foreground hover:bg-accent/40 text-left"
+        >
+          <MessageSquare size={16} />
+          <span className="flex-1">Send feedback</span>
+        </button>
+        <button
+          type="button"
+          onClick={async () => { await supabase.auth.signOut(); }}
+          className="w-full flex items-center gap-3 px-4 py-3 text-sm text-muted-foreground hover:bg-accent/40 text-left"
+        >
+          <LogOut size={16} />
+          <span className="flex-1">Sign out</span>
+        </button>
+      </div>
+      <FeedbackDialog open={feedbackOpen} onClose={() => setFeedbackOpen(false)} />
+    </div>
+  );
+}
+
