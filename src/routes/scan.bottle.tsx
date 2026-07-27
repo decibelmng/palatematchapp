@@ -20,7 +20,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { StarTap } from "@/components/StarTap";
 import { WineTypeBadge } from "@/components/WineTypeBadge";
 import { AddBottleDialog } from "@/components/AddBottleDialog";
+import { verdictLine } from "@/components/verdict/reason";
 import { toast } from "sonner";
+
 
 export const Route = createFileRoute("/scan/bottle")({
   ssr: false,
