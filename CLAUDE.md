@@ -73,18 +73,22 @@ All three former privacy blockers are resolved in-tree:
    path. The `service_role` client lives solely in `admin-somm.functions.ts`
    behind `assertAdmin` (the invite-code surface), never the scoring path.
 
-**Open product gaps (not privacy — finish before pushing somms hard):**
+**Product gaps — all SHIPPED (2026-07-27):**
 
-- A verified somm with no `establishment` set hits a dead end: the house list is
-  required for a table call, but `establishment` is optional at verify.
-- The 30-min consent grant is re-validated at scoring time, so a call assembled
-  slowly can fail mid-session with no re-prompt path.
-- A guest who hasn't rated a candidate's type defaults to "not for them" (3.0 →
-  below FINE_MIN), so a red-only guest vetoes every white on the list.
-- The deterministic 10-second brief (`sommelier-brief.ts`) is the strongest
-  "read a palate fast" asset but is not reachable from the somm's table screen —
-  only via the guest's `/brief` or the scan-flow dialog.
-- The winner card omits region and price, which the rest of the app already has.
+- Establishment dead-end → inline "Name your restaurant" nudge on the table
+  screen (`sommSetEstablishment`).
+- Grant expiry mid-call → a per-guest consent countdown + re-hand-over refresh.
+- Red-only guest vetoing whites → an untested type now reads **"can't say"**
+  (neutral; excluded from the table-call math; never a strike). Reinforces
+  invariant #2.
+- 10-second brief → a **"Read palate"** action on each guest chip
+  (`sommGuestBrief` + `somm-quick-brief.ts`). This is the lighter fingerprint +
+  benchmarks version; `docs/SOMM_BRIEF_PARITY.md` drafts the full-parity upgrade.
+- Winner card → now shows **region + price** (in the list's currency).
+- Also fixed: the guest chip showed a red archetype for white-focused guests.
+
+Somm nav: Feed is the 4th tab for **everyone**; "Call the table" lives in the
+center Scan chooser for verified somms (it no longer replaces Feed).
 
 ### Never built
 
@@ -100,14 +104,18 @@ All three former privacy blockers are resolved in-tree:
 - **The hamburger menu is retired.** Theme, feedback, sign-out, past scans and
   friends now live on `/palate` under Account.
 
-### IA cleanup — still open
+### IA cleanup — SHIPPED (2026-07-27)
 
-- Reopening a saved scan renders `RankedScanList`, a flatter, downgraded surface
-  vs. the live `VerdictSurface` — same data, two visual languages.
-- Bottle-scan history rows self-link to a dead end (no persisted detail route).
-- Two profile surfaces (`/palate` and `/u/$username`) duplicate content; the
-  public one also renders the owner's own profile, so a share link shows a user
-  a second, differently-designed version of themselves.
+- Reopened **and** shared scans now render the live `VerdictSurface` (mapped via
+  `scan-row-adapt.ts`); the flat `RankedScanList` was deleted.
+- Bottle-scan history rows are now static — no more dead-end self-link.
+- `/u/$username` redirects to `/palate` when it's your own profile, so there is
+  one canonical own-profile surface (`/palate` manages, `/u` is others' public view).
+- Feed redesign: cards lead with a sentence (no naked decimal), stranger
+  discovery + `% overlap` cut, and a new "friend-loved bottles on a scanned
+  list" section (`getFriendBottlesOnLists` — reuses the friends-feed privacy
+  gate; there is NO geolocation, so its copy claims no distance).
+- Auth-debug instrumentation removed (sign-in confirmed stable).
 
 ---
 
@@ -358,16 +366,22 @@ missing model records.
 
 ## Immediate priorities
 
-1. **Fix the catalog.** Attempt the Kaggle description rejoin, strip grape
-   anchors from the scorer, re-run the 78-wine pilot. The gate is within-region
-   discrimination — can two Barolos from different producers be told apart? — not
-   between-region separation, which a grid already does.
-2. **Finish the sommelier product.** It is ungated and functional; close the
-   open product gaps above (establishment dead-end, grant expiry mid-call,
-   red-only-guest vetoes, brief not on the table screen, no price/region on the
-   winner). Real codes are in the wild, and it is the monetisation path.
+1. **Fix the catalog** — the biggest quality lever. Stage 1 is scoped:
+   `docs/CATALOG_REFINGERPRINT.md` (full staged plan) + `scripts/kaggle-rejoin.ts`
+   (recover real Kaggle tasting notes → rejoin to bottles, DRY-RUN by default).
+   **BLOCKED on Supabase access** — the `service_role` key. Get that once and
+   every Track E stage unblocks; if it's truly locked behind Lovable, build the
+   in-app admin variant. Then: strip grape anchors from the scorer, run the
+   78-wine pilot (gate = within-region discrimination), then the atomic swap.
+2. **Verify the 2026-07-27 shipped changes on production.** They were
+   type/build/mock verified, NOT tested on real data: reopen a saved scan + open
+   a shared scan (→ `VerdictSurface`); own `/u/<username>` (→ `/palate`); the
+   somm brief/table flow; and the feed's nearby-list privacy path.
 3. **Offline support.** The core use case has no signal and everything currently
    assumes the network works.
+
+The sommelier product (all 5 gaps) and the verdict/IA/feed polish shipped on
+2026-07-27 — see the "SHIPPED" notes above.
 
 Unrelated to code: the app has never been used against a real restaurant wine
 list. Every validation so far has been greps, contrast ratios, and synthetic
