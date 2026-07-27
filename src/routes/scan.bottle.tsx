@@ -37,19 +37,8 @@ export const Route = createFileRoute("/scan/bottle")({
   component: BottleScan,
 });
 
-async function fileToBase64(file: File): Promise<{ base64: string; mediaType: string }> {
-  const buf = await file.arrayBuffer();
-  const bytes = new Uint8Array(buf);
-  let binary = "";
-  const chunk = 0x8000;
-  for (let i = 0; i < bytes.length; i += chunk) {
-    binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + chunk)));
-  }
-  const base64 = btoa(binary);
-  let mt = file.type || "image/jpeg";
-  if (!["image/jpeg", "image/png", "image/webp", "image/heic"].includes(mt)) mt = "image/jpeg";
-  return { base64, mediaType: mt };
-}
+// Image prep lives in @/lib/image-downscale — see prepareImageForScan.
+
 
 function BottleScan() {
   const session = useSession();
