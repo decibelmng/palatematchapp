@@ -54,7 +54,7 @@ function AdminDisputes() {
                 <tr style={{ textAlign: "left", opacity: 0.6 }}>
                   <th style={{ padding: "4px 8px" }}>User</th>
                   <th style={{ padding: "4px 8px" }}>Stars</th>
-                  <th style={{ padding: "4px 8px" }}>Predicted</th>
+                  <th style={{ padding: "4px 8px" }}>Expected</th>
                   <th style={{ padding: "4px 8px" }}>Δ</th>
                   <th style={{ padding: "4px 8px" }}>Weight</th>
                   <th style={{ padding: "4px 8px" }}>When</th>
