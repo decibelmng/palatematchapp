@@ -101,7 +101,6 @@ export function SommelierBriefCard({ brief }: Props) {
           type="button"
           onClick={onCopy}
           className="rounded-full border border-border bg-background/70 px-3 py-1 text-meta uppercase text-foreground hover:bg-accent"
-          style={{  }}
         >
           Copy
         </button>
@@ -110,17 +109,21 @@ export function SommelierBriefCard({ brief }: Props) {
             type="button"
             onClick={onShare}
             className="rounded-full border border-primary bg-primary/10 px-3 py-1 text-meta uppercase text-foreground hover:bg-primary/20"
-            style={{  }}
           >
             Share
           </button>
         )}
+        <a
+          href="/brief"
+          className="rounded-full bg-primary px-3 py-1 text-meta uppercase text-primary-foreground hover:opacity-90"
+        >
+          Hand to your sommelier
+        </a>
         {editing && (
           <button
             type="button"
             onClick={() => { setEditing(false); setDraft(brief.text); }}
             className="text-meta uppercase text-muted-foreground hover:text-foreground"
-            style={{  }}
           >
             Discard
           </button>
