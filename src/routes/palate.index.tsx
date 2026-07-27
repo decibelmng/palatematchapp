@@ -15,6 +15,7 @@ import {
 import { useMyCanons } from "@/hooks/use-canon";
 import { useMyProfile } from "@/hooks/use-friends";
 import { computeCode, axesFor, type RatedBottle, type PaletteType } from "@/lib/palate";
+import { archetypeFor, type QuizAnswers } from "@/lib/quiz-seeds";
 import { useLandmarks } from "@/hooks/use-landmarks";
 import { cuveeKey } from "@/lib/cuvee";
 import { TasteMap, type LovedPoint } from "@/components/TasteMap";
@@ -168,10 +169,18 @@ function PalateHome() {
 
   const hasScope = scoped.length > 0;
 
+  const scopedLetters = scope === "red" ? red.letters : white.letters;
+  const bimodalLetters = scopedLetters.filter((l) => l.bimodal);
+  const quizAnswers = (profile as { quiz_answers?: unknown } | null)?.quiz_answers as QuizAnswers | null | undefined;
+  const archetype = quizAnswers ? archetypeFor(quizAnswers, scope) : null;
+
   return (
-    <div className="pt-2 pb-8 max-w-md mx-auto">
+    <div
+      className="pt-2 max-w-md mx-auto"
+      style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 7rem)" }}
+    >
       {showReveal && (
-        <PalateReveal code={revealCode} type={scope} answers={(profile as { quiz_answers?: unknown } | null)?.quiz_answers as never} onDismiss={() => setShowReveal(false)} />
+        <PalateReveal code={revealCode} type={scope} answers={quizAnswers ?? null} onDismiss={() => setShowReveal(false)} />
       )}
 
       {/* Identity */}
@@ -209,36 +218,33 @@ function PalateHome() {
         <p className="mt-3 text-sm text-muted-foreground">{profile.bio}</p>
       )}
 
-      {/* Stats — all tiles land on one consolidated view. */}
-      <div className="mt-5 grid grid-cols-4 gap-2 rounded-[14px] border border-border bg-card p-3 text-center">
-        <Link to="/wines" search={{ tab: "rated" }} aria-label="See wines you've rated" className="block rounded-md hover:bg-muted/40 py-1">
+      {/* Stats — three tiles, no "Scored" (it duplicates Rated for
+          single-type users). Labels wrap to two lines with leading-tight
+          rather than truncating. */}
+      <div className="mt-5 grid grid-cols-3 gap-2 rounded-[14px] border border-border bg-card p-3 text-center">
+        <Link to="/wines" search={{ tab: "rated" }} aria-label="See wines you've rated" className="block rounded-md hover:bg-muted/40 py-1 min-w-0">
           <Stat n={totalRated} label="Rated" />
         </Link>
-        <Link to="/wines" search={{ tab: "canons" }} aria-label="See your benchmarks" className="block rounded-md hover:bg-muted/40 py-1">
+        <Link to="/wines" search={{ tab: "canons" }} aria-label="See your benchmarks" className="block rounded-md hover:bg-muted/40 py-1 min-w-0">
           <Stat n={canonsCount} label="Benchmarks" />
         </Link>
-        <Link to="/wines" search={{ tab: "nemeses" }} aria-label="See your dealbreakers" className="block rounded-md hover:bg-muted/40 py-1">
+        <Link to="/wines" search={{ tab: "nemeses" }} aria-label="See your dealbreakers" className="block rounded-md hover:bg-muted/40 py-1 min-w-0">
           <Stat n={nemesesCount} label="Dealbreakers" />
-
-        </Link>
-
-        <Link to="/wines" search={{ tab: "scored" }} aria-label="Open palate detail" className="block rounded-md hover:bg-muted/40 py-1">
-          <Stat n={redRated.length + whiteRated.length} label="Scored" />
         </Link>
       </div>
 
 
 
-      {/* Palate codes — scope switch. The active scope's code is rendered
-          large below with per-letter meanings (see PalateCodeReader). */}
+      {/* Palate codes — scope switch. Shows type and rating count only; the
+          active code renders exactly once, in the hero card below. */}
       <div className="mt-5 grid grid-cols-2 gap-3">
-        <CodeChip type="red"   code={red.code}   n={redRated.length}   active={scope === "red"}   onClick={() => setScope("red")} />
-        <CodeChip type="white" code={white.code} n={whiteRated.length} active={scope === "white"} onClick={() => setScope("white")} />
+        <CodeChip type="red"   n={redRated.length}   active={scope === "red"}   onClick={() => setScope("red")} />
+        <CodeChip type="white" n={whiteRated.length} active={scope === "white"} onClick={() => setScope("white")} />
       </div>
 
-      {/* Code hero — the identity. Tap any letter for its meaning; on first
-          view after the reveal, cycles once automatically (guarded so it
-          plays exactly once per unique code + type). */}
+      {/* Code hero — the identity. Archetype name sits below at heading
+          size; tagline below that as a caption. A bimodal "·" is explained
+          in a plain-language line — never rendered as X (reads as error). */}
       <div className="mt-4 rounded-[14px] border border-border bg-card p-5 text-center">
         <p className="text-meta uppercase tracking-label text-muted-foreground">
           Your {scope} palate code
@@ -247,10 +253,30 @@ function PalateHome() {
           <PalateCodeReader
             code={scopedCode}
             type={scope}
+            letters={scopedLetters}
             autoCycle={showReveal}
             size="title"
           />
         </div>
+        {archetype && (
+          <>
+            <div className="mt-4 font-serif text-heading leading-tight text-foreground">
+              {archetype.name}
+            </div>
+            <p className="mt-1 text-sub text-muted-foreground max-w-[36ch] mx-auto">
+              {archetype.tagline}
+            </p>
+          </>
+        )}
+        {bimodalLetters.length > 0 && (
+          <p className="mt-3 text-meta text-muted-foreground max-w-[36ch] mx-auto">
+            <span className="font-serif text-foreground/80">·</span> means you
+            go both ways on {bimodalLetters.length === 1
+              ? `${bimodalLetters[0].label.toLowerCase()}`
+              : "those axes"}
+            {" "}— tap it to see how.
+          </p>
+        )}
       </div>
 
       {/* Inline viz — dominant scope; toggle changes it above */}
@@ -325,15 +351,18 @@ function PalateHome() {
 
 function Stat({ n, label }: { n: number; label: string }) {
   return (
-    <div>
+    <div className="min-w-0">
       <div className="font-serif text-body leading-tight">{n}</div>
-      <div className="text-meta uppercase text-muted-foreground" style={{  }}>{label}</div>
+      <div className="text-meta uppercase tracking-label text-muted-foreground leading-tight break-words">
+        {label}
+      </div>
     </div>
   );
 }
 
-function CodeChip({ type, code, n, active, onClick }: { type: PaletteType; code: string; n: number; active: boolean; onClick: () => void }) {
-  const label = type === "red" ? "RED" : "WHITE";
+
+function CodeChip({ type, n, active, onClick }: { type: PaletteType; n: number; active: boolean; onClick: () => void }) {
+  const label = type === "red" ? "Red palate" : "White palate";
   return (
     <button
       type="button"
@@ -341,18 +370,14 @@ function CodeChip({ type, code, n, active, onClick }: { type: PaletteType; code:
       aria-pressed={active}
       className={`text-left rounded-[14px] border p-4 transition ${active ? "border-primary bg-primary/5" : "border-border bg-card hover:border-primary/40"}`}
     >
-      <div className="flex items-center justify-between">
-        <span className="text-meta uppercase text-muted-foreground" style={{  }}>{label}</span>
-        <span className="text-meta text-muted-foreground">{n === 0 ? "no ratings" : `${n} rated`}</span>
-      </div>
-      <div className="mt-3 mb-1 font-serif text-title text-primary leading-none" style={{  }}>
-        {code.split("").map((ch, i) => (
-          <span key={`${type}-${i}-${ch}`} className={ch === "·" ? "text-muted-foreground/60" : ""}>{ch}</span>
-        ))}
+      <div className="font-serif text-body leading-tight text-foreground">{label}</div>
+      <div className="mt-1 text-meta text-muted-foreground">
+        {n === 0 ? "no ratings yet" : `${n} rated`}
       </div>
     </button>
   );
 }
+
 
 function Rate5Progress({ redN, whiteN }: { redN: number; whiteN: number }) {
   const n = Math.max(redN, whiteN);
