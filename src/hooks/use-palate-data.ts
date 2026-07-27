@@ -235,10 +235,11 @@ export function useRate() {
 
         const confirmFn = onCascadeConfirm ?? (({ tier, region, bottleName }) => {
           const verb = tier === "canon"
-            ? `This is one of your favorites in ${region} — lowering the rating removes that status.`
-            : `You marked this as one to avoid in ${region} — raising the rating removes that status.`;
+            ? `You'd set this as a benchmark in ${region}. Lowering the rating removes that.`
+            : `You'd marked this as a dealbreaker in ${region}. Raising the rating removes that.`;
           return confirmDialog({
-            title: tier === "canon" ? "Remove favorite status?" : "Remove avoid status?",
+            title: tier === "canon" ? "Remove as a benchmark?" : "Remove as a dealbreaker?",
+
 
             description: createElement(
               Fragment,

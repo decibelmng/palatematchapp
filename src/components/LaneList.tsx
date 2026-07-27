@@ -63,7 +63,7 @@ function LaneBlock<T>({
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="font-serif text-base leading-tight">{lane.styleName}</h3>
-            <CanonBadge size="sm" title={`Anchored by your favorite: ${lane.canonName}`} />
+            <CanonBadge size="sm" title={`Anchored by your benchmark: ${lane.canonName}`} />
             {!lane.isStub && (
               <span className="text-meta uppercase tracking-label text-muted-foreground">
                 {lane.members.length} match{lane.members.length === 1 ? "" : "es"}
@@ -74,8 +74,9 @@ function LaneBlock<T>({
             via <span className="text-foreground/80">{lane.canonName}</span>
             {lane.canonRegion ? <> · {lane.canonRegion}</> : null}
             {lane.memberCanons.length > 1 && (
-              <> · +{lane.memberCanons.length - 1} merged favorite{lane.memberCanons.length - 1 === 1 ? "" : "s"}</>
+              <> · +{lane.memberCanons.length - 1} more benchmark{lane.memberCanons.length - 1 === 1 ? "" : "s"} in this style</>
             )}
+
           </p>
 
         </div>
