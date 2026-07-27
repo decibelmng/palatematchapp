@@ -617,11 +617,12 @@ function ConfidentCard({
         <p className="mt-2 text-xs italic text-muted-foreground">"{c.tasting_note}"</p>
       )}
       {predicted != null && (
-        <p className="mt-2 text-sm">
-          For you: <span className="font-serif text-primary text-lg">{predicted.toFixed(1)}</span>
-          <span className="text-primary">★</span>
-        </p>
+        <div className="mt-2">
+          <p className="text-heading text-foreground leading-snug">{verdictLine(predicted)}</p>
+          <ForYouChip predicted={predicted} className="mt-2" />
+        </div>
       )}
+
       <ConfidenceMeter score={c.score} reasons={c.reasons} />
       <div className="mt-3">
         <p className="text-xs text-muted-foreground mb-1">Rate it (one tap)</p>
