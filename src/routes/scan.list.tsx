@@ -161,8 +161,17 @@ function Scan() {
       )}
 
       {!rank.enoughRatings && rank.readable.length > 0 && (
-        <div className="mt-5 rounded-md border border-border bg-card p-3 text-meta text-muted-foreground">
-          Rate a few wines first so I can match this list to your taste. Showing the list in the order it was read.
+        <div className="mt-5 rounded-md border border-primary/40 bg-primary/5 p-3 text-meta">
+          <span className="font-semibold text-foreground">Finish calibration to rank this list.</span>{" "}
+          <span className="text-muted-foreground">One minute of tapping — no wine names.</span>{" "}
+          <Link to="/onboarding" className="text-primary underline underline-offset-2">Start calibration →</Link>
+        </div>
+      )}
+
+      {rank.enoughRatings && rank.provisional && rank.readable.length > 0 && (
+        <div className="mt-5 rounded-md border border-primary/30 bg-primary/5 p-3 text-meta">
+          <span className="font-semibold text-foreground">Provisional</span>
+          <span className="text-muted-foreground"> — based on your style answers. Rate a real bottle to sharpen these predictions.</span>
         </div>
       )}
 
