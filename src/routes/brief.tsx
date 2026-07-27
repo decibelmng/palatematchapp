@@ -27,7 +27,7 @@ function BriefFullScreen() {
   const { data: profile } = useMyProfile();
   const [locked, setLocked] = useState(false);
 
-  const quiz = (profile?.quiz_answers ?? null) as QuizAnswers | null;
+  const quiz = ((profile as any)?.quiz_answers ?? null) as QuizAnswers | null;
   const archetype = quiz && "votes" in quiz ? archetypeFor(quiz, quiz.type === "white" ? "white" : "red").name : null;
 
   useEffect(() => {
