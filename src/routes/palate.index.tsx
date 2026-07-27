@@ -28,6 +28,7 @@ import { displayNameFor, initialsFor } from "@/lib/user-display";
 import { useTheme } from "@/lib/theme";
 import { supabase } from "@/integrations/supabase/client";
 import { FeedbackDialog } from "@/components/feedback/FeedbackDialog";
+import { SommShareCodeCard } from "@/components/SommShareCodeCard";
 
 
 
@@ -263,6 +264,9 @@ function PalateHome() {
       <div className="mt-5">
         <VisibilityControl current={(profile?.visibility as "private" | "followers" | "public") ?? "private"} />
       </div>
+
+      {/* Per-occasion consent + access log */}
+      <SommShareCodeCard />
 
       {/* Rate + verify */}
       <div className="mt-4 flex flex-col gap-2">

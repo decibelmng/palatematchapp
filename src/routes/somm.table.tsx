@@ -1,22 +1,24 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { AuthGate } from "@/components/AuthGate";
 import { useMyProfile } from "@/hooks/use-friends";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { X, Plus, ChevronLeft, ScanLine, Users } from "lucide-react";
+import { X, Plus, ChevronLeft, ScanLine, Users, KeyRound } from "lucide-react";
 import {
-  sommResolveGuest, sommCallTable, sommGetMyHouseList, sommHouseListCandidates,
-  type ResolvedGuest, type TableCallCandidateOut, type TableCallOutput,
+  sommClaimCode, sommResolvePublicGuest, sommCallTable,
+  sommGetMyHouseList, sommHouseListCandidates,
+  type ResolvedGuest, type TableCallOutput, type BottleWithVerdicts,
 } from "@/lib/somm.functions";
+import type { Verdict } from "@/lib/table-call";
 
 export const Route = createFileRoute("/somm/table")({
   ssr: false,
   head: () => ({
     meta: [
       { title: "Table mode — Palate Match" },
-      { name: "description", content: "Add guests. Call the table's bottle in ten seconds." },
+      { name: "description", content: "Guest hands you a code. You call the bottle." },
     ],
   }),
   component: () => <AuthGate><TablePage /></AuthGate>,
@@ -25,26 +27,36 @@ export const Route = createFileRoute("/somm/table")({
 function TablePage() {
   const { data: profile } = useMyProfile();
   const [guests, setGuests] = useState<ResolvedGuest[]>([]);
+  const [code, setCode] = useState("");
   const [username, setUsername] = useState("");
+  const [showPublic, setShowPublic] = useState(false);
   const [result, setResult] = useState<TableCallOutput | null>(null);
 
-  const resolveFn = useServerFn(sommResolveGuest);
+  const claimFn = useServerFn(sommClaimCode);
+  const resolvePublicFn = useServerFn(sommResolvePublicGuest);
   const callFn = useServerFn(sommCallTable);
 
-  const resolve = useMutation({
-    mutationFn: (u: string) => resolveFn({ data: { username: u } }),
-    onSuccess: (g) => {
-      if (guests.some((x) => x.userId === g.userId)) {
-        toast.info("Guest already at the table.");
-        return;
-      }
-      if (guests.length >= 6) {
-        toast.error("Six guests is the limit.");
-        return;
-      }
-      setGuests((prev) => [...prev, g]);
-      setUsername("");
-    },
+  const addGuest = (g: ResolvedGuest) => {
+    if (guests.some((x) => x.userId === g.userId)) {
+      toast.info("Guest already at the table.");
+      return;
+    }
+    if (guests.length >= 6) {
+      toast.error("Six guests is the limit.");
+      return;
+    }
+    setGuests((prev) => [...prev, g]);
+  };
+
+  const claim = useMutation({
+    mutationFn: (c: string) => claimFn({ data: { code: c } }),
+    onSuccess: (g) => { addGuest(g as ResolvedGuest); setCode(""); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const resolvePublic = useMutation({
+    mutationFn: (u: string) => resolvePublicFn({ data: { username: u } }),
+    onSuccess: (g) => { addGuest(g as ResolvedGuest); setUsername(""); },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -69,14 +81,15 @@ function TablePage() {
       return callFn({
         data: {
           guests: guests.map((g) => ({
-            userId: g.userId, displayName: g.displayName, archetype: g.archetype, initial: g.initial,
+            userId: g.userId, displayName: g.displayName, archetype: g.archetype,
+            initial: g.initial, grantId: g.grantId, via: g.via,
           })),
           candidates,
           houseListId: houseList?.houseListId || undefined,
         },
       });
     },
-    onSuccess: (r) => setResult(r),
+    onSuccess: (r) => setResult(r as TableCallOutput),
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -94,56 +107,99 @@ function TablePage() {
 
       <section aria-label="Guests" className="mt-4">
         <div className="text-meta uppercase text-muted-foreground">Who's at the table?</div>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {guests.map((g) => (
-            <div key={g.userId} className="pm-card px-3 py-2 flex items-center gap-2">
-              <div className="h-7 w-7 rounded-full bg-primary/15 text-primary flex items-center justify-center text-meta">
-                {g.initial}
+
+        {guests.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {guests.map((g) => (
+              <div key={g.userId} className="pm-card px-3 py-2 flex items-center gap-2">
+                <div className="h-7 w-7 rounded-full bg-primary/15 text-primary flex items-center justify-center text-meta">
+                  {g.initial}
+                </div>
+                <div>
+                  <div className="text-meta text-foreground">{g.displayName}</div>
+                  <div className="text-meta text-muted-foreground">
+                    {g.archetype} · {g.via === "code" ? "via code" : "public"}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  aria-label={`Remove ${g.displayName}`}
+                  onClick={() => setGuests((prev) => prev.filter((x) => x.userId !== g.userId))}
+                  className="ml-1 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-4 w-4" />
+                </button>
               </div>
-              <div>
-                <div className="text-meta text-foreground">{g.displayName}</div>
-                <div className="text-meta text-muted-foreground">{g.archetype}</div>
-              </div>
-              <button
-                type="button"
-                aria-label={`Remove ${g.displayName}`}
-                onClick={() => setGuests((prev) => prev.filter((x) => x.userId !== g.userId))}
-                className="ml-1 text-muted-foreground hover:text-foreground"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         <form
           className="mt-3 flex gap-2"
           onSubmit={(e) => {
             e.preventDefault();
-            const u = username.trim();
-            if (!u) return;
-            resolve.mutate(u);
+            const c = code.trim().toUpperCase();
+            if (c.length < 4) return;
+            claim.mutate(c);
           }}
         >
-          <input
-            aria-label="Guest username"
-            className="flex-1 rounded-md border border-border bg-background/70 px-3 py-2 text-sub text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
-            placeholder="@username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            autoCapitalize="off" autoCorrect="off"
-          />
+          <div className="flex-1 relative">
+            <KeyRound className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              aria-label="Guest code"
+              className="w-full rounded-md border border-border bg-background/70 pl-9 pr-3 py-2 text-sub text-foreground uppercase tracking-widest focus:outline-none focus:ring-1 focus:ring-primary/40"
+              placeholder="Guest code"
+              value={code}
+              onChange={(e) => setCode(e.target.value.toUpperCase())}
+              autoCapitalize="characters" autoCorrect="off" maxLength={8}
+            />
+          </div>
           <button
             type="submit"
-            disabled={resolve.isPending}
+            disabled={claim.isPending}
             className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-2 text-primary-foreground text-sub disabled:opacity-60"
           >
             <Plus className="h-4 w-4" /> Add
           </button>
         </form>
         <p className="mt-2 text-meta text-muted-foreground">
-          Guests must turn on palate sharing in their profile.
+          Ask the guest to open their palate and tap "Hand over a code" — expires in 30 minutes.
         </p>
+
+        <button
+          type="button"
+          onClick={() => setShowPublic((s) => !s)}
+          className="mt-3 text-meta text-muted-foreground underline"
+        >
+          {showPublic ? "Hide public-profile lookup" : "Guest has a public profile? Look up by @username"}
+        </button>
+        {showPublic && (
+          <form
+            className="mt-2 flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const u = username.trim();
+              if (!u) return;
+              resolvePublic.mutate(u);
+            }}
+          >
+            <input
+              aria-label="Public username"
+              className="flex-1 rounded-md border border-border bg-background/70 px-3 py-2 text-sub text-foreground focus:outline-none focus:ring-1 focus:ring-primary/40"
+              placeholder="@username (public only)"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              autoCapitalize="off" autoCorrect="off"
+            />
+            <button
+              type="submit"
+              disabled={resolvePublic.isPending}
+              className="inline-flex items-center gap-1 rounded-md border border-border px-3 py-2 text-sub disabled:opacity-60"
+            >
+              <Plus className="h-4 w-4" /> Add
+            </button>
+          </form>
+        )}
       </section>
 
       <section aria-label="List source" className="mt-6">
@@ -199,13 +255,13 @@ function VerifiedGate() {
 
 // ────────── Result ──────────
 
-function verdictColor(v: "loves" | "fine" | "not-for-them"): string {
+function verdictColor(v: Verdict): string {
   if (v === "loves") return "bg-primary text-primary-foreground";
   if (v === "fine") return "bg-muted text-foreground";
   return "bg-destructive/15 text-destructive";
 }
 
-function verdictLabel(v: "loves" | "fine" | "not-for-them"): string {
+function verdictLabel(v: Verdict): string {
   if (v === "loves") return "loves it";
   if (v === "fine") return "fine";
   return "not for them";
@@ -218,39 +274,20 @@ function TableResult({ result }: { result: TableCallOutput }) {
     return m;
   }, [result.guests]);
 
-  const byId = useMemo(() => {
-    const m = new Map<string, TableCallCandidateOut>();
-    for (const c of result.results) m.set(c.candidateId, c);
-    return m;
-  }, [result.results]);
-
-  const others = useMemo(() => {
-    const winnerIds = new Set(
-      result.call.kind === "one-bottle"
-        ? [result.call.winner?.candidateId]
-        : result.call.splitPair?.map((p) => p.candidateId) ?? [],
-    );
-    return result.results
-      .filter((c) => !winnerIds.has(c.candidateId) && c.finePlus)
-      .slice(0, 3);
-  }, [result]);
-
-  if (result.call.kind === "split" && result.call.splitPair) {
-    const [a, b] = result.call.splitPair;
+  if (result.kind === "split" && result.splitPair) {
+    const [a, b] = result.splitPair;
     return (
       <div className="mt-6">
         <div className="text-meta uppercase text-muted-foreground">The call</div>
-        <p className="mt-2 text-sub text-foreground">{result.call.reasoning}</p>
+        <p className="mt-2 text-sub text-foreground">{result.reasoning}</p>
         <div className="mt-3 grid gap-3">
-          {[a, b].map((c) => (
-            <SplitCard key={c.candidateId} c={byId.get(c.candidateId)!} nameById={nameById} />
-          ))}
+          {[a, b].map((c) => <SplitCard key={c.candidateId} c={c} nameById={nameById} />)}
         </div>
       </div>
     );
   }
 
-  const winner = result.call.winner ? byId.get(result.call.winner.candidateId) : null;
+  const winner = result.winner;
   if (!winner) return null;
 
   return (
@@ -261,7 +298,7 @@ function TableResult({ result }: { result: TableCallOutput }) {
         {winner.producer && (
           <div className="text-sub text-muted-foreground">{winner.producer}</div>
         )}
-        <p className="mt-2 text-sub text-foreground">{result.call.reasoning}</p>
+        <p className="mt-2 text-sub text-foreground">{result.reasoning}</p>
         <div className="mt-3 flex flex-wrap gap-2">
           {winner.guests.map((g) => (
             <span key={g.userId} className={`rounded-full px-2 py-1 text-meta ${verdictColor(g.verdict)}`}>
@@ -271,11 +308,11 @@ function TableResult({ result }: { result: TableCallOutput }) {
         </div>
       </div>
 
-      {others.length > 0 && (
+      {result.alternates.length > 0 && (
         <div className="mt-6">
           <div className="text-meta uppercase text-muted-foreground">Alternates</div>
           <div className="mt-2 grid gap-2">
-            {others.map((c) => (
+            {result.alternates.map((c) => (
               <div key={c.candidateId} className="pm-card p-3">
                 <div className="text-sub text-foreground">{c.name}</div>
                 <div className="text-meta text-muted-foreground">
@@ -290,7 +327,7 @@ function TableResult({ result }: { result: TableCallOutput }) {
   );
 }
 
-function SplitCard({ c, nameById }: { c: TableCallCandidateOut; nameById: Map<string, string> }) {
+function SplitCard({ c, nameById }: { c: BottleWithVerdicts; nameById: Map<string, string> }) {
   return (
     <div className="pm-card p-3">
       <div className="text-sub text-foreground">{c.name}</div>
@@ -305,6 +342,3 @@ function SplitCard({ c, nameById }: { c: TableCallCandidateOut; nameById: Map<st
     </div>
   );
 }
-
-// Silence unused import warning: useNavigate/useQueryClient reserved for later.
-void useNavigate; void useQueryClient;

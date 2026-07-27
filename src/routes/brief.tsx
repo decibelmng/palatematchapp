@@ -2,6 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { AuthGate } from "@/components/AuthGate";
 import { useSommelierBrief } from "@/hooks/use-sommelier-brief";
+import { useMyProfile } from "@/hooks/use-friends";
+import { archetypeFor, type QuizAnswers } from "@/lib/quiz-seeds";
 import { ChevronLeft, Lock, Unlock } from "lucide-react";
 
 export const Route = createFileRoute("/brief")({
@@ -22,7 +24,11 @@ export const Route = createFileRoute("/brief")({
  */
 function BriefFullScreen() {
   const brief = useSommelierBrief();
+  const { data: profile } = useMyProfile();
   const [locked, setLocked] = useState(false);
+
+  const quiz = ((profile as any)?.quiz_answers ?? null) as QuizAnswers | null;
+  const archetype = quiz && "votes" in quiz ? archetypeFor(quiz, quiz.type === "white" ? "white" : "red").name : null;
 
   useEffect(() => {
     if (!locked) return;
@@ -79,7 +85,15 @@ function BriefFullScreen() {
           </button>
         </div>
 
-        <p className="mt-8 text-[17px] leading-[1.7] font-serif whitespace-pre-wrap text-white">
+        {archetype && (
+          <h1
+            className="mt-8 font-serif text-white"
+            style={{ fontSize: "var(--fs-title, 28px)", lineHeight: 1.15 }}
+          >
+            {archetype}
+          </h1>
+        )}
+        <p className="mt-4 text-[17px] leading-[1.7] font-serif whitespace-pre-wrap text-white">
           {brief.text}
         </p>
 
