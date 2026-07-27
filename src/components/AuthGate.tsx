@@ -1,17 +1,34 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { lovable } from "@/integrations/lovable";
 import { useSession } from "@/hooks/use-session";
+import { authStorageSnapshot, getAuthGateMountCount, installAuthDebug, registerAuthGateMount } from "@/lib/auth-debug";
 import { AppShell } from "./AppShell";
 import { NameGate } from "./NameGate";
 
 export function AuthGate({ children }: { children: ReactNode }) {
+  const mountId = useRef(0);
+  if (typeof window !== "undefined" && mountId.current === 0) {
+    installAuthDebug(supabase);
+    mountId.current = registerAuthGateMount();
+  }
   const session = useSession();
+  useEffect(() => () => {
+    console.log("[auth] AuthGate unmount", {
+      mountId: mountId.current,
+      totalMountsSeen: getAuthGateMountCount(),
+      storage: authStorageSnapshot(),
+    });
+  }, []);
   console.log("[auth] AuthGate render", {
+    mountId: mountId.current,
+    totalMountsSeen: getAuthGateMountCount(),
     state: session === undefined ? "loading" : session ? "signed-in" : "signed-out",
     origin: typeof window !== "undefined" ? window.location.origin : "ssr",
     path: typeof window !== "undefined" ? window.location.pathname : "ssr",
+    storage: authStorageSnapshot(),
+    decision: session === undefined ? "loading" : session ? "app" : "login",
   });
 
   if (session === undefined) {
@@ -45,10 +62,13 @@ function AuthScreen() {
 
   async function oauth(provider: "apple" | "google") {
     setErr(null);
+    installAuthDebug(supabase);
     console.log("[auth] oauth click", {
       provider,
       origin: window.location.origin,
       redirect_uri: window.location.origin,
+      href: window.location.href,
+      storage: authStorageSnapshot(),
     });
     const res = await lovable.auth.signInWithOAuth(provider, {
       redirect_uri: window.location.origin,
@@ -57,6 +77,7 @@ function AuthScreen() {
       redirected: (res as any)?.redirected,
       hasTokens: !!(res as any)?.tokens,
       error: (res as any)?.error?.message ?? null,
+      storage: authStorageSnapshot(),
     });
     if (res.error) {
       const message = res.error.message ?? `${provider} sign-in failed`;

@@ -46,6 +46,7 @@ import { Route as AdminDataCaptureRouteImport } from './routes/admin.data-captur
 import { Route as AdminDataRouteImport } from './routes/admin.data'
 import { Route as AdminCorrectionsRouteImport } from './routes/admin.corrections'
 import { Route as AdminConsensusRouteImport } from './routes/admin.consensus'
+import { Route as AdminAuthAuditRouteImport } from './routes/admin.auth-audit'
 import { Route as AddFriendUsernameRouteImport } from './routes/add-friend.$username'
 
 const WishlistRoute = WishlistRouteImport.update({
@@ -233,6 +234,11 @@ const AdminConsensusRoute = AdminConsensusRouteImport.update({
   path: '/admin/consensus',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminAuthAuditRoute = AdminAuthAuditRouteImport.update({
+  id: '/admin/auth-audit',
+  path: '/admin/auth-audit',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AddFriendUsernameRoute = AddFriendUsernameRouteImport.update({
   id: '/add-friend/$username',
   path: '/add-friend/$username',
@@ -254,6 +260,7 @@ export interface FileRoutesByFullPath {
   '/wines': typeof WinesRoute
   '/wishlist': typeof WishlistRoute
   '/add-friend/$username': typeof AddFriendUsernameRoute
+  '/admin/auth-audit': typeof AdminAuthAuditRoute
   '/admin/consensus': typeof AdminConsensusRoute
   '/admin/corrections': typeof AdminCorrectionsRoute
   '/admin/data': typeof AdminDataRoute
@@ -294,6 +301,7 @@ export interface FileRoutesByTo {
   '/wines': typeof WinesRoute
   '/wishlist': typeof WishlistRoute
   '/add-friend/$username': typeof AddFriendUsernameRoute
+  '/admin/auth-audit': typeof AdminAuthAuditRoute
   '/admin/consensus': typeof AdminConsensusRoute
   '/admin/corrections': typeof AdminCorrectionsRoute
   '/admin/data': typeof AdminDataRoute
@@ -335,6 +343,7 @@ export interface FileRoutesById {
   '/wines': typeof WinesRoute
   '/wishlist': typeof WishlistRoute
   '/add-friend/$username': typeof AddFriendUsernameRoute
+  '/admin/auth-audit': typeof AdminAuthAuditRoute
   '/admin/consensus': typeof AdminConsensusRoute
   '/admin/corrections': typeof AdminCorrectionsRoute
   '/admin/data': typeof AdminDataRoute
@@ -377,6 +386,7 @@ export interface FileRouteTypes {
     | '/wines'
     | '/wishlist'
     | '/add-friend/$username'
+    | '/admin/auth-audit'
     | '/admin/consensus'
     | '/admin/corrections'
     | '/admin/data'
@@ -417,6 +427,7 @@ export interface FileRouteTypes {
     | '/wines'
     | '/wishlist'
     | '/add-friend/$username'
+    | '/admin/auth-audit'
     | '/admin/consensus'
     | '/admin/corrections'
     | '/admin/data'
@@ -457,6 +468,7 @@ export interface FileRouteTypes {
     | '/wines'
     | '/wishlist'
     | '/add-friend/$username'
+    | '/admin/auth-audit'
     | '/admin/consensus'
     | '/admin/corrections'
     | '/admin/data'
@@ -498,6 +510,7 @@ export interface RootRouteChildren {
   WinesRoute: typeof WinesRoute
   WishlistRoute: typeof WishlistRoute
   AddFriendUsernameRoute: typeof AddFriendUsernameRoute
+  AdminAuthAuditRoute: typeof AdminAuthAuditRoute
   AdminConsensusRoute: typeof AdminConsensusRoute
   AdminCorrectionsRoute: typeof AdminCorrectionsRoute
   AdminDataRoute: typeof AdminDataRoute
@@ -780,6 +793,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminConsensusRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/auth-audit': {
+      id: '/admin/auth-audit'
+      path: '/admin/auth-audit'
+      fullPath: '/admin/auth-audit'
+      preLoaderRoute: typeof AdminAuthAuditRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/add-friend/$username': {
       id: '/add-friend/$username'
       path: '/add-friend/$username'
@@ -831,6 +851,7 @@ const rootRouteChildren: RootRouteChildren = {
   WinesRoute: WinesRoute,
   WishlistRoute: WishlistRoute,
   AddFriendUsernameRoute: AddFriendUsernameRoute,
+  AdminAuthAuditRoute: AdminAuthAuditRoute,
   AdminConsensusRoute: AdminConsensusRoute,
   AdminCorrectionsRoute: AdminCorrectionsRoute,
   AdminDataRoute: AdminDataRoute,
