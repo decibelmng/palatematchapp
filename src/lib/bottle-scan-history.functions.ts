@@ -112,8 +112,7 @@ export const saveBottleScanCorrection = createServerFn({ method: "POST" })
       patch.vintage = Number.isFinite(n) ? n : null;
     }
     if (Object.keys(patch).length > 0) {
-      const { error: uErr } = await supabase
-        .from("scan_wines")
+      const { error: uErr } = await (supabase.from("scan_wines") as any)
         .update(patch)
         .eq("id", data.scanWineId)
         .eq("user_id", userId);
