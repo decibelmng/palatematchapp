@@ -315,7 +315,7 @@ function AuthTracePanel({ onTestAltOrigin }: { onTestAltOrigin: () => void }) {
           </div>
         </div>
       )}
-    </ScreenShell>
+    </div>
   );
 }
 
