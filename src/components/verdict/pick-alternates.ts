@@ -64,7 +64,9 @@ export function pickAlternates(call: ScanRow, pool: ScanRow[]): Alternate[] {
       .sort((a, b) => b.ranked.predicted - a.ranked.predicted);
     const pick = cheaper[0];
     if (pick) {
-      const savingsPct = Math.round((1 - (pick.price_amount ?? 0) / callAmt) * 100);
+      const pickAmt = pick.price_amount;
+      const savingsPct = pickAmt && pickAmt > 0 ? Math.round((1 - pickAmt / callAmt) * 100) : 0;
+
       out.push({
         row: pick,
         kind: "spend-less",
