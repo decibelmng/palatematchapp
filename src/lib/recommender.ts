@@ -239,7 +239,7 @@ function learnOmega(rated: RatedFp[], type: WineType): OmegaFit {
  * readable overlap are not neighbours, and calling them identical is the
  * manufactured-distance bug in its worst form.
  */
-function omegaDistance(
+export function omegaDistance(
   a: FpVec,
   b: FpVec,
   omega: Record<FpKey, number>,
