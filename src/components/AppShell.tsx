@@ -1,4 +1,5 @@
 import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
+import { MissFollowUp } from "@/components/MissFollowUp";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ScanLine, Star, Users, Library, WifiOff } from "lucide-react";
 import { toast } from "sonner";

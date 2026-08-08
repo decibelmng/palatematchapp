@@ -54,7 +54,7 @@ export async function predictForBottleCore(
   if (!target) {
     return {
       predicted: null, omega: null, bandwidth: null, nRated: 0,
-      neighborSupport: null, nullReason: "fetch_failed",
+      neighborSupport: null, axisDeltas: null, nullReason: "fetch_failed",
     };
   }
   const rated = await loadRatedFpRows(supabase, userId);

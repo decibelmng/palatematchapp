@@ -11,6 +11,7 @@ import { predictStarsForBottle } from "@/lib/predict.functions";
 import { refreshBottleFingerprint } from "@/lib/fingerprint-refresh.functions";
 import { usePalateVersion } from "./use-palate-version";
 import { confirmDialog } from "@/components/confirm-dialog";
+import { askMissAttribution } from "@/components/MissFollowUp";
 import { createElement, Fragment } from "react";
 
 
@@ -108,6 +109,16 @@ function ratedFromCache(qc: QueryClient, userId: string): {
   return { rated, complete: ratings.length > 0 && missing === 0, nRatings: ratings.length };
 }
 
+/** Wine name from whatever bottles query is already cached — never truncated,
+ *  and "this wine" only when nothing is cached. */
+function bottleNameFor(qc: QueryClient, bottleId: string): string {
+  const hit = qc
+    .getQueriesData<BottleRow[]>({ queryKey: ["bottles"] })
+    .flatMap(([, data]) => data ?? [])
+    .find((b) => !!b && b.id === bottleId);
+  return hit?.name ?? "this wine";
+}
+
 /** Predict from cache when the cache is sufficient; otherwise report that the
  *  caller should fall back to the server. Never returns a bare null. */
 export function predictForBottleFromCache(
@@ -119,7 +130,7 @@ export function predictForBottleFromCache(
   if (!complete) {
     return {
       predicted: null, omega: null, bandwidth: null, nRated: rated.length,
-      neighborSupport: null, nullReason: "not_attempted", needsServer: true,
+      neighborSupport: null, axisDeltas: null, nullReason: "not_attempted", needsServer: true,
     };
   }
   const res = predictStars(rated, target as unknown as FpRow);
@@ -153,7 +164,7 @@ export async function predictForBottleWithFallback(
   } catch {
     return {
       predicted: null, omega: null, bandwidth: null, nRated: 0,
-      neighborSupport: null, nullReason: "fetch_failed",
+      neighborSupport: null, axisDeltas: null, nullReason: "fetch_failed",
     };
   }
 }
@@ -242,6 +253,12 @@ type RateResult = {
   demotedTier: "canon" | "nemesis" | null;
   previousStars: number | null;
   palateVersion: number | null;
+  /** The measurement row this rating just wrote, so the one follow-up question
+   *  can attach its answer to it. Null when nothing was logged (rating cleared). */
+  outcomeId: string | null;
+  /** Signed: rated minus expected. Null when we had no expectation to miss. */
+  delta: number | null;
+  bottleName: string;
 };
 
 export function useRate() {
@@ -327,6 +344,7 @@ export function useRate() {
         p_predicted_rank: predictedRank ?? null,
         p_null_reason: p.nullReason,
         p_neighbor_support: p.neighborSupport,
+        p_axis_deltas: p.axisDeltas,
       });
       if (error) throw error;
 
@@ -338,11 +356,24 @@ export function useRate() {
         demotedTier: (row?.demoted_tier ?? null) as "canon" | "nemesis" | null,
         previousStars: (row?.previous_stars ?? null) as number | null,
         palateVersion: (row?.palate_version ?? null) as number | null,
+        // For the one inline follow-up question after a big miss.
+        outcomeId: (row?.outcome_id ?? null) as string | null,
+        delta: (row?.delta ?? null) as number | null,
+        bottleName: bottleNameFor(qc, bottleId),
       };
     },
     onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: ["ratings"] });
       qc.invalidateQueries({ queryKey: ["palate-version"] });
+      // A full star or more off: ask which half of the system was wrong.
+      // askMissAttribution ignores anything smaller, so no gate is needed here.
+      if (result?.outcomeId && result.delta != null) {
+        askMissAttribution({
+          outcomeId: result.outcomeId,
+          delta: result.delta,
+          wineName: result.bottleName,
+        });
+      }
       if (result?.demotedTier) {
         qc.invalidateQueries({ queryKey: ["canons"] });
         // 10s undo — restores rating + benchmark in one atomic RPC (+1 version bump).

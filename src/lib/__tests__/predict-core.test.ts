@@ -92,3 +92,47 @@ describe("neighbor support", () => {
     expect((far.neighborSupport ?? 0)).toBeLessThanOrEqual(inCluster.neighborSupport ?? 0);
   });
 });
+
+describe("axis deltas — the shape of a miss", () => {
+  it("measures the candidate against the nearest wine the user actually loved", () => {
+    // "a" (5★) and "c" (4★) are the loved wines; "b"/"d" are the low ratings.
+    // A candidate parked on top of "c" should be measured against "c".
+    const onC = predictStars(rated, row("t", { fp_tannin: 0.3, fp_body: 0.4 }));
+    expect(onC.axisDeltas).not.toBeNull();
+    expect(onC.axisDeltas!.anchor.id).toBe("c");
+    expect(onC.axisDeltas!.anchor.stars).toBeGreaterThanOrEqual(4);
+    // Identical wine => no difference on any axis.
+    for (const v of Object.values(onC.axisDeltas!.axes)) expect(Math.abs(v)).toBeLessThan(1e-9);
+  });
+
+  it("signs the difference candidate-minus-loved-wine, so direction is readable", () => {
+    // More tannin and more body than either loved wine => positive on both.
+    const grippier = predictStars(rated, row("t", { fp_tannin: 0.7, fp_body: 0.75 }));
+    expect(grippier.axisDeltas!.axes.tannin).toBeGreaterThan(0);
+    expect(grippier.axisDeltas!.axes.body).toBeGreaterThan(0);
+
+    const softer = predictStars(rated, row("t", { fp_tannin: 0.05, fp_body: 0.1 }));
+    expect(softer.axisDeltas!.axes.tannin).toBeLessThan(0);
+    expect(softer.axisDeltas!.axes.body).toBeLessThan(0);
+  });
+
+  it("is null when there is no loved wine of that colour to measure against", () => {
+    const noLoves = [
+      { bottle: row("b", { fp_tannin: 0.9, fp_body: 0.9 }), stars: 2 },
+      { bottle: row("d", { fp_tannin: 0.8, fp_body: 0.8 }), stars: 1 },
+      { bottle: row("e", { fp_tannin: 0.7, fp_body: 0.7 }), stars: 3 },
+    ];
+    const res = predictStars(noLoves, row("t", { fp_tannin: 0.3 }));
+    expect(res.predicted).not.toBeNull();
+    expect(res.axisDeltas).toBeNull();
+
+    // And null wherever no prediction was possible at all.
+    expect(predictStars(rated, row("w", { type: "white" })).axisDeltas).toBeNull();
+  });
+
+  it("batch and single paths report the same deltas", () => {
+    const t = row("t", { fp_tannin: 0.45, fp_body: 0.5 });
+    const many = predictStarsMany(rated, [t]).get("t")!;
+    expect(many.axisDeltas).toEqual(predictStars(rated, t).axisDeltas);
+  });
+});
