@@ -438,10 +438,6 @@ export function useRestoreRatingAndBenchmark() {
       return {
         benchmarkId: (row?.benchmark_id ?? null) as string | null,
         palateVersion: (row?.palate_version ?? null) as number | null,
-        // For the one inline follow-up question after a big miss.
-        outcomeId: (row?.outcome_id ?? null) as string | null,
-        delta: (row?.delta ?? null) as number | null,
-        bottleName: bottleNameFor(qc, bottleId),
       };
     },
     onSuccess: () => {
