@@ -68,12 +68,53 @@ export function splitCode(code: string): string[] {
   return slots;
 }
 
+/** Axis-aware slot parser — the correct one to use whenever the palate type is
+ *  known. A greedy character scan cannot always tell "B±G±CD" (body bold, fruit
+ *  balanced-both, tannin mostly grippy…) from a code whose first slot carries
+ *  the marker, because a bare marker can directly follow a pole letter. The
+ *  per-position alphabet removes the ambiguity: each slot must be that axis's
+ *  low/high letter, N, the bare marker, or "?". Falls back to splitCode() only
+ *  when nothing parses (a corrupt or foreign code). */
+export function parseCode(code: string, axes: AxisDef[]): string[] {
+  const chars = Array.from(code ?? "").map((c) => (c === "·" ? GLYPH_UNRESOLVED : c === "X" ? GLYPH_BIMODAL : c));
+
+  const walk = (i: number, slot: number): string[] | null => {
+    if (slot === axes.length) return i === chars.length ? [] : null;
+    if (i >= chars.length) {
+      // Short code — pad the remaining slots as unresolved.
+      return Array(axes.length - slot).fill(GLYPH_UNRESOLVED);
+    }
+    const axis = axes[slot];
+    const ch = chars[i];
+    const isLetter = ch === axis.low || ch === axis.high || ch === GLYPH_MODERATE;
+    if (isLetter) {
+      // Prefer attaching a following marker, but backtrack if that leaves the
+      // rest unparseable.
+      if (chars[i + 1] === GLYPH_BIMODAL && ch !== GLYPH_MODERATE) {
+        const rest = walk(i + 2, slot + 1);
+        if (rest) return [ch + GLYPH_BIMODAL, ...rest];
+      }
+      const rest = walk(i + 1, slot + 1);
+      if (rest) return [ch, ...rest];
+      return null;
+    }
+    if (ch === GLYPH_BIMODAL || ch === GLYPH_UNRESOLVED) {
+      const rest = walk(i + 1, slot + 1);
+      if (rest) return [ch, ...rest];
+    }
+    return null;
+  };
+
+  return walk(0, 0) ?? slotsOf(code, axes.length);
+}
+
 /** Pad/trim to five slots — for comparing two codes of different vintages. */
 export function slotsOf(code: string | null | undefined, count = 5): string[] {
   const s = splitCode(code ?? "");
   while (s.length < count) s.push(GLYPH_UNRESOLVED);
   return s.slice(0, count);
 }
+
 
 /** True when this slot carries the bimodal marker. */
 export function isBimodalSlot(slot: string): boolean {
