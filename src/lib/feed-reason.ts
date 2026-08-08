@@ -7,7 +7,7 @@
 //
 // Read-only — never touches fp_observations or writes anything.
 
-import { RAX, hasAxis, type FpKey, type WineType, type RatedFp } from "./recommender";
+import { RAX, hasAxis, type FpKey, type FpVec, type WineType, type RatedFp } from "./recommender";
 
 export type CalibrationBand = "thin" | "medium" | "strong";
 
@@ -91,7 +91,7 @@ const RED_ONLY = new Set<FpKey>(["tannin", "fruit_dark"]);
  * against your palate on X".
  */
 export function reasonForPrediction(args: {
-  candidateFp: Record<FpKey, number>;
+  candidateFp: FpVec;
   type: WineType;
   ratedSameType: RatedFp[];
   predicted: number;
