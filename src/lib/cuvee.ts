@@ -2,7 +2,7 @@
 // vintages of the same wine collapse into one cuvée; different bottlings
 // from the same producer (Barolo vs Barbaresco vs Bric Turot) do not.
 
-import { RAX, type FpKey, type WineType } from "@/lib/recommender";
+import { RAX, hasAxis, type FpKey, type FpVec, type WineType } from "@/lib/recommender";
 
 const NAME_STOPWORDS = new Set([
   "the", "a", "an", "de", "di", "du", "del", "della", "el", "la", "le", "les",
