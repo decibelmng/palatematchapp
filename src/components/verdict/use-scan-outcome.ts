@@ -9,7 +9,7 @@
  * Nothing here feeds scoring, weighting, or ranking. It writes one row per
  * person per scan and never blocks the decision screen.
  */
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { friendlyError } from "@/lib/error-message";
