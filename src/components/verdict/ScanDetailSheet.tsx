@@ -81,6 +81,10 @@ export function ScanDetailSheet({
             )}
           </div>
         </div>
+        {nearTie && (
+          <p className="mt-1 text-meta text-muted-foreground">{nearTie}</p>
+        )}
+
         <p className="mt-3 text-heading text-foreground leading-snug">{verdict}</p>
         <p className="mt-2 text-body text-muted-foreground">{because}</p>
         <p className="mt-3 text-sub">
