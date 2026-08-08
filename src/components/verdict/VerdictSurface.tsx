@@ -8,6 +8,7 @@ import { ScanDetailSheet } from "./ScanDetailSheet";
 import { ScanThumbBar } from "./ScanThumbBar";
 import { pickCall, nearTieNote } from "./tiebreak";
 import { useLogCallShape } from "./use-log-call-shape";
+import { useScanOutcome } from "./use-scan-outcome";
 import type { Controls } from "@/lib/list-controls";
 import type { CurrencyCode } from "@/lib/currency";
 
@@ -81,6 +82,11 @@ export function VerdictSurface({
   // catalog-first tie-break actually skews the Call upmarket.
   useLogCallShape(call, rows, scanId ?? null);
 
+  // Choice capture. Richer than a star rating — it's a preference over the
+  // thirty-nine alternatives we also showed, at their prices. CAPTURE ONLY:
+  // nothing in the ranking above reads it.
+  const order = useScanOutcome({ scanId: scanId ?? null, call, eligible, rows });
+
 
 
   if (!call) {
@@ -92,6 +98,10 @@ export function VerdictSurface({
           onOpen={setDetailKey}
           stillReading={stillReading}
           currency={currency}
+          orderedBottleId={order.chosenBottleId}
+          onOrdered={order.toggle}
+          orderPending={order.pending}
+          canOrder={order.enabled}
         />
         <ScanDetailSheet row={detailFor} scannedAt={scannedAt} scanId={scanId ?? null} rank={detailRank} nearTie={detailFor ? nearTieNote(detailFor, eligible) : null} onClose={() => setDetailKey(null)} />
 
@@ -101,14 +111,33 @@ export function VerdictSurface({
 
   return (
     <div className="scan-decision mt-6 bg-background pb-6">
-      <TheCall row={call} kind={callKind} onOpen={() => setDetailKey(call.key)} />
-      <Alternates items={alternates} onOpen={setDetailKey} />
+      <TheCall
+        row={call}
+        kind={callKind}
+        onOpen={() => setDetailKey(call.key)}
+        ordered={order.chosenBottleId === call.ranked.bottle.id}
+        onOrdered={() => order.toggle(call)}
+        orderPending={order.pending}
+        canOrder={order.enabled}
+      />
+      <Alternates
+        items={alternates}
+        onOpen={setDetailKey}
+        orderedBottleId={order.chosenBottleId}
+        onOrdered={(a) => order.toggle(a.row)}
+        orderPending={order.pending}
+        canOrder={order.enabled}
+      />
       <TheRest
         rows={restRows}
         pendingSkeletons={pendingSkeletons}
         onOpen={setDetailKey}
         stillReading={stillReading}
         currency={currency}
+        orderedBottleId={order.chosenBottleId}
+        onOrdered={order.toggle}
+        orderPending={order.pending}
+        canOrder={order.enabled}
       />
       <ScanThumbBar
         onRescan={onRescan}
