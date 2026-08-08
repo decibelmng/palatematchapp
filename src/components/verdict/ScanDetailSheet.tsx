@@ -7,6 +7,7 @@ import { FingerprintSpoke } from "@/components/FingerprintSpoke";
 import type { ScanRow } from "./types";
 import { priceLabel } from "./types";
 import { verdictLine, becauseLine } from "./reason";
+import { OrderedButton } from "./OrderedButton";
 
 /**
  * Detail sheet — the ONLY place a decimal score is allowed to appear on
@@ -17,8 +18,14 @@ import { verdictLine, becauseLine } from "./reason";
  */
 export function ScanDetailSheet({
   row, scannedAt, nearTie, onClose, scanId, rank,
+  ordered, onOrdered, orderPending, canOrder,
 }: {
   row: ScanRow | null;
+  /** Secondary path for choice capture, for someone who tapped in first. */
+  ordered?: boolean;
+  onOrdered?: () => void;
+  orderPending?: boolean;
+  canOrder?: boolean;
   /** Scan this wine came from, recorded with any rating made here. */
   scanId?: string | null;
   /** 1 = this was the Call. */
@@ -112,6 +119,21 @@ export function ScanDetailSheet({
         )}
         {row.valueSentence && (
           <p className="mt-2 text-meta text-muted-foreground leading-snug">{row.valueSentence}</p>
+        )}
+
+        {canOrder && onOrdered && (
+          <div className="mt-4 pt-3 border-t border-border flex items-center justify-between gap-3">
+            <span className="text-label uppercase tracking-label text-muted-foreground">
+              {isPostMeal ? "Is this the one you ordered?" : "Ordering this one?"}
+            </span>
+            <OrderedButton
+              ordered={!!ordered}
+              disabled={orderPending}
+              size="compact"
+              wineName={r.bottle.name}
+              onToggle={onOrdered}
+            />
+          </div>
         )}
 
         {canRate && (

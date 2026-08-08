@@ -103,7 +103,12 @@ export function VerdictSurface({
           orderPending={order.pending}
           canOrder={order.enabled}
         />
-        <ScanDetailSheet row={detailFor} scannedAt={scannedAt} scanId={scanId ?? null} rank={detailRank} nearTie={detailFor ? nearTieNote(detailFor, eligible) : null} onClose={() => setDetailKey(null)} />
+        <ScanDetailSheet row={detailFor} scannedAt={scannedAt} scanId={scanId ?? null} rank={detailRank} nearTie={detailFor ? nearTieNote(detailFor, eligible) : null} onClose={() => setDetailKey(null)}
+          ordered={!!detailFor && order.chosenBottleId === detailFor.ranked.bottle.id}
+          onOrdered={detailFor ? () => order.toggle(detailFor) : undefined}
+          orderPending={order.pending}
+          canOrder={order.enabled}
+        />
 
       </div>
     );
@@ -146,7 +151,12 @@ export function VerdictSurface({
         currency={currency}
         rows={rows}
       />
-      <ScanDetailSheet row={detailFor} scannedAt={scannedAt} scanId={scanId ?? null} rank={detailRank} nearTie={detailFor ? nearTieNote(detailFor, eligible) : null} onClose={() => setDetailKey(null)} />
+      <ScanDetailSheet row={detailFor} scannedAt={scannedAt} scanId={scanId ?? null} rank={detailRank} nearTie={detailFor ? nearTieNote(detailFor, eligible) : null} onClose={() => setDetailKey(null)}
+          ordered={!!detailFor && order.chosenBottleId === detailFor.ranked.bottle.id}
+          onOrdered={detailFor ? () => order.toggle(detailFor) : undefined}
+          orderPending={order.pending}
+          canOrder={order.enabled}
+        />
 
     </div>
   );
