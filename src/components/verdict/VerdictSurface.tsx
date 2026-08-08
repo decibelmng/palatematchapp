@@ -6,6 +6,8 @@ import { pickAlternates } from "./pick-alternates";
 import { TheRest } from "./TheRest";
 import { ScanDetailSheet } from "./ScanDetailSheet";
 import { ScanThumbBar } from "./ScanThumbBar";
+import { pickCall, nearTieNote } from "./tiebreak";
+import { useLogCallShape } from "./use-log-call-shape";
 import type { Controls } from "@/lib/list-controls";
 import type { CurrencyCode } from "@/lib/currency";
 
@@ -22,6 +24,7 @@ export function VerdictSurface({
   controls,
   setControls,
   currency,
+  scanId,
 }: {
   rows: ScanRow[];
   pendingSkeletons: number;
@@ -31,7 +34,10 @@ export function VerdictSurface({
   controls: Controls;
   setControls: (c: Controls) => void;
   currency?: CurrencyCode;
+  /** Present for a persisted scan; enables silent Call-shape instrumentation. */
+  scanId?: string | null;
 }) {
+
 
   const [detailKey, setDetailKey] = useState<string | null>(null);
   const detailFor = useMemo(
