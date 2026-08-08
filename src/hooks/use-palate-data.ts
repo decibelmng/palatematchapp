@@ -302,22 +302,26 @@ export function useRate() {
         if (!ok) throw new RateCanceledError();
       }
 
-      // Predict against pre-rating palate state — this is the dispute signal.
-      // null when the target bottle isn't calibrated or we lack context.
-      const targetBottle = qc
-        .getQueriesData<BottleRow[]>({ queryKey: ["bottles"] })
-        .flatMap(([, data]) => data ?? [])
-        .find((b): b is BottleRow => !!b && b.id === bottleId) ?? null;
-      const predicted = targetBottle
-        ? predictForBottleFromCache(qc, session.user.id, targetBottle)
-        : null;
+      // Predict against pre-rating palate state. Cache first, server fallback:
+      // a rating from a screen that never loaded the rated set used to log
+      // nothing, which quietly biased the record toward measurable cases.
+      const p = await predictForBottleWithFallback(qc, session.user.id, bottleId);
 
       const { data, error } = await (supabase as any).rpc("save_rating_with_cascade", {
         p_bottle_id: bottleId,
         p_stars: stars,
-        p_predicted: predicted,
+        p_predicted: p.predicted,
+        p_omega: p.omega,
+        p_bandwidth: p.bandwidth,
+        p_n_rated: p.nRated,
+        p_source: source ?? "other",
+        p_scan_id: scanId ?? null,
+        p_scan_wine_id: scanWineId ?? null,
+        p_predicted_rank: predictedRank ?? null,
+        p_null_reason: p.nullReason,
       });
       if (error) throw error;
+
 
       const row = Array.isArray(data) ? data[0] : data;
       return {
