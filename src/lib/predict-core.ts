@@ -12,6 +12,8 @@
 import {
   recommend,
   buildTypeContext,
+  distanceInContext,
+  type TypeCtx,
   type BottleFp,
   type FpKey,
   type RatedFp,
@@ -55,6 +57,11 @@ export type PredictResult = {
   bandwidth: number | null;
   /** Same-colour cuvée-aggregated ratings the prediction was made from. */
   nRated: number;
+  /** How many of those rated wines sit within one bandwidth of the candidate
+   *  in ω-weighted style space. High = interpolation between wines we know;
+   *  0 = the number is an extrapolation across a gap. Null when no context
+   *  was fitted. Measurement only — nothing in scoring reads it. */
+  neighborSupport: number | null;
   nullReason: PredictNullReason | null;
 };
 
@@ -90,8 +97,29 @@ const noPrediction = (reason: PredictNullReason, nRated = 0): PredictResult => (
   omega: null,
   bandwidth: null,
   nRated,
+  neighborSupport: null,
   nullReason: reason,
 });
+
+/**
+ * Count the user's rated wines within one bandwidth of `target`, using the
+ * SAME ω-weighted metric and the SAME h the recommender scored with — so the
+ * support figure describes the geometry the prediction actually stood on.
+ *
+ * Read-only over an already-built context. No fit, no scoring change.
+ */
+export function neighborSupportOf(
+  rated: RatedFp[],
+  targetFp: Record<FpKey, number>,
+  ctx: TypeCtx | null,
+): number | null {
+  if (!ctx) return null;
+  let n = 0;
+  for (const r of rated) {
+    if (distanceInContext(targetFp, r.fp, ctx) <= ctx.h) n += 1;
+  }
+  return n;
+}
 
 /**
  * Predict stars for `target` from the user's rated bottles.
@@ -158,6 +186,7 @@ export function predictStars(
     omega: ctx ? ({ ...ctx.fit.omega } as Record<FpKey, number>) : null,
     bandwidth: ctx ? ctx.h : null,
     nRated: sameType.length,
+    neighborSupport: neighborSupportOf(sameType, cand.fp, ctx),
     nullReason: null,
   };
 }
@@ -223,6 +252,7 @@ export function predictStarsMany(
           omega: ctx ? ({ ...ctx.fit.omega } as Record<FpKey, number>) : null,
           bandwidth: ctx ? ctx.h : null,
           nRated: sameType.length,
+          neighborSupport: neighborSupportOf(sameType, fpOf(t), ctx),
           nullReason: null,
         }
         : noPrediction("no_same_type_ratings", sameType.length));
