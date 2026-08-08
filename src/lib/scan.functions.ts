@@ -353,7 +353,15 @@ export const scanWineBatch = createServerFn({ method: "POST" })
             match_reasons: (w.match_reasons ?? []) as any,
           };
         });
-        await supabase.from("scan_wines").insert(rows);
+        // Return the line ids to the client so a rating made on a LIVE scan
+        // logs which row it came from, not just the scan and the rank.
+        // PostgREST returns inserted rows in insert order; if the count ever
+        // disagrees we attach nothing rather than pair ids to the wrong wine.
+        const { data: insertedRows } = await supabase
+          .from("scan_wines").insert(rows).select("id");
+        if (insertedRows && insertedRows.length === resolved.length) {
+          resolved.forEach((w, i) => { w.scan_wine_id = (insertedRows[i] as any).id as string; });
+        }
       }
 
       await supabase.rpc("mark_scan_batch_done", { p_scan_id: data.scan_id, p_batch_index: data.batch_index });
