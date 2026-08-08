@@ -123,7 +123,8 @@ export type LetterResult = {
   label: string;
   low: string;
   high: string;
-  letter: string;        // 'L'|'B'|'N'|'·'
+  /** The full slot: 'L' | 'B' | 'N' | '±' | 'G±' | '?'. Not always one char. */
+  letter: string;
   descriptor: string;
   resolved: boolean;
   value: number | null;  // weighted mean 0..1 (low pole → high pole)
@@ -133,9 +134,11 @@ export type LetterResult = {
 export function computeCode(rated: RatedBottle[], axes: AxisDef[]): { code: string; letters: LetterResult[] } {
   const letters: LetterResult[] = axes.map((axisDef) => {
     const base = { axis: axisDef.key, label: axisDef.label, low: axisDef.low, high: axisDef.high };
-    if (rated.length === 0) {
-      return { ...base, letter: "·", descriptor: "—", resolved: false, value: null, bimodal: false };
-    }
+    const unresolved = {
+      ...base, letter: GLYPH_UNRESOLVED, descriptor: "not enough ratings yet",
+      resolved: false, value: null, bimodal: false,
+    };
+    if (rated.length === 0) return unresolved;
 
     const pts = rated.map((r) => ({
       x: r.values[axisDef.key] ?? 0.5,
@@ -145,9 +148,7 @@ export function computeCode(rated: RatedBottle[], axes: AxisDef[]): { code: stri
       stars: r.stars,
     }));
     const W = pts.reduce((s, p) => s + p.w, 0);
-    if (W === 0) {
-      return { ...base, letter: "·", descriptor: "—", resolved: false, value: null, bimodal: false };
-    }
+    if (W === 0) return unresolved;
 
     const mean = pts.reduce((s, p) => s + p.x * p.w, 0) / W;
     const loved = pts.filter((p) => p.stars >= 4).map((p) => p.x);
@@ -157,11 +158,10 @@ export function computeCode(rated: RatedBottle[], axes: AxisDef[]): { code: stri
       return { ...base, letter: axisDef.low, descriptor: axisDef.lowName, resolved: true, value: 0, bimodal: false };
     }
 
-    // Bimodal (X) requires real evidence at BOTH poles, not one outlier:
+    // Bimodal requires real evidence at BOTH poles, not one outlier:
     //   - ≥6 rated wines of this type overall (avoids early-onboarding noise)
     //   - ≥2 loved (≥4★) anchors at the low pole (<0.42)
     //   - ≥2 loved anchors at the high pole (>0.58)
-    // Otherwise fall through to the standard letter based on weighted mean.
     let bimodal = false;
     if (rated.length >= 6 && loved.length >= 4) {
       const lowPole = loved.filter((v) => v < 0.42).length;
@@ -169,19 +169,29 @@ export function computeCode(rated: RatedBottle[], axes: AxisDef[]): { code: stri
       bimodal = lowPole >= 2 && highPole >= 2;
     }
 
+    // Bimodality QUALIFIES the mean, it does not erase it. If the weighted mean
+    // clears a threshold the pole letter is still emitted, with the marker
+    // appended ("G±" = mostly grippy, with a silky side). Only a mid-range mean
+    // plus a firing bimodal test yields the bare marker.
     let letter: string;
     let descriptor: string;
-    if (bimodal) {
-      // Bimodal renders as a muted middot ("·") — same glyph the reader uses
-      // for "not resolved yet", but with a distinct meaning surfaced via the
-      // `bimodal` flag. An X reads as an error in every UI convention.
-      letter = "·"; descriptor = "loves both poles";
-    } else if (mean <= 0.42) {
+    if (mean <= 0.42) {
       letter = axisDef.low; descriptor = axisDef.lowName;
     } else if (mean >= 0.55) {
       letter = axisDef.high; descriptor = axisDef.highName;
     } else {
-      letter = "N"; descriptor = axisDef.neutralName;
+      letter = GLYPH_MODERATE; descriptor = axisDef.neutralName;
+    }
+
+    if (bimodal) {
+      if (letter === GLYPH_MODERATE) {
+        letter = GLYPH_BIMODAL;
+        descriptor = `both ${axisDef.lowName} and ${axisDef.highName}`;
+      } else {
+        const otherSide = letter === axisDef.low ? axisDef.highName : axisDef.lowName;
+        letter = letter + GLYPH_BIMODAL;
+        descriptor = `mostly ${descriptor}, with a ${otherSide} side`;
+      }
     }
 
     return { ...base, letter, descriptor, resolved: true, value: mean, bimodal };
@@ -193,20 +203,8 @@ export function computeCode(rated: RatedBottle[], axes: AxisDef[]): { code: stri
 export function describeCode(letters: LetterResult[]): string {
   const resolved = letters.filter((l) => l.resolved);
   if (resolved.length === 0) return "Rate a few bottles to reveal this palate.";
-
-  const bimodalAxes = resolved.filter((l) => l.bimodal);
-  const singles = resolved.filter((l) => !l.bimodal).map((l) => l.descriptor);
-
-  const parts = [...singles];
-  if (bimodalAxes.length > 0) {
-    const names = bimodalAxes.map((l) => l.label.toLowerCase());
-    const joined =
-      names.length === 1
-        ? names[0]
-        : names.length === 2
-          ? `${names[0]} and ${names[1]}`
-          : `${names.slice(0, -1).join(", ")}, and ${names[names.length - 1]}`;
-    parts.push(`loves both poles on ${joined}`);
-  }
-  return parts.join(", ") + ".";
+  // Descriptors already carry the bimodal qualifier ("mostly grippy, with a
+  // silky side"), so the sentence reads straight through in slot order.
+  return resolved.map((l) => l.descriptor).join(", ") + ".";
 }
+
