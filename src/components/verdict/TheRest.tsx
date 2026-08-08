@@ -24,10 +24,23 @@ export function TheRest({
   const [showAll, setShowAll] = useState(false);
   const PAGE = 40;
 
-  const filtered = useMemo(() => applyControls(rows, controls), [rows, controls]);
-  const visible = showAll ? filtered : filtered.slice(0, PAGE);
-  const hidden = Math.max(0, filtered.length - visible.length);
+  const groups = useMemo(() => applyControlsGrouped(rows, controls), [rows, controls]);
+  const filtered = useMemo(() => groups.flatMap((g) => g.rows), [groups]);
+  const limit = showAll ? filtered.length : PAGE;
+  // Slice across groups so the labelled tail keeps its position in the order.
+  const visibleGroups = useMemo(() => {
+    let left = limit;
+    const out: { label: string | null; rows: ScanRow[] }[] = [];
+    for (const g of groups) {
+      if (left <= 0) break;
+      out.push({ label: g.label, rows: g.rows.slice(0, left) });
+      left -= Math.min(left, g.rows.length);
+    }
+    return out;
+  }, [groups, limit]);
+  const hidden = Math.max(0, filtered.length - Math.min(filtered.length, limit));
   const total = rows.length;
+
 
   if (total === 0 && pendingSkeletons === 0) return null;
 
