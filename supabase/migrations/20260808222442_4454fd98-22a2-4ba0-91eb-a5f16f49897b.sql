@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public.save_rating_with_cascade(uuid, integer, double precision, jsonb, double precision, integer, text, uuid, uuid, integer, text);

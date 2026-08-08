@@ -1,12 +1,22 @@
 import type { ScanRow } from "./types";
 import { priceLabel } from "./types";
 import { becauseLine } from "./reason";
+import { OrderedButton } from "./OrderedButton";
 
 /**
  * A row in Layer 3. Real <button>, no nested interactives, no StarTap.
  * The score badge is kept for the enthusiast reading the expanded list.
  */
-export function ResultRow({ row, onOpen }: { row: ScanRow; onOpen: () => void }) {
+export function ResultRow({
+  row, onOpen, ordered, onOrdered, orderPending, canOrder,
+}: {
+  row: ScanRow;
+  onOpen: () => void;
+  ordered?: boolean;
+  onOrdered?: () => void;
+  orderPending?: boolean;
+  canOrder?: boolean;
+}) {
   const r = row.ranked;
   const score = r.predicted > 0 ? r.predicted.toFixed(1) : null;
   const reason = becauseLine(row);
@@ -18,13 +28,16 @@ export function ResultRow({ row, onOpen }: { row: ScanRow; onOpen: () => void })
     : "";
 
   return (
-    <li className="list-none">
+    <li className={`list-none relative hover:bg-accent/40 transition-colors ${edge}`}>
+      {/* Overlay open affordance sits under the content so the row can carry an
+          "I ordered this" control without nesting interactive elements. */}
       <button
         type="button"
         onClick={onOpen}
         aria-label={`Details for ${r.bottle.name}`}
-        className={`relative w-full text-left py-4 pl-4 pr-3 flex items-start gap-4 min-h-11 hover:bg-accent/40 transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary ${edge}`}
-      >
+        className="absolute inset-0 z-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+      />
+      <div className="relative z-10 pointer-events-none text-left py-4 pl-4 pr-3 flex items-start gap-4 min-h-11">
         <div className="shrink-0 flex flex-col items-center justify-center w-14 h-14 rounded-xl border border-border bg-[--surface-2]">
           {score ? (
             <>
@@ -65,8 +78,19 @@ export function ResultRow({ row, onOpen }: { row: ScanRow; onOpen: () => void })
               <span aria-hidden className="inline-block w-1.5 h-1.5 rounded-full bg-[--value]" /> value
             </p>
           )}
+          {canOrder && onOrdered && (
+            <div className="mt-2 flex justify-end">
+              <OrderedButton
+                ordered={!!ordered}
+                disabled={orderPending}
+                size="compact"
+                wineName={r.bottle.name}
+                onToggle={onOrdered}
+              />
+            </div>
+          )}
         </div>
-      </button>
+      </div>
     </li>
   );
 }

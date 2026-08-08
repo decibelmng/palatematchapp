@@ -52,7 +52,10 @@ export async function predictForBottleCore(
   const { data: target } = await supabase
     .from("bottles").select(FP_COLS).eq("id", bottleId).maybeSingle();
   if (!target) {
-    return { predicted: null, omega: null, bandwidth: null, nRated: 0, nullReason: "fetch_failed" };
+    return {
+      predicted: null, omega: null, bandwidth: null, nRated: 0,
+      neighborSupport: null, nullReason: "fetch_failed",
+    };
   }
   const rated = await loadRatedFpRows(supabase, userId);
   return predictStars(rated, target as FpRow);

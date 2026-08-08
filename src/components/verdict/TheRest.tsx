@@ -7,12 +7,17 @@ import { ResultRow, SkeletonRow } from "./ResultRow";
 
 export function TheRest({
   rows, pendingSkeletons, onOpen, stillReading, currency,
+  orderedBottleId, onOrdered, orderPending, canOrder,
 }: {
   rows: ScanRow[];
   pendingSkeletons: number;
   onOpen: (key: string) => void;
   stillReading: boolean;
   currency?: CurrencyCode;
+  orderedBottleId?: string | null;
+  onOrdered?: (row: ScanRow) => void;
+  orderPending?: boolean;
+  canOrder?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [controls, setControls] = useState<Controls>(DEFAULT_CONTROLS);
@@ -64,7 +69,15 @@ export function TheRest({
       ) : (
         <ul className="mt-3 divide-y divide-border">
           {visible.map((r) => (
-            <ResultRow key={r.key} row={r} onOpen={() => onOpen(r.key)} />
+            <ResultRow
+              key={r.key}
+              row={r}
+              onOpen={() => onOpen(r.key)}
+              ordered={!!orderedBottleId && orderedBottleId === r.ranked.bottle.id}
+              onOrdered={onOrdered ? () => onOrdered(r) : undefined}
+              orderPending={orderPending}
+              canOrder={canOrder}
+            />
           ))}
           {Array.from({ length: pendingSkeletons }).map((_, i) => (
             <SkeletonRow key={`sk-${i}`} />
