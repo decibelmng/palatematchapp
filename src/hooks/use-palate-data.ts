@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { friendlyError } from "@/lib/error-message";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "./use-session";
-import type { PaletteType } from "@/lib/palate";
+import { GLYPH_UNRESOLVED, parseCode, RED_AXES, type PaletteType } from "@/lib/palate";
 import { recommend, type BottleFp, type FpKey, type RatedFp, type WineType } from "@/lib/recommender";
 import { aggregateRated } from "@/lib/cuvee";
 import { predictStars, type FpRow, type PredictResult } from "@/lib/predict-core";
