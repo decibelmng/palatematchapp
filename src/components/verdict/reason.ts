@@ -1,5 +1,5 @@
 import type { ScanRow } from "./types";
-import type { FpKey } from "@/lib/recommender";
+import type { FpKey, FpVec } from "@/lib/recommender";
 import { VERDICT_NEG, describeVetoStyleFromFp } from "@/lib/axis-phrases";
 
 /** Maps a for-you score to one of four plain-English verdict sentences.
@@ -20,7 +20,7 @@ export function verdictLine(predicted: number): string {
  * qualifies (the caller then falls back to a generic line).
  */
 function dominantComplaint(
-  fp: Record<FpKey, number> | null | undefined,
+  fp: FpVec | null | undefined,
   drivingAxes: readonly FpKey[] = [],
 ): string {
   return describeVetoStyleFromFp(fp, drivingAxes);
