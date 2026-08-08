@@ -13,7 +13,7 @@ import {
   type RecentGroup,
 } from "@/lib/friends.functions";
 import { groupPredict, type GroupScored } from "@/lib/group.functions";
-import type { BottleFp, WineType, FpKey } from "@/lib/recommender";
+import type { BottleFp, WineType, FpKey, FpVec } from "@/lib/recommender";
 import { useSession } from "./use-session";
 
 // ---------- Friendships ----------
