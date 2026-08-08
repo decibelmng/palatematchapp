@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { ScanRow } from "../types";
-import { compareCallCandidates, pickCall, nearTieNote, pricePosition } from "../tiebreak";
+import { compareCallCandidates, pickCall, nearTieNote, pricePosition, countPriced } from "../tiebreak";
 
 /** Minimal ScanRow good enough for the tie-break; everything else is unused. */
 function row(o: {
@@ -103,19 +103,34 @@ describe("nearTieNote — detail sheet only", () => {
 });
 
 describe("pricePosition instrumentation", () => {
-  const list = [10, 20, 30, 40, 50, 60].map((p, i) => row({ key: `k${i}`, predicted: 4, price: p }));
+  // Nine priced wines — clears the 8-priced floor.
+  const list = [10, 20, 30, 40, 50, 60, 70, 80, 90].map((p, i) =>
+    row({ key: `k${i}`, predicted: 4, price: p }),
+  );
 
   it("reads terciles of the list's own spread", () => {
     expect(pricePosition(list[0], list)).toBe("bottom-third");
-    expect(pricePosition(list[3], list)).toBe("middle");
-    expect(pricePosition(list[5], list)).toBe("top-third");
+    expect(pricePosition(list[4], list)).toBe("middle");
+    expect(pricePosition(list[8], list)).toBe("top-third");
   });
 
   it("is unknown when the Call has no price", () => {
     expect(pricePosition(row({ key: "x", predicted: 4, price: null }), list)).toBe("unknown");
   });
 
-  it("is unknown on a list too small to have terciles", () => {
-    expect(pricePosition(list[0], list.slice(0, 2))).toBe("unknown");
+  it("is insufficient — not unknown — on a list too short for terciles", () => {
+    expect(pricePosition(list[0], list.slice(0, 4))).toBe("insufficient");
+    expect(pricePosition(list[0], list.slice(0, 7))).toBe("insufficient");
+    expect(pricePosition(list[0], list.slice(0, 8))).toBe("bottom-third");
+  });
+
+  it("is unknown — not insufficient — when no wine on the list has a price", () => {
+    const unpriced = [0, 1, 2].map((i) => row({ key: `u${i}`, predicted: 4, price: null }));
+    expect(pricePosition(row({ key: "x", predicted: 4, price: 40 }), unpriced)).toBe("unknown");
+  });
+
+  it("counts only readable prices", () => {
+    expect(countPriced(list)).toBe(9);
+    expect(countPriced([...list.slice(0, 3), row({ key: "n", predicted: 4, price: null })])).toBe(3);
   });
 });
