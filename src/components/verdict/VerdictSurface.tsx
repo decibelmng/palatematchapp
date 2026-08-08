@@ -48,11 +48,26 @@ export function VerdictSurface({
       return { call: null as ScanRow | null, callKind: "your-pick" as const, alternates: [], restRows: rows };
     }
 
-    const top = eligible[0];
-    const isTie = eligible[1] && Math.abs(eligible[1].ranked.predicted - top.ranked.predicted) <= 0.1;
-    const zeroStrong = top.ranked.predicted < 4.0;
-    const kind: "your-pick" | "closest-match" | "top-two" =
-      isTie ? "top-two" : zeroStrong ? "closest-match" : "your-pick";
+    // Deterministic tie-break. When several wines sit within 0.1★ of the best
+    // score, the screen must still name ONE bottle — handing back "here are two,
+    // you decide" is the work the person came here to avoid. Order:
+    //   1. better value verdict (a good-value wine wins)
+    //   2. lower price
+    //   3. more confident read (clean catalog match, then closer to a rated wine)
+    const TIE = 0.1;
+    const best = eligible[0].ranked.predicted;
+    const tied = eligible.filter((r) => best - r.ranked.predicted <= TIE);
+    const top = [...tied].sort((a, b) => {
+      if (a.greatValue !== b.greatValue) return a.greatValue ? -1 : 1;
+      const pa = a.price_amount ?? Number.POSITIVE_INFINITY;
+      const pb = b.price_amount ?? Number.POSITIVE_INFINITY;
+      if (pa !== pb) return pa - pb;
+      if (a.isCatalog !== b.isCatalog) return a.isCatalog ? -1 : 1;
+      return b.ranked.maxSimilarity - a.ranked.maxSimilarity;
+    })[0];
+
+    const kind: "your-pick" | "closest-match" =
+      top.ranked.predicted < 4.0 ? "closest-match" : "your-pick";
 
     const alts = pickAlternates(top, eligible);
     const heroKeys = new Set([top.key, ...alts.map((a) => a.row.key)]);

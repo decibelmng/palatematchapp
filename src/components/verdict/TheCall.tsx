@@ -3,7 +3,15 @@ import type { ScanRow } from "./types";
 import { priceLabel } from "./types";
 import { verdictLine, becauseLine } from "./reason";
 
-type CallKind = "your-pick" | "closest-match" | "top-two";
+/**
+ * Eyebrow states — there are exactly two, and each renders the same thing:
+ * ONE bottle, its verdict sentence, its reason, its price.
+ *   "Your pick"      — the chosen bottle scores 4.0 or better.
+ *   "Closest match"  — nothing on the list clears 4.0; this is the nearest.
+ * Ties within 0.1★ are broken upstream in VerdictSurface, so no state ever
+ * promises content this card does not render.
+ */
+type CallKind = "your-pick" | "closest-match";
 
 export function TheCall({
   row, kind, onOpen,
@@ -13,9 +21,7 @@ export function TheCall({
   onOpen: () => void;
 }) {
   const [confOpen, setConfOpen] = useState(false);
-  const eyebrow =
-    kind === "closest-match" ? "Closest match" :
-    kind === "top-two" ? "Top two" : "Your pick";
+  const eyebrow = kind === "closest-match" ? "Closest match" : "Your pick";
 
   const price = priceLabel(row);
   const verdict = verdictLine(row.ranked.predicted);
@@ -24,10 +30,10 @@ export function TheCall({
   // similarity to a wine you've rated. Don't invent a neighbour count the
   // recommender never computed (it exposes maxSimilarity, not how many).
   const confident = row.isCatalog && row.ranked.maxSimilarity >= 0.35;
-  const confChip = confident ? "Confident" : "Estimated";
+  const confChip = confident ? "Confident match" : "Estimated match";
   const confExplain = confident
-    ? "A clean catalog match that sits close to a wine you've rated."
-    : "The wine wasn't a clean catalog match, so its profile is inferred — treat the read as a strong guess.";
+    ? "This wine is in our catalog and sits close to a bottle you've rated."
+    : "This wine isn't in our catalog yet, so we matched it by style.";
 
   const bottle = row.ranked.bottle;
   const region = bottle.region ?? null;
@@ -36,17 +42,22 @@ export function TheCall({
 
   const meta = [producer, region, vintage].filter(Boolean).join(" · ");
 
-  const verdictTone = row.verdict;
-
   return (
-    <div>
+    <div
+      className="scan-hero relative rounded-xl border border-[--accent-color] p-5 bg-[--surface]"
+      style={{ boxShadow: "0 0 0 1px var(--accent-color), 0 12px 40px -12px color-mix(in oklab, var(--accent-color) 40%, transparent)" }}
+    >
+      {/* Full-card open affordance sits UNDER the content as an overlay button,
+          so the confidence chip can live inside the card without nesting
+          interactive elements. */}
       <button
         type="button"
         onClick={onOpen}
         aria-label={`Open details for ${bottle.name}`}
-        className="scan-hero relative w-full text-left rounded-xl border border-[--accent-color] p-5 bg-[--surface] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[--accent-color]"
-        style={{ boxShadow: "0 0 0 1px var(--accent-color), 0 12px 40px -12px color-mix(in oklab, var(--accent-color) 40%, transparent)" }}
-      >
+        className="absolute inset-0 z-0 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[--accent-color]"
+      />
+
+      <div className="relative z-10 pointer-events-none">
         <p className="text-label uppercase tracking-label text-[--accent-color] font-medium">
           {eyebrow}
         </p>
@@ -68,46 +79,34 @@ export function TheCall({
             <span className="pm-skip-badge">Skip</span>
           )}
           <span className="text-body text-foreground font-medium">{price}</span>
-          {verdictTone && (
-            <span
-              className={`inline-block rounded-full px-2 py-0.5 text-label uppercase tracking-label border ${
-                verdictTone.tone === "good"
-                  ? "border-[--good]/50 bg-[--good]/10 text-foreground"
-                  : verdictTone.tone === "warn"
-                  ? "border-[color-mix(in_oklab,var(--amber)_55%,transparent)] bg-[color-mix(in_oklab,var(--amber)_10%,transparent)] text-foreground"
-                  : "border-[color-mix(in_oklab,var(--crimson)_55%,transparent)] bg-[color-mix(in_oklab,var(--crimson)_12%,transparent)] text-foreground"
-              }`}
-            >
-              {verdictTone.label}
-            </span>
-          )}
 
+          {/* Exactly one value chip. The price-band mechanism ("bottom third on
+              price") is not a verdict — it lives in the detail sheet. */}
           {row.greatValue && (
             <span className="inline-flex items-center gap-1 rounded-full border border-[--good]/50 bg-[--good]/10 px-2 py-0.5 text-label uppercase tracking-label text-foreground">
               <span aria-hidden className="inline-block w-1.5 h-1.5 rounded-full bg-[--good]" />
-              Value
+              Good value
             </span>
           )}
+
+          {/* Confidence qualifies the pick, so it belongs on the price row. */}
+          <button
+            type="button"
+            onClick={() => setConfOpen((v) => !v)}
+            aria-expanded={confOpen}
+            className="pointer-events-auto inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-label uppercase tracking-label text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+          >
+            {confChip}
+            <span aria-hidden>ⓘ</span>
+          </button>
         </div>
+
+        {confOpen && (
+          <p className="mt-2 text-meta text-muted-foreground leading-snug">{confExplain}</p>
+        )}
 
         {row.valueSentence && (
           <p className="mt-2 text-meta text-muted-foreground leading-snug">{row.valueSentence}</p>
-        )}
-      </button>
-
-      {/* Confidence chip sits OUTSIDE the Call button to avoid nested interactives */}
-      <div className="mt-2 flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setConfOpen((v) => !v)}
-          aria-expanded={confOpen}
-          className="inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-label uppercase tracking-label text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-        >
-          {confChip}
-          <span aria-hidden>ⓘ</span>
-        </button>
-        {confOpen && (
-          <p className="text-meta text-muted-foreground flex-1 min-w-0">{confExplain}</p>
         )}
       </div>
     </div>
