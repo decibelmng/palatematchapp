@@ -77,55 +77,86 @@ export function isCalibrated(b: BottleRow | null | undefined): boolean {
   return Object.values(fp).some((v) => Number.isFinite(v) && v !== 0);
 }
 
-/** Compute predicted stars for a candidate bottle from cached ratings + bottle rows.
- *  Returns null when there's not enough context or the bottle isn't calibrated —
- *  the dispute signal only fires against a real prediction. */
-export function predictForBottleFromCache(
-  qc: QueryClient,
-  userId: string,
-  target: BottleRow,
-): number | null {
-  if (!isCalibrated(target)) return null;
+/** Gather the user's rated bottles from cache.
+ *  `complete` is false when any rated bottle is missing from the cache — the
+ *  caller must then ask the server rather than predicting from a partial set,
+ *  which is what used to silently produce a null prediction. */
+function ratedFromCache(qc: QueryClient, userId: string): {
+  rated: { bottle: FpRow; stars: number }[];
+  complete: boolean;
+  nRatings: number;
+} {
   const ratings = qc
     .getQueriesData<{ bottle_id: string; stars: number }[]>({ queryKey: ["ratings", userId] })
     .flatMap(([, data]) => data ?? []);
-  if (ratings.length < 3) return null;
 
-  // Collect rated bottles from any cached bottles queries.
   const allBottles = qc
     .getQueriesData<BottleRow[]>({ queryKey: ["bottles"] })
     .flatMap(([, data]) => data ?? []);
   const bottleById = new Map<string, BottleRow>();
   for (const b of allBottles) if (b?.id) bottleById.set(b.id, b);
 
-  const targetType = bottleType(target);
-  const sameType: RatedFp[] = [];
-  const rawSameType: (RatedFp & { vintage: number | null })[] = [];
+  const rated: { bottle: FpRow; stars: number }[] = [];
+  let missing = 0;
   for (const r of ratings) {
     const b = bottleById.get(r.bottle_id);
-    if (!b) continue;
-    if (bottleType(b) !== targetType) continue;
-    if (!isCalibrated(b)) continue;
-    rawSameType.push({
-      id: b.id, name: b.name, producer: b.producer, region: b.region,
-      type: bottleType(b), vintage: b.vintage, fp: bottleToFp(b), stars: r.stars,
-    });
+    if (!b) { missing += 1; continue; }
+    rated.push({ bottle: b as unknown as FpRow, stars: r.stars });
   }
-  if (rawSameType.length === 0) return null;
-  const cuvees = aggregateRated(rawSameType);
-  for (const c of cuvees) {
-    sameType.push({
-      id: c.id, name: c.name, producer: c.producer, region: c.region,
-      type: c.type, fp: c.fp, stars: c.stars,
-    });
-  }
-  const cand: BottleFp = {
-    id: target.id, name: target.name, producer: target.producer, region: target.region,
-    type: targetType, fp: bottleToFp(target),
-  };
-  const [rec] = recommend(sameType, [cand]);
-  return rec?.predicted ?? null;
+  return { rated, complete: ratings.length > 0 && missing === 0, nRatings: ratings.length };
 }
+
+/** Predict from cache when the cache is sufficient; otherwise report that the
+ *  caller should fall back to the server. Never returns a bare null. */
+export function predictForBottleFromCache(
+  qc: QueryClient,
+  userId: string,
+  target: BottleRow,
+): PredictResult & { needsServer: boolean } {
+  const { rated, complete } = ratedFromCache(qc, userId);
+  if (!complete) {
+    return {
+      predicted: null, omega: null, bandwidth: null, nRated: rated.length,
+      nullReason: "not_attempted", needsServer: true,
+    };
+  }
+  const res = predictStars(rated, target as unknown as FpRow);
+  // A partial cache can masquerade as "too few ratings"; verify on the server.
+  const needsServer = res.predicted === null && res.nullReason !== "uncalibrated_bottle";
+  return { ...res, needsServer };
+}
+
+/** Cache-first, server-fallback prediction. Always resolves to a result with
+ *  either a number or a recorded reason there isn't one. */
+export async function predictForBottleWithFallback(
+  qc: QueryClient,
+  userId: string,
+  bottleId: string,
+): Promise<PredictResult> {
+  const cachedTarget = qc
+    .getQueriesData<BottleRow[]>({ queryKey: ["bottles"] })
+    .flatMap(([, data]) => data ?? [])
+    .find((b): b is BottleRow => !!b && b.id === bottleId) ?? null;
+
+  if (cachedTarget) {
+    const fromCache = predictForBottleFromCache(qc, userId, cachedTarget);
+    if (!fromCache.needsServer) {
+      const { needsServer: _drop, ...rest } = fromCache;
+      return rest;
+    }
+  }
+
+  try {
+    return await predictStarsForBottle({ data: { bottle_id: bottleId } });
+  } catch {
+    return {
+      predicted: null, omega: null, bandwidth: null, nRated: 0,
+      nullReason: "fetch_failed",
+    };
+  }
+}
+
+
 
 
 export function useBottlesByIds(ids: string[]) {
