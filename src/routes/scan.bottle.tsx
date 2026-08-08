@@ -30,6 +30,7 @@ import { verdictLine } from "@/components/verdict/reason";
 import { toast } from "sonner";
 import { friendlyError } from "@/lib/error-message";
 import { prepareImageForScan } from "@/lib/image-downscale";
+import { takePendingCapture } from "@/lib/scan-handoff";
 
 
 export const Route = createFileRoute("/scan/bottle")({
@@ -69,17 +70,18 @@ function BottleScan() {
   const [pickTarget, setPickTarget] = useState<"front" | "back">("front");
   const [showAdd, setShowAdd] = useState(false);
 
-  // Auto-open camera when arriving from the center-scan chooser (?capture=1).
+  // The camera already opened on the chooser sheet (iOS keeps the gesture only
+  // there), so this screen receives the captured photo and acts as the review
+  // step: thumbnail, retake, continue.
+  const handoffRef = useRef(false);
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("capture") !== "1") return;
-    const url = new URL(window.location.href);
-    url.searchParams.delete("capture");
-    window.history.replaceState({}, "", url.toString());
+    if (handoffRef.current) return;
+    handoffRef.current = true;
+    const files = takePendingCapture("bottle");
+    const f = files?.[0];
+    if (!f) return;
     setPickTarget("front");
-    const t = setTimeout(() => cameraRef.current?.click(), 60);
-    return () => clearTimeout(t);
+    setFront({ file: f, url: URL.createObjectURL(f) });
   }, []);
 
   // Confirm-first state: after vision reads the label, the user edits
@@ -424,7 +426,7 @@ function BottleScan() {
       />
 
       {inCapturePhase && (
-        <div className="min-h-[calc(100dvh-14rem)] flex flex-col justify-center">
+        <div className="mt-4">
           <div className="w-full max-w-sm mx-auto">
             <p className="text-meta uppercase tracking-label text-muted-foreground">Scan a bottle</p>
             <h1 className="font-serif text-3xl mt-2">
@@ -433,7 +435,7 @@ function BottleScan() {
             <p className="mt-2 text-sm text-muted-foreground">
               {front
                 ? "Add the back if the front is sparse — helps for obscure bottles."
-                : "One clear photo of the front label."}
+                : "Straight on, in the best light you have."}
             </p>
 
             {!front ? (
