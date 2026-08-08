@@ -207,6 +207,7 @@ export type Database = {
           id: string
           is_catalog: boolean
           list_size: number
+          n_priced: number
           palate_version: number | null
           price_position: string
           scan_id: string | null
@@ -217,6 +218,7 @@ export type Database = {
           id?: string
           is_catalog: boolean
           list_size: number
+          n_priced?: number
           palate_version?: number | null
           price_position: string
           scan_id?: string | null
@@ -227,6 +229,7 @@ export type Database = {
           id?: string
           is_catalog?: boolean
           list_size?: number
+          n_priced?: number
           palate_version?: number | null
           price_position?: string
           scan_id?: string | null
