@@ -11,6 +11,7 @@ import { predictStarsForBottle } from "@/lib/predict.functions";
 import { refreshBottleFingerprint } from "@/lib/fingerprint-refresh.functions";
 import { usePalateVersion } from "./use-palate-version";
 import { confirmDialog } from "@/components/confirm-dialog";
+import { askMissAttribution } from "@/components/MissFollowUp";
 import { createElement, Fragment } from "react";
 
 
@@ -106,6 +107,16 @@ function ratedFromCache(qc: QueryClient, userId: string): {
     rated.push({ bottle: b as unknown as FpRow, stars: r.stars });
   }
   return { rated, complete: ratings.length > 0 && missing === 0, nRatings: ratings.length };
+}
+
+/** Wine name from whatever bottles query is already cached — never truncated,
+ *  and "this wine" only when nothing is cached. */
+function bottleNameFor(qc: QueryClient, bottleId: string): string {
+  const hit = qc
+    .getQueriesData<BottleRow[]>({ queryKey: ["bottles"] })
+    .flatMap(([, data]) => data ?? [])
+    .find((b) => !!b && b.id === bottleId);
+  return hit?.name ?? "this wine";
 }
 
 /** Predict from cache when the cache is sufficient; otherwise report that the
