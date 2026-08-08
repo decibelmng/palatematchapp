@@ -111,8 +111,22 @@ export function FeedCard({ item }: { item: FeedItem }) {
         <StarsInline n={item.stars} />
       </header>
 
-      <div className="mt-2">
-        <WineLine bottle={bottle} />
+      {strong && headline && (
+        <div className="mt-2">
+          <MatchLine text={scoring!.reason} score={scoring!.predicted} strong />
+        </div>
+      )}
+
+      <div className={strong && headline ? "" : "mt-2"}>
+        <WineLine
+          bottle={bottle}
+          actions={
+            <>
+              <RateItButton bottleId={bottle.id} />
+              <WishlistIconButton bottleId={bottle.id} />
+            </>
+          }
+        />
       </div>
 
       {item.note && (
@@ -121,14 +135,6 @@ export function FeedCard({ item }: { item: FeedItem }) {
         </p>
       )}
 
-      {strong && headline && (
-        <MatchLine text={`${headline} — ${scoring!.reason}`} strong />
-      )}
-
-      <div className="mt-2 flex items-center gap-2">
-        <RateItButton bottleId={bottle.id} />
-        <WishlistIconButton bottleId={bottle.id} />
-      </div>
     </FeedCardShell>
   );
 }

@@ -12,11 +12,15 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 // ---------------------------------------------------------------
 //
 // A scanned wine list is a fact about a restaurant. We aggregate by
-// (restaurant_id, day) so two scans of one list on one night collapse
-// into one item, and enforce an attribution floor (>= MIN_WINES wines
-// for that day) so a scan can't be traced back to a single scanner.
+// restaurant across ALL of its list scans (not per day), then enforce an
+// attribution floor on that aggregate: a venue with three 4-wine scans is
+// still a venue worth showing, and the aggregate reveals no more about any
+// individual scanner than a daily grain does.
 
 const MIN_WINES_FOR_ATTRIBUTION = 8;
+
+/** Statuses where the wines have actually been parsed out of the photos. */
+const READ_STATUSES = ["parsed", "complete", "partial"];
 
 export type VenueActivityItem = {
   restaurant_id: string;
@@ -25,7 +29,7 @@ export type VenueActivityItem = {
   neighborhood: string | null;
   phone: string | null;
   reservation_url: string | null;
-  scanned_day: string; // YYYY-MM-DD (UTC)
+  scanned_day: string; // YYYY-MM-DD (UTC) of the latest scan
   latest_scan_id: string;
   wine_count: number;
   delta: "first-time" | "updated" | { newSince: number };
@@ -41,20 +45,20 @@ export const getVenueActivity = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<VenueActivityItem[]> => {
     const { supabase } = context;
 
-    // Recent parsed list-scans with a restaurant.
+    // Every readable list-scan with a restaurant, newest first.
     const { data: recent, error } = await supabase
       .from("scans")
       .select("id, restaurant_id, scanned_at")
       .eq("kind", "list")
-      .eq("status", "parsed")
+      .in("status", READ_STATUSES)
       .not("restaurant_id", "is", null)
       .order("scanned_at", { ascending: false })
-      .limit(500);
+      .limit(1000);
     if (error) throw new Error(error.message);
     const rows = (recent ?? []).filter((r) => !!r.restaurant_id);
     if (rows.length === 0) return [];
 
-    // Wine counts per scan.
+    // Wine sets per scan.
     const scanIds = rows.map((r) => r.id);
     const { data: wineCounts } = await supabase
       .from("scan_wines")
@@ -68,35 +72,52 @@ export const getVenueActivity = createServerFn({ method: "POST" })
       perScan.set(w.scan_id, c);
     }
 
-    // Group by (restaurant_id, day). Keep the LATEST scan per group as
-    // the anchor. Under the attribution floor → drop.
-    type Group = { restaurantId: string; day: string; latestScanId: string; latestAt: string; wines: number; matched: Set<string> };
+    // Group by restaurant across all scans.
+    type Group = {
+      restaurantId: string;
+      latestScanId: string;
+      latestAt: string;
+      scanCount: number;
+      wines: number;
+      matched: Set<string>;
+      priorMatched: Set<string>; // everything seen before the latest scan
+    };
     const groups = new Map<string, Group>();
     for (const r of rows) {
-      const day = (r.scanned_at as string).slice(0, 10);
-      const key = `${r.restaurant_id}|${day}`;
       const c = perScan.get(r.id) ?? { total: 0, matchedBottleIds: new Set<string>() };
-      const g = groups.get(key);
+      const at = r.scanned_at as string;
+      const g = groups.get(r.restaurant_id!);
       if (!g) {
-        groups.set(key, {
-          restaurantId: r.restaurant_id!, day,
-          latestScanId: r.id, latestAt: r.scanned_at as string,
-          wines: c.total, matched: new Set(c.matchedBottleIds),
+        groups.set(r.restaurant_id!, {
+          restaurantId: r.restaurant_id!,
+          latestScanId: r.id,
+          latestAt: at,
+          scanCount: 1,
+          wines: c.total,
+          matched: new Set(c.matchedBottleIds),
+          priorMatched: new Set<string>(),
         });
+        continue;
+      }
+      g.scanCount += 1;
+      g.wines += c.total;
+      if (at > g.latestAt) {
+        // This scan is the new anchor; the old anchor's wines become prior.
+        g.matched.forEach((id) => g.priorMatched.add(id));
+        g.latestAt = at;
+        g.latestScanId = r.id;
+        g.matched = new Set(c.matchedBottleIds);
       } else {
-        g.wines += c.total;
-        c.matchedBottleIds.forEach((id) => g.matched.add(id));
-        if ((r.scanned_at as string) > g.latestAt) {
-          g.latestAt = r.scanned_at as string; g.latestScanId = r.id;
-        }
+        c.matchedBottleIds.forEach((id) => g.priorMatched.add(id));
       }
     }
-    const eligible = Array.from(groups.values()).filter((g) => g.wines >= MIN_WINES_FOR_ATTRIBUTION);
+
+    const eligible = Array.from(groups.values()).filter(
+      (g) => g.wines >= MIN_WINES_FOR_ATTRIBUTION,
+    );
     if (eligible.length === 0) return [];
 
-    // Compute delta by comparing each group's matched bottle set with
-    // the venue's previous parsed scan (older than this day).
-    const restaurantIds = Array.from(new Set(eligible.map((g) => g.restaurantId)));
+    const restaurantIds = eligible.map((g) => g.restaurantId);
     const { data: rests } = await supabase
       .from("restaurants")
       .select("id, name, city, neighborhood, phone, reservation_url")
@@ -108,27 +129,10 @@ export const getVenueActivity = createServerFn({ method: "POST" })
       const rest = restById.get(g.restaurantId);
       if (!rest) continue;
 
-      // Prior scan for this restaurant.
-      const { data: prior } = await supabase
-        .from("scans")
-        .select("id")
-        .eq("kind", "list")
-        .eq("status", "parsed")
-        .eq("restaurant_id", g.restaurantId)
-        .lt("scanned_at", `${g.day}T00:00:00Z`)
-        .order("scanned_at", { ascending: false })
-        .limit(1);
       let delta: VenueActivityItem["delta"] = "first-time";
-      if (prior && prior.length > 0) {
-        const priorId = prior[0].id;
-        const { data: priorWines } = await supabase
-          .from("scan_wines")
-          .select("matched_bottle_id")
-          .eq("scan_id", priorId)
-          .not("matched_bottle_id", "is", null);
-        const priorSet = new Set((priorWines ?? []).map((w: any) => w.matched_bottle_id));
+      if (g.scanCount > 1) {
         let newCount = 0;
-        for (const bid of g.matched) if (!priorSet.has(bid)) newCount += 1;
+        for (const bid of g.matched) if (!g.priorMatched.has(bid)) newCount += 1;
         delta = newCount > 0 ? { newSince: newCount } : "updated";
       }
 
@@ -139,7 +143,7 @@ export const getVenueActivity = createServerFn({ method: "POST" })
         neighborhood: (rest as any).neighborhood ?? null,
         phone: (rest as any).phone ?? null,
         reservation_url: (rest as any).reservation_url ?? null,
-        scanned_day: g.day,
+        scanned_day: g.latestAt.slice(0, 10),
         latest_scan_id: g.latestScanId,
         wine_count: g.wines,
         delta,
@@ -148,6 +152,7 @@ export const getVenueActivity = createServerFn({ method: "POST" })
     items.sort((a, b) => (b.scanned_day + b.latest_scan_id).localeCompare(a.scanned_day + a.latest_scan_id));
     return items.slice(0, data.limit);
   });
+
 
 // ---------------------------------------------------------------
 // Rating share opt-out (per-rating "don't share this one")

@@ -25,7 +25,7 @@ export function FeedCardShell({
   children: ReactNode;
 }) {
   return (
-    <article className={`pm-card rounded-[12px] p-3 ${ACCENT[accent]}`}>{children}</article>
+    <article className={`pm-card rounded-[12px] px-3 py-2 ${ACCENT[accent]}`}>{children}</article>
   );
 }
 
@@ -39,8 +39,18 @@ type WineParts = {
   price_band?: string | null;
 };
 
-/** Title + meta, never truncated, never repeating producer or vintage. */
-export function WineLine({ bottle }: { bottle: WineParts }) {
+/**
+ * Title + meta, never truncated, never repeating producer or vintage.
+ * `actions` sit on the right of the meta line rather than on their own row —
+ * the line grows to hold a 44px target, which costs less than a second row.
+ */
+export function WineLine({
+  bottle,
+  actions,
+}: {
+  bottle: WineParts;
+  actions?: ReactNode;
+}) {
   const title = displayWineName(bottle);
   const meta = [
     wineNameMeta(bottle, title),
@@ -51,27 +61,53 @@ export function WineLine({ bottle }: { bottle: WineParts }) {
     .filter(Boolean)
     .join(" · ");
   return (
-    <Link to="/wine/$id" params={{ id: bottle.id }} className="block">
-      <div className="text-sm font-medium leading-snug break-words">{title}</div>
-      {meta && <div className="mt-0.5 text-meta text-muted-foreground break-words">{meta}</div>}
-    </Link>
+    <div>
+      <Link to="/wine/$id" params={{ id: bottle.id }} className="block">
+        <div className="text-sm font-medium leading-snug break-words">{title}</div>
+      </Link>
+      <div className="flex items-center gap-2">
+        <Link to="/wine/$id" params={{ id: bottle.id }} className="min-w-0 flex-1">
+          {meta && (
+            <span className="block text-meta text-muted-foreground break-words">{meta}</span>
+          )}
+        </Link>
+        {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
+      </div>
+    </div>
   );
 }
 
-/** One line, only worth showing on a strong match. */
-export function MatchLine({ text, strong }: { text: string; strong: boolean }) {
+/**
+ * One line above the title: the score, then the reason, on a left rail in
+ * --value. Only worth showing on a strong match.
+ */
+export function MatchLine({
+  text,
+  score,
+  strong,
+}: {
+  text: string;
+  score?: number | null;
+  strong: boolean;
+}) {
   return (
     <p
-      className={`mt-2 text-xs leading-snug ${
+      className={`mb-1 flex items-baseline gap-1.5 border-l-2 pl-2 text-meta leading-snug ${
         strong
-          ? "rounded-md px-2 py-1.5 bg-[color-mix(in_oklab,var(--value)_12%,transparent)] text-foreground"
-          : "text-muted-foreground"
+          ? "border-l-[var(--value)] text-foreground"
+          : "border-l-border text-muted-foreground"
       }`}
     >
-      {text}
+      {score != null && (
+        <span className="shrink-0 font-semibold text-[color:var(--value)]">
+          {score.toFixed(1)}
+        </span>
+      )}
+      <span className="min-w-0 truncate">{text}</span>
     </p>
   );
 }
+
 
 /** Bookmark icon — the secondary action. "Rate it" stays primary. */
 export function WishlistIconButton({ bottleId }: { bottleId: string }) {
@@ -103,7 +139,7 @@ export function RateItButton({ bottleId, label = "Rate it" }: { bottleId: string
     <Link
       to="/wine/$id"
       params={{ id: bottleId }}
-      className="inline-flex h-11 flex-1 items-center justify-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground"
+      className="inline-flex h-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"
     >
       {label}
     </Link>
