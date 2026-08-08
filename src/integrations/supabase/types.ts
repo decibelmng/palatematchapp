@@ -1843,7 +1843,10 @@ export type Database = {
           mean_error_when_higher: number | null
           mean_error_when_lower: number | null
           mean_signed_error: number | null
+          min_n_for_inference: number | null
           n: number | null
+          n_higher: number | null
+          n_lower: number | null
           n_style_was_wrong: number | null
           n_taste_was_wrong: number | null
           user_id: string | null
