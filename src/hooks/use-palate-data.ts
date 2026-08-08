@@ -388,14 +388,23 @@ export function useRate() {
                 toast.error("No previous rating to restore.");
                 return;
               }
-              const undoPredicted = session
-                ? (await predictForBottleWithFallback(qc, session.user.id, result.bottleId)).predicted
+              // A restore logs its own outcome row. The retracted stars are
+              // already in the log; without this the considered judgment — the
+              // one we most want to measure — was the one that went missing.
+              const up = session
+                ? await predictForBottleWithFallback(qc, session.user.id, result.bottleId)
                 : null;
               const { error } = await (supabase as any).rpc("restore_rating_and_benchmark", {
                 p_bottle_id: result.bottleId,
                 p_stars: result.previousStars,
                 p_tier: result.demotedTier,
-                p_predicted: undoPredicted,
+                p_predicted: up?.predicted ?? null,
+                p_omega: up?.omega ?? null,
+                p_bandwidth: up?.bandwidth ?? null,
+                p_n_rated: up?.nRated ?? null,
+                p_null_reason: up ? up.nullReason : "fetch_failed",
+                p_neighbor_support: up?.neighborSupport ?? null,
+                p_axis_deltas: up?.axisDeltas ?? null,
               });
 
 
@@ -432,12 +441,24 @@ export function useRate() {
 /** Undo counterpart for a cascade demote: restores rating + benchmark atomically. */
 export function useRestoreRatingAndBenchmark() {
   const qc = useQueryClient();
+  const session = useSession();
+  const sessionRef = useRef(session);
+  sessionRef.current = session;
   return useMutation({
     mutationFn: async (args: { bottleId: string; stars: number; tier: "canon" | "nemesis" | null }) => {
+      const uid = sessionRef.current?.user.id ?? null;
+      const p = uid ? await predictForBottleWithFallback(qc, uid, args.bottleId) : null;
       const { data, error } = await (supabase as any).rpc("restore_rating_and_benchmark", {
         p_bottle_id: args.bottleId,
         p_stars: args.stars,
         p_tier: args.tier,
+        p_predicted: p?.predicted ?? null,
+        p_omega: p?.omega ?? null,
+        p_bandwidth: p?.bandwidth ?? null,
+        p_n_rated: p?.nRated ?? null,
+        p_null_reason: p ? p.nullReason : "fetch_failed",
+        p_neighbor_support: p?.neighborSupport ?? null,
+        p_axis_deltas: p?.axisDeltas ?? null,
       });
       if (error) throw error;
       const row = Array.isArray(data) ? data[0] : data;
