@@ -15,6 +15,7 @@ import {
   buildTypeContext,
   distanceInContext,
   RAX,
+  hasAxis,
   type FpKey,
   type RatedFp,
   type TypeCtx,
