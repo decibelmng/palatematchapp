@@ -253,6 +253,12 @@ type RateResult = {
   demotedTier: "canon" | "nemesis" | null;
   previousStars: number | null;
   palateVersion: number | null;
+  /** The measurement row this rating just wrote, so the one follow-up question
+   *  can attach its answer to it. Null when nothing was logged (rating cleared). */
+  outcomeId: string | null;
+  /** Signed: rated minus expected. Null when we had no expectation to miss. */
+  delta: number | null;
+  bottleName: string;
 };
 
 export function useRate() {
