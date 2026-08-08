@@ -329,10 +329,44 @@ function PalateHome() {
             Rate some {scope} wines to see your map take shape.
           </div>
         )}
+        {offMap.total > 0 && (
+          <div className="mt-2 mx-1 rounded-[10px] border border-border bg-muted/30 px-3 py-2">
+            <p className="text-meta text-foreground">
+              {offMap.total} of your rated wine{offMap.total === 1 ? " isn't" : "s aren't"} on this map yet.
+            </p>
+            <ul className="mt-1 space-y-0.5 text-meta text-muted-foreground">
+              {offMap.otherPalate > 0 && (
+                <li>
+                  {offMap.otherPalate} {offMap.otherPalate === 1 ? "is a" : "are"} {offMap.otherPalateLabel}
+                  {offMap.otherPalate === 1 ? "" : "s"} — your two palates are kept separate.{" "}
+                  <button
+                    type="button"
+                    onClick={() => setScope(offMap.otherPalateLabel as PaletteType)}
+                    className="underline text-primary"
+                  >
+                    See your {offMap.otherPalateLabel} map
+                  </button>
+                </li>
+              )}
+              {offMap.noStyle > 0 && (
+                <li>
+                  {offMap.noStyle} {offMap.noStyle === 1 ? "has" : "have"} no style reading yet, so
+                  {offMap.noStyle === 1 ? " it has" : " they have"} no honest position here.
+                </li>
+              )}
+              {offMap.unsupported > 0 && (
+                <li>
+                  {offMap.unsupported} {offMap.unsupported === 1 ? "is a rosé, sparkling or sweet wine" : "are rosé, sparkling or sweet wines"} — no map for those yet.
+                </li>
+              )}
+            </ul>
+          </div>
+        )}
         <div className="mt-2 flex items-center justify-between px-2 pb-1">
           <div className="text-meta text-muted-foreground">Palate code: <span className="font-mono text-foreground">{scopedCode}</span></div>
         </div>
       </div>
+
 
       {/* Calibration hint — one actionable sentence, or nothing. */}
       <div className="mt-4">
