@@ -2,14 +2,17 @@
 // A person has TWO palates: a Red palate and a White palate. They are computed
 // independently and never blended; types are never compared to each other.
 //
-// GLYPHS (a slot is one letter, optionally followed by the bimodal marker):
+// GLYPHS — every slot emits EXACTLY ONE letter, optionally carrying the "±"
+// diacritic. The marker never replaces a letter, so a code is always five
+// letters long, countable and speakable:
 //   L/B, F/E, S/G, U/O, R/C, D/W → the pole this palate leans to
 //   N   → moderate: the mean sits mid-range, no pole
-//   ±   → bimodal with no dominant side (mean mid-range, both poles loved)
+//   N±  → bimodal with no dominant side (loves both ends, no lean)
 //   G±  → letter-plus-marker: leans grippy, with a real silky side
-//   ?   → unresolved: not enough ratings yet
-// "·" (unresolved) and "X" (bimodal) are the legacy glyphs; splitCode() still
-// reads them so codes stored before this change decode correctly.
+//   X   → unresolved: not enough ratings yet (a new user reads "XXXXX")
+// Legacy "·" decodes to "X". Legacy bare "±" decodes to "N±". Legacy "X" once
+// meant bimodal; that reading is GONE — X is unresolved everywhere now.
+
 //
 // PENDING — slot 5 (sweet) vs oak, do not act before the catalog re-fingerprint:
 //   Sweet carries ~0 bits today: 86% of the catalog sits at the dry floor and
