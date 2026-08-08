@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { predictStars, fpOf, type FpRow, type FpVec, type FpKey, RAX } from "@/lib/predict-core";
-import { omegaDistance } from "@/lib/recommender";
+import { predictStars, fpOf, type FpRow } from "@/lib/predict-core";
+import { omegaDistance, RAX, type FpVec, type FpKey } from "@/lib/recommender";
 
 /**
  * These cases fail under BOTH pre-fix conventions:
