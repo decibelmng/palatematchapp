@@ -1,3 +1,4 @@
+import { axesFor, GLYPH_BIMODAL, GLYPH_UNRESOLVED, parseCode, type PaletteType } from "@/lib/palate";
 import { createFileRoute, notFound, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { useEffect, type ReactNode } from "react";
@@ -147,8 +148,8 @@ function PublicProfileRoute() {
         )}
 
         <div className="mt-8 grid grid-cols-2 gap-3">
-          <PalateCodeCard label="RED" code={p.palate_code_red} />
-          <PalateCodeCard label="WHITE" code={p.palate_code_white} />
+          <PalateCodeCard label="RED" type="red" code={p.palate_code_red} />
+          <PalateCodeCard label="WHITE" type="white" code={p.palate_code_white} />
         </div>
 
         {!isFullView && (
@@ -161,13 +162,16 @@ function PublicProfileRoute() {
   );
 }
 
-function PalateCodeCard({ label, code }: { label: string; code: string }) {
+function PalateCodeCard({ label, type, code }: { label: string; type: PaletteType; code: string }) {
   return (
     <div className="rounded-[14px] border border-border bg-card p-4">
       <div className="text-meta uppercase text-muted-foreground">{label}</div>
       <div className="mt-3 font-serif text-title text-primary">
-        {code.split("").map((ch, i) => (
-          <span key={`${label}-${i}`} className={ch === "·" ? "text-muted-foreground/60" : ""}>{ch}</span>
+        {parseCode(code, axesFor(type)).map((ch, i) => (
+          <span
+            key={`${label}-${i}`}
+            className={ch === GLYPH_UNRESOLVED || ch === GLYPH_BIMODAL ? "text-muted-foreground/60" : ""}
+          >{ch}</span>
         ))}
       </div>
     </div>

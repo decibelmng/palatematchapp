@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { PalateStar, lettersFromCode } from "./PalateStar";
-import { axesFor, type PaletteType } from "@/lib/palate";
+import { axesFor, GLYPH_BIMODAL, GLYPH_UNRESOLVED, parseCode, type PaletteType } from "@/lib/palate";
 import { useSommelierBrief } from "@/hooks/use-sommelier-brief";
 import { SommelierBriefCard } from "./SommelierBriefCard";
 
@@ -63,8 +63,8 @@ export function ShareCardDialog({ open, onClose, type, code, displayName }: Prop
             className="mt-4 font-serif text-2xl text-primary"
             style={{  }}
           >
-            {code.split("").map((c, i) => (
-              <span key={i} className={c === "·" ? "text-muted-foreground/60" : ""}>{c}</span>
+            {parseCode(code, axesFor(type)).map((c, i) => (
+              <span key={i} className={c === GLYPH_UNRESOLVED || c === GLYPH_BIMODAL ? "text-muted-foreground/60" : ""}>{c}</span>
             ))}
           </div>
           <p className="mt-3 text-xs text-muted-foreground">

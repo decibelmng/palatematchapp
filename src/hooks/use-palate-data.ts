@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { friendlyError } from "@/lib/error-message";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "./use-session";
-import type { PaletteType } from "@/lib/palate";
+import { GLYPH_UNRESOLVED, parseCode, RED_AXES, type PaletteType } from "@/lib/palate";
 import { recommend, type BottleFp, type FpKey, type RatedFp, type WineType } from "@/lib/recommender";
 import { aggregateRated } from "@/lib/cuvee";
 import { predictStars, type FpRow, type PredictResult } from "@/lib/predict-core";
@@ -482,12 +482,20 @@ import { useEffect } from "react";
 function useCodeUpsert(uid: string | undefined, red: string, white: string, n: number) {
   useEffect(() => {
     if (!uid) return;
-    supabase.from("profiles").update({
+    // Never overwrite a stored code with an all-unresolved one: this effect runs
+    // on first paint, before ratings load, and a "?????" write was landing last
+    // and leaving every profile row unresolved for readers of this column.
+    const allUnresolved = (c: string) => parseCode(c, RED_AXES).every((s) => s === GLYPH_UNRESOLVED);
+    if (n === 0 || (allUnresolved(red) && allUnresolved(white))) return;
+    void supabase.from("profiles").update({
       palate_code: red,           // legacy column — keep populated with the red code
       palate_code_red: red,
       palate_code_white: white,
       n_rated: n,
-    }).eq("id", uid);
+    }).eq("id", uid).then(({ error }) => {
+      if (error) console.warn("[palate] code persist failed:", error.message);
+    });
   }, [uid, red, white, n]);
 }
+
 

@@ -7,14 +7,15 @@
 // the component auto-cycles once through every letter — see `autoCycle`.
 // Never a legend table.
 //
-// A "·" position can mean two different things:
-//   - unresolved (not enough evidence yet) — disabled, muted
-//   - bimodal (real information: user goes both ways on that axis) —
-//     tappable, muted. The distinction comes from `letters[i].bimodal`.
+// Slots are parsed with splitCode(), never by character index: a slot may be
+// a pole letter plus the bimodal marker ("G±"). Glyph meanings are distinct —
+// "?" is unresolved (disabled, muted) and "±" is bimodal (real information,
+// tappable).
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { LetterResult, PaletteType } from "@/lib/palate";
 import { explainLetter } from "@/lib/palate-code-letters";
+import { axesFor, GLYPH_BIMODAL, GLYPH_UNRESOLVED, isBimodalSlot, parseCode } from "@/lib/palate";
 
 type Props = {
   code: string;
@@ -51,7 +52,9 @@ export function PalateCodeReader({
     return set;
   }, [letters]);
 
-  const isDisabled = (i: number, ch: string) => ch === "·" && !bimodalAt.has(i);
+  const slots = useMemo(() => parseCode(code, axesFor(type)), [code, type]);
+  const isDisabled = (i: number, ch: string) =>
+    ch === GLYPH_UNRESOLVED && !bimodalAt.has(i);
 
   useEffect(() => {
     if (!autoCycle || typeof window === "undefined") return;
@@ -62,11 +65,9 @@ export function PalateCodeReader({
 
     // Cycle through resolved letters and bimodal positions — both carry meaning.
     const positions: number[] = [];
-    for (let i = 0; i < code.length; i++) {
-      const ch = code[i];
-      if (!ch) continue;
-      if (ch !== "·" || bimodalAt.has(i)) positions.push(i);
-    }
+    slots.forEach((ch, i) => {
+      if (ch !== GLYPH_UNRESOLVED || bimodalAt.has(i)) positions.push(i);
+    });
     if (positions.length === 0) return;
 
     let idx = 0;
@@ -81,11 +82,11 @@ export function PalateCodeReader({
     };
     tick();
     return () => { if (timer.current) clearTimeout(timer.current); };
-  }, [autoCycle, code, type, key, bimodalAt]);
+  }, [autoCycle, code, slots, type, key, bimodalAt]);
 
   const meaning =
     active != null
-      ? explainLetter(type, code, active, bimodalAt.has(active))
+      ? explainLetter(type, code, active, bimodalAt.has(active) || isBimodalSlot(slots[active] ?? ""))
       : null;
 
   const faceClass =
@@ -98,10 +99,10 @@ export function PalateCodeReader({
         aria-label={`Palate code ${code}. Tap each letter for its meaning.`}
         className={`font-serif ${faceClass} leading-none tracking-[0.18em] text-primary`}
       >
-        {code.split("").map((ch, i) => {
+        {slots.map((ch, i) => {
           const isActive = active === i;
           const disabled = isDisabled(i, ch);
-          const muted = ch === "·";
+          const muted = ch === GLYPH_UNRESOLVED || ch === GLYPH_BIMODAL;
           return (
             <button
               key={`code-${i}-${ch}`}
@@ -109,7 +110,7 @@ export function PalateCodeReader({
               disabled={disabled}
               onClick={() => setActive(active === i ? null : i)}
               aria-pressed={isActive}
-              aria-label={`Letter ${i + 1}: ${ch}`}
+              aria-label={`Slot ${i + 1}: ${ch}`}
               className={[
                 "inline-block px-1 min-w-[1ch] rounded-sm transition",
                 muted ? "text-muted-foreground" : "",

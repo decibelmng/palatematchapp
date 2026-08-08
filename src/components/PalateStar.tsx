@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { AxisDef, LetterResult } from "@/lib/palate";
+import { GLYPH_BIMODAL, GLYPH_UNRESOLVED, isBimodalSlot, parseCode, poleOf } from "@/lib/palate";
 
 type Props = {
   axes: AxisDef[];
@@ -23,14 +24,17 @@ function pt(angleDeg: number, r: number) {
  *  axis set. Used for mini glyphs / example glyphs where exact values aren't
  *  available. */
 export function lettersFromCode(code: string, axes: AxisDef[]): LetterResult[] {
+  const slots = parseCode(code, axes);
   return axes.map((a, i) => {
-    const ch = code[i] ?? "·";
+    const slot = slots[i] ?? GLYPH_UNRESOLVED;
     const base = { axis: a.key, label: a.label, low: a.low, high: a.high };
-    if (ch === a.low)  return { ...base, letter: ch, descriptor: a.lowName,  resolved: true, value: 0.2, bimodal: false };
-    if (ch === a.high) return { ...base, letter: ch, descriptor: a.highName, resolved: true, value: 0.8, bimodal: false };
-    if (ch === "N")    return { ...base, letter: "N", descriptor: a.neutralName, resolved: true, value: 0.5, bimodal: false };
-    if (ch === "X")    return { ...base, letter: "X", descriptor: "loves both poles", resolved: true, value: 0.5, bimodal: true };
-    return { ...base, letter: "·", descriptor: "—", resolved: false, value: null, bimodal: false };
+    const marked = isBimodalSlot(slot);
+    const pole = poleOf(slot);
+    if (pole === a.low)  return { ...base, letter: slot, descriptor: a.lowName,  resolved: true, value: marked ? 0.35 : 0.2, bimodal: marked };
+    if (pole === a.high) return { ...base, letter: slot, descriptor: a.highName, resolved: true, value: marked ? 0.65 : 0.8, bimodal: marked };
+    if (pole === "N")    return { ...base, letter: slot, descriptor: a.neutralName, resolved: true, value: 0.5, bimodal: marked };
+    if (slot === GLYPH_BIMODAL) return { ...base, letter: slot, descriptor: `both ${a.lowName} and ${a.highName}`, resolved: true, value: 0.5, bimodal: true };
+    return { ...base, letter: GLYPH_UNRESOLVED, descriptor: "not enough ratings yet", resolved: false, value: null, bimodal: false };
   });
 }
 

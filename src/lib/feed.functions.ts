@@ -122,8 +122,8 @@ export const getFriendsFeed = createServerFn({ method: "POST" })
           user_id: p.id,
           username: p.username,
           display_name: p.display_name,
-          palate_code_red: p.palate_code_red ?? "·····",
-          palate_code_white: p.palate_code_white ?? "·····",
+          palate_code_red: p.palate_code_red ?? "?????",
+          palate_code_white: p.palate_code_white ?? "?????",
         },
         bottle: {
           id: b.id, name: b.name, producer: b.producer, region: b.region,

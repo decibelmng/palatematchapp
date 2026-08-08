@@ -404,7 +404,7 @@ describe("Engine v2 — acceptance", () => {
 // ---------- computeCode() ----------
 
 describe("computeCode()", () => {
-  it("flags bimodal (rendered as '·') + 'loves both poles' when ≥2 loved anchors sit at each pole and ≥6 rated wines exist", () => {
+  it("emits the bare '±' marker when the mean sits mid-range and both poles are loved", () => {
     const rows = [
       { stars: 5, values: { body: 0.05, fruit_char: 0.5, tannin: 0.5, acidity: 0.5, sweet: 0 } },
       { stars: 5, values: { body: 0.95, fruit_char: 0.5, tannin: 0.5, acidity: 0.5, sweet: 0 } },
@@ -416,10 +416,9 @@ describe("computeCode()", () => {
     const { letters } = computeCode(rows, RED_AXES);
     const body = letters.find((l) => l.axis === "body")!;
     expect(body.bimodal).toBe(true);
-    // Deliberately a muted middot, not "X" — an X reads as an error in the UI.
-    // The bimodal meaning is carried by the `bimodal` flag + descriptor. See palate.ts.
-    expect(body.letter).toBe("·");
-    expect(body.descriptor).toBe("loves both poles");
+    // Mean sits at 0.5 here, so no pole dominates: bare marker, never "?".
+    expect(body.letter).toBe("±");
+    expect(body.descriptor).toBe("both light and bold");
   });
 
   it("does NOT render 'X' when only one loved anchor sits at the high pole (min-evidence gate)", () => {
@@ -433,7 +432,7 @@ describe("computeCode()", () => {
     const { letters } = computeCode(rows, WHITE_AXES);
     const oak = letters.find((l) => l.axis === "oak")!;
     expect(oak.bimodal).toBe(false);
-    expect(oak.letter).not.toBe("X");
+    expect(oak.letter).not.toContain("±");
   });
 
 
@@ -458,7 +457,7 @@ describe("computeCode()", () => {
     const { letters } = computeCode(rows, RED_AXES);
     for (const l of letters) {
       expect(l.resolved).toBe(false);
-      expect(l.letter).toBe("·");
+      expect(l.letter).toBe("?");
     }
   });
 });
