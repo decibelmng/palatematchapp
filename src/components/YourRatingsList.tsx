@@ -144,6 +144,10 @@ export function YourRatingsList() {
           const note = noteBottleId ? noteByBottle.get(noteBottleId) ?? null : null;
           const editing = editingId === (noteBottleId ?? "");
           const isExpanded = expanded.has(c.cuvee);
+          const nameParts = { name: c.name, producer: c.producer, region: c.region, grape: rep?.grape ?? null };
+          const title = displayWineName(nameParts);
+          const meta = wineNameMeta(nameParts, title);
+
 
           const children = aggregated
             ? [...c.bottleIds]
