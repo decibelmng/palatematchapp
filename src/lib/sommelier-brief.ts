@@ -126,11 +126,16 @@ function styleRegionHint(b: BriefBenchmark): string {
 function lovedCentroid(ratedFp: RatedFp[]): FpVec | null {
   const loved = ratedFp.filter((r) => r.stars >= 4);
   if (loved.length === 0) return null;
-  const out = {} as FpVec;
+  const out: FpVec = {};
   for (const k of RAX) {
     let sum = 0;
-    for (const r of loved) sum += r.fp[k];
-    out[k] = sum / loved.length;
+    let n = 0;
+    for (const r of loved) {
+      if (!hasAxis(r.fp, k)) continue;
+      sum += r.fp[k] as number;
+      n += 1;
+    }
+    if (n > 0) out[k] = sum / n;
   }
   return out;
 }

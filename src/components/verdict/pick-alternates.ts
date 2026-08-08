@@ -1,5 +1,5 @@
 import type { ScanRow } from "./types";
-import type { FpKey } from "@/lib/recommender";
+import type { FpKey, FpVec } from "@/lib/recommender";
 
 export type Alternate = {
   row: ScanRow;
@@ -8,11 +8,11 @@ export type Alternate = {
   reason: string;
 };
 
-// Iterate Record<FpKey, number> as an ordered vector. Never index a Record
+// Iterate the style vector in a fixed order. Never index a Record
 // with numeric literals — that returns undefined and silently zeros distance.
 const FP_ORDER: FpKey[] = ["fresh", "acid", "tannin", "fruit_dark", "ripe", "oak", "body", "savory"];
 
-function fpDistance(a: Record<FpKey, number> | null | undefined, b: Record<FpKey, number> | null | undefined): number {
+function fpDistance(a: FpVec | null | undefined, b: FpVec | null | undefined): number {
   if (!a || !b) return 0;
   let s = 0;
   let n = 0;
