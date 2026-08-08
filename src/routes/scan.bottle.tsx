@@ -16,6 +16,7 @@ import {
   type BottleScanResult,
   type BottleExtract,
 } from "@/lib/bottle-scan.functions";
+import { setRatingPhoto } from "@/lib/feed-extras.functions";
 import {
   persistBottleScan,
   saveBottleScanCorrection,
@@ -62,9 +63,12 @@ function BottleScan() {
   const recognizer = useMemo(() => createLovableVisionRecognizer(scan), [scan]);
   const persistFn = useServerFn(persistBottleScan);
   const correctFn = useServerFn(saveBottleScanCorrection);
+  const setRatingPhotoFn = useServerFn(setRatingPhoto);
   const markRatedFn = useServerFn(markBottleScanRated);
   // Scan-wine row id captured after identify — used by correction log and mark-rated.
   const scanWineIdRef = useRef<string | null>(null);
+  // Label photo from this scan — attached to the rating so the feed can show it.
+  const frontPathRef = useRef<string | null>(null);
   const cameraRef = useRef<HTMLInputElement>(null);
   const libraryRef = useRef<HTMLInputElement>(null);
   const [front, setFront] = useState<{ file: File; url: string } | null>(null);
@@ -167,6 +171,7 @@ function BottleScan() {
       if (session) {
         try {
           const initialMatch = r.candidates?.[0]?.id ?? null;
+          frontPathRef.current = (r as any).__frontPath ?? null;
           const persisted = await persistFn({
             data: {
               frontPath: (r as any).__frontPath ?? null,
@@ -299,6 +304,11 @@ function BottleScan() {
       if (err instanceof RateCanceledError) return;
       toast.error(friendlyError(err, `Couldn't rate ${c.name}`));
       return;
+    }
+
+    // The label photo we just captured belongs to this rating.
+    if (frontPathRef.current) {
+      setRatingPhotoFn({ data: { bottle_id: c.id, path: frontPathRef.current } }).catch(() => {});
     }
 
     // Ground-truth: this bottle was actually rated post-scan.
