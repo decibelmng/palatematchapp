@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { PalateStar, lettersFromCode } from "./PalateStar";
-import { axesFor, type PaletteType } from "@/lib/palate";
+import { axesFor, GLYPH_BIMODAL, GLYPH_UNRESOLVED, splitCode, type PaletteType } from "@/lib/palate";
 import { useSommelierBrief } from "@/hooks/use-sommelier-brief";
 import { SommelierBriefCard } from "./SommelierBriefCard";
 

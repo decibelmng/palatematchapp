@@ -85,8 +85,8 @@ export const listFriendships = createServerFn({ method: "GET" })
           user_id: otherId,
           username: p?.username ?? "unknown",
           display_name: p?.display_name ?? null,
-          palate_code_red: p?.palate_code_red ?? "·····",
-          palate_code_white: p?.palate_code_white ?? "·····",
+          palate_code_red: p?.palate_code_red ?? "?????",
+          palate_code_white: p?.palate_code_white ?? "?????",
         },
       };
     });

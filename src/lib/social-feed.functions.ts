@@ -2,6 +2,7 @@
 // suggestions, and founder account lookup. All read-only or user-owned
 // writes — nothing here writes another user's data.
 
+import { slotsOf } from "@/lib/palate";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";

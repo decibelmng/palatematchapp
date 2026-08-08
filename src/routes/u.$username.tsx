@@ -1,3 +1,4 @@
+import { GLYPH_BIMODAL, GLYPH_UNRESOLVED, splitCode } from "@/lib/palate";
 import { createFileRoute, notFound, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { useEffect, type ReactNode } from "react";
