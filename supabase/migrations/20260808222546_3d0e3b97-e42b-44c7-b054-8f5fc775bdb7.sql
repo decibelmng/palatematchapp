@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS scan_outcomes_user_scan_key ON public.scan_outcomes (user_id, scan_id);
