@@ -67,9 +67,20 @@ export function VerdictSurface({
     return { call: top, callKind: kind, alternates: alts, restRows: rest, eligible };
   }, [rows]);
 
+  // Rank of the opened wine among eligible candidates — 1 is the Call. Logged
+  // with any rating so a miss on the wine we led with is distinguishable from
+  // a miss thirty rows down.
+  const detailRank = useMemo(() => {
+    if (!detailFor) return null;
+    if (call && detailFor.key === call.key) return 1;
+    const i = eligible.findIndex((r) => r.key === detailFor.key);
+    return i >= 0 ? i + 1 : null;
+  }, [detailFor, eligible, call]);
+
   // Instrumentation only — no UI. Tells us after ~20 real scans whether the
   // catalog-first tie-break actually skews the Call upmarket.
   useLogCallShape(call, rows, scanId ?? null);
+
 
 
   if (!call) {
