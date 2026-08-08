@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
-import { predictStars, fpOf, type FpRow } from "@/lib/predict-core";
+import { predictStars, fpOf, type FpRow, type FpVec, type FpKey, RAX } from "@/lib/predict-core";
+import { omegaDistance } from "@/lib/recommender";
 
 /**
  * These cases fail under BOTH pre-fix conventions:
@@ -19,11 +20,13 @@ function row(id: string, over: Partial<FpRow> = {}): FpRow {
 
 // Ratings spread along ripe so the axis carries real signal: low ripe loved,
 // high ripe disliked. A candidate whose ripe is UNREAD must not inherit either.
+// Deliberately asymmetric so no accidental symmetry can make two different
+// conventions agree.
 const rated = [
-  { bottle: row("a", { fp_ripe: 0.1, fp_tannin: 0.3 }), stars: 5 },
-  { bottle: row("b", { fp_ripe: 0.9, fp_tannin: 0.8 }), stars: 1 },
-  { bottle: row("c", { fp_ripe: 0.2, fp_tannin: 0.35 }), stars: 4 },
-  { bottle: row("d", { fp_ripe: 0.8, fp_tannin: 0.75 }), stars: 2 },
+  { bottle: row("a", { fp_ripe: 0.05, fp_tannin: 0.3 }), stars: 5 },
+  { bottle: row("b", { fp_ripe: 0.35, fp_tannin: 0.4 }), stars: 4 },
+  { bottle: row("c", { fp_ripe: 0.8, fp_tannin: 0.55 }), stars: 2 },
+  { bottle: row("d", { fp_ripe: 0.95, fp_tannin: 0.6 }), stars: 1 },
 ];
 
 describe("missing-axis convention", () => {
@@ -52,21 +55,34 @@ describe("missing-axis convention", () => {
   });
 
   it("gains no advantage and takes no penalty purely from the omission", () => {
-    // Distance is ω-weighted mean-square over the SHARED axes, rescaled by the
-    // weight of those axes only: d = sqrt(Σ_shared ω·Δ² / Σ_shared ω). So a
-    // candidate identical to a rated wine on the 7 axes it can read scores the
-    // same as one identical on all 8 — the missing axis neither pulls it closer
-    // nor pushes it away. Under an unnormalised Σ ω·Δ² the 7-axis wine would be
-    // systematically nearer everything; under a fixed /8 denominator it would
-    // be systematically nearer too.
-    const twin = { fp_ripe: 0.1, fp_tannin: 0.3, fp_body: 0.3 };
-    const full = predictStars(rated, row("full", twin));
-    const partial = predictStars(rated, row("partial", { ...twin, fp_ripe: null }));
-    expect(full.predicted).not.toBeNull();
-    expect(partial.predicted).not.toBeNull();
-    // Same neighbourhood, same verdict: within a quarter star of each other,
-    // and the omission does not make the partial wine the closer match.
-    expect(Math.abs((partial.predicted as number) - (full.predicted as number))).toBeLessThan(0.25);
-    expect(partial.predicted as number).toBeLessThanOrEqual((full.predicted as number) + 1e-9);
+    // Distance is the omega-weighted MEAN square over the axes both sides
+    // carry, rescaled by the weight of those axes only:
+    //     d = sqrt( sum_shared w*delta^2 / sum_shared w )
+    // That is what makes 6-of-8 comparable to 8-of-8: the denominator counts
+    // only what was compared, so the result is a per-axis average, not a sum
+    // that shrinks every time an axis drops out.
+    const omega = Object.fromEntries(RAX.map((k) => [k, 1])) as Record<FpKey, number>;
+    const active = RAX;
+    const base = Object.fromEntries(RAX.map((k) => [k, 0.5])) as FpVec;
+    const offFull = Object.fromEntries(RAX.map((k) => [k, 0.6])) as FpVec;
+    const offPartial = { ...offFull };
+    delete offPartial.ripe;
+    const basePartial = { ...base };
+    delete basePartial.ripe;
+
+    const dFull = omegaDistance(base, offFull, omega, active);
+    const dPartial = omegaDistance(base, offPartial, omega, active);
+    expect(dFull).toBeCloseTo(0.1, 10);
+    // Identical per-axis average: the omission neither shortens nor lengthens.
+    expect(dPartial).toBeCloseTo(dFull, 10);
+    expect(omegaDistance(basePartial, offFull, omega, active)).toBeCloseTo(dFull, 10);
+
+    // Under the old null-to-0 convention the omitted axis becomes a real 0.5
+    // gap and the wine is pushed far away.
+    const asFloor = { ...offFull, ripe: 0 } as FpVec;
+    expect(omegaDistance(base, asFloor, omega, active)).toBeGreaterThan(dFull * 1.5);
+
+    // No comparable axis at all is Infinity, never 0.
+    expect(omegaDistance({ ripe: 0.2 }, { body: 0.2 }, omega, active)).toBe(Infinity);
   });
 });
