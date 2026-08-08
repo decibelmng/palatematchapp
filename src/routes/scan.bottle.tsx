@@ -245,9 +245,11 @@ function BottleScan() {
 
   async function rateCandidate(c: BottleCandidate, stars: number) {
     if (!session) return;
-    // Route through the cascade RPC so rating a scanned bottle can never
-    // orphan an existing benchmark; useRate isn't wired here because scan
-    // has its own react-query lifecycle. Confirm inline if applicable.
+    // Route through the same shared path every other rating surface uses, so
+    // this screen's ratings carry the full measurement payload (weights,
+    // neighbour support, per-axis deltas) rather than a bare expectation.
+    // The benchmark check runs against the database here rather than the
+    // query cache: this screen may never have loaded the cached set.
     const { data: canonRows } = await supabase
       .from("canon_wines")
       .select("tier,region")
@@ -256,32 +258,30 @@ function BottleScan() {
       .is("replaced_at", null)
       .limit(1);
     const active = canonRows?.[0] as { tier: "canon" | "nemesis"; region: string } | undefined;
-    if (active && (
+    const needsConfirm = !!active && (
       (active.tier === "canon" && stars < 5) ||
       (active.tier === "nemesis" && stars > 2)
-    )) {
-      const verb = active.tier === "canon"
-        ? `You'd set this as a benchmark in ${active.region}. Lowering the rating removes that.`
-        : `You'd marked this as a dealbreaker in ${active.region}. Raising the rating removes that.`;
+    );
 
-      if (typeof window !== "undefined" && !window.confirm(`${verb}\n\nContinue and update ${c.name}?`)) {
-        return;
-      }
-    }
-    const predicted = predictedForCandidate(c);
-    const { error } = await (supabase as any).rpc("save_rating_with_cascade", {
-      p_bottle_id: c.id,
-      p_stars: stars,
-      p_predicted: predicted,
-    });
-
-    if (error) {
-      toast.error(friendlyError(error, `Couldn't rate ${c.name}`));
+    try {
+      await rate.mutateAsync({
+        bottleId: c.id,
+        stars,
+        source: "scan_bottle",
+        scanWineId: scanWineIdRef.current ?? null,
+        onCascadeConfirm: needsConfirm
+          ? undefined
+          : () => true,
+        ...(needsConfirm && active
+          ? { }
+          : { }),
+      });
+    } catch (err) {
+      if (err instanceof RateCanceledError) return;
+      toast.error(friendlyError(err, `Couldn't rate ${c.name}`));
       return;
     }
-    qc.invalidateQueries({ queryKey: ["ratings"] });
-    qc.invalidateQueries({ queryKey: ["canons"] });
-    qc.invalidateQueries({ queryKey: ["palate-version"] });
+
     // Ground-truth: this bottle was actually rated post-scan.
     if (scanWineIdRef.current) {
       markRatedFn({ data: { scanWineId: scanWineIdRef.current, stars } }).catch(() => {});
