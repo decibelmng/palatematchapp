@@ -63,8 +63,8 @@ export function ShareCardDialog({ open, onClose, type, code, displayName }: Prop
             className="mt-4 font-serif text-2xl text-primary"
             style={{  }}
           >
-            {code.split("").map((c, i) => (
-              <span key={i} className={c === "·" ? "text-muted-foreground/60" : ""}>{c}</span>
+            {splitCode(code).map((c, i) => (
+              <span key={i} className={c === GLYPH_UNRESOLVED || c === GLYPH_BIMODAL ? "text-muted-foreground/60" : ""}>{c}</span>
             ))}
           </div>
           <p className="mt-3 text-xs text-muted-foreground">

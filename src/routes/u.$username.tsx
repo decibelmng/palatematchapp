@@ -166,8 +166,11 @@ function PalateCodeCard({ label, code }: { label: string; code: string }) {
     <div className="rounded-[14px] border border-border bg-card p-4">
       <div className="text-meta uppercase text-muted-foreground">{label}</div>
       <div className="mt-3 font-serif text-title text-primary">
-        {code.split("").map((ch, i) => (
-          <span key={`${label}-${i}`} className={ch === "·" ? "text-muted-foreground/60" : ""}>{ch}</span>
+        {splitCode(code).map((ch, i) => (
+          <span
+            key={`${label}-${i}`}
+            className={ch === GLYPH_UNRESOLVED || ch === GLYPH_BIMODAL ? "text-muted-foreground/60" : ""}
+          >{ch}</span>
         ))}
       </div>
     </div>

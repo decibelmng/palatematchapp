@@ -246,8 +246,10 @@ export const getFounderAccount = createServerFn({ method: "GET" })
 // ---------------------------------------------------------------
 
 function codeDistance(a: string | null | undefined, b: string | null | undefined): number {
-  const sa = (a ?? "").padEnd(5, "·").slice(0, 5);
-  const sb = (b ?? "").padEnd(5, "·").slice(0, 5);
+  // Slot-wise, not character-wise: a slot can be "G±". Unresolved slots ("?")
+  // count as a difference only against a resolved one, never as a match.
+  const sa = slotsOf(a);
+  const sb = slotsOf(b);
   let d = 0;
   for (let i = 0; i < 5; i++) if (sa[i] !== sb[i]) d += 1;
   return d;
