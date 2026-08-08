@@ -40,10 +40,13 @@ export function splitCode(code: string): string[] {
   const slots: string[] = [];
   const chars = Array.from(code ?? "");
   for (let i = 0; i < chars.length; i++) {
-    let ch = chars[i];
+    const raw = chars[i];
+    let ch = raw;
     if (ch === "·") ch = GLYPH_UNRESOLVED;
     else if (ch === "X") ch = GLYPH_BIMODAL;
-    if (ch === GLYPH_BIMODAL && slots.length > 0) {
+    // Legacy "X" always occupied its own slot, so only a literal marker can
+    // qualify the preceding letter.
+    if (raw === GLYPH_BIMODAL && slots.length > 0) {
       const prev = slots[slots.length - 1];
       // A marker directly after a pole letter qualifies it rather than
       // occupying its own slot.
