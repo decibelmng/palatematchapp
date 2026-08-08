@@ -2,7 +2,7 @@
 // vintages of the same wine collapse into one cuvée; different bottlings
 // from the same producer (Barolo vs Barbaresco vs Bric Turot) do not.
 
-import { RAX, type FpKey, type WineType } from "@/lib/recommender";
+import { RAX, hasAxis, type FpKey, type FpVec, type WineType } from "@/lib/recommender";
 
 const NAME_STOPWORDS = new Set([
   "the", "a", "an", "de", "di", "du", "del", "della", "el", "la", "le", "les",
@@ -55,7 +55,7 @@ export type CuveeRated = {
   producer: string | null;
   region: string | null;
   type: WineType;
-  fp: Record<FpKey, number>;
+  fp: FpVec;
   stars: number;         // average
   bottleIds: string[];   // every rated bottle in this cuvée
   vintages: number[];    // sorted desc
@@ -68,7 +68,7 @@ export type CuveeCandidate = {
   producer: string | null;
   region: string | null;
   type: WineType;
-  fp: Record<FpKey, number>;
+  fp: FpVec;
   critic_score: number | null;
   price_band: string | null;
   vintages: number[];    // sorted desc
@@ -82,7 +82,7 @@ type RatedInput = {
   region?: string | null;
   type: WineType;
   vintage?: number | null;
-  fp: Record<FpKey, number>;
+  fp: FpVec;
   stars: number;
 };
 type CandidateInput = {
@@ -92,18 +92,24 @@ type CandidateInput = {
   region?: string | null;
   type: WineType;
   vintage?: number | null;
-  fp: Record<FpKey, number>;
+  fp: FpVec;
   critic_score?: number | null;
   price_band?: string | null;
   raw?: boolean;
 };
 
-function meanFp(rows: { fp: Record<FpKey, number> }[]): Record<FpKey, number> {
-  const out = {} as Record<FpKey, number>;
+function meanFp(rows: { fp: FpVec }[]): FpVec {
+  // Average over the rows that actually READ each axis. An axis no row read is
+  // omitted, not zeroed: an unread dimension must not enter distance.
+  const out: FpVec = {};
   for (const k of RAX) {
-    let s = 0;
-    for (const r of rows) s += r.fp[k];
-    out[k] = s / rows.length;
+    let s = 0, n = 0;
+    for (const r of rows) {
+      if (!hasAxis(r.fp, k)) continue;
+      s += r.fp[k] as number;
+      n += 1;
+    }
+    if (n > 0) out[k] = s / n;
   }
   return out;
 }

@@ -2,14 +2,17 @@
 // two axes that most differentiate it from its type centroid. Presentation
 // only — no engine influence.
 
-import type { FpKey, WineType } from "@/lib/recommender";
+import { hasAxis, type FpKey, type FpVec, type WineType } from "@/lib/recommender";
 
-export type FpVec = Record<FpKey, number>;
+export type { FpVec };
+
+/** Fully-read centroid vector: every axis present by construction. */
+type Centroid = Record<FpKey, number>;
 
 /** Type-neutral centroid used only for style-name derivation. Approximate;
  *  the true per-pool centroid isn't available here and isn't needed for a
  *  categorical label. */
-const CENTROID: Record<WineType, FpVec> = {
+const CENTROID: Record<WineType, Centroid> = {
   red:       { fresh: 0.45, acid: 0.55, tannin: 0.55, fruit_dark: 0.60, ripe: 0.55, oak: 0.50, body: 0.60, savory: 0.50 },
   white:     { fresh: 0.65, acid: 0.65, tannin: 0,    fruit_dark: 0,    ripe: 0.45, oak: 0.35, body: 0.45, savory: 0.45 },
   sparkling: { fresh: 0.75, acid: 0.75, tannin: 0,    fruit_dark: 0,    ripe: 0.40, oak: 0.25, body: 0.35, savory: 0.45 },
@@ -64,8 +67,10 @@ function pairKey(a: FpKey, ad: Direction, b: FpKey, bd: Direction): string {
 function topAxes(fp: FpVec, type: WineType, n = 2): Array<{ axis: FpKey; dir: Direction; delta: number }> {
   const c = CENTROID[type];
   const scored = (Object.keys(fp) as FpKey[])
-    .filter((k) => c[k] !== 0)
-    .map((k) => ({ axis: k, dir: (fp[k] >= c[k] ? "hi" : "lo") as Direction, delta: Math.abs(fp[k] - c[k]) }))
+    // An unread axis has no deviation from the centroid to rank — naming a
+    // style from a value we never read invents the label.
+    .filter((k) => c[k] !== 0 && hasAxis(fp, k))
+    .map((k) => ({ axis: k, dir: ((fp[k] as number) >= c[k] ? "hi" : "lo") as Direction, delta: Math.abs((fp[k] as number) - c[k]) }))
     .sort((a, b) => b.delta - a.delta);
   return scored.slice(0, n);
 }

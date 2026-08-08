@@ -285,7 +285,7 @@ function clusterCanons(canonPts: ClusterPoint[]): Array<{ members: ClusterPoint[
 
 /** Map a LovedPoint's cube axes into a partial FpVec so styleNameFor works.
  *  Only axes present on the point contribute; missing axes default to 0.5. */
-function fpFromLoved(p: LovedPoint): FpVec {
+function fpFromLoved(p: LovedPoint): Record<FpKey, number> {
   const centroid = 0.5;
   const fp: Record<FpKey, number> = {
     fresh: centroid,

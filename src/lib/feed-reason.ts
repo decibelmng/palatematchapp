@@ -7,7 +7,7 @@
 //
 // Read-only — never touches fp_observations or writes anything.
 
-import { RAX, type FpKey, type WineType, type RatedFp } from "./recommender";
+import { RAX, hasAxis, type FpKey, type FpVec, type WineType, type RatedFp } from "./recommender";
 
 export type CalibrationBand = "thin" | "medium" | "strong";
 
@@ -91,7 +91,7 @@ const RED_ONLY = new Set<FpKey>(["tannin", "fruit_dark"]);
  * against your palate on X".
  */
 export function reasonForPrediction(args: {
-  candidateFp: Record<FpKey, number>;
+  candidateFp: FpVec;
   type: WineType;
   ratedSameType: RatedFp[];
   predicted: number;
@@ -107,7 +107,8 @@ export function reasonForPrediction(args: {
     let d = 0;
     for (const a of RAX) {
       if (RED_ONLY.has(a) && !(type === "red" || type === "dessert")) continue;
-      const diff = candidateFp[a] - r.fp[a];
+      if (!hasAxis(candidateFp, a) || !hasAxis(r.fp, a)) continue;
+      const diff = (candidateFp[a] as number) - (r.fp[a] as number);
       d += diff * diff;
     }
     d = Math.sqrt(d);
@@ -121,7 +122,8 @@ export function reasonForPrediction(args: {
   let bestSigned = 0;
   for (const a of RAX) {
     if (RED_ONLY.has(a) && !(type === "red" || type === "dessert")) continue;
-    const d = candidateFp[a] - nearest.fp[a];
+    if (!hasAxis(candidateFp, a) || !hasAxis(nearest.fp, a)) continue;
+    const d = (candidateFp[a] as number) - (nearest.fp[a] as number);
     if (Math.abs(d) > bestAbs) { bestAbs = Math.abs(d); bestSigned = d; bestAxis = a; }
   }
   if (!bestAxis || bestAbs < 0.05) {

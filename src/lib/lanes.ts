@@ -6,6 +6,7 @@ import {
   buildTypeContext,
   distanceInContext,
   type FpKey,
+  type FpVec,
   type RatedFp,
   type TypeCtx,
   type WineType,
@@ -27,7 +28,7 @@ export type Lane<T> = {
   canonId: string;                 // rep Canon id
   canonName: string;
   canonRegion: string | null;
-  canonFp: Record<FpKey, number>;
+  canonFp: FpVec;
   canonStars: number;
   memberCanons: RatedFp[];         // includes merged Canons (label wins)
   styleName: string;

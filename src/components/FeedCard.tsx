@@ -13,6 +13,7 @@ import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { Star, Bookmark, BookmarkCheck } from "lucide-react";
 import { recommend, type BottleFp, type RatedFp, type WineType } from "@/lib/recommender";
+import { fpOf } from "@/lib/predict-core";
 import { useRatings, useBottlesByIds, bottleToFp, bottleType } from "@/hooks/use-palate-data";
 import { useAddToWishlist, useRemoveFromWishlist, useWishlistIds } from "@/hooks/use-wishlist";
 import {
@@ -88,12 +89,10 @@ export function FeedCard({ item }: { item: FeedItem }) {
     const cand: BottleFp = {
       id: bottle.id, name: bottle.name, producer: bottle.producer, region: bottle.region,
       type: bType,
-      fp: {
-        fresh: bottle.fp_fresh ?? 0.5, acid: bottle.fp_acid ?? 0.5,
-        tannin: bottle.fp_tannin ?? 0.5, fruit_dark: bottle.fp_fruit_dark ?? 0.5,
-        ripe: bottle.fp_ripe ?? 0.5, oak: bottle.fp_oak ?? 0.5,
-        body: bottle.fp_body ?? 0.5, savory: bottle.fp_savory ?? 0.5,
-      },
+      // 0.5 is a real, central style position — using it for an axis we
+      // never read makes an unread wine indistinguishable from a genuinely
+      // middling one. fpOf omits what it can't read instead.
+      fp: fpOf(bottle),
     };
     const [rec] = recommend(ratedSameType, [cand]);
     if (!rec) return null;

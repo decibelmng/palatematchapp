@@ -29,6 +29,21 @@ export const RAX = [
 ] as const;
 export type FpKey = (typeof RAX)[number];
 
+/**
+ * A style reading. An axis that is ABSENT from this object was never read —
+ * it is not 0, and it is not 0.5. Missing axes are excluded from every
+ * distance, similarity and ω fit, and the remaining axes are rescaled, so an
+ * unread dimension contributes distance in neither direction. A wine
+ * genuinely at 0.5 must stay distinguishable from one we failed to read.
+ * Build these with fpOf / bottleToFp — never with a `?? 0` or `?? 0.5`.
+ */
+export type FpVec = { [K in FpKey]?: number };
+
+/** An axis is readable only if a real number is present for it. */
+export function hasAxis(fp: FpVec, k: FpKey): boolean {
+  return Number.isFinite(fp[k] as number);
+}
+
 export type WineType = "red" | "white" | "sparkling" | "rose" | "dessert";
 
 export type BottleFp = {
@@ -37,7 +52,7 @@ export type BottleFp = {
   producer?: string | null;
   region?: string | null;
   type: WineType;
-  fp: Record<FpKey, number>;
+  fp: FpVec;
 };
 
 export type RatedFp = BottleFp & {
@@ -160,15 +175,19 @@ function learnOmega(rated: RatedFp[], type: WineType): OmegaFit {
   if (real.length < 4) return { omega: uniform, active };
 
   // Build pairs
-  type Pair = { g: number; d2: Record<FpKey, number>; w: number };
+  type Pair = { g: number; d2: Partial<Record<FpKey, number>>; w: number };
   const pairs: Pair[] = [];
   for (let i = 0; i < real.length; i++) {
     for (let j = i + 1; j < real.length; j++) {
       const a = real[i], b = real[j];
       const g = Math.abs(a.stars - b.stars) / 4;
-      const d2: Record<FpKey, number> = {} as Record<FpKey, number>;
+      // An axis missing on either side yields NO contrast for that axis —
+      // the pair simply does not vote on it. It must never contribute a
+      // fabricated (x - 0)² of manufactured magnitude.
+      const d2: Partial<Record<FpKey, number>> = {};
       for (const k of active) {
-        const diff = a.fp[k] - b.fp[k];
+        if (!hasAxis(a.fp, k) || !hasAxis(b.fp, k)) continue;
+        const diff = (a.fp[k] as number) - (b.fp[k] as number);
         d2[k] = diff * diff;
       }
       pairs.push({ g, d2, w: (a.weight ?? 1) * (b.weight ?? 1) });
@@ -192,6 +211,7 @@ function learnOmega(rated: RatedFp[], type: WineType): OmegaFit {
     let den = lambda;
     for (const p of pairs) {
       const da = p.d2[a];
+      if (da === undefined) continue; // axis unread in this pair
       num += p.w * p.g * da;
       den += p.w * da * da;
     }
@@ -209,9 +229,19 @@ function learnOmega(rated: RatedFp[], type: WineType): OmegaFit {
 
 // ────────── Step 2: adaptive bandwidth h ──────────
 
+/**
+ * ω-weighted distance over the axes BOTH readings actually carry, rescaled by
+ * the weight of those axes only (den). An axis missing on either side is
+ * excluded rather than substituted, so it moves the distance in neither
+ * direction — the same convention pick-alternates uses.
+ *
+ * No comparable axis at all returns Infinity, not 0: two wines with no
+ * readable overlap are not neighbours, and calling them identical is the
+ * manufactured-distance bug in its worst form.
+ */
 function omegaDistance(
-  a: Record<FpKey, number>,
-  b: Record<FpKey, number>,
+  a: FpVec,
+  b: FpVec,
   omega: Record<FpKey, number>,
   active: FpKey[],
 ): number {
@@ -219,11 +249,12 @@ function omegaDistance(
   for (const k of active) {
     const w = omega[k];
     if (w <= 0) continue;
-    const diff = a[k] - b[k];
+    if (!hasAxis(a, k) || !hasAxis(b, k)) continue;
+    const diff = (a[k] as number) - (b[k] as number);
     num += w * diff * diff;
     den += w;
   }
-  return den > 0 ? Math.sqrt(num / den) : 0;
+  return den > 0 ? Math.sqrt(num / den) : Infinity;
 }
 
 function median(xs: number[]): number {
@@ -362,7 +393,8 @@ function scoreOne(cand: BottleFp, ctx: TypeCtx): Recommendation {
   if (nemesisWinsBasin && nearNemesis) {
     // Compute driving axes only on the veto path (small cost).
     for (const a of fit.active) {
-      const diff = cand.fp[a] - nearNemesis.fp[a];
+      if (!hasAxis(cand.fp, a) || !hasAxis(nearNemesis.fp, a)) continue;
+      const diff = (cand.fp[a] as number) - (nearNemesis.fp[a] as number);
       perAxisContribution[a] = fit.omega[a] * diff * diff;
     }
     const ranked = Object.entries(perAxisContribution)
@@ -468,8 +500,8 @@ export function buildTypeContext(rated: RatedFp[], type: WineType): TypeCtx | nu
 
 /** ω-weighted distance between two fingerprints in the given type context. */
 export function distanceInContext(
-  a: Record<FpKey, number>,
-  b: Record<FpKey, number>,
+  a: FpVec,
+  b: FpVec,
   ctx: TypeCtx,
 ): number {
   return omegaDistance(a, b, ctx.fit.omega, ctx.fit.active);
