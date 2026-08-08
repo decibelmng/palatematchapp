@@ -277,8 +277,8 @@ function PalateHome() {
       </div>
 
       {/* Code hero — the identity. Archetype name sits below at heading
-          size; tagline below that as a caption. A bimodal "·" is explained
-          in a plain-language line — never rendered as X (reads as error). */}
+          size; tagline below that as a caption. Bimodal slots read "±" (or a
+          pole letter plus the marker, "G±"); unresolved slots read "?". */}
       <div className="mt-4 rounded-[14px] border border-border bg-card p-5 text-center">
         <p className="text-meta uppercase tracking-label text-muted-foreground">
           Your {scope} palate code
@@ -304,11 +304,11 @@ function PalateHome() {
         )}
         {bimodalLetters.length > 0 && (
           <p className="mt-3 text-meta text-muted-foreground max-w-[36ch] mx-auto">
-            <span className="font-serif text-foreground/80">·</span> means you
+            <span className="font-serif text-foreground/80">±</span> means you
             go both ways on {bimodalLetters.length === 1
               ? `${bimodalLetters[0].label.toLowerCase()}`
               : "those axes"}
-            {" "}— tap it to see how.
+            {" "}— a letter before it is the side you lean to. Tap to see how.
           </p>
         )}
       </div>
