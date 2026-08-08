@@ -10,7 +10,11 @@
 # and somm-facing copy — so src/routes/admin*, src/components/admin are excluded.
 set -uo pipefail
 cd "$(dirname "$0")/.."
-WORDS='nemesis|canon|veto|fingerprint|axis|kernel|maximin|palate code|predicted'
+# "palate code" is NOT banned. The ban existed only while the code was being
+# demoted behind the archetype; that decision was reversed and the code is now
+# the identity hero, so users have to learn the term. "fingerprint" stays
+# banned — "style reading" is the replacement.
+WORDS='nemesis|canon|veto|fingerprint|axis|kernel|maximin|predicted'
 EXCL=(-g '!src/routes/admin*' -g '!src/components/admin/**' -g '!src/**/__tests__/**')
 
 echo "== A) string literals =="
