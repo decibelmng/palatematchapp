@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { AxisDef, LetterResult } from "@/lib/palate";
-import { GLYPH_BIMODAL, GLYPH_UNRESOLVED, isBimodalSlot, poleOf, splitCode } from "@/lib/palate";
+import { GLYPH_BIMODAL, GLYPH_UNRESOLVED, isBimodalSlot, parseCode, poleOf } from "@/lib/palate";
 
 type Props = {
   axes: AxisDef[];
@@ -24,7 +24,7 @@ function pt(angleDeg: number, r: number) {
  *  axis set. Used for mini glyphs / example glyphs where exact values aren't
  *  available. */
 export function lettersFromCode(code: string, axes: AxisDef[]): LetterResult[] {
-  const slots = splitCode(code);
+  const slots = parseCode(code, axes);
   return axes.map((a, i) => {
     const slot = slots[i] ?? GLYPH_UNRESOLVED;
     const base = { axis: a.key, label: a.label, low: a.low, high: a.high };

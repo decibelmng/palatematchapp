@@ -16,7 +16,7 @@
 // never by character index.
 
 import type { PaletteType } from "@/lib/palate";
-import { GLYPH_BIMODAL, GLYPH_UNRESOLVED, isBimodalSlot, poleOf, splitCode } from "@/lib/palate";
+import { axesFor, GLYPH_BIMODAL, GLYPH_UNRESOLVED, isBimodalSlot, parseCode, poleOf } from "@/lib/palate";
 
 export type LetterMeaning = {
   letter: string;
@@ -114,7 +114,7 @@ export function explainLetter(
 ): LetterMeaning {
   const positions = type === "red" ? RED_POSITIONS : WHITE_POSITIONS;
   const pos = positions[position];
-  const slots = splitCode(code);
+  const slots = parseCode(code, axesFor(type));
   let slot = slots[position] ?? GLYPH_UNRESOLVED;
   // Legacy callers passed `bimodal` alongside a bare "·" slot.
   if (bimodal && !isBimodalSlot(slot)) {
@@ -137,5 +137,5 @@ export function explainLetter(
 
 /** All five explanations for a code (used by the auto-cycle on first view). */
 export function explainCode(type: PaletteType, code: string): LetterMeaning[] {
-  return splitCode(code).map((_, i) => explainLetter(type, code, i));
+  return parseCode(code, axesFor(type)).map((_, i) => explainLetter(type, code, i));
 }

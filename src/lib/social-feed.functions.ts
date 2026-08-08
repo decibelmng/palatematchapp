@@ -2,7 +2,7 @@
 // suggestions, and founder account lookup. All read-only or user-owned
 // writes — nothing here writes another user's data.
 
-import { slotsOf } from "@/lib/palate";
+import { axesFor, parseCode, type PaletteType } from "@/lib/palate";
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -246,11 +246,12 @@ export const getFounderAccount = createServerFn({ method: "GET" })
 // of their palate_code_red/white to the viewer's.
 // ---------------------------------------------------------------
 
-function codeDistance(a: string | null | undefined, b: string | null | undefined): number {
+function codeDistance(a: string | null | undefined, b: string | null | undefined, type: PaletteType): number {
   // Slot-wise, not character-wise: a slot can be "G±". Unresolved slots ("?")
   // count as a difference only against a resolved one, never as a match.
-  const sa = slotsOf(a);
-  const sb = slotsOf(b);
+  const axes = axesFor(type);
+  const sa = parseCode(a ?? "", axes);
+  const sb = parseCode(b ?? "", axes);
   let d = 0;
   for (let i = 0; i < 5; i++) if (sa[i] !== sb[i]) d += 1;
   return d;
@@ -289,8 +290,8 @@ export const getPaletteOverlapSuggestions = createServerFn({ method: "POST" })
     if (error) throw new Error(error.message);
 
     const scored = (pool ?? []).map((p: any) => {
-      const dr = codeDistance(me.palate_code_red, p.palate_code_red);
-      const dw = codeDistance(me.palate_code_white, p.palate_code_white);
+      const dr = codeDistance(me.palate_code_red, p.palate_code_red, "red");
+      const dw = codeDistance(me.palate_code_white, p.palate_code_white, "white");
       const overlap = 1 - (dr + dw) / 10; // 0..1
       return {
         user_id: p.id,
