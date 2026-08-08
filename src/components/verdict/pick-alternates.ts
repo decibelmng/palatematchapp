@@ -15,12 +15,22 @@ const FP_ORDER: FpKey[] = ["fresh", "acid", "tannin", "fruit_dark", "ripe", "oak
 function fpDistance(a: Record<FpKey, number> | null | undefined, b: Record<FpKey, number> | null | undefined): number {
   if (!a || !b) return 0;
   let s = 0;
+  let n = 0;
   for (const k of FP_ORDER) {
-    const d = (a[k] ?? 0) - (b[k] ?? 0);
+    // A missing axis is UNKNOWN, not 0 — coercing it to an axis endpoint
+    // manufactures distance and can hand "Different direction" to a wine we
+    // simply failed to read. Skip the axis and rescale over what we do have.
+    const av = a[k];
+    const bv = b[k];
+    if (av == null || bv == null || !Number.isFinite(av) || !Number.isFinite(bv)) continue;
+    const d = av - bv;
     s += d * d;
+    n++;
   }
-  return Math.sqrt(s);
+  if (n === 0) return 0;
+  return Math.sqrt((s * FP_ORDER.length) / n);
 }
+
 
 /**
  * Two structurally different alternates.
