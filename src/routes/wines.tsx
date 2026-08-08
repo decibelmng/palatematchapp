@@ -1,26 +1,29 @@
 import { createFileRoute, Link, useSearch } from "@tanstack/react-router";
 import { useMemo } from "react";
 import { z } from "zod";
-import { Crown, Skull, Star, Sparkles } from "lucide-react";
+import { Crown, Skull, Star, Sparkles, MapPin } from "lucide-react";
 import { AuthGate } from "@/components/AuthGate";
 import { YourRatingsList } from "@/components/YourRatingsList";
 import { displayWineName, wineNameMeta } from "@/lib/wine-name";
 import { useMyCanons } from "@/hooks/use-canon";
 import { useBottlesByIds, useRatings, bottleType } from "@/hooks/use-palate-data";
 import { WineTypeBadge } from "@/components/WineTypeBadge";
+import { useSavedRestaurants } from "@/hooks/use-feed-extras";
+import { RestaurantActions } from "@/components/feed/RestaurantActions";
 
-type Tab = "rated" | "canons" | "nemeses" | "scored";
+type Tab = "rated" | "canons" | "nemeses" | "scored" | "wanttogo";
 const TABS: { id: Tab; label: string; Icon: typeof Star }[] = [
   { id: "rated", label: "Rated", Icon: Star },
   { id: "canons", label: "Benchmarks", Icon: Crown },
   { id: "nemeses", label: "Dealbreakers", Icon: Skull },
 
   { id: "scored", label: "Scored", Icon: Sparkles },
+  { id: "wanttogo", label: "Want to go", Icon: MapPin },
 ];
 
 
 const searchSchema = z.object({
-  tab: z.enum(["rated", "canons", "nemeses", "scored"]).optional(),
+  tab: z.enum(["rated", "canons", "nemeses", "scored", "wanttogo"]).optional(),
 });
 
 export const Route = createFileRoute("/wines")({
@@ -44,7 +47,7 @@ function WinesPage() {
     <div className="pt-3 pb-8">
       <h1 className="font-serif text-2xl">Your wines</h1>
 
-      <nav className="mt-4 grid grid-cols-4 gap-1.5" role="tablist">
+      <nav className="mt-4 grid grid-cols-5 gap-1.5" role="tablist">
         {TABS.map(({ id, label, Icon }) => {
           const active = tab === id;
           return (
@@ -72,6 +75,7 @@ function WinesPage() {
         {tab === "canons" && <BenchmarkList tier="canon" />}
         {tab === "nemeses" && <BenchmarkList tier="nemesis" />}
         {tab === "scored" && <ScoredHint />}
+        {tab === "wanttogo" && <WantToGoList />}
       </div>
     </div>
   );
@@ -116,6 +120,52 @@ function BenchmarkList({ tier }: { tier: "canon" | "nemesis" }) {
               </p>
               <div className="mt-1"><WineTypeBadge type={b.type} /></div>
             </Link>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function WantToGoList() {
+  const { data: saved = [], isLoading } = useSavedRestaurants();
+  if (isLoading) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (saved.length === 0) {
+    return (
+      <div className="rounded-lg border border-border bg-card p-6 text-center">
+        <p className="text-sm">No places saved yet.</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Save a restaurant from any wine-list card in the feed.
+        </p>
+      </div>
+    );
+  }
+  return (
+    <ul className="space-y-2">
+      {saved.map((r) => {
+        const place = [r.neighborhood, r.city].filter(Boolean).join(" · ");
+        return (
+          <li key={r.restaurant_id} className="pm-card rounded-[12px] p-3">
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium break-words">{r.name}</p>
+                {place && <p className="mt-0.5 text-meta text-muted-foreground">{place}</p>}
+                {r.latest_scan_id && (
+                  <Link
+                    to="/scan/$id"
+                    params={{ id: r.latest_scan_id }}
+                    className="mt-1 inline-block text-xs text-primary"
+                  >
+                    Its list, ranked for your palate →
+                  </Link>
+                )}
+              </div>
+              <RestaurantActions
+                restaurantId={r.restaurant_id}
+                phone={r.phone}
+                reservationUrl={r.reservation_url}
+              />
+            </div>
           </li>
         );
       })}
