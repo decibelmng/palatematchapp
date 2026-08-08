@@ -151,11 +151,19 @@ type CanonCluster = {
 };
 
 function meanFp(items: { fp: FpVec }[]): FpVec {
-  const out = {} as FpVec;
+  // Averages only the members that read each axis; an axis nobody read is
+  // omitted rather than filled with the 0.5 midpoint, which is a real
+  // position and would read as a genuine style claim.
+  const out: FpVec = {};
   for (const k of RAX) {
     let sum = 0;
-    for (const m of items) sum += m.fp[k];
-    out[k] = items.length ? sum / items.length : 0.5;
+    let n = 0;
+    for (const m of items) {
+      if (!hasAxis(m.fp, k)) continue;
+      sum += m.fp[k] as number;
+      n += 1;
+    }
+    if (n > 0) out[k] = sum / n;
   }
   return out;
 }
@@ -391,7 +399,8 @@ function nemesisContrastPhrase(
   const strong: Cand[] = [];
   const any: Cand[] = [];
   for (const k of active) {
-    const raw = n.fp[k] - centroid[k];
+    if (!hasAxis(n.fp, k) || !hasAxis(centroid, k)) continue;
+    const raw = (n.fp[k] as number) - (centroid[k] as number);
     const abs = Math.abs(raw);
     const dir: "hi" | "lo" = raw > 0 ? "hi" : "lo";
     const phrase = NEG_PHRASE[k]?.[dir] ?? "";
@@ -469,13 +478,16 @@ function omegaSentence(
   const omega = ctx.fit.omega;
   const active = ctx.fit.active;
   if (active.length < 2) return "";
-  const median = [...active].map((k) => omega[k]).sort((a, b) => a - b)[Math.floor(active.length / 2)] || 1;
+  const median = [...active].map((k) => omega[k] ?? 0).sort((a, b) => a - b)[Math.floor(active.length / 2)] || 1;
   // Rank axes by combined signal: weighted deviation from midpoint. This
   // stays stable when ω is flat (uniform ratings) — the axes the user
   // sits FURTHEST from neutral still surface a directional intent.
-  const ranked = [...active].sort((a, b) => {
-    const scoreA = (omega[a] / median) * Math.abs(centroid[a] - 0.5);
-    const scoreB = (omega[b] / median) * Math.abs(centroid[b] - 0.5);
+  // An axis we never read carries no directional intent — rank it last
+  // instead of scoring it as if the palate sat at neutral.
+  const readable = active.filter((k) => hasAxis(centroid, k));
+  const ranked = [...readable].sort((a, b) => {
+    const scoreA = ((omega[a] ?? 0) / median) * Math.abs((centroid[a] as number) - 0.5);
+    const scoreB = ((omega[b] ?? 0) / median) * Math.abs((centroid[b] as number) - 0.5);
     return scoreB - scoreA;
   });
 
@@ -488,7 +500,7 @@ function omegaSentence(
   const phrases: string[] = [];
   const seen = new Set<string>();
   for (const axis of ranked) {
-    const p = directionalPhrase(axis, centroid[axis], nemFp ? nemFp[axis] : null);
+    const p = directionalPhrase(axis, centroid[axis] as number, nemFp?.[axis] ?? null);
     const key = p.toLowerCase();
     if (seen.has(key)) continue;
     seen.add(key);

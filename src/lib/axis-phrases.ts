@@ -77,7 +77,7 @@ export function isComplaintDirection(axis: FpKey, dir: AxisDir): boolean {
  *  contribution has no user-facing complaint. Returns "" when no axis
  *  qualifies — the caller then uses a generic line. */
 export function describeVetoStyleFromFp(
-  fp: Record<FpKey, number> | null | undefined,
+  fp: Partial<Record<FpKey, number>> | null | undefined,
   drivingAxes: readonly FpKey[] = [],
 ): string {
   if (!fp) return "";

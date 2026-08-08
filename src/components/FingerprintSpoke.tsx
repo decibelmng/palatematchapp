@@ -1,7 +1,7 @@
 import { RAX, type FpKey } from "@/lib/recommender";
 
 type Props = {
-  fp: Record<FpKey, number>;
+  fp: Partial<Record<FpKey, number>>;
   size?: number;
   className?: string;
   title?: string;
