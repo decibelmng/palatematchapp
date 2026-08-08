@@ -21,6 +21,9 @@ export type VenueActivityItem = {
   restaurant_id: string;
   restaurant_name: string;
   city: string | null;
+  neighborhood: string | null;
+  phone: string | null;
+  reservation_url: string | null;
   scanned_day: string; // YYYY-MM-DD (UTC)
   latest_scan_id: string;
   wine_count: number;
@@ -95,7 +98,7 @@ export const getVenueActivity = createServerFn({ method: "POST" })
     const restaurantIds = Array.from(new Set(eligible.map((g) => g.restaurantId)));
     const { data: rests } = await supabase
       .from("restaurants")
-      .select("id, name, city")
+      .select("id, name, city, neighborhood, phone, reservation_url")
       .in("id", restaurantIds);
     const restById = new Map((rests ?? []).map((r) => [r.id, r]));
 
@@ -132,6 +135,9 @@ export const getVenueActivity = createServerFn({ method: "POST" })
         restaurant_id: rest.id,
         restaurant_name: rest.name,
         city: (rest as any).city ?? null,
+        neighborhood: (rest as any).neighborhood ?? null,
+        phone: (rest as any).phone ?? null,
+        reservation_url: (rest as any).reservation_url ?? null,
         scanned_day: g.day,
         latest_scan_id: g.latestScanId,
         wine_count: g.wines,
