@@ -9,6 +9,8 @@ import { NemesisAction } from "@/components/NemesisAction";
 import { BenchmarkTierBadges } from "@/components/BenchmarkTierBadge";
 import { useMyCanons } from "@/hooks/use-canon";
 import { aggregateRated } from "@/lib/cuvee";
+import { displayWineName, wineNameMeta } from "@/lib/wine-name";
+
 import { useSession } from "@/hooks/use-session";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
