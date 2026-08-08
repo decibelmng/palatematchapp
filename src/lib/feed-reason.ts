@@ -41,9 +41,12 @@ export function confidenceCopy(
       caveat: `Lightly held — rate a few more ${typeLabel} to sharpen this.`,
     };
   }
+  // One phrase per meaning. "In your lane" is the only way to say "this is your
+  // style" — the calibration band is carried by the caveat and the thin-band
+  // wording above, never by a second synonym for the same verdict.
   if (band === "medium") {
     return {
-      headline: predicted >= 4 ? "Looks like your lane" : predicted >= 3 ? "Middle-ground" : "Probably not for you",
+      headline: predicted >= 4 ? "In your lane" : predicted >= 3 ? "Middle-ground" : "Probably not for you",
       caveat: null,
     };
   }
@@ -55,6 +58,7 @@ export function confidenceCopy(
     caveat: null,
   };
 }
+
 
 // ────────── Reason from nearest-axis difference ──────────
 
