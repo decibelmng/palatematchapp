@@ -503,12 +503,21 @@ export function TasteMap({ type, landmarks, loved, others = [], canonIds, nemesi
         })}
       </div>
 
-      {/* Legend */}
-      <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-meta text-muted-foreground">
+      {/* Legend — three pairs, so the promotion relationship reads as a
+          hierarchy rather than four unrelated categories. */}
+      <div className="mt-3 grid grid-cols-[auto_auto] justify-center gap-x-5 gap-y-1.5 text-meta text-muted-foreground">
         <span className="inline-flex items-center gap-1.5">
           <span className="inline-block w-2.5 h-2.5 rounded-full bg-primary" />
           Wines you love
         </span>
+        <span className="inline-flex items-center gap-1.5">
+          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
+            <circle cx="7" cy="7" r="6" fill="none" stroke="#d4a03a" strokeOpacity={0.9} strokeWidth={1.5} />
+            <circle cx="7" cy="7" r="2.5" fill="var(--color-primary)" />
+          </svg>
+          …and your benchmarks
+        </span>
+
         <span className="inline-flex items-center gap-1.5">
           <svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true">
             <line x1="2.5" y1="2.5" x2="9.5" y2="9.5" stroke="var(--color-muted-foreground)" strokeOpacity={0.55} strokeWidth={1.5} strokeLinecap="round" />
@@ -518,24 +527,17 @@ export function TasteMap({ type, landmarks, loved, others = [], canonIds, nemesi
         </span>
         <span className="inline-flex items-center gap-1.5">
           <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
-            <circle cx="7" cy="7" r="6" fill="none" stroke="#d4a03a" strokeOpacity={0.9} strokeWidth={1.5} />
-            <circle cx="7" cy="7" r="2.5" fill="var(--color-primary)" />
-          </svg>
-          Canons
-        </span>
-        <span className="inline-flex items-center gap-1.5">
-          <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
             <circle cx="7" cy="7" r="6" fill="none" stroke="var(--color-destructive)" strokeOpacity={0.85} strokeWidth={1.5} />
             <line x1="4" y1="4" x2="10" y2="10" stroke="var(--color-destructive)" strokeOpacity={0.95} strokeWidth={1.75} strokeLinecap="round" />
             <line x1="4" y1="10" x2="10" y2="4" stroke="var(--color-destructive)" strokeOpacity={0.95} strokeWidth={1.75} strokeLinecap="round" />
           </svg>
-          Nemeses
+          …and your dealbreakers
         </span>
+
         <span className="inline-flex items-center gap-1.5">
           <span className="inline-block w-2.5 h-2.5 rounded-full border-[1.25px] border-muted-foreground bg-background" />
           Famous landmarks
         </span>
-
         <span className="inline-flex items-center gap-1.5">
           <svg width="20" height="8" viewBox="0 0 20 8" aria-hidden="true">
             <path d="M1 4 Q 10 -2 19 4" fill="none"
@@ -545,6 +547,10 @@ export function TasteMap({ type, landmarks, loved, others = [], canonIds, nemesi
           Your taste modes
         </span>
       </div>
+      <p className="mt-2 text-center text-meta text-muted-foreground/80">
+        Landmarks are hand-placed reference wines, not catalog readings.
+      </p>
+
     </div>
   );
 }

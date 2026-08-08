@@ -677,29 +677,30 @@ export function TasteCube({
         })}
       </div>
 
-      {/* Legend — mirrors TasteMap */}
-      <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-meta text-muted-foreground">
+      {/* Legend — mirrors TasteMap: pairs, not flat categories */}
+      <div className="mt-3 grid grid-cols-[auto_auto] justify-center gap-x-5 gap-y-1.5 text-meta text-muted-foreground">
         <span className="inline-flex items-center gap-1.5">
           <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: GOLD }} />
           Wines you love
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="inline-block w-3 h-3 rounded-full border-2" style={{ borderColor: GOLD }} />
+          …and your benchmarks
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span className="inline-block w-2.5 h-2.5 rounded-full" style={{ background: NEMESIS }} />
           Wines you avoid
         </span>
         <span className="inline-flex items-center gap-1.5">
-          <span className="inline-block w-3 h-3 rounded-full border-2" style={{ borderColor: GOLD }} />
-          Canons
-        </span>
-        <span className="inline-flex items-center gap-1.5">
           <span className="inline-block w-3 h-3 rounded-full border-2 border-destructive" />
-          Nemeses
+          …and your dealbreakers
         </span>
         <span className="inline-flex items-center gap-1.5">
           <span className="inline-block w-3 h-3 rounded-full" style={{ background: GOLD, opacity: 0.15 }} />
-          Style clouds
+          Your taste modes
         </span>
       </div>
+
     </div>
   );
 }

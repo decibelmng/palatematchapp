@@ -9,6 +9,8 @@ import { NemesisAction } from "@/components/NemesisAction";
 import { BenchmarkTierBadges } from "@/components/BenchmarkTierBadge";
 import { useMyCanons } from "@/hooks/use-canon";
 import { aggregateRated } from "@/lib/cuvee";
+import { displayWineName, wineNameMeta } from "@/lib/wine-name";
+
 import { useSession } from "@/hooks/use-session";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
@@ -144,6 +146,10 @@ export function YourRatingsList() {
           const note = noteBottleId ? noteByBottle.get(noteBottleId) ?? null : null;
           const editing = editingId === (noteBottleId ?? "");
           const isExpanded = expanded.has(c.cuvee);
+          const nameParts = { name: c.name, producer: c.producer, region: c.region, grape: rep?.grape ?? null };
+          const title = displayWineName(nameParts);
+          const meta = wineNameMeta(nameParts, title);
+
 
           const children = aggregated
             ? [...c.bottleIds]
@@ -162,14 +168,20 @@ export function YourRatingsList() {
                 >
                   <div className="flex items-start gap-2 flex-wrap">
                     <p className="text-sm font-medium leading-snug line-clamp-2 group-hover:underline break-words">
-                      {c.name}
+                      {title}
                     </p>
-                    <BenchmarkTierBadges benchmarks={canons ?? []} bottleIds={c.bottleIds} />
+                    {/* Aggregated rows have no per-vintage toggle buttons, so the
+                        badge is their only status indicator. Single-vintage rows
+                        get exactly one control: the toggle button below. */}
+                    {aggregated && (
+                      <BenchmarkTierBadges benchmarks={canons ?? []} bottleIds={c.bottleIds} />
+                    )}
                   </div>
 
                   <p className="text-xs text-muted-foreground mt-0.5 break-words">
-                    {[c.producer, c.region].filter(Boolean).join(" · ")}
+                    {meta}
                   </p>
+
                   {vl && (
                     <p className="text-meta text-muted-foreground/80 mt-0.5 break-words">
                       {aggregated ? `${vl}` : `Vintage ${vl}`}
