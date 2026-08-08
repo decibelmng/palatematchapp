@@ -84,3 +84,38 @@ export function wineNameMeta(b: WineNameParts, title: string): string {
     .filter((v) => norm(v) !== t)
     .join(" · ");
 }
+
+/**
+ * STORED-name composition for rows we create ourselves (on-demand resolve,
+ * user-added bottle).
+ *
+ * Many classic labels carry no cuvée at all — the front label is producer +
+ * appellation. Earlier call sites papered over that by storing the REGION as
+ * bottles.name ("Rutherford, Napa Valley", "Meursault, Bourgogne"). That is
+ * not a display bug: identity dedup matches on producer + name tokens, so a
+ * region-named row shares its whole name token set with every other wine from
+ * that appellation and mis-dedups against all of them.
+ *
+ * Rule: a name that is blank, or that is the region (either direction of
+ * containment), is treated as "no cuvée" and replaced with producer + grape —
+ * tokens that identify the wine rather than the place.
+ */
+export function composeBottleName(parts: {
+  producer: string;
+  cuvee?: string | null;
+  region?: string | null;
+  grape?: string | null;
+}): string {
+  const producer = (parts.producer ?? "").trim();
+  const cuvee = (parts.cuvee ?? "").trim();
+  const region = norm(parts.region);
+  const c = norm(cuvee);
+
+  const isRegionName =
+    !!c && !!region && (c === region || region.includes(c) || c.includes(region));
+
+  if (cuvee && !isRegionName) return cuvee;
+
+  const grape = (parts.grape ?? "").trim();
+  return [producer, grape].filter(Boolean).join(" ").trim() || producer;
+}

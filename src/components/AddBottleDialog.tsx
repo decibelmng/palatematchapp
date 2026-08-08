@@ -4,6 +4,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { researchBottle, type ResearchResult, type DuplicateMatch } from "@/lib/add-bottle.functions";
 import { resolveOrCreateOnDemand } from "@/lib/on-demand-bottle.functions";
 import { supabase } from "@/integrations/supabase/client";
+import { composeBottleName } from "@/lib/wine-name";
 import { useSession } from "@/hooks/use-session";
 import { StarTap } from "@/components/StarTap";
 import { WineTypeBadge } from "@/components/WineTypeBadge";
@@ -76,12 +77,14 @@ export function AddBottleDialog({
     }
     setPhase("researching");
     try {
-      // If the user left the cuvée blank, fall back to region (or "Estate") so the
-      // research LLM has something to identify. Many classic wines have no cuvée
-      // name — the label is just producer + appellation.
-      const effectiveName = form.name.trim()
-        || form.region.trim()
-        || "Estate bottling";
+      // If the user left the cuvée blank, compose producer + grape. Never the
+      // region: a region-named row mis-dedups against the whole appellation.
+      const effectiveName = composeBottleName({
+        producer: form.producer.trim(),
+        cuvee: form.name,
+        region: form.region,
+        grape: form.grape,
+      });
       const r = await research({
         data: {
           producer: form.producer.trim(),
@@ -151,7 +154,12 @@ export function AddBottleDialog({
       const res = await resolveOnDemand({
         data: {
           producer: form.producer.trim(),
-          name: form.name.trim() || form.region.trim() || `${form.producer.trim()} bottling`,
+          name: composeBottleName({
+            producer: form.producer.trim(),
+            cuvee: form.name,
+            region: form.region,
+            grape: form.grape,
+          }),
           type: form.type,
           region: form.region.trim() || null,
           country: form.country.trim() || null,

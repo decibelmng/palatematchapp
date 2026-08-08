@@ -30,6 +30,7 @@ import {
   FINGERPRINT_MODEL,
   FINGERPRINT_PROMPT_HASH,
 } from "@/lib/fingerprint-prompt";
+import { composeBottleName } from "@/lib/wine-name";
 
 
 const WineType = z.enum(["red", "white", "sparkling", "rose", "dessert"]);
@@ -142,6 +143,20 @@ export async function resolveOrCreateOnDemandCore(
   apiKey: string,
   input: OnDemandInput,
 ): Promise<OnDemandResult> {
+  // 0) Name normalisation — CHOKE POINT for all three trigger paths.
+  // A caller that had no cuvée may have handed us the region as the name.
+  // Storing that breaks identity dedup (see composeBottleName), so rewrite it
+  // to producer + grape BEFORE dedup, fingerprint and insert all use it.
+  input = {
+    ...input,
+    name: composeBottleName({
+      producer: input.producer,
+      cuvee: input.name,
+      region: input.region ?? null,
+      grape: input.grape ?? null,
+    }),
+  };
+
   // 1) Identity dedup (fuzzy candidate pool, strict identity filter — NOT taste).
   const q = [input.producer, input.name].join(" ").trim();
   const { data: cands } = await supabase.rpc("search_bottles_fuzzy", {
