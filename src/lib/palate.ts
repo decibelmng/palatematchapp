@@ -47,7 +47,15 @@ export function splitCode(code: string): string[] {
       const prev = slots[slots.length - 1];
       // A marker directly after a pole letter qualifies it rather than
       // occupying its own slot.
-      if (prev.length === 1 && prev !== GLYPH_BIMODAL && prev !== GLYPH_UNRESOLVED && chars[i - 1] !== GLYPH_BIMODAL) {
+      // N never absorbs the marker: a moderate mean plus a firing bimodal test
+      // yields the BARE marker, so an "N±" pair can only be N then a new slot.
+      if (
+        prev.length === 1 &&
+        prev !== GLYPH_BIMODAL &&
+        prev !== GLYPH_UNRESOLVED &&
+        prev !== GLYPH_MODERATE &&
+        chars[i - 1] !== GLYPH_BIMODAL
+      ) {
         slots[slots.length - 1] = prev + GLYPH_BIMODAL;
         continue;
       }
