@@ -256,7 +256,7 @@ function Rate() {
                     <div className="shrink-0">
                       <StarTap
                         value={v}
-                        onChange={(stars) => rate.mutate({ bottleId: b.id, stars })}
+                        onChange={(stars) => rate.mutate({ bottleId: b.id, stars, source: "rate_screen" })}
                       />
                     </div>
                   </li>

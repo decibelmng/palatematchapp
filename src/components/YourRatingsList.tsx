@@ -213,7 +213,7 @@ export function YourRatingsList() {
                   ) : (
                     <StarTap
                       value={c.stars}
-                      onChange={(s) => rate.mutate({ bottleId: c.bottleIds[0], stars: s })}
+                      onChange={(s) => rate.mutate({ bottleId: c.bottleIds[0], stars: s, source: "rate_screen" })}
                     />
                   )}
                   {!aggregated && rep && <CanonAction bottle={rep} stars={c.stars} />}
@@ -277,7 +277,7 @@ export function YourRatingsList() {
                             <StarTap
                               size="sm"
                               value={childStars}
-                              onChange={(s) => rate.mutate({ bottleId: child.id, stars: s })}
+                              onChange={(s) => rate.mutate({ bottleId: child.id, stars: s, source: "rate_screen" })}
                             />
                             <CanonAction bottle={child} stars={childStars} compact />
                             <NemesisAction bottle={child} stars={childStars} compact />

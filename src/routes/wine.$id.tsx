@@ -103,7 +103,7 @@ function WineDetail() {
           <div className="mt-2">
             <StarTap
               value={thisStars}
-              onChange={(s) => rate.mutate({ bottleId: bottle.id, stars: s })}
+              onChange={(s) => rate.mutate({ bottleId: bottle.id, stars: s, source: "rate_screen" })}
             />
           </div>
           <div className="mt-3 flex flex-col gap-1.5">
