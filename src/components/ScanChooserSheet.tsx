@@ -1,6 +1,7 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 import { ScanLine, Camera, X, Users } from "lucide-react";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { setPendingCapture, type CaptureKind } from "@/lib/scan-handoff";
 
 export function ScanChooserSheet({
   open,
@@ -11,6 +12,10 @@ export function ScanChooserSheet({
   onClose: () => void;
   sommVerified?: boolean;
 }) {
+  const navigate = useNavigate();
+  const listInput = useRef<HTMLInputElement>(null);
+  const bottleInput = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && onClose();
@@ -20,6 +25,31 @@ export function ScanChooserSheet({
 
   if (!open) return null;
 
+  /**
+   * Choosing from the chooser IS the intent, so the camera opens here — two
+   * taps from the SCAN button, not three.
+   *
+   * iOS Safari only honours a programmatic `input.click()` while the user
+   * gesture is still live, and the gesture is lost across any `await`. So this
+   * handler does exactly one thing, synchronously: click the input. No session
+   * check, no navigation, no analytics, no state update before the click. The
+   * navigation happens later, in the input's change handler, which is itself a
+   * fresh user-initiated event.
+   */
+  const openCamera = (kind: CaptureKind) => {
+    const el = kind === "list" ? listInput.current : bottleInput.current;
+    el?.click();
+  };
+
+  const onCaptured = (kind: CaptureKind, files: FileList | null, el: HTMLInputElement) => {
+    const list = files ? Array.from(files) : [];
+    el.value = "";
+    if (list.length === 0) return;
+    setPendingCapture(kind, list);
+    onClose();
+    navigate({ to: kind === "list" ? "/scan/list" : "/scan/bottle" });
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
       <button
@@ -27,6 +57,18 @@ export function ScanChooserSheet({
         onClick={onClose}
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
       />
+
+      {/* Hidden capture inputs live in the sheet so the click is synchronous
+          with the tap on the card above them. */}
+      <input
+        ref={listInput} type="file" accept="image/*" capture="environment" multiple className="hidden"
+        onChange={(e) => onCaptured("list", e.target.files, e.currentTarget)}
+      />
+      <input
+        ref={bottleInput} type="file" accept="image/*" capture="environment" className="hidden"
+        onChange={(e) => onCaptured("bottle", e.target.files, e.currentTarget)}
+      />
+
       <div
         role="dialog"
         aria-label="Choose scan mode"
@@ -45,10 +87,9 @@ export function ScanChooserSheet({
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <Link
-            to="/scan/list"
-            search={{ capture: "1" } as any}
-            onClick={onClose}
+          <button
+            type="button"
+            onClick={() => openCamera("list")}
             className="rounded-xl border-2 border-primary/60 bg-gradient-to-br from-primary/15 via-card to-card p-4 hover:border-primary transition text-left"
           >
             <div className="h-11 w-11 rounded-xl bg-primary/20 text-primary flex items-center justify-center mb-3">
@@ -58,12 +99,11 @@ export function ScanChooserSheet({
             <p className="mt-1 text-meta text-muted-foreground">
               Rank every bottle on a menu.
             </p>
-          </Link>
+          </button>
 
-          <Link
-            to="/scan/bottle"
-            search={{ capture: "1" } as any}
-            onClick={onClose}
+          <button
+            type="button"
+            onClick={() => openCamera("bottle")}
             className="rounded-xl border-2 border-border bg-card p-4 hover:border-primary/60 transition text-left"
           >
             <div className="h-11 w-11 rounded-xl bg-accent/40 text-foreground flex items-center justify-center mb-3">
@@ -73,7 +113,7 @@ export function ScanChooserSheet({
             <p className="mt-1 text-meta text-muted-foreground">
               Identify one bottle and rate it.
             </p>
-          </Link>
+          </button>
         </div>
 
         {sommVerified && (
