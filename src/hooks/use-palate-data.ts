@@ -119,7 +119,7 @@ export function predictForBottleFromCache(
   if (!complete) {
     return {
       predicted: null, omega: null, bandwidth: null, nRated: rated.length,
-      nullReason: "not_attempted", needsServer: true,
+      neighborSupport: null, nullReason: "not_attempted", needsServer: true,
     };
   }
   const res = predictStars(rated, target as unknown as FpRow);
@@ -153,7 +153,7 @@ export async function predictForBottleWithFallback(
   } catch {
     return {
       predicted: null, omega: null, bandwidth: null, nRated: 0,
-      nullReason: "fetch_failed",
+      neighborSupport: null, nullReason: "fetch_failed",
     };
   }
 }
@@ -326,6 +326,7 @@ export function useRate() {
         p_scan_wine_id: scanWineId ?? null,
         p_predicted_rank: predictedRank ?? null,
         p_null_reason: p.nullReason,
+        p_neighbor_support: p.neighborSupport,
       });
       if (error) throw error;
 
