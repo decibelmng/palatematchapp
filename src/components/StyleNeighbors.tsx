@@ -61,7 +61,7 @@ export function StyleNeighbors({ subjectBottleId, subjectStars }: Props) {
       <section className="mt-10">
         <h2 className="font-serif text-xl">Style neighbors</h2>
         <p className="mt-2 text-sm text-muted-foreground">
-          Style neighbors unavailable — this wine's fingerprint isn't calibrated yet.
+          Style neighbors unavailable — we don't have a style reading for this wine yet.
         </p>
       </section>
     );
