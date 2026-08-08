@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { applyControlsGrouped, DEFAULT_CONTROLS, type Controls } from "@/lib/list-controls";
 
-type Row = Parameters<typeof applyControlsGrouped>[0][number];
+type Row = Parameters<typeof applyControlsGrouped>[0][number] & { key: string };
 
 function r(id: string, amount: number | null, predicted = 3): Row {
   return {
