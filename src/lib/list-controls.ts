@@ -187,15 +187,27 @@ export function applyControls<T extends Priced>(items: T[], c: Controls): T[] {
 
   const cmp = (a: T, b: T) => {
     switch (c.sort) {
+      // A wine with no price is UNKNOWN, not cheap and not expensive. Both
+      // directions group the unpriced at the end, ordered by match, so the
+      // same wine can't be the first row under "low to high" and the first
+      // row under "high to low".
       case "price_asc": {
-        const av = activeAmount(a, c.format) ?? Infinity;
-        const bv = activeAmount(b, c.format) ?? Infinity;
+        const av = activeAmount(a, c.format);
+        const bv = activeAmount(b, c.format);
+        if (av == null || bv == null) {
+          if (av == null && bv == null) return byPredictedThenSim(a, b);
+          return av == null ? 1 : -1;
+        }
         if (av !== bv) return av - bv;
         return byPredictedThenSim(a, b);
       }
       case "price_desc": {
-        const av = activeAmount(a, c.format) ?? -Infinity;
-        const bv = activeAmount(b, c.format) ?? -Infinity;
+        const av = activeAmount(a, c.format);
+        const bv = activeAmount(b, c.format);
+        if (av == null || bv == null) {
+          if (av == null && bv == null) return byPredictedThenSim(a, b);
+          return av == null ? 1 : -1;
+        }
         if (av !== bv) return bv - av;
         return byPredictedThenSim(a, b);
       }

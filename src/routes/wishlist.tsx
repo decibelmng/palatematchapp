@@ -1,3 +1,4 @@
+import { fpOf } from "@/lib/predict-core";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Star, X } from "lucide-react";
@@ -76,12 +77,9 @@ function WishlistContent() {
       const cand: BottleFp = {
         id: it.bottle.id, name: it.bottle.name, producer: it.bottle.producer, region: it.bottle.region,
         type: t,
-        fp: {
-          fresh: it.bottle.fp_fresh ?? 0.5, acid: it.bottle.fp_acid ?? 0.5,
-          tannin: it.bottle.fp_tannin ?? 0.5, fruit_dark: it.bottle.fp_fruit_dark ?? 0.5,
-          ripe: it.bottle.fp_ripe ?? 0.5, oak: it.bottle.fp_oak ?? 0.5,
-          body: it.bottle.fp_body ?? 0.5, savory: it.bottle.fp_savory ?? 0.5,
-        },
+        // An unread axis is omitted, never filled with the 0.5 midpoint —
+        // that is a real central style and would fake a reading.
+        fp: fpOf(it.bottle),
       };
       const [rec] = recommend(anchors, [cand]);
       return { ...it, predicted: rec?.predicted ?? null };
