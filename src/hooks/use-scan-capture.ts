@@ -185,8 +185,10 @@ export function useScanCapture() {
       await runBatchesWithPool(created.scan_id, initial);
       return created.scan_id;
     },
-    onError: (e) => {
-      toast.error(friendlyError(e, "Scan failed"));
+    onError: () => {
+      // No toast: the scan screen renders exactly ONE error surface
+      // (ScanStateMessage), driven off status/mutation.error. A toast here
+      // produced a second, differently-worded failure message.
       setStatus("failed");
     },
   });
@@ -217,6 +219,34 @@ export function useScanCapture() {
     setAutoAttributedTo(null);
     mutation.reset();
   }, [staged, mutation]);
+
+  /** Hard reset before a new attempt. Errors, resume banners, partial results
+   *  and prior batches from a previous attempt never survive into a new one. */
+  const beginNewScan = useCallback(() => {
+    setStaged((prev) => { prev.forEach((s) => URL.revokeObjectURL(s.url)); return []; });
+    setScanId(null);
+    setBatches([]);
+    setWines([]);
+    setScanLogId(null);
+    setStatus("idle");
+    setResumedAt(null);
+    setDismissedResume(true);
+    setAutoAttributedTo(null);
+    mutation.reset();
+  }, [mutation]);
+
+  /** Stage File objects handed over from the SCAN chooser sheet. */
+  const addFileObjects = useCallback((files: File[]) => {
+    if (files.length === 0) return;
+    setStaged((prev) => {
+      const next = [...prev];
+      for (const f of files) {
+        if (next.length >= 8) break;
+        next.push({ file: f, url: URL.createObjectURL(f) });
+      }
+      return next;
+    });
+  }, []);
 
   const addFiles = useCallback((fileList: FileList | null, inputEl: HTMLInputElement | null) => {
     if (!fileList || fileList.length === 0) return;
@@ -262,6 +292,6 @@ export function useScanCapture() {
     // setters
     setPrescanRestaurant, setDismissedResume,
     // actions
-    addFiles, removeAt, submit, retryFailed, startOver,
+    addFiles, addFileObjects, removeAt, submit, retryFailed, startOver, beginNewScan,
   };
 }
