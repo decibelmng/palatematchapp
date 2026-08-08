@@ -915,6 +915,7 @@ export type Database = {
           fp_pipeline: string
           id: string
           n_rated_at_prediction: number | null
+          neighbor_support: number | null
           null_reason: string | null
           omega: Json | null
           palate_version: number | null
@@ -934,6 +935,7 @@ export type Database = {
           fp_pipeline?: string
           id?: string
           n_rated_at_prediction?: number | null
+          neighbor_support?: number | null
           null_reason?: string | null
           omega?: Json | null
           palate_version?: number | null
@@ -953,6 +955,7 @@ export type Database = {
           fp_pipeline?: string
           id?: string
           n_rated_at_prediction?: number | null
+          neighbor_support?: number | null
           null_reason?: string | null
           omega?: Json | null
           palate_version?: number | null
@@ -1358,6 +1361,82 @@ export type Database = {
           wines?: Json
         }
         Relationships: []
+      }
+      scan_outcomes: {
+        Row: {
+          call_bottle_id: string | null
+          call_predicted: number | null
+          call_price: number | null
+          chosen_bottle_id: string
+          chosen_fp_pipeline: string | null
+          chosen_predicted: number | null
+          chosen_price: number | null
+          chosen_rank: number | null
+          created_at: string
+          id: string
+          list_price_median: number | null
+          n_candidates: number | null
+          scan_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          call_bottle_id?: string | null
+          call_predicted?: number | null
+          call_price?: number | null
+          chosen_bottle_id: string
+          chosen_fp_pipeline?: string | null
+          chosen_predicted?: number | null
+          chosen_price?: number | null
+          chosen_rank?: number | null
+          created_at?: string
+          id?: string
+          list_price_median?: number | null
+          n_candidates?: number | null
+          scan_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          call_bottle_id?: string | null
+          call_predicted?: number | null
+          call_price?: number | null
+          chosen_bottle_id?: string
+          chosen_fp_pipeline?: string | null
+          chosen_predicted?: number | null
+          chosen_price?: number | null
+          chosen_rank?: number | null
+          created_at?: string
+          id?: string
+          list_price_median?: number | null
+          n_candidates?: number | null
+          scan_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scan_outcomes_call_bottle_id_fkey"
+            columns: ["call_bottle_id"]
+            isOneToOne: false
+            referencedRelation: "bottles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scan_outcomes_chosen_bottle_id_fkey"
+            columns: ["chosen_bottle_id"]
+            isOneToOne: false
+            referencedRelation: "bottles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scan_outcomes_scan_id_fkey"
+            columns: ["scan_id"]
+            isOneToOne: false
+            referencedRelation: "scans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       scan_wine_corrections: {
         Row: {
@@ -1781,6 +1860,20 @@ export type Database = {
         }
         Relationships: []
       }
+      scan_call_hit_rate: {
+        Row: {
+          call_hit_rate: number | null
+          mean_chosen_rank: number | null
+          mean_list_size: number | null
+          mean_price_vs_call: number | null
+          month: string | null
+          n_orders_logged: number | null
+          n_took_the_call: number | null
+          top3_hit_rate: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
       scan_offer_outcomes: {
         Row: {
           best_predicted_offered: number | null
@@ -2191,26 +2284,48 @@ export type Database = {
           vintage: number
         }[]
       }
-      save_rating_with_cascade: {
-        Args: {
-          p_bandwidth?: number
-          p_bottle_id: string
-          p_n_rated?: number
-          p_null_reason?: string
-          p_omega?: Json
-          p_predicted?: number
-          p_predicted_rank?: number
-          p_scan_id?: string
-          p_scan_wine_id?: string
-          p_source?: string
-          p_stars: number
-        }
-        Returns: {
-          demoted_tier: string
-          palate_version: number
-          previous_stars: number
-        }[]
-      }
+      save_rating_with_cascade:
+        | {
+            Args: {
+              p_bandwidth?: number
+              p_bottle_id: string
+              p_n_rated?: number
+              p_null_reason?: string
+              p_omega?: Json
+              p_predicted?: number
+              p_predicted_rank?: number
+              p_scan_id?: string
+              p_scan_wine_id?: string
+              p_source?: string
+              p_stars: number
+            }
+            Returns: {
+              demoted_tier: string
+              palate_version: number
+              previous_stars: number
+            }[]
+          }
+        | {
+            Args: {
+              p_bandwidth?: number
+              p_bottle_id: string
+              p_n_rated?: number
+              p_neighbor_support?: number
+              p_null_reason?: string
+              p_omega?: Json
+              p_predicted?: number
+              p_predicted_rank?: number
+              p_scan_id?: string
+              p_scan_wine_id?: string
+              p_source?: string
+              p_stars: number
+            }
+            Returns: {
+              demoted_tier: string
+              palate_version: number
+              previous_stars: number
+            }[]
+          }
       search_bottles_fuzzy: {
         Args: {
           lim?: number
