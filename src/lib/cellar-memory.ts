@@ -81,8 +81,16 @@ export function computeCellarMemory(args: {
       g.count += 1;
       if (b.vintage != null) g.vintages.push(b.vintage);
       g.bottleIds.push(b.id);
-      // Prefer newest vintage as rep
-      if ((b.vintage ?? -1) > (g.rep.vintage ?? -1)) g.rep = b;
+      // Prefer the newest DATED vintage as rep. Non-vintage is a real
+      // category (Champagne, sherry, port), not a missing number — it must
+      // never be compared as -1, which would make an NV bottle lose to every
+      // dated sibling. An NV rep is only replaced by a dated bottle; between
+      // two dated bottles the newer wins; NV never displaces anything.
+      const repDated = g.rep.vintage != null;
+      const bDated = b.vintage != null;
+      if (bDated && (!repDated || (b.vintage as number) > (g.rep.vintage as number))) {
+        g.rep = b;
+      }
     }
   }
 
