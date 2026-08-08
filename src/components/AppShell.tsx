@@ -9,6 +9,7 @@ import { useMyProfile, useFriendships } from "@/hooks/use-friends";
 import { useLastSeenPing } from "@/hooks/use-last-seen";
 import { useAutoRedeemInvite } from "@/hooks/use-auto-redeem-invite";
 import { markScanUnlockSeen } from "@/lib/friends.functions";
+import { sweepMyUnscoredBottles } from "@/lib/fingerprint-refresh.functions";
 import { useCalibrationState } from "@/hooks/use-calibration";
 import { useFeedActivity, hasFreshActivity } from "@/hooks/use-feed";
 import { ScanChooserSheet } from "@/components/ScanChooserSheet";
@@ -108,12 +109,27 @@ function A2HSHint() {
   );
 }
 
+/** One pass per session over the user's own rated wines that still have no
+ *  style reading. A rating triggers the self-heal exactly once, so a wine
+ *  whose single attempt failed would otherwise stay unscored forever. Capped
+ *  server-side at 3 bottles per session with a 3-attempt ceiling per wine. */
+function useUnscoredSweep(ready: boolean) {
+  const sweep = useServerFn(sweepMyUnscoredBottles);
+  const doneRef = useRef(false);
+  useEffect(() => {
+    if (!ready || doneRef.current) return;
+    doneRef.current = true;
+    void sweep().catch(() => { /* best-effort; never surfaces to the user */ });
+  }, [ready, sweep]);
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [scanOpen, setScanOpen] = useState(false);
   const { data: profile } = useMyProfile();
   useLastSeenPing((profile as { id?: string } | undefined)?.id);
   useAutoRedeemInvite();
+  useUnscoredSweep(Boolean(profile));
 
   // Feed is the 4th tab for EVERYONE — a verified somm is still a drinker and
   // wants their feed. "Call the table" lives in the center Scan chooser instead

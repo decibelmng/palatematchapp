@@ -15,6 +15,10 @@ import {
 
 const CUVEE_GROUP_MAX = 40;
 
+/** Stop trying after this many attempts on the same row. A permanently
+ *  unscoreable wine must not burn gateway budget every session. */
+export const MAX_FINGERPRINT_ATTEMPTS = 3;
+
 export function stripYear(s: string): string {
   return s.replace(/\b(19|20)\d{2}\b/g, "").replace(/\s+/g, " ").trim();
 }
@@ -40,7 +44,7 @@ export async function refingerprintCuveeByBottleId(
   const { data: seed, error: sErr } = await supabaseAdmin
     .from("bottles")
     .select(
-      "id,producer,name,type,region,country,grape,source,refingerprinted_at",
+      "id,producer,name,type,region,country,grape,source,refingerprinted_at,fingerprint_attempts",
     )
     .eq("id", bottleId)
     .maybeSingle();
@@ -50,7 +54,7 @@ export async function refingerprintCuveeByBottleId(
   // 2. Fetch all rows sharing this producer (cuvée group is a subset).
   const { data: sibs, error: bErr } = await supabaseAdmin
     .from("bottles")
-    .select("id,producer,name,type,region,refingerprinted_at,source")
+    .select("id,producer,name,type,region,refingerprinted_at,source,fingerprint_attempts")
     .eq("producer", seed.producer ?? "");
   if (bErr) return { skipped: true, reason: bErr.message };
 
@@ -70,10 +74,38 @@ export async function refingerprintCuveeByBottleId(
     return { skipped: true, reason: `group too large (${group.length})` };
   }
 
-  // 3. Natural guard: if any row is already stamped, cuvée has been re-scored.
-  if (group.some((r: any) => r.refingerprinted_at)) {
+  // 3. Eligibility is PER ROW, not per group. The old guard skipped when ANY
+  // row in the cuvée group was stamped, so a newly inserted vintage joining a
+  // stamped group was permanently ineligible — one scoring attempt per wine
+  // per lifetime. The only thing that disqualifies a row is that row already
+  // having a fingerprint, or having burned its retry ceiling.
+  if (seed.refingerprinted_at) {
     return { skipped: true, reason: "already refingerprinted" };
   }
+  if ((seed.fingerprint_attempts ?? 0) >= MAX_FINGERPRINT_ATTEMPTS) {
+    return {
+      skipped: true,
+      reason: `retry ceiling reached (${seed.fingerprint_attempts} attempts)`,
+    };
+  }
+
+  // Write to the unstamped rows only, so sharing one gateway call across the
+  // cuvée never overwrites a row that already has its own reading.
+  const targets = group.filter((r: any) => !r.refingerprinted_at);
+  if (targets.length === 0) return { skipped: true, reason: "empty group" };
+
+  // 3b. Record the ATTEMPT before the call. refingerprinted_at only writes on
+  // success, so a gateway failure used to leave no trace — indistinguishable
+  // from never having been tried, while the rating that triggered it fires
+  // once and never again.
+  const attemptAt = new Date().toISOString();
+  await supabaseAdmin
+    .from("bottles")
+    .update({
+      fingerprint_attempts: (seed.fingerprint_attempts ?? 0) + 1,
+      last_attempt_at: attemptAt,
+    })
+    .eq("id", seed.id);
 
   // 4. One calibrated gateway call, no vintage.
   const { fp, ax_sweet } = await callFingerprintGateway(
@@ -91,7 +123,7 @@ export async function refingerprintCuveeByBottleId(
 
   // 5. Write to every row in the group. Provenance columns are NOT NULL —
   // every fp_ write must record model + prompt hash + pipeline + scored_at.
-  const ids = group.map((r: any) => r.id as string);
+  const ids = targets.map((r: any) => r.id as string);
   const nowIso = new Date().toISOString();
   const { error: uErr } = await supabaseAdmin
     .from("bottles")
