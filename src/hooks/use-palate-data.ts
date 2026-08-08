@@ -442,11 +442,9 @@ export function useRate() {
 export function useRestoreRatingAndBenchmark() {
   const qc = useQueryClient();
   const session = useSession();
-  const sessionRef = useRef(session);
-  sessionRef.current = session;
   return useMutation({
     mutationFn: async (args: { bottleId: string; stars: number; tier: "canon" | "nemesis" | null }) => {
-      const uid = sessionRef.current?.user.id ?? null;
+      const uid = session?.user.id ?? null;
       const p = uid ? await predictForBottleWithFallback(qc, uid, args.bottleId) : null;
       const { data, error } = await (supabase as any).rpc("restore_rating_and_benchmark", {
         p_bottle_id: args.bottleId,
