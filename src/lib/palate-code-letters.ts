@@ -16,7 +16,7 @@
 // never by character index.
 
 import type { PaletteType } from "@/lib/palate";
-import { axesFor, GLYPH_BIMODAL, GLYPH_UNRESOLVED, isBimodalSlot, parseCode, poleOf } from "@/lib/palate";
+import { axesFor, GLYPH_BIMODAL, GLYPH_MODERATE, GLYPH_UNRESOLVED, isBimodalSlot, parseCode, poleOf } from "@/lib/palate";
 
 export type LetterMeaning = {
   letter: string;
