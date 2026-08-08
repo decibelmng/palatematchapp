@@ -6,6 +6,8 @@ import { useSession } from "./use-session";
 import type { PaletteType } from "@/lib/palate";
 import { recommend, type BottleFp, type FpKey, type RatedFp, type WineType } from "@/lib/recommender";
 import { aggregateRated } from "@/lib/cuvee";
+import { predictStars, type FpRow, type PredictResult } from "@/lib/predict-core";
+import { predictStarsForBottle } from "@/lib/predict.functions";
 import { refreshBottleFingerprint } from "@/lib/fingerprint-refresh.functions";
 import { usePalateVersion } from "./use-palate-version";
 import { confirmDialog } from "@/components/confirm-dialog";
