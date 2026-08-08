@@ -18,6 +18,7 @@ import {
   type FpKey,
   type RatedFp,
   type WineType,
+  RAX,
 } from "@/lib/recommender";
 import { aggregateRated } from "@/lib/cuvee";
 
@@ -62,7 +63,22 @@ export type PredictResult = {
    *  0 = the number is an extrapolation across a gap. Null when no context
    *  was fitted. Measurement only — nothing in scoring reads it. */
   neighborSupport: number | null;
+  /** Signed per-axis difference between the candidate and the nearest wine the
+   *  user rated 4+ of the same colour, measured in ω-weighted space. This is
+   *  the shape of the miss: if a wine we over-predicted sits high on one axis
+   *  against the wine it was closest to, that axis is the suspect. Null when no
+   *  context was fitted or the user has no 4+ rating in that colour.
+   *  Measurement only — nothing in scoring reads it. */
+  axisDeltas: AxisDeltas | null;
   nullReason: PredictNullReason | null;
+};
+
+/** Per-axis signed difference plus the wine it was measured against, so the
+ *  row is readable a year later without refitting anything. */
+export type AxisDeltas = {
+  axes: Record<FpKey, number>;
+  anchor: { id: string; name: string; stars: number; distance: number };
+  weighted: true;
 };
 
 export function fpOf(b: FpRow): Record<FpKey, number> {
@@ -98,6 +114,7 @@ const noPrediction = (reason: PredictNullReason, nRated = 0): PredictResult => (
   bandwidth: null,
   nRated,
   neighborSupport: null,
+  axisDeltas: null,
   nullReason: reason,
 });
 
@@ -120,6 +137,48 @@ export function neighborSupportOf(
   }
   return n;
 }
+
+/**
+ * Per-axis signed difference between the candidate and the NEAREST wine the
+ * user rated 4 or 5 of the same colour, in the ω-weighted space the prediction
+ * was scored in. Sign is candidate minus anchor, so a positive oak value means
+ * "more oak than the loved wine it was closest to".
+ *
+ * Read-only over an already-built context. No fit, no scoring change.
+ */
+export function axisDeltasOf(
+  rated: RatedFp[],
+  targetFp: Record<FpKey, number>,
+  ctx: TypeCtx | null,
+  minStars = 4,
+): AxisDeltas | null {
+  if (!ctx) return null;
+  let best: RatedFp | null = null;
+  let bestD = Infinity;
+  for (const r of rated) {
+    if (r.stars < minStars) continue;
+    const d = distanceInContext(targetFp, r.fp, ctx);
+    // Deterministic on ties: lowest id wins, so the same inputs log the same row.
+    if (d < bestD || (d === bestD && best && r.id < best.id)) {
+      best = r;
+      bestD = d;
+    }
+  }
+  if (!best) return null;
+
+  const axes = {} as Record<FpKey, number>;
+  for (const k of RAX) {
+    const w = ctx.fit.omega[k] ?? 0;
+    axes[k] = round3(w * ((targetFp[k] ?? 0) - (best.fp[k] ?? 0)));
+  }
+  return {
+    axes,
+    anchor: { id: best.id, name: best.name, stars: best.stars, distance: round3(bestD) },
+    weighted: true,
+  };
+}
+
+const round3 = (n: number) => Math.round(n * 1000) / 1000;
 
 /**
  * Predict stars for `target` from the user's rated bottles.
@@ -187,6 +246,7 @@ export function predictStars(
     bandwidth: ctx ? ctx.h : null,
     nRated: sameType.length,
     neighborSupport: neighborSupportOf(sameType, cand.fp, ctx),
+    axisDeltas: axisDeltasOf(sameType, cand.fp, ctx),
     nullReason: null,
   };
 }
@@ -253,6 +313,7 @@ export function predictStarsMany(
           bandwidth: ctx ? ctx.h : null,
           nRated: sameType.length,
           neighborSupport: neighborSupportOf(sameType, fpOf(t), ctx),
+          axisDeltas: axisDeltasOf(sameType, fpOf(t), ctx),
           nullReason: null,
         }
         : noPrediction("no_same_type_ratings", sameType.length));
