@@ -6,6 +6,7 @@ import {
   buildTypeContext,
   distanceInContext,
   type FpKey,
+  type FpVec,
   type RatedFp,
   type TypeCtx,
   type WineType,

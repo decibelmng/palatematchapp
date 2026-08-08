@@ -131,7 +131,7 @@ export type GroupCandidateInput = {
   producer?: string | null;
   region?: string | null;
   type: WineType;
-  fp: Record<FpKey, number>;
+  fp: FpVec;
 };
 
 export function useGroupPredict(friendIds: string[], candidates: GroupCandidateInput[]) {
