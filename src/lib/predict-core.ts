@@ -16,6 +16,8 @@ import {
   type TypeCtx,
   type BottleFp,
   type FpKey,
+  type FpVec,
+  hasAxis,
   type RatedFp,
   type WineType,
   RAX,
@@ -76,22 +78,40 @@ export type PredictResult = {
 /** Per-axis signed difference plus the wine it was measured against, so the
  *  row is readable a year later without refitting anything. */
 export type AxisDeltas = {
-  axes: Record<FpKey, number>;
+  /** Only axes readable on BOTH sides appear. A missing key means unread. */
+  axes: Partial<Record<FpKey, number>>;
   anchor: { id: string; name: string; stars: number; distance: number };
   weighted: true;
 };
 
-export function fpOf(b: FpRow): Record<FpKey, number> {
-  return {
-    fresh: b.fp_fresh ?? 0,
-    acid: b.fp_acid ?? 0,
-    tannin: b.fp_tannin ?? 0,
-    fruit_dark: b.fp_fruit_dark ?? 0,
-    ripe: b.fp_ripe ?? 0,
-    oak: b.fp_oak ?? 0,
-    body: b.fp_body ?? 0,
-    savory: b.fp_savory ?? 0,
+/**
+ * Build a style reading, OMITTING any axis we could not read.
+ *
+ * This used to map a null axis to 0 — the ax_fruit_char bug in the scoring
+ * path, where an unread dimension read as a real extreme and manufactured
+ * distance. The other builder used 0.5, so the two disagreed about what a
+ * missing axis meant and any comparison spanning both compared incompatible
+ * representations. Neither convention is right: 0.5 is a real, central
+ * position, and a wine genuinely at 0.5 must not be indistinguishable from one
+ * we failed to read. Missing axes are excluded and the rest rescaled.
+ */
+export function fpOf(b: FpRow): FpVec {
+  const src: Record<FpKey, number | null | undefined> = {
+    fresh: b.fp_fresh,
+    acid: b.fp_acid,
+    tannin: b.fp_tannin,
+    fruit_dark: b.fp_fruit_dark,
+    ripe: b.fp_ripe,
+    oak: b.fp_oak,
+    body: b.fp_body,
+    savory: b.fp_savory,
   };
+  const out: FpVec = {};
+  for (const k of Object.keys(src) as FpKey[]) {
+    const v = src[k];
+    if (Number.isFinite(v as number)) out[k] = v as number;
+  }
+  return out;
 }
 
 export function typeOf(b: FpRow): WineType {
@@ -105,7 +125,8 @@ export function typeOf(b: FpRow): WineType {
 export function isFpCalibrated(b: FpRow | null | undefined): boolean {
   if (!b) return false;
   if (b.fp_fresh === null || b.fp_fresh === undefined) return false;
-  return Object.values(fpOf(b)).some((v) => Number.isFinite(v) && v !== 0);
+  const vals = Object.values(fpOf(b));
+  return vals.length > 0 && vals.some((v) => v !== 0);
 }
 
 const noPrediction = (reason: PredictNullReason, nRated = 0): PredictResult => ({
@@ -127,7 +148,7 @@ const noPrediction = (reason: PredictNullReason, nRated = 0): PredictResult => (
  */
 export function neighborSupportOf(
   rated: RatedFp[],
-  targetFp: Record<FpKey, number>,
+  targetFp: FpVec,
   ctx: TypeCtx | null,
 ): number | null {
   if (!ctx) return null;
@@ -148,7 +169,7 @@ export function neighborSupportOf(
  */
 export function axisDeltasOf(
   rated: RatedFp[],
-  targetFp: Record<FpKey, number>,
+  targetFp: FpVec,
   ctx: TypeCtx | null,
   minStars = 4,
 ): AxisDeltas | null {
@@ -166,10 +187,13 @@ export function axisDeltasOf(
   }
   if (!best) return null;
 
-  const axes = {} as Record<FpKey, number>;
+  // An axis unread on either side produces NO delta rather than a fabricated
+  // one — prediction_axis_bias must never average in a difference we invented.
+  const axes: Partial<Record<FpKey, number>> = {};
   for (const k of RAX) {
     const w = ctx.fit.omega[k] ?? 0;
-    axes[k] = round3(w * ((targetFp[k] ?? 0) - (best.fp[k] ?? 0)));
+    if (!hasAxis(targetFp, k) || !hasAxis(best.fp, k)) continue;
+    axes[k] = round3(w * ((targetFp[k] as number) - (best.fp[k] as number)));
   }
   return {
     axes,
