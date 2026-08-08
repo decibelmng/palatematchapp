@@ -191,7 +191,14 @@ export function AppShell({ children }: { children: ReactNode }) {
             spec. */}
       </header>
 
-      <main className="flex-1 px-5 pb-24 max-w-xl w-full mx-auto">{children}</main>
+      <main
+        className="flex-1 px-5 max-w-xl w-full mx-auto"
+        /* Bottom nav height (64px) + raised scan button overhang + the device
+           safe-area inset. Without the inset the last card clips behind the nav. */
+        style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 6.5rem)" }}
+      >
+        {children}
+      </main>
 
       <A2HSHint />
 

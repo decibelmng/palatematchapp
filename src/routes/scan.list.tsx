@@ -139,7 +139,18 @@ function Scan() {
 
       <StagedPhotos staged={cap.staged} isRunning={cap.isRunning} onRemove={cap.removeAt} />
 
-      <BatchProgress batches={cap.batches} isRunning={cap.isRunning} elapsed={cap.elapsed} onRetry={cap.retryFailed} />
+      {/* The progress card exists to fill the wait. Once results render it is
+          noise that pushes the Call below the fold — swap it for one quiet line.
+          Failed pages keep the card, because it carries the retry action. */}
+      {(!showDecisionSurface || cap.batches.some((b) => b.status === "failed")) && (
+        <BatchProgress batches={cap.batches} isRunning={cap.isRunning} elapsed={cap.elapsed} onRetry={cap.retryFailed} />
+      )}
+
+      {showDecisionSurface && anyBatchInFlight && !cap.batches.some((b) => b.status === "failed") && (
+        <p className="mt-3 text-meta text-muted-foreground" role="status" aria-live="polite">
+          Still reading page {(cap.batches.find((b) => b.status === "running" || b.status === "pending")?.pageNumbers ?? []).join("–") || "…"}
+        </p>
+      )}
 
       {cap.mutation.isError && (
         <div className="mt-4 rounded-md border border-destructive/40 bg-destructive/10 p-3">
