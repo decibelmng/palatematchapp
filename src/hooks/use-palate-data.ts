@@ -227,7 +227,14 @@ type RateInput = {
    *  of this rating change, this is called with the tier + region + bottle name.
    *  Return true to proceed, false to cancel. Defaults to window.confirm. */
   onCascadeConfirm?: (info: { tier: "canon" | "nemesis"; region: string; bottleName: string }) => boolean | Promise<boolean>;
+  /** Where the rating came from, for the prediction-accuracy log. */
+  source?: "scan_list" | "scan_bottle" | "rate_screen" | "undo" | "somm" | "other";
+  scanId?: string | null;
+  scanWineId?: string | null;
+  /** 1 = this was the Call. A miss on rank 1 matters more than on rank 34. */
+  predictedRank?: number | null;
 };
+
 
 type RateResult = {
   bottleId: string;
