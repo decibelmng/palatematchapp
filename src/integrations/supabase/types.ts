@@ -908,12 +908,14 @@ export type Database = {
       }
       prediction_outcomes: {
         Row: {
+          axis_deltas: Json | null
           bandwidth: number | null
           bottle_id: string
           created_at: string
           delta: number | null
           fp_pipeline: string
           id: string
+          miss_attribution: string | null
           n_rated_at_prediction: number | null
           neighbor_support: number | null
           null_reason: string | null
@@ -928,12 +930,14 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          axis_deltas?: Json | null
           bandwidth?: number | null
           bottle_id: string
           created_at?: string
           delta?: number | null
           fp_pipeline?: string
           id?: string
+          miss_attribution?: string | null
           n_rated_at_prediction?: number | null
           neighbor_support?: number | null
           null_reason?: string | null
@@ -948,12 +952,14 @@ export type Database = {
           user_id?: string
         }
         Update: {
+          axis_deltas?: Json | null
           bandwidth?: number | null
           bottle_id?: string
           created_at?: string
           delta?: number | null
           fp_pipeline?: string
           id?: string
+          miss_attribution?: string | null
           n_rated_at_prediction?: number | null
           neighbor_support?: number | null
           null_reason?: string | null
@@ -1825,6 +1831,23 @@ export type Database = {
       }
     }
     Views: {
+      prediction_axis_bias: {
+        Row: {
+          axis: string | null
+          error_axis_corr: number | null
+          fp_pipeline: string | null
+          mean_axis_delta: number | null
+          mean_error_when_higher: number | null
+          mean_error_when_lower: number | null
+          mean_signed_error: number | null
+          n: number | null
+          n_style_was_wrong: number | null
+          n_taste_was_wrong: number | null
+          user_id: string | null
+          wine_type: string | null
+        }
+        Relationships: []
+      }
       prediction_baseline_comparison: {
         Row: {
           baseline_mae: number | null
@@ -2286,6 +2309,7 @@ export type Database = {
       }
       save_rating_with_cascade: {
         Args: {
+          p_axis_deltas?: Json
           p_bandwidth?: number
           p_bottle_id: string
           p_n_rated?: number
@@ -2300,7 +2324,9 @@ export type Database = {
           p_stars: number
         }
         Returns: {
+          delta: number
           demoted_tier: string
+          outcome_id: string
           palate_version: number
           previous_stars: number
         }[]
@@ -2392,6 +2418,10 @@ export type Database = {
           palate_version: number
           replaced_id: string
         }[]
+      }
+      set_miss_attribution: {
+        Args: { p_attribution: string; p_outcome_id: string }
+        Returns: boolean
       }
       somm_grant_claim: {
         Args: { p_code: string }
