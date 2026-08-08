@@ -162,15 +162,73 @@ export function predictStars(
   };
 }
 
-/** Batch variant: one context build per colour, for a whole scanned list. */
+/** Batch variant: one ω / h fit per colour for a whole scanned list, instead
+ *  of one per candidate. Same numbers as `predictStars`, just not refitted
+ *  forty times. */
 export function predictStarsMany(
   rated: { bottle: FpRow; stars: number }[],
   targets: FpRow[],
 ): Map<string, PredictResult> {
   const out = new Map<string, PredictResult>();
+
+  // Group candidates by colour; each colour gets its own independent palate.
+  const byType = new Map<WineType, FpRow[]>();
   for (const t of targets) {
     if (out.has(t.id)) continue;
-    out.set(t.id, predictStars(rated, t));
+    if (!isFpCalibrated(t)) {
+      out.set(t.id, noPrediction("uncalibrated_bottle"));
+      continue;
+    }
+    const list = byType.get(typeOf(t)) ?? [];
+    list.push(t);
+    byType.set(typeOf(t), list);
   }
+
+  for (const [type, list] of byType) {
+    const rawSameType: (RatedFp & { vintage: number | null })[] = [];
+    for (const r of rated) {
+      const b = r.bottle;
+      if (!b || typeOf(b) !== type || !isFpCalibrated(b)) continue;
+      rawSameType.push({
+        id: b.id, name: b.name, producer: b.producer, region: b.region,
+        type, vintage: b.vintage, fp: fpOf(b), stars: r.stars,
+      });
+    }
+    const sameType: RatedFp[] = aggregateRated(rawSameType).map((c) => ({
+      id: c.id, name: c.name, producer: c.producer, region: c.region,
+      type: c.type, fp: c.fp, stars: c.stars,
+    }));
+
+    if (sameType.length === 0) {
+      for (const t of list) out.set(t.id, noPrediction("no_same_type_ratings"));
+      continue;
+    }
+    if (sameType.length < MIN_RATINGS_FOR_PREDICTION) {
+      for (const t of list) out.set(t.id, noPrediction("too_few_ratings", sameType.length));
+      continue;
+    }
+
+    const ctx = buildTypeContext(sameType, type);
+    const cands: BottleFp[] = list.map((t) => ({
+      id: t.id, name: t.name, producer: t.producer, region: t.region,
+      type, fp: fpOf(t),
+    }));
+    const recs = recommend(sameType, cands);
+    const byId = new Map(recs.map((r) => [r.bottle.id, r]));
+    for (const t of list) {
+      const rec = byId.get(t.id);
+      out.set(t.id, rec
+        ? {
+          predicted: rec.predicted,
+          omega: ctx ? ({ ...ctx.fit.omega } as Record<FpKey, number>) : null,
+          bandwidth: ctx ? ctx.h : null,
+          nRated: sameType.length,
+          nullReason: null,
+        }
+        : noPrediction("no_same_type_ratings", sameType.length));
+    }
+  }
+
   return out;
 }
+
