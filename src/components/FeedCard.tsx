@@ -13,6 +13,7 @@ import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { Star, Bookmark, BookmarkCheck } from "lucide-react";
 import { recommend, type BottleFp, type RatedFp, type WineType } from "@/lib/recommender";
+import { fpOf } from "@/lib/predict-core";
 import { useRatings, useBottlesByIds, bottleToFp, bottleType } from "@/hooks/use-palate-data";
 import { useAddToWishlist, useRemoveFromWishlist, useWishlistIds } from "@/hooks/use-wishlist";
 import {

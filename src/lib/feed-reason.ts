@@ -7,7 +7,7 @@
 //
 // Read-only — never touches fp_observations or writes anything.
 
-import { RAX, type FpKey, type WineType, type RatedFp } from "./recommender";
+import { RAX, hasAxis, type FpKey, type WineType, type RatedFp } from "./recommender";
 
 export type CalibrationBand = "thin" | "medium" | "strong";
 
