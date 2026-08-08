@@ -16,9 +16,13 @@ import { verdictLine, becauseLine } from "./reason";
  * post-meal prompt in scan history, not the ability to rate.
  */
 export function ScanDetailSheet({
-  row, scannedAt, nearTie, onClose,
+  row, scannedAt, nearTie, onClose, scanId, rank,
 }: {
   row: ScanRow | null;
+  /** Scan this wine came from, recorded with any rating made here. */
+  scanId?: string | null;
+  /** 1 = this was the Call. */
+  rank?: number | null;
   /** epoch ms of the scan; retained for prompt copy, not for gating rating */
   scannedAt: number | null;
   /**
@@ -122,7 +126,14 @@ export function ScanDetailSheet({
               onChange={(stars) => {
                 if (stars == null || stars === currentStars) return;
                 rate.mutate(
-                  { bottleId: bottleId!, stars },
+                  {
+                    bottleId: bottleId!,
+                    stars,
+                    source: "scan_list",
+                    scanId: scanId ?? null,
+                    scanWineId: (r.scanned as { id?: string | null }).id ?? null,
+                    predictedRank: rank ?? null,
+                  },
                   {
                     onSuccess: () => toast.success(`Rated ${stars}★`),
                     onError: (e) => {
