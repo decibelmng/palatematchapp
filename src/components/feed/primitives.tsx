@@ -139,7 +139,7 @@ export function RateItButton({ bottleId, label = "Rate it" }: { bottleId: string
     <Link
       to="/wine/$id"
       params={{ id: bottleId }}
-      className="inline-flex h-11 flex-1 items-center justify-center rounded-md bg-primary px-3 text-sm font-medium text-primary-foreground"
+      className="inline-flex h-11 items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-primary-foreground"
     >
       {label}
     </Link>
