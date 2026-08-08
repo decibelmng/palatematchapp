@@ -1,4 +1,4 @@
-import { axesFor, GLYPH_BIMODAL, GLYPH_UNRESOLVED, parseCode, type PaletteType } from "@/lib/palate";
+import { axesFor, GLYPH_UNRESOLVED, parseCode, type PaletteType } from "@/lib/palate";
 import { createFileRoute, notFound, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { useEffect, type ReactNode } from "react";
@@ -170,7 +170,7 @@ function PalateCodeCard({ label, type, code }: { label: string; type: PaletteTyp
         {parseCode(code, axesFor(type)).map((ch, i) => (
           <span
             key={`${label}-${i}`}
-            className={ch === GLYPH_UNRESOLVED || ch === GLYPH_BIMODAL ? "text-muted-foreground/60" : ""}
+            className={ch === GLYPH_UNRESOLVED ? "text-muted-foreground/60" : ""}
           >{ch}</span>
         ))}
       </div>

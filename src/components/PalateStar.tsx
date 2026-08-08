@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { AxisDef, LetterResult } from "@/lib/palate";
-import { GLYPH_BIMODAL, GLYPH_UNRESOLVED, isBimodalSlot, parseCode, poleOf } from "@/lib/palate";
+import { GLYPH_UNRESOLVED, isBimodalSlot, parseCode, poleOf } from "@/lib/palate";
 
 type Props = {
   axes: AxisDef[];
@@ -33,7 +33,6 @@ export function lettersFromCode(code: string, axes: AxisDef[]): LetterResult[] {
     if (pole === a.low)  return { ...base, letter: slot, descriptor: a.lowName,  resolved: true, value: marked ? 0.35 : 0.2, bimodal: marked };
     if (pole === a.high) return { ...base, letter: slot, descriptor: a.highName, resolved: true, value: marked ? 0.65 : 0.8, bimodal: marked };
     if (pole === "N")    return { ...base, letter: slot, descriptor: a.neutralName, resolved: true, value: 0.5, bimodal: marked };
-    if (slot === GLYPH_BIMODAL) return { ...base, letter: slot, descriptor: `both ${a.lowName} and ${a.highName}`, resolved: true, value: 0.5, bimodal: true };
     return { ...base, letter: GLYPH_UNRESOLVED, descriptor: "not enough ratings yet", resolved: false, value: null, bimodal: false };
   });
 }

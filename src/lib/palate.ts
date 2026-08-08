@@ -2,14 +2,17 @@
 // A person has TWO palates: a Red palate and a White palate. They are computed
 // independently and never blended; types are never compared to each other.
 //
-// GLYPHS (a slot is one letter, optionally followed by the bimodal marker):
+// GLYPHS — every slot emits EXACTLY ONE letter, optionally carrying the "±"
+// diacritic. The marker never replaces a letter, so a code is always five
+// letters long, countable and speakable:
 //   L/B, F/E, S/G, U/O, R/C, D/W → the pole this palate leans to
 //   N   → moderate: the mean sits mid-range, no pole
-//   ±   → bimodal with no dominant side (mean mid-range, both poles loved)
+//   N±  → bimodal with no dominant side (loves both ends, no lean)
 //   G±  → letter-plus-marker: leans grippy, with a real silky side
-//   ?   → unresolved: not enough ratings yet
-// "·" (unresolved) and "X" (bimodal) are the legacy glyphs; splitCode() still
-// reads them so codes stored before this change decode correctly.
+//   X   → unresolved: not enough ratings yet (a new user reads "XXXXX")
+// Legacy "·" decodes to "X". Legacy bare "±" decodes to "N±". Legacy "X" once
+// meant bimodal; that reading is GONE — X is unresolved everywhere now.
+
 //
 // PENDING — slot 5 (sweet) vs oak, do not act before the catalog re-fingerprint:
 //   Sweet carries ~0 bits today: 86% of the catalog sits at the dry floor and
@@ -25,87 +28,54 @@
 
 export type PaletteType = "red" | "white";
 
-/** Bimodal marker — appended to a pole letter, or standing alone when the
- *  weighted mean sits mid-range and neither side dominates. */
+/** Bimodal marker — a diacritic on a letter. NEVER a slot of its own. */
 export const GLYPH_BIMODAL = "±";
 /** Not enough ratings on this axis yet. Distinct from N (a real moderate). */
-export const GLYPH_UNRESOLVED = "?";
-/** Moderate — the mean sits mid-range and the bimodal test did not fire. */
+export const GLYPH_UNRESOLVED = "X";
+/** Moderate — mid-range mean. With the marker ("N±") it means "loves both ends". */
 export const GLYPH_MODERATE = "N";
 
-/** Split a code into its five slots. A slot is a single glyph optionally
- *  followed by the bimodal marker ("G±"), so codes are no longer fixed-width
- *  and MUST NOT be indexed by character. Legacy "·"/"X" map to "?"/"±". */
+/** Normalise legacy glyphs to the current alphabet. "·" was unresolved. */
+function normalizeChars(code: string | null | undefined): string[] {
+  return Array.from(code ?? "").map((c) => (c === "·" ? GLYPH_UNRESOLVED : c));
+}
+
+/** Split a code into its slots. Every slot is exactly one letter plus an
+ *  optional "±", so the scan is linear — no backtracking, no ambiguity. A
+ *  legacy bare "±" (or legacy "X"-as-bimodal) decodes to "N±". */
 export function splitCode(code: string): string[] {
   const slots: string[] = [];
-  const chars = Array.from(code ?? "");
-  for (let i = 0; i < chars.length; i++) {
-    const raw = chars[i];
-    let ch = raw;
-    if (ch === "·") ch = GLYPH_UNRESOLVED;
-    else if (ch === "X") ch = GLYPH_BIMODAL;
-    // Legacy "X" always occupied its own slot, so only a literal marker can
-    // qualify the preceding letter.
-    if (raw === GLYPH_BIMODAL && slots.length > 0) {
+  for (const ch of normalizeChars(code)) {
+    if (ch === GLYPH_BIMODAL) {
       const prev = slots[slots.length - 1];
-      // A marker directly after a pole letter qualifies it rather than
-      // occupying its own slot.
-      // N never absorbs the marker: a moderate mean plus a firing bimodal test
-      // yields the BARE marker, so an "N±" pair can only be N then a new slot.
-      if (
-        prev.length === 1 &&
-        prev !== GLYPH_BIMODAL &&
-        prev !== GLYPH_UNRESOLVED &&
-        prev !== GLYPH_MODERATE &&
-        chars[i - 1] !== GLYPH_BIMODAL
-      ) {
+      if (prev && !prev.includes(GLYPH_BIMODAL)) {
         slots[slots.length - 1] = prev + GLYPH_BIMODAL;
-        continue;
+      } else {
+        // Legacy bare marker — it always meant balanced-bimodal, which now
+        // carries the letter N.
+        slots.push(GLYPH_MODERATE + GLYPH_BIMODAL);
       }
+      continue;
     }
     slots.push(ch);
   }
   return slots;
 }
 
-/** Axis-aware slot parser — the correct one to use whenever the palate type is
- *  known. A greedy character scan cannot always tell "B±G±CD" (body bold, fruit
- *  balanced-both, tannin mostly grippy…) from a code whose first slot carries
- *  the marker, because a bare marker can directly follow a pole letter. The
- *  per-position alphabet removes the ambiguity: each slot must be that axis's
- *  low/high letter, N, the bare marker, or "?". Falls back to splitCode() only
- *  when nothing parses (a corrupt or foreign code). */
+/** Axis-aware slot parser. Kept for callers that know the palate type; with a
+ *  one-letter-per-slot format it is a linear scan that validates each letter
+ *  against that axis's alphabet and pads short codes as unresolved. */
 export function parseCode(code: string, axes: AxisDef[]): string[] {
-  const chars = Array.from(code ?? "").map((c) => (c === "·" ? GLYPH_UNRESOLVED : c === "X" ? GLYPH_BIMODAL : c));
-
-  const walk = (i: number, slot: number): string[] | null => {
-    if (slot === axes.length) return i === chars.length ? [] : null;
-    if (i >= chars.length) {
-      // Short code — pad the remaining slots as unresolved.
-      return Array(axes.length - slot).fill(GLYPH_UNRESOLVED);
-    }
-    const axis = axes[slot];
-    const ch = chars[i];
-    const isLetter = ch === axis.low || ch === axis.high || ch === GLYPH_MODERATE;
-    if (isLetter) {
-      // Prefer attaching a following marker, but backtrack if that leaves the
-      // rest unparseable.
-      if (chars[i + 1] === GLYPH_BIMODAL && ch !== GLYPH_MODERATE) {
-        const rest = walk(i + 2, slot + 1);
-        if (rest) return [ch + GLYPH_BIMODAL, ...rest];
-      }
-      const rest = walk(i + 1, slot + 1);
-      if (rest) return [ch, ...rest];
-      return null;
-    }
-    if (ch === GLYPH_BIMODAL || ch === GLYPH_UNRESOLVED) {
-      const rest = walk(i + 1, slot + 1);
-      if (rest) return [ch, ...rest];
-    }
-    return null;
-  };
-
-  return walk(0, 0) ?? slotsOf(code, axes.length);
+  const slots = splitCode(code).slice(0, axes.length);
+  const out = axes.map((axis, i) => {
+    const slot = slots[i] ?? GLYPH_UNRESOLVED;
+    const pole = slot[0];
+    const allowed =
+      pole === axis.low || pole === axis.high ||
+      pole === GLYPH_MODERATE || pole === GLYPH_UNRESOLVED;
+    return allowed ? slot : GLYPH_UNRESOLVED;
+  });
+  return out;
 }
 
 /** Pad/trim to five slots — for comparing two codes of different vintages. */
@@ -121,12 +91,15 @@ export function isBimodalSlot(slot: string): boolean {
   return slot.includes(GLYPH_BIMODAL);
 }
 
-/** The pole letter of a slot, or null for a bare marker / unresolved. */
+/** The letter of a slot (always present), or null for an empty slot.
+ *  Unresolved returns null — there is no pole to read. */
 export function poleOf(slot: string): string | null {
   const ch = slot[0];
-  if (!ch || ch === GLYPH_BIMODAL || ch === GLYPH_UNRESOLVED) return null;
+  if (!ch || ch === GLYPH_UNRESOLVED) return null;
   return ch;
 }
+
+
 
 
 export type AxisDef = {
@@ -221,10 +194,10 @@ export function computeCode(rated: RatedBottle[], axes: AxisDef[]): { code: stri
       bimodal = lowPole >= 2 && highPole >= 2;
     }
 
-    // Bimodality QUALIFIES the mean, it does not erase it. If the weighted mean
-    // clears a threshold the pole letter is still emitted, with the marker
-    // appended ("G±" = mostly grippy, with a silky side). Only a mid-range mean
-    // plus a firing bimodal test yields the bare marker.
+    // Bimodality QUALIFIES the letter, it never replaces it. A mean that clears
+    // a threshold keeps its pole letter with the marker appended ("G±" = mostly
+    // grippy, with a silky side). A mid-range mean keeps N and takes the marker
+    // ("N±" = genuinely both ways).
     let letter: string;
     let descriptor: string;
     if (mean <= 0.42) {
@@ -237,7 +210,7 @@ export function computeCode(rated: RatedBottle[], axes: AxisDef[]): { code: stri
 
     if (bimodal) {
       if (letter === GLYPH_MODERATE) {
-        letter = GLYPH_BIMODAL;
+        letter = GLYPH_MODERATE + GLYPH_BIMODAL;
         descriptor = `both ${axisDef.lowName} and ${axisDef.highName}`;
       } else {
         const otherSide = letter === axisDef.low ? axisDef.highName : axisDef.lowName;
@@ -245,6 +218,7 @@ export function computeCode(rated: RatedBottle[], axes: AxisDef[]): { code: stri
         descriptor = `mostly ${descriptor}, with a ${otherSide} side`;
       }
     }
+
 
     return { ...base, letter, descriptor, resolved: true, value: mean, bimodal };
   });

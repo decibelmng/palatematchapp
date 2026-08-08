@@ -416,8 +416,8 @@ describe("computeCode()", () => {
     const { letters } = computeCode(rows, RED_AXES);
     const body = letters.find((l) => l.axis === "body")!;
     expect(body.bimodal).toBe(true);
-    // Mean sits at 0.5 here, so no pole dominates: bare marker, never "?".
-    expect(body.letter).toBe("±");
+    // Mean sits at 0.5 here, so no pole dominates: N± — a letter, never bare.
+    expect(body.letter).toBe("N±");
     expect(body.descriptor).toBe("both light and bold");
   });
 
@@ -457,7 +457,7 @@ describe("computeCode()", () => {
     const { letters } = computeCode(rows, RED_AXES);
     for (const l of letters) {
       expect(l.resolved).toBe(false);
-      expect(l.letter).toBe("?");
+      expect(l.letter).toBe("X");
     }
   });
 });

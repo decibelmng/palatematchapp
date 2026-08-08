@@ -15,7 +15,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { LetterResult, PaletteType } from "@/lib/palate";
 import { explainLetter } from "@/lib/palate-code-letters";
-import { axesFor, GLYPH_BIMODAL, GLYPH_UNRESOLVED, isBimodalSlot, parseCode } from "@/lib/palate";
+import { axesFor, GLYPH_UNRESOLVED, isBimodalSlot, parseCode } from "@/lib/palate";
 
 type Props = {
   code: string;
@@ -102,7 +102,7 @@ export function PalateCodeReader({
         {slots.map((ch, i) => {
           const isActive = active === i;
           const disabled = isDisabled(i, ch);
-          const muted = ch === GLYPH_UNRESOLVED || ch === GLYPH_BIMODAL;
+          const muted = ch === GLYPH_UNRESOLVED;
           return (
             <button
               key={`code-${i}-${ch}`}

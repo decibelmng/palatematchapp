@@ -12,7 +12,7 @@ export function AuthGate({ children }: { children: ReactNode }) {
   if (session === undefined) {
     return (
       <div className="cellar-bg min-h-screen flex items-center justify-center">
-        <div className="font-serif text-primary text-lg">·····</div>
+        <div className="font-serif text-primary text-lg">XXXXX</div>
       </div>
     );
   }
