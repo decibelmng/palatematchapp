@@ -281,7 +281,7 @@ function RequestRow({ row, kind }: { row: import("@/lib/friends.functions").Frie
 function FriendRow({ row }: { row: import("@/lib/friends.functions").FriendshipRow }) {
   const respond = useRespondFriendship();
   const [confirm, setConfirm] = useState(false);
-  const redCode = row.other.palate_code_red ?? "?????";
+  const redCode = row.other.palate_code_red ?? "XXXXX";
   const redLetters = lettersFromCode(redCode, axesFor("red"));
   return (
     <li className="py-3 flex items-center justify-between gap-3">
