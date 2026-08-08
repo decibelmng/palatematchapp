@@ -1,4 +1,5 @@
 import { fpOf } from "@/lib/predict-core";
+import { displayWineName, wineNameMeta } from "@/lib/wine-name";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Star, X } from "lucide-react";
@@ -140,12 +141,16 @@ function WishlistContent() {
                 params={{ id: row.bottle.id }}
                 className="flex-1 min-w-0"
               >
-                <div className="text-sm font-medium leading-snug line-clamp-2">
-                  {row.bottle.producer ? `${row.bottle.producer} · ` : ""}{row.bottle.name}
-                  {row.bottle.vintage ? ` ${row.bottle.vintage}` : ""}
+                <div className="text-sm font-medium leading-snug break-words">
+                  {displayWineName(row.bottle)}
                 </div>
-                <div className="text-xs text-muted-foreground truncate">
-                  {[row.bottle.grape, row.bottle.region, row.bottle.price_band].filter(Boolean).join(" · ")}
+                <div className="text-xs text-muted-foreground break-words">
+                  {[
+                    wineNameMeta(row.bottle, displayWineName(row.bottle)),
+                    row.bottle.grape,
+                    row.bottle.vintage ? String(row.bottle.vintage) : null,
+                    row.bottle.price_band,
+                  ].filter(Boolean).join(" · ")}
                 </div>
               </Link>
               <Link
