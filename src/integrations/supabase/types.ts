@@ -906,6 +906,88 @@ export type Database = {
           },
         ]
       }
+      prediction_outcomes: {
+        Row: {
+          bandwidth: number | null
+          bottle_id: string
+          created_at: string
+          delta: number | null
+          fp_pipeline: string
+          id: string
+          n_rated_at_prediction: number | null
+          null_reason: string | null
+          omega: Json | null
+          palate_version: number | null
+          predicted: number | null
+          predicted_rank: number | null
+          scan_id: string | null
+          scan_wine_id: string | null
+          source: string
+          stars: number
+          user_id: string
+        }
+        Insert: {
+          bandwidth?: number | null
+          bottle_id: string
+          created_at?: string
+          delta?: number | null
+          fp_pipeline?: string
+          id?: string
+          n_rated_at_prediction?: number | null
+          null_reason?: string | null
+          omega?: Json | null
+          palate_version?: number | null
+          predicted?: number | null
+          predicted_rank?: number | null
+          scan_id?: string | null
+          scan_wine_id?: string | null
+          source?: string
+          stars: number
+          user_id?: string
+        }
+        Update: {
+          bandwidth?: number | null
+          bottle_id?: string
+          created_at?: string
+          delta?: number | null
+          fp_pipeline?: string
+          id?: string
+          n_rated_at_prediction?: number | null
+          null_reason?: string | null
+          omega?: Json | null
+          palate_version?: number | null
+          predicted?: number | null
+          predicted_rank?: number | null
+          scan_id?: string | null
+          scan_wine_id?: string | null
+          source?: string
+          stars?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prediction_outcomes_bottle_id_fkey"
+            columns: ["bottle_id"]
+            isOneToOne: false
+            referencedRelation: "bottles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prediction_outcomes_scan_id_fkey"
+            columns: ["scan_id"]
+            isOneToOne: false
+            referencedRelation: "scans"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prediction_outcomes_scan_wine_id_fkey"
+            columns: ["scan_wine_id"]
+            isOneToOne: false
+            referencedRelation: "scan_wines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       price_observations: {
         Row: {
           bottle_id: string | null
@@ -1664,7 +1746,65 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      prediction_baseline_comparison: {
+        Row: {
+          baseline_mae: number | null
+          baseline_prediction: number | null
+          mae_improvement: number | null
+          model_mae: number | null
+          n_scored: number | null
+          skill_score: number | null
+          user_id: string | null
+          wine_type: string | null
+        }
+        Relationships: []
+      }
+      prediction_error_summary: {
+        Row: {
+          first_logged_at: string | null
+          fp_pipeline: string | null
+          last_logged_at: string | null
+          mae: number | null
+          mae_rank_1: number | null
+          mae_rank_rest: number | null
+          mean_signed_error: number | null
+          n_logged: number | null
+          n_scored: number | null
+          n_unscored: number | null
+          palate_version: number | null
+          sd_error: number | null
+          user_id: string | null
+          wine_type: string | null
+          within_half_star: number | null
+          within_one_star: number | null
+          worst_miss: number | null
+        }
+        Relationships: []
+      }
+      scan_offer_outcomes: {
+        Row: {
+          best_predicted_offered: number | null
+          mae_on_chosen: number | null
+          mean_predicted_all: number | null
+          mean_predicted_chosen: number | null
+          mean_predicted_not_chosen: number | null
+          n_offered: number | null
+          n_predicted: number | null
+          n_rated: number | null
+          scan_id: string | null
+          scanned_at: string | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scan_wines_scan_id_fkey"
+            columns: ["scan_id"]
+            isOneToOne: false
+            referencedRelation: "scans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       admin_auth_audit_entries: {
@@ -2052,7 +2192,19 @@ export type Database = {
         }[]
       }
       save_rating_with_cascade: {
-        Args: { p_bottle_id: string; p_predicted?: number; p_stars: number }
+        Args: {
+          p_bandwidth?: number
+          p_bottle_id: string
+          p_n_rated?: number
+          p_null_reason?: string
+          p_omega?: Json
+          p_predicted?: number
+          p_predicted_rank?: number
+          p_scan_id?: string
+          p_scan_wine_id?: string
+          p_source?: string
+          p_stars: number
+        }
         Returns: {
           demoted_tier: string
           palate_version: number
