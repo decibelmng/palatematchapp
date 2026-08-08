@@ -82,7 +82,8 @@ export function VerdictSurface({
           stillReading={stillReading}
           currency={currency}
         />
-        <ScanDetailSheet row={detailFor} scannedAt={scannedAt} onClose={() => setDetailKey(null)} />
+        <ScanDetailSheet row={detailFor} scannedAt={scannedAt} nearTie={detailFor ? nearTieNote(detailFor, eligible) : null} onClose={() => setDetailKey(null)} />
+
       </div>
     );
   }
