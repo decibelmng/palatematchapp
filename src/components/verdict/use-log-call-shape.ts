@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { ScanRow } from "./types";
-import { pricePosition } from "./tiebreak";
+import { countPriced, pricePosition } from "./tiebreak";
 
 /**
  * Silent, append-only instrumentation. NO UI.
@@ -41,6 +41,7 @@ export function useLogCallShape(call: ScanRow | null, rows: ScanRow[], scanId: s
             is_catalog: call.isCatalog,
             price_position: pricePosition(call, rows),
             list_size: rows.length,
+            n_priced: countPriced(rows),
             palate_version: prof?.palate_version ?? null,
           },
           { onConflict: "user_id,scan_id", ignoreDuplicates: true },

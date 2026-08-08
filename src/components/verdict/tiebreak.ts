@@ -79,16 +79,44 @@ export function nearTieNote(row: ScanRow, eligible: ScanRow[]): string | null {
   return `${others.length} other wines on this list scored within ${TIE.toFixed(1)} of this.`;
 }
 
-export type PricePosition = "bottom-third" | "middle" | "top-third" | "unknown";
+export type PricePosition =
+  | "bottom-third"
+  | "middle"
+  | "top-third"
+  /** We could not read a price for the Call, or for any wine on the list. */
+  | "unknown"
+  /** Prices read fine, the list was too short for terciles to mean anything. */
+  | "insufficient";
 
-/** Where the Call sits in the list's own price spread. Never absolute. */
+/**
+ * Terciles over a handful of wines put one wine in each bucket regardless of the
+ * actual spread — noise wearing the label of signal. Below this many PRICED
+ * wines we decline to place the Call at all.
+ */
+export const PRICE_POSITION_MIN_PRICED = 8;
+
+/**
+ * Where the Call sits in the list's own price spread. Never absolute.
+ *
+ * "unknown" and "insufficient" are different facts and must stay distinguishable
+ * in the data: the first is an OCR failure, the second a short list. Every row
+ * also carries n_priced so the floor can be revisited from the data rather than
+ * guessed at a second time.
+ */
 export function pricePosition(call: ScanRow, rows: ScanRow[]): PricePosition {
   const mine = amount(call);
   if (mine == null) return "unknown";
+  const n = countPriced(rows);
+  if (n === 0) return "unknown";
+  if (n < PRICE_POSITION_MIN_PRICED) return "insufficient";
   const priced = rows.map(amount).filter((a): a is number => a != null).sort((x, y) => x - y);
-  if (priced.length < 3) return "unknown";
   const rank = priced.filter((a) => a < mine).length / priced.length;
   if (rank < 1 / 3) return "bottom-third";
   if (rank < 2 / 3) return "middle";
   return "top-third";
+}
+
+/** How many wines on the list had a readable price. Logged on every row. */
+export function countPriced(rows: ScanRow[]): number {
+  return rows.reduce((n, r) => (amount(r) != null ? n + 1 : n), 0);
 }
