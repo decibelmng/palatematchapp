@@ -5,7 +5,7 @@ import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useQueryClient } from "@tanstack/react-query";
 import { useSession } from "@/hooks/use-session";
-import { useRatings, useBottlesByIds, bottleToFp, bottleType } from "@/hooks/use-palate-data";
+import { useRatings, useBottlesByIds, bottleToFp, bottleType, useRate, RateCanceledError } from "@/hooks/use-palate-data";
 import { recommend, type BottleFp, type RatedFp } from "@/lib/recommender";
 import { aggregateRated } from "@/lib/cuvee";
 import {
@@ -263,18 +263,35 @@ function BottleScan() {
       (active.tier === "nemesis" && stars > 2)
     );
 
+    if (needsConfirm && active) {
+      const verb = active.tier === "canon"
+        ? `You'd set this as a benchmark in ${active.region}. Lowering the rating removes that.`
+        : `You'd marked this as a dealbreaker in ${active.region}. Raising the rating removes that.`;
+      const ok = await confirmDialog({
+        title: active.tier === "canon" ? "Remove as a benchmark?" : "Remove as a dealbreaker?",
+        description: (
+          <>
+            <p>{verb}</p>
+            <p className="mt-3">
+              Continue and update <span className="font-semibold text-foreground">{c.name}</span>?
+            </p>
+          </>
+        ),
+        confirmLabel: "Continue",
+        destructive: true,
+      });
+      if (!ok) return;
+    }
+
     try {
       await rate.mutateAsync({
         bottleId: c.id,
         stars,
         source: "scan_bottle",
         scanWineId: scanWineIdRef.current ?? null,
-        onCascadeConfirm: needsConfirm
-          ? undefined
-          : () => true,
-        ...(needsConfirm && active
-          ? { }
-          : { }),
+        // Confirmed above against the database; the shared hook's own
+        // cache-based check would silently skip on this screen.
+        onCascadeConfirm: () => true,
       });
     } catch (err) {
       if (err instanceof RateCanceledError) return;
