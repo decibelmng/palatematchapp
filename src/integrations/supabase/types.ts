@@ -55,6 +55,7 @@ export type Database = {
           created_at: string
           critic_score: number | null
           excluded_from_recs: boolean
+          fingerprint_attempts: number
           fp_acid: number
           fp_acid_prior: number
           fp_body: number
@@ -82,6 +83,7 @@ export type Database = {
           fp_vec: string | null
           grape: string | null
           id: string
+          last_attempt_at: string | null
           name: string
           price_band: string | null
           producer: string | null
@@ -104,6 +106,7 @@ export type Database = {
           created_at?: string
           critic_score?: number | null
           excluded_from_recs?: boolean
+          fingerprint_attempts?: number
           fp_acid: number
           fp_acid_prior?: number
           fp_body: number
@@ -131,6 +134,7 @@ export type Database = {
           fp_vec?: string | null
           grape?: string | null
           id?: string
+          last_attempt_at?: string | null
           name: string
           price_band?: string | null
           producer?: string | null
@@ -153,6 +157,7 @@ export type Database = {
           created_at?: string
           critic_score?: number | null
           excluded_from_recs?: boolean
+          fingerprint_attempts?: number
           fp_acid?: number
           fp_acid_prior?: number
           fp_body?: number
@@ -180,6 +185,7 @@ export type Database = {
           fp_vec?: string | null
           grape?: string | null
           id?: string
+          last_attempt_at?: string | null
           name?: string
           price_band?: string | null
           producer?: string | null
@@ -2363,6 +2369,7 @@ export type Database = {
           created_at: string
           critic_score: number | null
           excluded_from_recs: boolean
+          fingerprint_attempts: number
           fp_acid: number
           fp_acid_prior: number
           fp_body: number
@@ -2390,6 +2397,7 @@ export type Database = {
           fp_vec: string | null
           grape: string | null
           id: string
+          last_attempt_at: string | null
           name: string
           price_band: string | null
           producer: string | null
