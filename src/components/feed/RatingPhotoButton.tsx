@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
 import { useSetRatingPhoto } from "@/hooks/use-feed-extras";
 import { friendlyError } from "@/lib/error-message";
-import { downscaleImage } from "@/lib/image-downscale";
+import { prepareImageForScan } from "@/lib/image-downscale";
 
 export function RatingPhotoButton({
   ratingId,
@@ -27,7 +27,7 @@ export function RatingPhotoButton({
     if (!file || !session) return;
     setBusy(true);
     try {
-      const blob = await downscaleImage(file);
+      const { blob } = await prepareImageForScan(file);
       const path = `${session.user.id}/rating-${ratingId}-${Date.now()}.jpg`;
       const { error } = await supabase.storage
         .from("scan-images")
