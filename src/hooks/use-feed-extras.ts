@@ -35,7 +35,7 @@ export function useSetRatingPhoto() {
   const qc = useQueryClient();
   const fn = useServerFn(setRatingPhoto);
   return useMutation({
-    mutationFn: (v: { rating_id: string; path: string | null; shared?: boolean }) =>
+    mutationFn: (v: { rating_id?: string; bottle_id?: string; path: string | null; shared?: boolean }) =>
       fn({ data: v }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["feed", "mine"] }),
   });

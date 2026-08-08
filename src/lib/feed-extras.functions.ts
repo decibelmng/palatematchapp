@@ -229,11 +229,16 @@ export const getSharedLists = createServerFn({ method: "POST" })
 // Rating photos
 // ---------------------------------------------------------------
 
-const PhotoInput = z.object({
-  rating_id: z.string().uuid(),
-  path: z.string().min(1).nullable(),
-  shared: z.boolean().optional(),
-});
+const PhotoInput = z
+  .object({
+    rating_id: z.string().uuid().optional(),
+    bottle_id: z.string().uuid().optional(),
+    path: z.string().min(1).nullable(),
+    shared: z.boolean().optional(),
+  })
+  .refine((v) => !!v.rating_id || !!v.bottle_id, {
+    message: "rating_id or bottle_id is required",
+  });
 
 export const setRatingPhoto = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -242,11 +247,9 @@ export const setRatingPhoto = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const patch: Record<string, unknown> = { photo_path: data.path };
     if (data.shared !== undefined) patch.photo_shared = data.shared;
-    const { error } = await supabase
-      .from("ratings")
-      .update(patch as never)
-      .eq("id", data.rating_id)
-      .eq("user_id", userId);
+    let q = supabase.from("ratings").update(patch as never).eq("user_id", userId);
+    q = data.rating_id ? q.eq("id", data.rating_id) : q.eq("bottle_id", data.bottle_id!);
+    const { error } = await q;
     if (error) throw new Error(error.message);
     return { ok: true };
   });
