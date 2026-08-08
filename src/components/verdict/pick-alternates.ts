@@ -107,17 +107,26 @@ function contrastLine(call: ScanRow, other: ScanRow): string {
   const a = call.ranked.bottle.fp;
   const b = other.ranked.bottle.fp;
   if (!a || !b) return "A different corner of your palate.";
-  const body = (b.body ?? 0.5) - (a.body ?? 0.5);
-  const tannin = (b.tannin ?? 0.5) - (a.tannin ?? 0.5);
-  const ripeness = (b.ripe ?? 0.5) - (a.ripe ?? 0.5);
-  const acid = (b.acid ?? 0.5) - (a.acid ?? 0.5);
-  const oak = (b.oak ?? 0.5) - (a.oak ?? 0.5);
+
+  // A missing axis is UNKNOWN. Substituting a 0.5 midpoint invents a difference
+  // (or hides one) and can put a confident sensory claim on a wine we failed to
+  // read — so an axis missing on either side simply does not compete.
+  const diff = (k: "body" | "tannin" | "ripe" | "acid" | "oak"): number | null => {
+    const av = a[k];
+    const bv = b[k];
+    if (av == null || bv == null || !Number.isFinite(av) || !Number.isFinite(bv)) return null;
+    return bv - av;
+  };
   const candidates = [
-    { d: Math.abs(body), phrase: body > 0 ? "Bolder and fuller." : "Lighter, more delicate." },
-    { d: Math.abs(tannin), phrase: tannin > 0 ? "More structured and grippy." : "Silkier, less grip." },
-    { d: Math.abs(ripeness), phrase: ripeness > 0 ? "Riper, more fruit-forward." : "Leaner, more savory." },
-    { d: Math.abs(acid), phrase: acid > 0 ? "Sharper, higher-toned." : "Rounder, softer-edged." },
-    { d: Math.abs(oak), phrase: oak > 0 ? "More oak-shaped." : "Cleaner, less oak." },
-  ].sort((x, y) => y.d - x.d);
-  return candidates[0]?.phrase ?? "A different corner of your palate.";
+    { d: diff("body"), up: "Bolder and fuller.", down: "Lighter, more delicate." },
+    { d: diff("tannin"), up: "More structured and grippy.", down: "Silkier, less grip." },
+    { d: diff("ripe"), up: "Riper, more fruit-forward.", down: "Leaner, more savory." },
+    { d: diff("acid"), up: "Sharper, higher-toned.", down: "Rounder, softer-edged." },
+    { d: diff("oak"), up: "More oak-shaped.", down: "Cleaner, less oak." },
+  ]
+    .filter((c): c is { d: number; up: string; down: string } => c.d != null)
+    .sort((x, y) => Math.abs(y.d) - Math.abs(x.d));
+  const top = candidates[0];
+  if (!top) return "A different corner of your palate.";
+  return top.d > 0 ? top.up : top.down;
 }

@@ -108,8 +108,25 @@ function meanFp(rows: { fp: Record<FpKey, number> }[]): Record<FpKey, number> {
   return out;
 }
 
-function pickRep<T extends { vintage?: number | null; id: string }>(rows: T[]): T {
-  return [...rows].sort((a, b) => (b.vintage ?? -1) - (a.vintage ?? -1))[0];
+/**
+ * Representative bottle for a cuvée.
+ *
+ * NON-VINTAGE IS A CATEGORY, NOT A GAP. Most Champagne, plenty of sherry and
+ * port carry no vintage by design. Sorting a null vintage as -1 puts NV below
+ * every dated bottle, so an NV wine loses the representative pick to any dated
+ * sibling and the cuvée surface then shows — and matches against — the wrong
+ * bottle.
+ *
+ * So NV is handled as its own case, never as a number on the vintage scale:
+ *   - all rows NV  -> first NV row is the representative
+ *   - mixed        -> the most recent DATED vintage, decided among dated rows
+ *                     only; the NV rows never take part in that comparison
+ *   - all dated    -> most recent, as before
+ */
+export function pickRep<T extends { vintage?: number | null; id: string }>(rows: T[]): T {
+  const dated = rows.filter((r) => r.vintage != null);
+  if (dated.length === 0) return rows[0];
+  return [...dated].sort((a, b) => (b.vintage as number) - (a.vintage as number))[0];
 }
 
 export function aggregateRated(rows: RatedInput[]): CuveeRated[] {
