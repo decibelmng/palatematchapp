@@ -33,7 +33,7 @@ import { toast } from "sonner";
 import { friendlyError } from "@/lib/error-message";
 import { prepareImageForScan } from "@/lib/image-downscale";
 import { takePendingCapture } from "@/lib/scan-handoff";
-import { composeBottleName } from "@/lib/wine-name";
+import { composeBottleName, displayWineName, wineNameMeta } from "@/lib/wine-name";
 
 
 export const Route = createFileRoute("/scan/bottle")({
@@ -616,7 +616,7 @@ function BottleScan() {
                   <div className="rounded-md border border-primary/50 bg-primary/10 p-3 text-sm">
                     <p className="font-medium">You've rated this wine before — {dupe.stars}★</p>
                     <p className="mt-0.5 text-xs text-muted-foreground">
-                      {dupe.bottle.producer} · {dupe.bottle.name}{dupe.bottle.vintage ? ` · ${dupe.bottle.vintage}` : ""}
+                      {[displayWineName(dupe.bottle), wineNameMeta(dupe.bottle, displayWineName(dupe.bottle)), dupe.bottle.vintage ? String(dupe.bottle.vintage) : null].filter(Boolean).join(" · ")}
                     </p>
                     <p className="mt-1 text-meta text-muted-foreground">
                       Rate it again below to update — we'll keep it on the same wine instead of duplicating.
