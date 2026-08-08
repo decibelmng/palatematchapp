@@ -7,6 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useSession } from "@/hooks/use-session";
 import { useRatings, useBottlesByIds, bottleToFp, bottleType, useRate, RateCanceledError } from "@/hooks/use-palate-data";
 import { recommend, type BottleFp, type RatedFp } from "@/lib/recommender";
+import { confirmDialog } from "@/components/confirm-dialog";
 import { aggregateRated } from "@/lib/cuvee";
 import {
   scanBottleLabel,
@@ -50,6 +51,7 @@ export const Route = createFileRoute("/scan/bottle")({
 
 function BottleScan() {
   const session = useSession();
+  const rate = useRate();
   const qc = useQueryClient();
   const scan = useServerFn(scanBottleLabel);
   const resolveFn = useServerFn(resolveBottleFromRead);
