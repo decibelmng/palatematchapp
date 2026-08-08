@@ -1,6 +1,24 @@
 // Shared source of truth for which fingerprint-axis directions are
 // user-facing complaints, plus the surface-specific phrase tables.
 //
+// STANDING CONSTRAINT — A MISSING VALUE NEVER BECOMES A NUMBER.
+// Unknown is not zero, not infinity, and not minus one. Where a comparison or
+// distance calculation encounters a missing value it ABSTAINS, or excludes that
+// dimension and rescales — it never substitutes a sentinel that downstream code
+// will treat as real. Any sentinel that does exist must be unrepresentable as a
+// real value, and must be checked at EVERY read site.
+//
+// Three bugs of this exact shape have shipped:
+//   1. ax_fruit_char defaulting to 0 — a missing axis indistinguishable from a
+//      real extreme.
+//   2. price_amount coercing to +Infinity — an unreadable price sorting as the
+//      most expensive wine on the list.
+//   3. pick-alternates zeroing a missing axis — and that one SELECTED wines,
+//      because "Different direction" picks by maximum distance, so a zeroed axis
+//      manufactures the distance that wins.
+// Grep before shipping anything that scores, ranks, measures distance, or
+// selects: `?? 0`, `?? -1`, `?? Infinity`, `|| 0`, `Number(x) || 0`.
+//
 // BANNED-VOCABULARY SWEEP — always run BOTH patterns (scripts/vocab-sweep.sh):
 //   A) string literals:  /("|'|`)[^"'`]*(nemesis|canon|veto|fingerprint|…)[^"'`]*("|'|`)/i
 //   B) JSX text nodes:   />[^<>{}"']*(nemesis|canon|veto|fingerprint|…)[^<>{}"']*</i
