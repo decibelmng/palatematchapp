@@ -2,6 +2,7 @@ import { useState } from "react";
 import type { ScanRow } from "./types";
 import { priceLabel } from "./types";
 import { verdictLine, becauseLine } from "./reason";
+import { OrderedButton } from "./OrderedButton";
 
 /**
  * Eyebrow states — there are exactly two, and each renders the same thing:
@@ -14,11 +15,16 @@ import { verdictLine, becauseLine } from "./reason";
 type CallKind = "your-pick" | "closest-match";
 
 export function TheCall({
-  row, kind, onOpen,
+  row, kind, onOpen, ordered, onOrdered, orderPending, canOrder,
 }: {
   row: ScanRow;
   kind: CallKind;
   onOpen: () => void;
+  /** Choice capture — one tap, no confirmation, undoable. */
+  ordered?: boolean;
+  onOrdered?: () => void;
+  orderPending?: boolean;
+  canOrder?: boolean;
 }) {
   const [confOpen, setConfOpen] = useState(false);
   const eyebrow = kind === "closest-match" ? "Closest match" : "Your pick";
@@ -103,6 +109,17 @@ export function TheCall({
 
         {confOpen && (
           <p className="mt-2 text-meta text-muted-foreground leading-snug">{confExplain}</p>
+        )}
+
+        {canOrder && onOrdered && (
+          <div className="mt-4">
+            <OrderedButton
+              ordered={!!ordered}
+              disabled={orderPending}
+              wineName={bottle.name}
+              onToggle={onOrdered}
+            />
+          </div>
         )}
 
         {row.valueSentence && (
