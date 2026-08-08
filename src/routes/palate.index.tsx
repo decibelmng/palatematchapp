@@ -167,7 +167,39 @@ function PalateHome() {
     return Array.from(seen.values());
   }, [bottles, ratings, scope, lovedPoints]);
 
+  /** Rated wines that can't honestly be plotted on THIS map, and why.
+   *  Silence here is what made a white wine look like a missing red. */
+  const offMap = useMemo(() => {
+    if (!bottles || !ratings) return { total: 0, otherPalate: 0, otherPalateLabel: "", noStyle: 0, unsupported: 0 };
+    const byId = new Map(bottles.map((b) => [b.id, b]));
+    const other = scope === "red" ? "white" : "red";
+    let otherPalate = 0, noStyle = 0, unsupported = 0;
+    const counted = new Set<string>();
+    for (const r of ratings) {
+      const b = byId.get(r.bottle_id);
+      if (!b) continue;
+      const key = cuveeKey(b);
+      if (counted.has(key)) continue;
+      const t = bottleType(b);
+      if (t === scope) {
+        if (!isCalibrated(b)) { counted.add(key); noStyle++; }
+        continue;
+      }
+      counted.add(key);
+      if (t === other) otherPalate++;
+      else unsupported++;
+    }
+    return {
+      total: otherPalate + noStyle + unsupported,
+      otherPalate,
+      otherPalateLabel: other,
+      noStyle,
+      unsupported,
+    };
+  }, [bottles, ratings, scope]);
+
   const hasScope = scoped.length > 0;
+
 
   const scopedLetters = scope === "red" ? red.letters : white.letters;
   const bimodalLetters = scopedLetters.filter((l) => l.bimodal);
