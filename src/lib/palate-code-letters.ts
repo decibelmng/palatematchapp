@@ -102,10 +102,10 @@ const WHITE_POSITIONS: Array<{ axis: string; letters: Record<string, string> }> 
   } },
 ];
 
-/** Return one-line meaning for the slot at `position` (0-indexed) of a code
- *  of the given type. Slots are parsed with splitCode(), so "G±" is one slot.
- *  A letter-plus-marker slot reads as the dominant pole, qualified. Unknown
- *  glyphs return a safe fallback. */
+/** Return the one-line meaning for the slot at `position` (0-indexed) of a code
+ *  of the given type. Every slot is one letter plus an optional "±": "G±" reads
+ *  as the dominant pole, qualified; "N±" reads as "loves both ends"; "X" is
+ *  unresolved. Unknown glyphs return a safe fallback. */
 export function explainLetter(
   type: PaletteType,
   code: string,
@@ -116,24 +116,27 @@ export function explainLetter(
   const pos = positions[position];
   const slots = parseCode(code, axesFor(type));
   let slot = slots[position] ?? GLYPH_UNRESOLVED;
-  // Legacy callers passed `bimodal` alongside a bare "·" slot.
+  // Legacy callers passed `bimodal` alongside an unmarked slot.
   if (bimodal && !isBimodalSlot(slot)) {
-    slot = slot === GLYPH_UNRESOLVED ? GLYPH_BIMODAL : slot + GLYPH_BIMODAL;
+    slot = (slot === GLYPH_UNRESOLVED ? GLYPH_MODERATE : slot) + GLYPH_BIMODAL;
   }
   if (!pos) return { letter: slot, axisLabel: "", meaning: "" };
 
   const pole = poleOf(slot);
   const marked = isBimodalSlot(slot);
   let meaning: string;
-  if (pole && marked) {
+  if (marked && (pole === null || pole === GLYPH_MODERATE)) {
+    // Balanced bimodal — loves both ends, no dominant side.
+    meaning = pos.letters[GLYPH_BIMODAL] ?? `${slot} — ${pos.axis.toLowerCase()} preference.`;
+  } else if (pole && marked) {
     const base = pos.letters[pole] ?? `${pole} — ${pos.axis.toLowerCase()} preference.`;
     meaning = `${base} You also love the other side of this one — it leans your way, but both work.`;
   } else {
-    const key = marked ? GLYPH_BIMODAL : slot;
-    meaning = pos.letters[key] ?? `${slot} — ${pos.axis.toLowerCase()} preference.`;
+    meaning = pos.letters[slot] ?? `${slot} — ${pos.axis.toLowerCase()} preference.`;
   }
   return { letter: slot, axisLabel: pos.axis, meaning };
 }
+
 
 /** All five explanations for a code (used by the auto-cycle on first view). */
 export function explainCode(type: PaletteType, code: string): LetterMeaning[] {
