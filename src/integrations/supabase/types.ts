@@ -2284,48 +2284,27 @@ export type Database = {
           vintage: number
         }[]
       }
-      save_rating_with_cascade:
-        | {
-            Args: {
-              p_bandwidth?: number
-              p_bottle_id: string
-              p_n_rated?: number
-              p_null_reason?: string
-              p_omega?: Json
-              p_predicted?: number
-              p_predicted_rank?: number
-              p_scan_id?: string
-              p_scan_wine_id?: string
-              p_source?: string
-              p_stars: number
-            }
-            Returns: {
-              demoted_tier: string
-              palate_version: number
-              previous_stars: number
-            }[]
-          }
-        | {
-            Args: {
-              p_bandwidth?: number
-              p_bottle_id: string
-              p_n_rated?: number
-              p_neighbor_support?: number
-              p_null_reason?: string
-              p_omega?: Json
-              p_predicted?: number
-              p_predicted_rank?: number
-              p_scan_id?: string
-              p_scan_wine_id?: string
-              p_source?: string
-              p_stars: number
-            }
-            Returns: {
-              demoted_tier: string
-              palate_version: number
-              previous_stars: number
-            }[]
-          }
+      save_rating_with_cascade: {
+        Args: {
+          p_bandwidth?: number
+          p_bottle_id: string
+          p_n_rated?: number
+          p_neighbor_support?: number
+          p_null_reason?: string
+          p_omega?: Json
+          p_predicted?: number
+          p_predicted_rank?: number
+          p_scan_id?: string
+          p_scan_wine_id?: string
+          p_source?: string
+          p_stars: number
+        }
+        Returns: {
+          demoted_tier: string
+          palate_version: number
+          previous_stars: number
+        }[]
+      }
       search_bottles_fuzzy: {
         Args: {
           lim?: number
