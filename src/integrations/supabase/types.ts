@@ -2247,13 +2247,21 @@ export type Database = {
       }
       restore_rating_and_benchmark: {
         Args: {
+          p_axis_deltas?: Json
+          p_bandwidth?: number
           p_bottle_id: string
+          p_n_rated?: number
+          p_neighbor_support?: number
+          p_null_reason?: string
+          p_omega?: Json
           p_predicted?: number
           p_stars: number
           p_tier: string
         }
         Returns: {
           benchmark_id: string
+          delta: number
+          outcome_id: string
           palate_version: number
         }[]
       }
