@@ -232,6 +232,28 @@ export function applyControls<T extends Priced>(items: T[], c: Controls): T[] {
   return [...out].sort(cmp);
 }
 
+/**
+ * Price sorts are TOTAL but the unpriced tail is never silent: it comes back as
+ * its own labelled group so a reader can tell "no price listed" from cheapest
+ * and from dearest. Non-price sorts return a single unlabelled group.
+ */
+export function applyControlsGrouped<T extends Priced>(
+  items: T[],
+  c: Controls,
+): { label: string | null; rows: T[] }[] {
+  const sorted = applyControls(items, c);
+  if (c.sort !== "price_asc" && c.sort !== "price_desc") {
+    return [{ label: null, rows: sorted }];
+  }
+  const priced = sorted.filter((x) => activeAmount(x, c.format) != null);
+  const unpriced = sorted.filter((x) => activeAmount(x, c.format) == null);
+  const groups: { label: string | null; rows: T[] }[] = [];
+  if (priced.length) groups.push({ label: null, rows: priced });
+  if (unpriced.length) groups.push({ label: "No price listed", rows: unpriced });
+  return groups;
+}
+
+
 function activeAmount(x: Priced, fmt: ServingFormat): number | null {
   if (fmt === "glass") return x.price_glass ?? null;
   return x.price_bottle ?? x.price_amount ?? null;
