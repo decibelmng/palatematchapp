@@ -1,6 +1,12 @@
 // Shared source of truth for which fingerprint-axis directions are
 // user-facing complaints, plus the surface-specific phrase tables.
 //
+// BANNED-VOCABULARY SWEEP — always run BOTH patterns (scripts/vocab-sweep.sh):
+//   A) string literals:  /("|'|`)[^"'`]*(nemesis|canon|veto|fingerprint|…)[^"'`]*("|'|`)/i
+//   B) JSX text nodes:   />[^<>{}"']*(nemesis|canon|veto|fingerprint|…)[^<>{}"']*</i
+// The first sweep anchored every pattern on a quote character and so missed
+// bare JSX text between tags. One pattern is never a complete sweep.
+//
 // Two surfaces need this vocabulary:
 //   1. reason.ts — a short verdict on one wine in a scan list
 //        ("Skip this one — it's the drying, grippy style …").
