@@ -4,6 +4,7 @@ import { z } from "zod";
 import { Crown, Skull, Star, Sparkles } from "lucide-react";
 import { AuthGate } from "@/components/AuthGate";
 import { YourRatingsList } from "@/components/YourRatingsList";
+import { displayWineName, wineNameMeta } from "@/lib/wine-name";
 import { useMyCanons } from "@/hooks/use-canon";
 import { useBottlesByIds, useRatings, bottleType } from "@/hooks/use-palate-data";
 import { WineTypeBadge } from "@/components/WineTypeBadge";
