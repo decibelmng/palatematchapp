@@ -12,7 +12,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { errorMessage } from "@/lib/error-message";
+import { friendlyError } from "@/lib/error-message";
 import type { ScanRow } from "./types";
 
 function median(values: number[]): number | null {
@@ -131,7 +131,7 @@ export function useScanOutcome({
           });
         } catch (e) {
           setChosen(previous);
-          toast.error(errorMessage(e, "Couldn't save what you ordered."));
+          toast.error(friendlyError(e, "Couldn't save what you ordered."));
         } finally {
           inFlight.current = false;
           setPending(false);
