@@ -1194,6 +1194,8 @@ export type Database = {
           created_at: string
           id: string
           note: string | null
+          photo_path: string | null
+          photo_shared: boolean
           stars: number
           updated_at: string
           user_id: string
@@ -1203,6 +1205,8 @@ export type Database = {
           created_at?: string
           id?: string
           note?: string | null
+          photo_path?: string | null
+          photo_shared?: boolean
           stars: number
           updated_at?: string
           user_id: string
@@ -1212,6 +1216,8 @@ export type Database = {
           created_at?: string
           id?: string
           note?: string | null
+          photo_path?: string | null
+          photo_shared?: boolean
           stars?: number
           updated_at?: string
           user_id?: string
@@ -1222,6 +1228,35 @@ export type Database = {
             columns: ["bottle_id"]
             isOneToOne: false
             referencedRelation: "bottles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      restaurant_saves: {
+        Row: {
+          created_at: string
+          id: string
+          restaurant_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          restaurant_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          restaurant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "restaurant_saves_restaurant_id_fkey"
+            columns: ["restaurant_id"]
+            isOneToOne: false
+            referencedRelation: "restaurants"
             referencedColumns: ["id"]
           },
         ]
@@ -1300,7 +1335,10 @@ export type Database = {
           id: string
           locale: string | null
           name: string
+          neighborhood: string | null
+          phone: string | null
           possible_duplicate: boolean
+          reservation_url: string | null
           venue_raw_text_last: string | null
         }
         Insert: {
@@ -1312,7 +1350,10 @@ export type Database = {
           id?: string
           locale?: string | null
           name: string
+          neighborhood?: string | null
+          phone?: string | null
           possible_duplicate?: boolean
+          reservation_url?: string | null
           venue_raw_text_last?: string | null
         }
         Update: {
@@ -1324,7 +1365,10 @@ export type Database = {
           id?: string
           locale?: string | null
           name?: string
+          neighborhood?: string | null
+          phone?: string | null
           possible_duplicate?: boolean
+          reservation_url?: string | null
           venue_raw_text_last?: string | null
         }
         Relationships: []
