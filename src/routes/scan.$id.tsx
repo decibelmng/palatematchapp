@@ -128,6 +128,8 @@ function ScanDetailPage() {
           controls={controls}
           setControls={setControls}
           currency={rank.currency}
+          scanId={s.id}
+
         />
       ) : (
         <p className="text-sub text-muted-foreground">Couldn't re-read this scan against your palate.</p>

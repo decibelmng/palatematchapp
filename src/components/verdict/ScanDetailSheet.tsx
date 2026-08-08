@@ -16,13 +16,20 @@ import { verdictLine, becauseLine } from "./reason";
  * post-meal prompt in scan history, not the ability to rate.
  */
 export function ScanDetailSheet({
-  row, scannedAt, onClose,
+  row, scannedAt, nearTie, onClose,
 }: {
   row: ScanRow | null;
   /** epoch ms of the scan; retained for prompt copy, not for gating rating */
   scannedAt: number | null;
+  /**
+   * One line for the enthusiast who taps in: another wine scored within 0.1 of
+   * this one. Deliberately NOT a card on the decision surface — the point of
+   * resolving the tie is that the person should not have to.
+   */
+  nearTie?: string | null;
   onClose: () => void;
 }) {
+
   const { data: ratings } = useRatings();
   const rate = useRate();
 
@@ -74,6 +81,10 @@ export function ScanDetailSheet({
             )}
           </div>
         </div>
+        {nearTie && (
+          <p className="mt-1 text-meta text-muted-foreground">{nearTie}</p>
+        )}
+
         <p className="mt-3 text-heading text-foreground leading-snug">{verdict}</p>
         <p className="mt-2 text-body text-muted-foreground">{because}</p>
         <p className="mt-3 text-sub">

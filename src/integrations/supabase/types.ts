@@ -201,6 +201,47 @@ export type Database = {
           },
         ]
       }
+      call_instrumentation: {
+        Row: {
+          created_at: string
+          id: string
+          is_catalog: boolean
+          list_size: number
+          palate_version: number | null
+          price_position: string
+          scan_id: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_catalog: boolean
+          list_size: number
+          palate_version?: number | null
+          price_position: string
+          scan_id?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_catalog?: boolean
+          list_size?: number
+          palate_version?: number | null
+          price_position?: string
+          scan_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_instrumentation_scan_id_fkey"
+            columns: ["scan_id"]
+            isOneToOne: false
+            referencedRelation: "scans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       canon_wines: {
         Row: {
           bottle_id: string
