@@ -1,6 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { refingerprintCuveeByBottleId } from "@/lib/fingerprint-worker";
+import {
+  refingerprintCuveeByBottleId,
+  MAX_FINGERPRINT_ATTEMPTS,
+} from "@/lib/fingerprint-worker";
 
 // Self-healing: the first time anyone rates a bottle whose cuvée has never
 // been re-scored, that cuvée gets refingerprinted against the calibrated
@@ -29,5 +32,53 @@ export const refreshBottleFingerprint = createServerFn({ method: "POST" })
       return { skipped: true, reason: result.reason };
     } catch (e: any) {
       return { skipped: true, reason: e?.message ?? String(e) };
+    }
+  });
+
+// App-open sweep. A rating fires the self-heal exactly once, so a wine whose
+// single attempt failed used to stay unscored forever. On open we retry the
+// signed-in user's own rated wines that still have no style reading.
+//
+// Caps: 3 bottles per session (gateway spend), and the worker's own retry
+// ceiling of 3 attempts per row, so a permanently unscoreable wine stops
+// costing anything.
+export const sweepMyUnscoredBottles = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const PER_SESSION = 3;
+    try {
+      const { data: rated } = await context.supabase
+        .from("ratings")
+        .select("bottle_id")
+        .eq("user_id", context.userId);
+      const ids = Array.from(new Set((rated ?? []).map((r) => r.bottle_id)));
+      if (ids.length === 0) return { attempted: 0, ok: 0, results: [] as string[] };
+
+      const { supabaseAdmin } = await import(
+        "@/integrations/supabase/client.server"
+      );
+      const { data: pending } = await supabaseAdmin
+        .from("bottles")
+        .select("id,fingerprint_attempts")
+        .in("id", ids)
+        .is("refingerprinted_at", null)
+        .lt("fingerprint_attempts", MAX_FINGERPRINT_ATTEMPTS)
+        .order("fingerprint_attempts", { ascending: true })
+        .limit(PER_SESSION);
+
+      const results: string[] = [];
+      let ok = 0;
+      for (const row of pending ?? []) {
+        try {
+          const r = await refingerprintCuveeByBottleId(row.id, supabaseAdmin);
+          if ("ok" in r) { ok++; results.push(`${row.id}: ok`); }
+          else results.push(`${row.id}: ${r.reason}`);
+        } catch (e: any) {
+          results.push(`${row.id}: ${e?.message ?? String(e)}`);
+        }
+      }
+      return { attempted: (pending ?? []).length, ok, results };
+    } catch (e: any) {
+      return { attempted: 0, ok: 0, results: [e?.message ?? String(e)] };
     }
   });
