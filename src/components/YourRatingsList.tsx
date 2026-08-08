@@ -162,14 +162,20 @@ export function YourRatingsList() {
                 >
                   <div className="flex items-start gap-2 flex-wrap">
                     <p className="text-sm font-medium leading-snug line-clamp-2 group-hover:underline break-words">
-                      {c.name}
+                      {title}
                     </p>
-                    <BenchmarkTierBadges benchmarks={canons ?? []} bottleIds={c.bottleIds} />
+                    {/* Aggregated rows have no per-vintage toggle buttons, so the
+                        badge is their only status indicator. Single-vintage rows
+                        get exactly one control: the toggle button below. */}
+                    {aggregated && (
+                      <BenchmarkTierBadges benchmarks={canons ?? []} bottleIds={c.bottleIds} />
+                    )}
                   </div>
 
                   <p className="text-xs text-muted-foreground mt-0.5 break-words">
-                    {[c.producer, c.region].filter(Boolean).join(" · ")}
+                    {meta}
                   </p>
+
                   {vl && (
                     <p className="text-meta text-muted-foreground/80 mt-0.5 break-words">
                       {aggregated ? `${vl}` : `Vintage ${vl}`}
