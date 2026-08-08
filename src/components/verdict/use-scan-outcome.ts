@@ -48,6 +48,22 @@ export function useScanOutcome({
   const inFlight = useRef(false);
   const [pending, setPending] = useState(false);
 
+  // Reopening a saved scan should show the answer already given, not a blank
+  // control that would overwrite it.
+  useEffect(() => {
+    if (!scanId) return;
+    let live = true;
+    void (async () => {
+      const { data } = await supabase
+        .from("scan_outcomes")
+        .select("chosen_bottle_id")
+        .eq("scan_id", scanId)
+        .maybeSingle();
+      if (live && data?.chosen_bottle_id) setChosen(data.chosen_bottle_id);
+    })();
+    return () => { live = false; };
+  }, [scanId]);
+
   const listMedian = useMemo(
     () => median(rows.map((r) => r.price_amount ?? NaN)),
     [rows],
