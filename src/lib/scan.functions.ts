@@ -465,7 +465,33 @@ export const finalizeScan = createServerFn({ method: "POST" })
         } catch { /* single-line C2 failures are best-effort */ }
       }
     }
+    // ---- Persist predicted_stars per scan line ----
+    // Written AFTER the C2 backfill so on-demand bottles are included. This is
+    // the denominator for accuracy: without it we can only see the wines
+    // someone chose to rate, never the ones we offered and they walked past.
+    // Scores stay computed-on-read everywhere they are *shown*; this column is
+    // an audit record of what we said at finalize time, not a served value.
+    try {
+      const ids = (rows ?? [])
+        .map((r: any) => r.matched_bottle_id)
+        .filter((id: string | null): id is string => !!id);
+      if (ids.length > 0) {
+        const { predictForBottlesCore } = await import("@/lib/predict.functions");
+        const preds = await predictForBottlesCore(supabase as any, userId, ids);
+        for (const r of rows as any[]) {
+          if (!r.matched_bottle_id) continue;
+          const p = preds.get(r.matched_bottle_id);
+          if (!p || p.predicted === null) continue;
+          r.predicted_stars = p.predicted;
+          await supabase.from("scan_wines")
+            .update({ predicted_stars: p.predicted })
+            .eq("id", r.id);
+        }
+      }
+    } catch { /* an unmeasured scan must never block the user's list */ }
+
     const winesForLog = (rows ?? []).map((r: any) => ({
+
       producer: r.producer, wine_name: r.cuvee, vintage: r.vintage,
       region: r.region, grape: r.grape, price: r.price, type: r.wine_type,
       fp_resolved: r.fp, fp_source: r.fp_source, matched_bottle_id: r.matched_bottle_id,
