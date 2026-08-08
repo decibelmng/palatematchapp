@@ -1,30 +1,26 @@
-// Single friends-feed card.
+// A friend's rating, compact. Three of these fit a 390px viewport.
 //
-//   friend avatar · name · "rated a wine" · time · palate archetype
-//   friend's stars (small, top-right)
-//   wine name (link) — grape · region · price band
-//   ── match-for-you band ─────────────────
-//   headline sentence · reason  (no naked decimal score)
-//   [ caveat if thin ]
-//   [ Want to try ] [ Rate it ]
+//   name · rated · time                          their stars
+//   wine title (never truncated, never repeating producer/vintage)
+//   [ match line — only when it's actually a strong match ]
+//   [ Rate it ]  [bookmark]
 //
 // Prediction runs the shared `recommend()` engine — read-only. No writes.
 import { useMemo } from "react";
 import { Link } from "@tanstack/react-router";
-import { Star, Bookmark, BookmarkCheck } from "lucide-react";
+import { Star } from "lucide-react";
 import { recommend, type BottleFp, type RatedFp, type WineType } from "@/lib/recommender";
 import { fpOf } from "@/lib/predict-core";
 import { useRatings, useBottlesByIds, bottleToFp, bottleType } from "@/hooks/use-palate-data";
-import { useAddToWishlist, useRemoveFromWishlist, useWishlistIds } from "@/hooks/use-wishlist";
 import {
   reasonForPrediction, calibrationPct, calibrationBand, confidenceCopy, relativeTime,
 } from "@/lib/feed-reason";
 import type { FeedItem } from "@/lib/feed.functions";
-import { displayNameFor, initialsFor as sharedInitials } from "@/lib/user-display";
+import { displayNameFor, initialsFor } from "@/lib/user-display";
+import { FeedCardShell, WineLine, MatchLine, RateItButton, WishlistIconButton } from "./feed/primitives";
 
-function initialsFor(name: string | null | undefined, fallback: string): string {
-  return sharedInitials({ display_name: name, username: fallback });
-}
+/** Above this, the match is worth calling out. Below it, it's noise. */
+const CALLOUT_FLOOR = 4.0;
 
 function StarsInline({ n }: { n: number }) {
   return (
@@ -44,7 +40,6 @@ function StarsInline({ n }: { n: number }) {
 export function FeedCard({ item }: { item: FeedItem }) {
   const { friend, bottle } = item;
 
-  // Viewer's rated wines → same-type anchor set.
   const { data: viewerRatings } = useRatings();
   const viewerRatedIds = useMemo(
     () => (viewerRatings ?? []).map((r) => r.bottle_id),
@@ -57,7 +52,6 @@ export function FeedCard({ item }: { item: FeedItem }) {
     if (t === "white" || t === "sparkling" || t === "rose" || t === "dessert") return t;
     return "red";
   })();
-  const paletteKind: "red" | "white" = (bType === "red" || bType === "dessert") ? "red" : "white";
 
   const ratedSameType: RatedFp[] = useMemo(() => {
     if (!viewerRatings || !viewerBottles) return [];
@@ -74,13 +68,10 @@ export function FeedCard({ item }: { item: FeedItem }) {
     return out;
   }, [viewerRatings, viewerBottles, bType]);
 
-  const nRatedThisType = ratedSameType.length;
-  const calPct = calibrationPct(nRatedThisType);
-  const band = calibrationBand(calPct);
+  const band = calibrationBand(calibrationPct(ratedSameType.length));
 
-  // Only score when the bottle is calibrated. C2 gives every scanned wine a
-  // fingerprint; if a friend's wine is mid-flight (or was inserted flat), we
-  // render "not scored yet" instead of a fake number.
+  // Only score a calibrated bottle. fpOf omits axes it can't read, so an
+  // unread wine is never mistaken for a middling one.
   const bottleCalibrated =
     bottle.fp_fresh != null && bottle.fp_acid != null && bottle.fp_body != null;
 
@@ -88,11 +79,7 @@ export function FeedCard({ item }: { item: FeedItem }) {
     if (!bottleCalibrated || ratedSameType.length < 2) return null;
     const cand: BottleFp = {
       id: bottle.id, name: bottle.name, producer: bottle.producer, region: bottle.region,
-      type: bType,
-      // 0.5 is a real, central style position — using it for an axis we
-      // never read makes an unread wine indistinguishable from a genuinely
-      // middling one. fpOf omits what it can't read instead.
-      fp: fpOf(bottle),
+      type: bType, fp: fpOf(bottle),
     };
     const [rec] = recommend(ratedSameType, [cand]);
     if (!rec) return null;
@@ -102,116 +89,46 @@ export function FeedCard({ item }: { item: FeedItem }) {
     return { predicted: rec.predicted, reason };
   }, [bottleCalibrated, bottle, bType, ratedSameType]);
 
-  const copy = scoring
-    ? confidenceCopy(band, scoring.predicted, bType)
-    : { headline: bottleCalibrated ? "Rate more to get a prediction" : "Not scored yet", caveat: null };
-
-  // Tone is a background tint only; words always use --text (foreground).
-  // (CLAUDE.md: amber is a non-text token; no raw Tailwind color families.)
-  const bandTone =
-    scoring == null
-      ? "bg-muted/40 text-muted-foreground"
-      : scoring.predicted >= 4
-      ? "bg-[color-mix(in_oklab,var(--good)_12%,transparent)] text-foreground"
-      : scoring.predicted >= 3
-      ? "bg-[color-mix(in_oklab,var(--amber)_10%,transparent)] text-foreground"
-      : "bg-muted/60 text-foreground";
-
-  const wishIds = useWishlistIds();
-  const inWishlist = wishIds.has(bottle.id);
-  const add = useAddToWishlist();
-  const remove = useRemoveFromWishlist();
-  const busy = add.isPending || remove.isPending;
-
-  const paletteCode = paletteKind === "red" ? friend.palate_code_red : friend.palate_code_white;
+  const strong = !!scoring && scoring.predicted >= CALLOUT_FLOOR;
+  const headline = scoring ? confidenceCopy(band, scoring.predicted, bType).headline : null;
 
   return (
-    <article className="rounded-lg border border-border bg-card p-4">
-      <header className="flex items-start justify-between gap-2">
+    <FeedCardShell accent="friend">
+      <header className="flex items-center justify-between gap-2">
         <Link
           to="/u/$username"
           params={{ username: friend.username }}
-          className="flex items-center gap-2 min-w-0"
+          className="flex min-w-0 items-center gap-2"
         >
-          <div className="h-9 w-9 rounded-full border border-border bg-muted/50 flex items-center justify-center text-xs font-semibold shrink-0">
-            {initialsFor(friend.display_name, friend.username)}
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-muted/50 text-xs font-semibold">
+            {initialsFor({ display_name: friend.display_name, username: friend.username })}
           </div>
-          <div className="min-w-0">
-            <div className="text-sm font-medium truncate">
-              {displayNameFor(friend)}
-            </div>
-            <div className="text-xs text-muted-foreground truncate">
-              rated a wine · {relativeTime(item.created_at)} · <span className="font-mono">{paletteCode}</span>
-            </div>
-          </div>
+          <span className="truncate text-xs">
+            <span className="font-medium text-foreground">{displayNameFor(friend)}</span>
+            <span className="text-muted-foreground"> rated · {relativeTime(item.created_at)}</span>
+          </span>
         </Link>
-        <div className="shrink-0 text-right">
-          <StarsInline n={item.stars} />
-          <div className="text-meta uppercase tracking-label text-muted-foreground mt-0.5">
-            their rating
-          </div>
-        </div>
+        <StarsInline n={item.stars} />
       </header>
 
-      <Link
-        to="/wine/$id"
-        params={{ id: bottle.id }}
-        className="mt-3 block"
-      >
-        <div className="text-base font-medium leading-snug line-clamp-2">
-          {bottle.producer ? `${bottle.producer} · ` : ""}{bottle.name}
-          {bottle.vintage ? ` ${bottle.vintage}` : ""}
-        </div>
-        <div className="mt-0.5 text-xs text-muted-foreground truncate">
-          {[bottle.grape, bottle.region, bottle.price_band].filter(Boolean).join(" · ")}
-        </div>
-      </Link>
+      <div className="mt-2">
+        <WineLine bottle={bottle} />
+      </div>
 
       {item.note && (
-        <p className="mt-2 text-sm text-foreground/90 italic border-l-2 border-border pl-3">
+        <p className="mt-1.5 line-clamp-2 border-l-2 border-border pl-2 text-xs italic text-foreground/90">
           "{item.note}"
         </p>
       )}
 
-      {/* Recommendation as a sentence — never a naked decimal score
-          (CLAUDE.md: no decimal readout, no percentage match). */}
-      <div className={`mt-3 rounded-md p-3 ${bandTone}`}>
-        <div className="text-sm font-medium">{copy.headline}</div>
-        {scoring && (
-          <div className="text-xs opacity-90 mt-0.5">{scoring.reason}</div>
-        )}
-        {copy.caveat && (
-          <div className="mt-2 text-xs text-foreground dark:text-foreground">
-            {copy.caveat}
-          </div>
-        )}
-      </div>
+      {strong && headline && (
+        <MatchLine text={`${headline} — ${scoring!.reason}`} strong />
+      )}
 
-      <div className="mt-3 flex gap-2">
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => {
-            if (inWishlist) remove.mutate({ bottle_id: bottle.id });
-            else add.mutate({ bottle_id: bottle.id, source_context: "feed" });
-          }}
-          className={`flex-1 inline-flex items-center justify-center gap-1.5 rounded-md border px-3 py-2 text-sm font-medium transition-colors disabled:opacity-60 ${
-            inWishlist
-              ? "border-primary/40 bg-primary/10 text-primary"
-              : "border-border bg-background hover:bg-accent"
-          }`}
-        >
-          {inWishlist ? <BookmarkCheck size={14} /> : <Bookmark size={14} />}
-          {inWishlist ? "Saved" : "Want to try"}
-        </button>
-        <Link
-          to="/wine/$id"
-          params={{ id: bottle.id }}
-          className="flex-1 inline-flex items-center justify-center rounded-md bg-primary text-primary-foreground px-3 py-2 text-sm font-medium"
-        >
-          Rate it
-        </Link>
+      <div className="mt-2 flex items-center gap-2">
+        <RateItButton bottleId={bottle.id} />
+        <WishlistIconButton bottleId={bottle.id} />
       </div>
-    </article>
+    </FeedCardShell>
   );
 }
