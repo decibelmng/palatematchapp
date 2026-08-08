@@ -69,3 +69,26 @@ describe("predict-core", () => {
     }
   });
 });
+
+describe("neighbor support", () => {
+  it("counts rated wines within one bandwidth, and is null when no prediction was possible", () => {
+    // A candidate sitting inside the low-tannin cluster stands on real evidence.
+    const near = predictStars(rated, row("t", { fp_tannin: 0.25, fp_body: 0.35 }));
+    expect(near.neighborSupport).not.toBeNull();
+    expect(near.neighborSupport!).toBeGreaterThanOrEqual(1);
+    expect(near.neighborSupport!).toBeLessThanOrEqual(rated.length);
+
+    // No prediction => no support figure to report.
+    const white = predictStars(rated, row("w", { type: "white" }));
+    expect(white.predicted).toBeNull();
+    expect(white.neighborSupport).toBeNull();
+  });
+
+  it("reports less support for a candidate extrapolated away from every rated wine", () => {
+    const inCluster = predictStars(rated, row("t", { fp_tannin: 0.25, fp_body: 0.35 }));
+    const far = predictStars(rated, row("t", {
+      fp_tannin: 0.55, fp_body: 0.55, fp_fresh: 0.95, fp_oak: 0.95, fp_savory: 0.95,
+    }));
+    expect((far.neighborSupport ?? 0)).toBeLessThanOrEqual(inCluster.neighborSupport ?? 0);
+  });
+});
