@@ -248,7 +248,7 @@ export function useRate() {
   const session = useSession();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: async ({ bottleId, stars, onCascadeConfirm }: RateInput): Promise<RateResult> => {
+    mutationFn: async ({ bottleId, stars, onCascadeConfirm, source, scanId, scanWineId, predictedRank }: RateInput): Promise<RateResult> => {
       if (!session) throw new Error("Not signed in");
 
       // Check whether this rating change would trigger a benchmark demote.
