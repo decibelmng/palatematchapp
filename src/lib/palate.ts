@@ -194,10 +194,10 @@ export function computeCode(rated: RatedBottle[], axes: AxisDef[]): { code: stri
       bimodal = lowPole >= 2 && highPole >= 2;
     }
 
-    // Bimodality QUALIFIES the mean, it does not erase it. If the weighted mean
-    // clears a threshold the pole letter is still emitted, with the marker
-    // appended ("G±" = mostly grippy, with a silky side). Only a mid-range mean
-    // plus a firing bimodal test yields the bare marker.
+    // Bimodality QUALIFIES the letter, it never replaces it. A mean that clears
+    // a threshold keeps its pole letter with the marker appended ("G±" = mostly
+    // grippy, with a silky side). A mid-range mean keeps N and takes the marker
+    // ("N±" = genuinely both ways).
     let letter: string;
     let descriptor: string;
     if (mean <= 0.42) {
@@ -210,7 +210,7 @@ export function computeCode(rated: RatedBottle[], axes: AxisDef[]): { code: stri
 
     if (bimodal) {
       if (letter === GLYPH_MODERATE) {
-        letter = GLYPH_BIMODAL;
+        letter = GLYPH_MODERATE + GLYPH_BIMODAL;
         descriptor = `both ${axisDef.lowName} and ${axisDef.highName}`;
       } else {
         const otherSide = letter === axisDef.low ? axisDef.highName : axisDef.lowName;
@@ -218,6 +218,7 @@ export function computeCode(rated: RatedBottle[], axes: AxisDef[]): { code: stri
         descriptor = `mostly ${descriptor}, with a ${otherSide} side`;
       }
     }
+
 
     return { ...base, letter, descriptor, resolved: true, value: mean, bimodal };
   });
