@@ -131,7 +131,7 @@ export function ScanDetailSheet({
                     stars,
                     source: "scan_list",
                     scanId: scanId ?? null,
-                    scanWineId: (r.scanned as { id?: string | null }).id ?? null,
+                    scanWineId: r.scanned.scan_wine_id ?? null,
                     predictedRank: rank ?? null,
                   },
                   {

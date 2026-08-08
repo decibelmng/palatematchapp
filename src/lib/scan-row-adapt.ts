@@ -23,6 +23,7 @@ export function storedRowToResolved(w: StoredScanRow): ResolvedWine {
     matched_bottle_id: w.matched_bottle_id,
     matched_bottle_name: null,
     match_score: w.match_score ?? 0,
+    scan_wine_id: w.id ?? null,
   };
 }
 

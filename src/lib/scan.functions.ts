@@ -71,6 +71,9 @@ export type ResolvedWine = ScannedWine & {
   matched_bottle_name: string | null;
   match_score: number;
   match_reasons?: string[];
+  /** Present when the row came from persisted scan_wines — lets a rating link
+   *  back to the exact scan line it was made from. */
+  scan_wine_id?: string | null;
 };
 
 const PROMPT = `You are reading a photo of a restaurant wine list. Return ONLY valid JSON — no prose, no markdown fences. Read EVERY wine visible on the list.
