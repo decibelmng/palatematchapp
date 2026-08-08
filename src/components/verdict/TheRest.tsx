@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { ListControls } from "@/components/ListControls";
-import { applyControls, DEFAULT_CONTROLS, type Controls } from "@/lib/list-controls";
+import { applyControlsGrouped, DEFAULT_CONTROLS, type Controls } from "@/lib/list-controls";
 import type { CurrencyCode } from "@/lib/currency";
 import type { ScanRow } from "./types";
 import { ResultRow, SkeletonRow } from "./ResultRow";
