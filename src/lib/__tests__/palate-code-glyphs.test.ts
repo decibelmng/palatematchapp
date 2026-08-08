@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeCode, describeCode, RED_AXES, splitCode, slotsOf, isBimodalSlot, poleOf } from "@/lib/palate";
+import { computeCode, describeCode, parseCode, RED_AXES, WHITE_AXES, splitCode, slotsOf, isBimodalSlot, poleOf } from "@/lib/palate";
 import { explainLetter } from "@/lib/palate-code-letters";
 
 const flat = { body: 0.5, fruit_char: 0.5, tannin: 0.5, acidity: 0.5, sweet: 0 };
@@ -60,5 +60,18 @@ describe("palate code glyphs", () => {
   it("describeCode reads as a sentence with the qualifier in place", () => {
     const { letters } = computeCode(grippyBimodal, RED_AXES);
     expect(describeCode(letters)).toContain("mostly grippy, with a silky side");
+  });
+});
+
+describe("parseCode (axis-aware)", () => {
+  it("disambiguates a bare marker that follows a pole letter", () => {
+    // Owner's real red code: bold; both fruit styles; mostly grippy; crisp; dry.
+    expect(parseCode("B±G±CD", RED_AXES)).toEqual(["B", "±", "G±", "C", "D"]);
+    // Same characters, different reading — only the alphabet tells them apart.
+    expect(parseCode("B±FG±CD", RED_AXES)).toEqual(["B±", "F", "G±", "C", "D"]);
+    expect(parseCode("LFS±RD", RED_AXES)).toEqual(["L", "F", "S±", "R", "D"]);
+    expect(parseCode("?????", RED_AXES)).toEqual(["?", "?", "?", "?", "?"]);
+    expect(parseCode("·····", WHITE_AXES)).toEqual(["?", "?", "?", "?", "?"]);
+    expect(parseCode("LFU±CD", WHITE_AXES)).toEqual(["L", "F", "U±", "C", "D"]);
   });
 });
