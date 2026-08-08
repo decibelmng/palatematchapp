@@ -80,22 +80,35 @@ export function TheRest({
       {filtered.length === 0 ? (
         <p className="mt-4 text-sub text-muted-foreground">No wines match those filters.</p>
       ) : (
-        <ul className="mt-3 divide-y divide-border">
-          {visible.map((r) => (
-            <ResultRow
-              key={r.key}
-              row={r}
-              onOpen={() => onOpen(r.key)}
-              ordered={!!orderedBottleId && orderedBottleId === r.ranked.bottle.id}
-              onOrdered={onOrdered ? () => onOrdered(r) : undefined}
-              orderPending={orderPending}
-              canOrder={canOrder}
-            />
+        <div className="mt-3">
+          {visibleGroups.map((g, gi) => (
+            <div key={g.label ?? `g-${gi}`}>
+              {g.label && (
+                <p className="mt-4 mb-1 text-label uppercase tracking-label text-muted-foreground">
+                  {g.label}
+                </p>
+              )}
+              <ul className="divide-y divide-border">
+                {g.rows.map((r) => (
+                  <ResultRow
+                    key={r.key}
+                    row={r}
+                    onOpen={() => onOpen(r.key)}
+                    ordered={!!orderedBottleId && orderedBottleId === r.ranked.bottle.id}
+                    onOrdered={onOrdered ? () => onOrdered(r) : undefined}
+                    orderPending={orderPending}
+                    canOrder={canOrder}
+                  />
+                ))}
+                {gi === visibleGroups.length - 1 &&
+                  Array.from({ length: pendingSkeletons }).map((_, i) => (
+                    <SkeletonRow key={`sk-${i}`} />
+                  ))}
+              </ul>
+            </div>
           ))}
-          {Array.from({ length: pendingSkeletons }).map((_, i) => (
-            <SkeletonRow key={`sk-${i}`} />
-          ))}
-        </ul>
+        </div>
+
       )}
       {hidden > 0 && (
         <button
