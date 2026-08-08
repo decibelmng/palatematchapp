@@ -62,7 +62,7 @@ describe("missing-axis convention", () => {
     // only what was compared, so the result is a per-axis average, not a sum
     // that shrinks every time an axis drops out.
     const omega = Object.fromEntries(RAX.map((k) => [k, 1])) as Record<FpKey, number>;
-    const active = RAX;
+    const active = [...RAX];
     const base = Object.fromEntries(RAX.map((k) => [k, 0.5])) as FpVec;
     const offFull = Object.fromEntries(RAX.map((k) => [k, 0.6])) as FpVec;
     const offPartial = { ...offFull };
