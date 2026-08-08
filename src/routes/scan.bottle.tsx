@@ -31,6 +31,7 @@ import { toast } from "sonner";
 import { friendlyError } from "@/lib/error-message";
 import { prepareImageForScan } from "@/lib/image-downscale";
 import { takePendingCapture } from "@/lib/scan-handoff";
+import { composeBottleName } from "@/lib/wine-name";
 
 
 export const Route = createFileRoute("/scan/bottle")({
@@ -296,7 +297,14 @@ function BottleScan() {
   async function fingerprintAndAdd() {
     if (!extracted || onDemandBusy) return;
     const producer = extracted.producer?.trim();
-    const name = (extracted.wine_name ?? extracted.region ?? "").trim();
+    // No cuvée on the label is normal (producer + appellation wines). Never
+    // store the region as the name — composeBottleName resolves it.
+    const name = composeBottleName({
+      producer: producer ?? "",
+      cuvee: extracted.wine_name ?? null,
+      region: extracted.region ?? null,
+      grape: extracted.grape ?? null,
+    });
     if (!producer || !name) {
       toast.error("Producer and wine/appellation are required.");
       return;
