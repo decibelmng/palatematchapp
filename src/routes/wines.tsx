@@ -108,9 +108,10 @@ function BenchmarkList({ tier }: { tier: "canon" | "nemesis" }) {
         return (
           <li key={r.id} className="py-3">
             <Link to="/wine/$id" params={{ id: b.id }} className="block group">
-              <p className="text-sm font-medium leading-snug line-clamp-2 group-hover:underline">{b.name}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {[b.producer, b.region, b.grape, b.vintage].filter(Boolean).join(" · ")}
+              <p className="text-sm font-medium leading-snug line-clamp-2 group-hover:underline break-words">{displayWineName(b)}</p>
+              <p className="text-xs text-muted-foreground mt-0.5 break-words">
+                {[wineNameMeta(b, displayWineName(b)), b.grape, b.vintage].filter(Boolean).join(" · ")}
+
               </p>
               <div className="mt-1"><WineTypeBadge type={b.type} /></div>
             </Link>
