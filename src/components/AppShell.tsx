@@ -9,6 +9,7 @@ import { useMyProfile, useFriendships } from "@/hooks/use-friends";
 import { useLastSeenPing } from "@/hooks/use-last-seen";
 import { useAutoRedeemInvite } from "@/hooks/use-auto-redeem-invite";
 import { markScanUnlockSeen } from "@/lib/friends.functions";
+import { sweepMyUnscoredBottles } from "@/lib/fingerprint-refresh.functions";
 import { useCalibrationState } from "@/hooks/use-calibration";
 import { useFeedActivity, hasFreshActivity } from "@/hooks/use-feed";
 import { ScanChooserSheet } from "@/components/ScanChooserSheet";
