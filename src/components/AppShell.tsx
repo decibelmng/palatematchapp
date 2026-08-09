@@ -14,7 +14,7 @@ import { useCalibrationState } from "@/hooks/use-calibration";
 import { useFeedActivity, hasFreshActivity } from "@/hooks/use-feed";
 import { ScanChooserSheet } from "@/components/ScanChooserSheet";
 import { useOnline } from "@/hooks/use-online";
-import { usePalateCodeSync } from "@/hooks/use-palate-code-sync";
+import { usePalateCodeRefresh } from "@/hooks/use-palate-data";
 
 // The four primary destinations. Scan is the raised center button, so only
 // three flat tabs render on either side of it. Everyone gets the same nav
@@ -130,9 +130,9 @@ export function AppShell({ children }: { children: ReactNode }) {
   const { data: profile } = useMyProfile();
   useLastSeenPing((profile as { id?: string } | undefined)?.id);
   useAutoRedeemInvite();
-  // Keep the stored palate code in step with the live computation app-wide,
-  // not only when /palate is open.
-  usePalateCodeSync();
+  // Server-side recompute once per app open: derived from the ratings rows
+  // themselves, not from whatever this screen happened to have cached.
+  usePalateCodeRefresh(Boolean(profile));
   useUnscoredSweep(Boolean(profile));
 
   // Feed is the 4th tab for EVERYONE — a verified somm is still a drinker and
