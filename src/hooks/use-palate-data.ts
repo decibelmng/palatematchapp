@@ -347,7 +347,26 @@ export function useRate() {
         p_neighbor_support: p.neighborSupport,
         p_axis_deltas: p.axisDeltas,
       });
-      if (error) throw error;
+      if (error) {
+        // Every generic "Couldn't save rating" toast now has a queryable row
+        // behind it. The failure that produced this line (an ambiguous `delta`
+        // inside save_rating_with_cascade) was invisible for exactly this reason.
+        await logWriteFailure({
+          table: "ratings",
+          operation: "upsert",
+          error,
+          userId: session.user.id,
+          context: {
+            rpc: "save_rating_with_cascade",
+            bottle_id: bottleId, stars, source: source ?? "other",
+            scan_id: scanId ?? null, scan_wine_id: scanWineId ?? null,
+            predicted_rank: predictedRank ?? null,
+            null_reason: p.nullReason,
+          },
+        });
+        throw error;
+      }
+
 
 
       const row = Array.isArray(data) ? data[0] : data;
