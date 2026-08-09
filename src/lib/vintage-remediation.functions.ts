@@ -13,6 +13,11 @@
  *
  * prediction_outcomes is append-only by design: a repoint writes a superseding
  * row, it never edits or deletes the original.
+ *
+ * A scanned line is evidence of what a list offered, never proof of what was
+ * poured. So a mismatch is a QUESTION, not a correction: the owner picks which
+ * bottle they drank, and "leave it" is a real answer. Only the "scanned year"
+ * answer moves data; the other two stamp the line and touch nothing else.
  */
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -179,4 +184,37 @@ export const vintageConfirmRepoint = createServerFn({ method: "POST" })
     }
 
     return { targetId, created, movedRating, benchmarkRestored };
+  });
+
+
+/**
+ * The two answers that move NOTHING. Recorded so the card stops asking, and so
+ * the history says which way it was settled.
+ *
+ * - "current": the rating is on the bottle they drank; the list simply offered a
+ *   different year. Silver Oak's 2006 is this case.
+ * - "leave": undecided. A rating on a plausible bottle beats a rating moved on a
+ *   guess, so this is the default and it is preserved as such.
+ */
+export const vintageSettleWithoutMoving = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((raw: { scanWineId: string; choice: "current" | "leave" }) => raw)
+  .handler(async ({ context, data }) => {
+    const { assertAdmin, buildQueue, stampReason } = await import("./vintage-remediation.server");
+    await assertAdmin(context.userId);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const item = (await buildQueue(supabaseAdmin)).find((i) => i.scan_wine_id === data.scanWineId);
+    if (!item) throw new Error("That line no longer reads as a vintage mismatch — reload the queue.");
+    if (item.stars != null && item.user_id !== context.userId) {
+      throw new Error("That rating belongs to another person. Their judgment does not move from here.");
+    }
+    await stampReason(
+      supabaseAdmin,
+      item.scan_wine_id,
+      data.choice === "current"
+        ? `remediation:vintage_kept:${item.wrong_vintage}_confirmed_poured`
+        : `remediation:vintage_undecided:${item.wrong_vintage}_vs_${item.scanned_vintage}`,
+    );
+    // No rating, benchmark, prediction, or match target is written. Deliberate.
+    return { moved: false as const, choice: data.choice };
   });
