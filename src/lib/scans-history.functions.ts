@@ -45,7 +45,11 @@ export type ScanListItem = {
   front_thumb_url: string | null;
   bottle_label: string | null; // "Producer — Cuvee, Vintage" or similar
   rated_stars: number | null;
+  /** Wines the person marked as ordered on this scan that they have not rated
+   *  yet. Facts only — the prompt names the wine instead of guessing. */
+  ordered_unrated: { bottle_id: string; name: string }[];
 };
+
 
 export const listUserScans = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
