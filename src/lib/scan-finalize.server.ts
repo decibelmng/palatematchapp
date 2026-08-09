@@ -197,3 +197,70 @@ export async function finalizeScanCore(
 
     return { status, scan_log_id, restaurant_id: restaurantId };
 }
+
+/**
+ * Finalize a scan only if it is stuck: status "processing" while every batch has
+ * reported. Returns what it did so callers can log/report rather than guess.
+ */
+export async function reconcileOne(
+  supabase: SupabaseClient,
+  userId: string,
+  scanId: string,
+): Promise<{ reconciled: boolean; status: string | null }> {
+  const { data: scan } = await supabase
+    .from("scans")
+    .select("status,batch_count,batches_done,batches_failed")
+    .eq("id", scanId)
+    .maybeSingle();
+  if (!scan) return { reconciled: false, status: null };
+  if (scan.status !== "processing") return { reconciled: false, status: scan.status as string };
+  const done = (scan.batches_done as number | null) ?? 0;
+  const total = (scan.batch_count as number | null) ?? 0;
+  const failed = ((scan.batches_failed as number[] | null) ?? []).length;
+  // Nothing reported yet and nothing failed: still genuinely in flight.
+  if (done + failed < total || total === 0) return { reconciled: false, status: "processing" };
+  const res = await finalizeScanCore(supabase, userId, scanId);
+  return { reconciled: true, status: res.status };
+}
+
+/**
+ * Scheduled sweep. Finds scans left in "processing" past `olderThanMinutes`
+ * whose batches all reported, and finalizes them. Bounded per run so one bad
+ * scan can't stall the queue and a burst can't run unbounded.
+ */
+export async function reconcileStuckScans(
+  supabase: SupabaseClient,
+  opts: { olderThanMinutes?: number; limit?: number } = {},
+): Promise<{ examined: number; reconciled: number; results: Array<{ scan_id: string; status: string | null; error?: string }> }> {
+  const olderThan = opts.olderThanMinutes ?? 10;
+  const limit = opts.limit ?? 25;
+  const cutoff = new Date(Date.now() - olderThan * 60_000).toISOString();
+  const { data: stuck, error } = await supabase
+    .from("scans")
+    .select("id,user_id,batch_count,batches_done,batches_failed")
+    .eq("status", "processing")
+    .lt("updated_at", cutoff)
+    .order("updated_at", { ascending: true })
+    .limit(limit);
+  if (error) throw new Error(error.message);
+
+  const results: Array<{ scan_id: string; status: string | null; error?: string }> = [];
+  let reconciled = 0;
+  for (const s of stuck ?? []) {
+    const total = (s.batch_count as number | null) ?? 0;
+    const done = (s.batches_done as number | null) ?? 0;
+    const failed = ((s.batches_failed as number[] | null) ?? []).length;
+    if (total === 0 || done + failed < total) {
+      results.push({ scan_id: s.id as string, status: "still-processing" });
+      continue;
+    }
+    try {
+      const res = await finalizeScanCore(supabase, s.user_id as string, s.id as string);
+      reconciled += 1;
+      results.push({ scan_id: s.id as string, status: res.status });
+    } catch (e) {
+      results.push({ scan_id: s.id as string, status: null, error: (e as Error).message });
+    }
+  }
+  return { examined: (stuck ?? []).length, reconciled, results };
+}
