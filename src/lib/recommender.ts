@@ -262,9 +262,9 @@ function learnOmega(rated: RatedFp[], type: WineType): OmegaFit {
  * excluded rather than substituted, so it moves the distance in neither
  * direction — the same convention pick-alternates uses.
  *
- * No comparable axis at all returns Infinity, not 0: two wines with no
- * readable overlap are not neighbours, and calling them identical is the
- * manufactured-distance bug in its worst form.
+ * Too few comparable axes returns Infinity, not 0: two wines without readable
+ * overlap are not neighbours, and calling them identical is the
+ * manufactured-distance bug in its worst form. See MIN_COMPARABLE_AXES.
  */
 export function omegaDistance(
   a: FpVec,
@@ -272,7 +272,7 @@ export function omegaDistance(
   omega: Record<FpKey, number>,
   active: FpKey[],
 ): number {
-  let num = 0, den = 0;
+  let num = 0, den = 0, shared = 0;
   for (const k of active) {
     const w = omega[k];
     if (w <= 0) continue;
@@ -280,8 +280,13 @@ export function omegaDistance(
     const diff = (a[k] as number) - (b[k] as number);
     num += w * diff * diff;
     den += w;
+    shared++;
   }
-  return den > 0 ? Math.sqrt(num / den) : Infinity;
+  // Neighbour floor. Fewer than MIN_COMPARABLE_AXES shared readings is not a
+  // weak neighbour, it is not a neighbour: rescaling a 2-axis distance over a
+  // 2-axis weight budget produces a confident-looking number from nothing.
+  if (shared < MIN_COMPARABLE_AXES || den <= 0) return Infinity;
+  return Math.sqrt(num / den);
 }
 
 function median(xs: number[]): number {
