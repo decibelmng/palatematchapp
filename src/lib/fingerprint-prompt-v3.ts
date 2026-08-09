@@ -141,27 +141,33 @@ async function gatewayCall(system: string, user: string, apiKey: string): Promis
  * v3 blind score. Sees ONLY the wine type and a real human tasting note.
  * No grape, no region, no producer, no price — nothing a typicity grid could
  * be rebuilt from.
+ *
+ * Any axis the note does not address comes back NULL. Callers must carry the
+ * null through to storage; `fpOf` omits unread axes and `omegaDistance`
+ * rescales over the axes actually present, so a wine read on 6 of 8 axes is
+ * compared correctly against one read on 8.
  */
 export async function scoreFromNoteV3(
   type: string,
   tasting_note: string,
   apiKey: string,
-): Promise<{ fp: FpValues; ax_sweet: number }> {
+): Promise<{ fp: FpValuesNullable; ax_sweet: number | null }> {
   const userMsg = JSON.stringify({ type, tasting_note });
   const parsed = await gatewayCall(SCORE_SYS_V3, userMsg, apiKey);
-  const fp: FpValues = {
-    fresh: clamp01(parsed?.fp?.fresh),
-    acid: clamp01(parsed?.fp?.acid),
-    tannin: clamp01(parsed?.fp?.tannin),
-    fruit_dark: clamp01(parsed?.fp?.fruit_dark),
-    ripe: clamp01(parsed?.fp?.ripe),
-    oak: clamp01(parsed?.fp?.oak),
-    body: clamp01(parsed?.fp?.body),
-    savory: clamp01(parsed?.fp?.savory),
+  const fp: FpValuesNullable = {
+    fresh: clamp01OrNull(parsed?.fp?.fresh),
+    acid: clamp01OrNull(parsed?.fp?.acid),
+    tannin: clamp01OrNull(parsed?.fp?.tannin),
+    fruit_dark: clamp01OrNull(parsed?.fp?.fruit_dark),
+    ripe: clamp01OrNull(parsed?.fp?.ripe),
+    oak: clamp01OrNull(parsed?.fp?.oak),
+    body: clamp01OrNull(parsed?.fp?.body),
+    savory: clamp01OrNull(parsed?.fp?.savory),
   };
+  // Structurally impossible, not unread: a white has no tannin to fail to read.
   if (type !== "red" && type !== "dessert") {
     fp.tannin = 0;
     fp.fruit_dark = 0;
   }
-  return { fp, ax_sweet: clamp01(parsed?.ax_sweet ?? 0) };
+  return { fp, ax_sweet: clamp01OrNull(parsed?.ax_sweet) };
 }
