@@ -69,9 +69,15 @@ export function ResultRow({
               {r.bottle.name}
             </p>
           </div>
+          {r.scanned.vintage_approx && r.scanned.matched_vintage != null && (
+            <p className="mt-1 text-meta leading-snug text-foreground">
+              Closest vintage we have — {r.scanned.matched_vintage}
+            </p>
+          )}
           {reason && (
             <p className="mt-1 text-meta leading-snug text-muted-foreground truncate">{reason}</p>
           )}
+
 
 
         </div>
