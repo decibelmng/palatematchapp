@@ -119,6 +119,10 @@ function ScanDetailPage() {
         )}
       </header>
 
+      {/* Attribution is available every time this scan is opened, not only in
+          the session that created it. */}
+      <VenueAttribution scanId={s.id} initialVenue={s.restaurant?.name ?? null} />
+
       {rank.readable.length > 0 ? (
         <VerdictSurface
           rows={surfaceRows}
