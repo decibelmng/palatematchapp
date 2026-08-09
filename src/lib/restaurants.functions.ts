@@ -352,6 +352,21 @@ export const attributeScanToVenueFn = createServerFn({ method: "POST" })
       .eq("id", data.scan_id);
     if (upErr) throw new Error(upErr.message);
 
+    // Read the row back. An UPDATE that matches no row under RLS returns rows=0
+    // and error=null, so `!upErr` alone is not evidence the write landed — and a
+    // success toast on top of a no-op is how attribution stayed silently broken
+    // for 79 scans. Verify, or fail loudly.
+    const { data: verify } = await supabase
+      .from("scans")
+      .select("restaurant_id")
+      .eq("id", data.scan_id)
+      .maybeSingle();
+    if (verify?.restaurant_id !== data.restaurant_id) {
+      throw new Error(
+        `Venue did not attach to the scan (wrote ${data.restaurant_id}, row reads ${verify?.restaurant_id ?? "null"}).`,
+      );
+    }
+
     // Keep the legacy mirror in step when the caller knows its row.
     if (data.scan_log_id) {
       await supabase
