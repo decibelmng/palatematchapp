@@ -5,6 +5,7 @@ import { AuthGate } from "@/components/AuthGate";
 import {
   refingerprintV3Batch,
   refingerprintV3Progress,
+  refingerprintV3SetPaused,
 } from "@/lib/refingerprint-v3.functions";
 import {
   refingerprintV3NotelessBatch,
@@ -106,16 +107,19 @@ type Entry = { at: string; picked: number; wrote: number; empty: number; remaini
 function RefingerprintV3() {
   const runBatch = useServerFn(refingerprintV3Batch);
   const readProgress = useServerFn(refingerprintV3Progress);
+  const setPaused = useServerFn(refingerprintV3SetPaused);
   const [log, setLog] = useState<Entry[]>([]);
   const [progress, setProgress] = useState<{
     scored: number; pending: number; thin: number; empty: number; ambiguous: number;
-    lastWriteAt: string | null;
+    wrote1m: number; wrote5m: number; rowsPerSecond: number;
+    lastWriteAt: string | null; paused: boolean;
   } | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [running, setRunning] = useState(false);
   const [fatal, setFatal] = useState<string | null>(null);
   const [retrying, setRetrying] = useState<string | null>(null);
   const [jobId, setJobId] = useState(JOB_ID);
+  const [pauseBusy, setPauseBusy] = useState(false);
   const stop = useRef(false);
 
   // Watchdog. The loop lives in this tab, so it dies with the tab, a sleeping
@@ -209,6 +213,20 @@ function RefingerprintV3() {
     }
   }
 
+  async function togglePaused() {
+    if (!progress) return;
+    setPauseBusy(true);
+    setFatal(null);
+    try {
+      await setPaused({ data: { jobId, paused: !progress.paused } });
+      setProgress(await readProgress());
+    } catch (e: any) {
+      setFatal(e?.message ?? String(e));
+    } finally {
+      setPauseBusy(false);
+    }
+  }
+
 
   /** One batch, then stop. Used to meter cost and wall-clock before the run. */
   async function once() {
@@ -270,7 +288,9 @@ function RefingerprintV3() {
           <div>Thin (≤3 axes): {progress.thin.toLocaleString()}</div>
           <div>Unreadable: {progress.empty.toLocaleString()}</div>
           <div>Ambiguous join: {progress.ambiguous.toLocaleString()}</div>
-
+          <div>Last minute: {progress.wrote1m.toLocaleString()}</div>
+          <div>5-minute rate: {progress.rowsPerSecond.toFixed(1)}/s</div>
+          <div className="col-span-2">Runner: {progress.paused ? "Paused" : "Scheduled"}</div>
         </div>
       )}
 
@@ -295,6 +315,13 @@ function RefingerprintV3() {
 
 
       <div className="flex gap-2">
+        <button
+          onClick={togglePaused}
+          disabled={pauseBusy || !progress}
+          className="min-h-[44px] rounded-md border border-(--border-strong) px-4 text-(length:--fs-body) text-(--text) disabled:opacity-50"
+        >
+          {pauseBusy ? "Saving…" : progress?.paused ? "Resume schedule" : "Pause schedule"}
+        </button>
         <button
           onClick={loop}
           disabled={running}
