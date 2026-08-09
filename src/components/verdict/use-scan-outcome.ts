@@ -203,5 +203,5 @@ export function useScanOutcome({
     [scanId, chosenBottleId, call, rows, listMedian, rankOf],
   );
 
-  return { enabled: !!scanId, chosenBottleId, toggle, pending };
+  return { enabled: !!scanId, chosenBottleId, isOrdered, toggle, pending };
 }
