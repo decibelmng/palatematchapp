@@ -31,6 +31,12 @@ import {
   FINGERPRINT_PROMPT_HASH,
 } from "@/lib/fingerprint-prompt";
 import { composeBottleName } from "@/lib/wine-name";
+import {
+  scoreNotelessV3,
+  V3_AXES,
+  FINGERPRINT_PIPELINE_V3_ONDEMAND,
+  FINGERPRINT_MODEL_V3_RUN,
+} from "@/lib/fingerprint-prompt-v3";
 
 
 const WineType = z.enum(["red", "white", "sparkling", "rose", "dessert"]);
@@ -187,6 +193,46 @@ export async function resolveOrCreateOnDemandCore(
   // 3) σ-flatness gate.
   const flat = fpFlatness(fp) < 0.10;
 
+  // 3b) v3 SHADOW reading, taken at insert.
+  //
+  // Post-swap the catalog is pure v3, and a row inserted on the v2 scale is
+  // permanently on the wrong scale unless something re-scores it. Writing the
+  // shadow columns here means there is no flag day: before the swap the live
+  // fp_* stay v2 (so this row is calibrated like the catalog it is ranked
+  // against today), and the moment the swap copies fp_*_v3 -> fp_*, this row
+  // comes with it. A gap of a day costs nothing.
+  //
+  // The reading is blind — the v3 scorer sees only the type and the note the v2
+  // gateway just wrote — and is stamped on_demand_v3_generated, because a
+  // generated note is measurably second-class against recovered human reviews.
+  // This call must never fail a resolve: a missing shadow reading leaves the row
+  // pending for the note-less batch, which is the same outcome as today.
+  let v3: Awaited<ReturnType<typeof scoreNotelessV3>> | null = null;
+  try {
+    if (tasting_note && tasting_note.trim().length >= 40) {
+      v3 = await scoreNotelessV3(
+        {
+          producer: input.producer, name: input.name, type: input.type,
+          region: input.region ?? null, country: input.country ?? null,
+          grape: input.grape ?? null, vintage: input.vintage ?? null,
+        },
+        apiKey,
+        FINGERPRINT_MODEL_V3_RUN,
+        tasting_note,
+      );
+    }
+  } catch {
+    v3 = null;
+  }
+  const v3Patch: Record<string, string | number | null> = v3
+    ? {
+        ...Object.fromEntries(V3_AXES.map((a) => [`fp_${a}_v3`, v3!.fp[a]])),
+        fp_v3_scored_at: new Date().toISOString(),
+        fp_v3_pipeline: FINGERPRINT_PIPELINE_V3_ONDEMAND,
+        fp_v3_axes_read: V3_AXES.reduce((n, a) => (typeof v3!.fp[a] === "number" ? n + 1 : n), 0),
+      }
+    : {};
+
   // 4) Insert provisional bottle. The bottles_seed_prior trigger:
   //    - freezes fp_*_prior <- fp_* on insert
   //    - sets fp_prior_precision = 4·source_w·flat_w (flat_w=0.5 when σ<0.10)
@@ -228,6 +274,7 @@ export async function resolveOrCreateOnDemandCore(
       fp_prompt_hash: FINGERPRINT_PROMPT_HASH,
       fp_pipeline: "on_demand_blinded_v2",
       fp_scored_at: new Date().toISOString(),
+      ...v3Patch,
     } as never)
 
     .select("id")

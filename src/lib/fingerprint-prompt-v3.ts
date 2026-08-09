@@ -102,6 +102,10 @@ export function clamp01OrNull(n: unknown): number | null {
 const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 export const FINGERPRINT_MODEL_V3 = "google/gemini-2.5-flash";
 export const FINGERPRINT_PIPELINE_V3 = "note_v3_deanchored";
+/** The model the full catalog run is being read with. Any reading that must sit
+ *  on the same calibration as the swapped catalog — on-demand resolves, the
+ *  note-less tail — uses THIS, not the pilot default above. */
+export const FINGERPRINT_MODEL_V3_RUN = "google/gemini-3.6-flash";
 /**
  * Same scorer, same prompt — but the review it read may belong to a sibling
  * bottle (one review, several plausible rows). The reading is kept and stamped
@@ -109,6 +113,30 @@ export const FINGERPRINT_PIPELINE_V3 = "note_v3_deanchored";
  * carrying this stamp may be ranked but never named as the Call.
  */
 export const FINGERPRINT_PIPELINE_V3_AMBIGUOUS = "note_v3_ambiguous_join";
+/**
+ * No recovered human review exists for this bottle, so the note the scorer read
+ * was written by a model from producer / region / grape / vintage (step 1 below)
+ * — or was the note the v2 on-demand gateway already generated at insert.
+ *
+ * This is NOT the two-step design that failed the v2 pilot. That pilot failed
+ * because the SCORER carried per-grape calibration bands and named-wine
+ * anchors, so an uncertain note collapsed to the grape's midpoint. The v3
+ * scorer has neither. What remains is a weaker but different risk: the note
+ * itself is typicity prose, so it cannot say anything the metadata did not
+ * already imply.
+ *
+ * Measured against the note-derived population (52 reds vs 2,507, 2026-08-09)
+ * these readings land systematically differently — fresh 0.800 vs 0.615 at
+ * SD 0.047 vs 0.247, savory 0.655 vs 0.519, oak 0.509 vs 0.587 — i.e. flatter
+ * and more optimistic on the axes a generated note tends to assert. They are
+ * therefore second-class by measurement, not by suspicion, and the stamp is
+ * what lets a future audit, a weighting rule, or a Call-eligibility rule find
+ * them.
+ */
+export const FINGERPRINT_PIPELINE_V3_GENERATED = "note_v3_generated";
+/** Same scorer and same generated-note weakness, reached through the live
+ *  on-demand resolve path rather than the bulk queue. */
+export const FINGERPRINT_PIPELINE_V3_ONDEMAND = "on_demand_v3_generated";
 
 /** sha256 of SCORE_SYS_V3; recompute and re-register in `fingerprint_prompts`
  *  whenever the prompt text above changes:
@@ -189,4 +217,70 @@ export async function scoreFromNoteV3(
     fp.fruit_dark = 0;
   }
   return { fp, ax_sweet: clamp01OrNull(parsed?.ax_sweet) };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Note-less rows: generate a note, then score it BLIND.
+//
+// Two things keep this from being the v2 pilot again:
+//   1. The scorer is unchanged — de-anchored, no grape bands, no named wines,
+//      and it never sees the metadata that produced the note.
+//   2. The generator is told to write sensory prose about ONE bottle and is
+//      explicitly barred from hedging into the category average. It cannot fix
+//      the fundamental limit (a generated note knows only what the metadata
+//      implied), which is why every such reading is stamped
+//      note_v3_generated / on_demand_v3_generated.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const NOTE_GEN_SYS_V3 = `You write ONE short tasting note for ONE wine, as a wine critic would after tasting it. Return STRICT JSON only: { "note": "..." }.
+
+You are given producer, wine name, type, region, grape and vintage. Write 2–4 sentences of SENSORY description: fruit named specifically, acidity, tannin and texture for reds, oak or its absence, weight, and any earth / mineral / savoury character.
+
+Rules:
+- Describe this bottle, not its category. Do not write the average of the appellation.
+- Say only what you would actually commit to. If you have no basis for a wine's oak treatment or its acidity, leave that out of the note entirely rather than writing a safe middle value in words. An omitted axis is scored as unknown downstream, which is correct; a hedge is scored as a real central value, which is a lie.
+- No scores, no prices, no vintage commentary, no drinking window, no producer history, no marketing language.
+- Never use the words "typical", "classic example", "textbook", "as expected".`;
+
+/** Sighted step 1. Prose only — this output is never scored by its author. */
+export async function generateNoteV3(
+  meta: {
+    producer?: string | null; name: string; type: string;
+    region?: string | null; country?: string | null;
+    grape?: string | null; vintage?: number | null;
+  },
+  apiKey: string,
+  model: string = FINGERPRINT_MODEL_V3,
+): Promise<string> {
+  const parsed = await gatewayCall(NOTE_GEN_SYS_V3, JSON.stringify(meta), apiKey, model);
+  const note = String(parsed?.note ?? "").trim();
+  if (note.length < 40) throw new Error("Generated note too thin to score");
+  return note;
+}
+
+/**
+ * A v3 reading for a bottle with no recovered human review.
+ *
+ * `existingNote` is used when the row already carries one — 110 of the 116
+ * note-less rows do, written by the v2 on-demand gateway at insert. Re-using it
+ * costs one gateway call instead of two and keeps the note stable across
+ * re-runs; a row with none gets a fresh generated note.
+ */
+export async function scoreNotelessV3(
+  meta: {
+    producer?: string | null; name: string; type: string;
+    region?: string | null; country?: string | null;
+    grape?: string | null; vintage?: number | null;
+  },
+  apiKey: string,
+  model: string = FINGERPRINT_MODEL_V3,
+  existingNote?: string | null,
+): Promise<{ fp: FpValuesNullable; ax_sweet: number | null; note: string }> {
+  const note =
+    existingNote && existingNote.trim().length >= 40
+      ? existingNote.trim()
+      : await generateNoteV3(meta, apiKey, model);
+  // The scorer sees the TYPE and the NOTE. Never the metadata above.
+  const res = await scoreFromNoteV3(meta.type, note, apiKey, model);
+  return { ...res, note };
 }

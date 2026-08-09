@@ -1,5 +1,6 @@
 import type { ScanRow } from "./types";
 import { approxVintage, approxCaveat } from "./vintage";
+import { ESTIMATED_SENTENCE, isEstimated } from "./estimated";
 import { priceLabel } from "./types";
 import { becauseLine } from "./reason";
 import { OrderedButton } from "./OrderedButton";
@@ -75,6 +76,11 @@ export function ResultRow({
           {approx && (
             <p className="mt-1 text-meta leading-snug text-muted-foreground">
               {approxCaveat(approx)}
+            </p>
+          )}
+          {isEstimated(row) && (
+            <p className="mt-1 text-meta leading-snug text-muted-foreground">
+              {ESTIMATED_SENTENCE}
             </p>
           )}
           {reason && (

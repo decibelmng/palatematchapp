@@ -63,18 +63,29 @@ export function compareCallCandidates(a: ScanRow, b: ScanRow): number {
 }
 
 /**
-* A wine read on three or fewer style axes — or read from a review that may
- * describe a sibling bottle — can be ranked but must not be named as the Call — see THIN_READ_MAX_AXES. It stays in `eligible`, so it still
- * appears in the alternates and the full list; it is only removed from the
- * shortlist the single recommendation is drawn from. If EVERY candidate is a
- * thin read we do not refuse to answer: the screen still names one, because a
- * thin best guess beats no guess at a restaurant table.
+ * Who the single recommendation may be drawn from. Two exclusions, each with
+ * the same escape hatch — if it would empty the pool, it stands down, because
+ * a best guess beats no answer at a restaurant table.
+ *
+ *   1. An ESTIMATED line — one we could not find in the catalog — is ranked and
+ *      can be an alternate, but cannot be the Call. Its reading is inferred
+ *      from the words on the list, and a thin line ("Moulis-en-Médoc") yields a
+ *      generic vector that sits close to everything. The exception is a list
+ *      where no line matched the catalog at all.
+ *   2. A wine read on three or fewer style axes — or read from a review that may
+ *      describe a sibling bottle — can be ranked but must not be named as the
+ *      Call; see THIN_READ_MAX_AXES.
+ *
+ * Excluded rows stay in `eligible`, so they still appear in the alternates and
+ * the full list.
  */
 export function callEligible(eligible: ScanRow[]): ScanRow[] {
-  const solid = eligible.filter(
+  const catalog = eligible.filter((r) => r.isCatalog);
+  const pool = catalog.length > 0 ? catalog : eligible;
+  const solid = pool.filter(
     (r) => !isThinRead(r.ranked.bottle.fp, r.type) && !isAmbiguousJoinRead(r.ranked.bottle),
   );
-  return solid.length > 0 ? solid : eligible;
+  return solid.length > 0 ? solid : pool;
 }
 
 /** Rows within TIE★ of the best score, best first, ties broken above. */

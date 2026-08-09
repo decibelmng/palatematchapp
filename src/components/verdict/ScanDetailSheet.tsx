@@ -8,6 +8,7 @@ import type { ScanRow } from "./types";
 import { priceLabel } from "./types";
 import { verdictLine, becauseLine } from "./reason";
 import { OrderedButton } from "./OrderedButton";
+import { ESTIMATED_SENTENCE } from "./estimated";
 
 /**
  * Detail sheet — the ONLY place a decimal score is allowed to appear on
@@ -107,10 +108,15 @@ export function ScanDetailSheet({
         <p className="mt-2 text-body text-muted-foreground">{because}</p>
         <p className="mt-3 text-sub">
           <span className="text-(--accent-color) font-medium">{priceLabel(row)}</span>
-          <span className="ml-2 text-label uppercase tracking-label text-muted-foreground">
-            {row.isCatalog ? "Catalog match" : "Estimated"}
-          </span>
+          {row.isCatalog && (
+            <span className="ml-2 text-label uppercase tracking-label text-muted-foreground">
+              Catalog match
+            </span>
+          )}
         </p>
+        {!row.isCatalog && (
+          <p className="mt-1 text-meta text-muted-foreground leading-snug">{ESTIMATED_SENTENCE}</p>
+        )}
         {row.verdict && (
           <span
             className={`mt-2 inline-block rounded-full px-2 py-0.5 text-label uppercase tracking-label border ${
