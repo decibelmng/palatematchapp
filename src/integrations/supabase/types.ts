@@ -1648,7 +1648,6 @@ export type Database = {
           match_reasons: Json | null
           match_score: number | null
           matched_bottle_id: string | null
-          predicted_stars: number | null
           price: string | null
           price_amount: number | null
           producer: string | null
@@ -1676,7 +1675,6 @@ export type Database = {
           match_reasons?: Json | null
           match_score?: number | null
           matched_bottle_id?: string | null
-          predicted_stars?: number | null
           price?: string | null
           price_amount?: number | null
           producer?: string | null
@@ -1704,7 +1702,6 @@ export type Database = {
           match_reasons?: Json | null
           match_score?: number | null
           matched_bottle_id?: string | null
-          predicted_stars?: number | null
           price?: string | null
           price_amount?: number | null
           producer?: string | null
@@ -1737,6 +1734,7 @@ export type Database = {
           batches_failed: Json
           created_at: string
           currency: string | null
+          currency_source: string | null
           front_image_path: string | null
           id: string
           image_paths: Json
@@ -1757,6 +1755,7 @@ export type Database = {
           batches_failed?: Json
           created_at?: string
           currency?: string | null
+          currency_source?: string | null
           front_image_path?: string | null
           id?: string
           image_paths?: Json
@@ -1777,6 +1776,7 @@ export type Database = {
           batches_failed?: Json
           created_at?: string
           currency?: string | null
+          currency_source?: string | null
           front_image_path?: string | null
           id?: string
           image_paths?: Json
@@ -2099,30 +2099,6 @@ export type Database = {
           user_id: string | null
         }
         Relationships: []
-      }
-      scan_offer_outcomes: {
-        Row: {
-          best_predicted_offered: number | null
-          mae_on_chosen: number | null
-          mean_predicted_all: number | null
-          mean_predicted_chosen: number | null
-          mean_predicted_not_chosen: number | null
-          n_offered: number | null
-          n_predicted: number | null
-          n_rated: number | null
-          scan_id: string | null
-          scanned_at: string | null
-          user_id: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "scan_wines_scan_id_fkey"
-            columns: ["scan_id"]
-            isOneToOne: false
-            referencedRelation: "scans"
-            referencedColumns: ["id"]
-          },
-        ]
       }
     }
     Functions: {

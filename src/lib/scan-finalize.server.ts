@@ -13,7 +13,7 @@
 // that already have a bottle, and price_observations is append-only by design.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { detectCurrencyFromText } from "@/lib/currency";
+import { resolveCurrency, type CurrencyCode } from "@/lib/currency";
 
 export type FinalizeResult = {
   status: "processing" | "partial" | "complete" | "failed";
@@ -60,26 +60,48 @@ export async function finalizeScanCore(
       .eq("scan_id", scanId);
     const rows = (rowsRaw ?? []) as any[];
 
-    // Aggregate the scan-wide currency from per-row detections and persist it
-    // on the scans row so downstream reads (list controls, price banding) can
-    // label chips in the currency the user actually saw on the list.
+    // Aggregate the scan-wide currency and persist it WITH its derivation.
     //
-    // Re-detect from raw text/price rather than trusting scan_wines.currency,
-    // because that column falls back to "USD" when no symbol was read — we
-    // must not confuse that default with actual OCR evidence when deciding
-    // whether to teach the restaurant its currency below.
-    let textDetectedCurrency: string | null = null;
+    // Two consumers, two different standards of evidence — conflating them is
+    // what left scans.currency null on all 79 existing scans:
+    //
+    //   - scans.currency is for DISPLAY. A list printing bare numbers (0 of 71
+    //     rows on the reference scan carried a symbol) still has to label
+    //     chips, so the ladder falls through venue → default rather than
+    //     writing nothing at all. Writing nothing is what forced every reader
+    //     to re-derive it and gave the venue path nothing to learn from.
+    //   - restaurants.currency is a FACT taught to a venue, so it is written
+    //     only from "text" evidence. A venue must never inherit a scanner's
+    //     locale or the USD default, because a later symbol-free scan there
+    //     resolves via source "restaurant" and would launder the guess into
+    //     something that reads like observed truth.
+    //
+    // currency_source records which rung fired, so a USD written off the
+    // default is never mistaken for a USD read off a dollar sign.
+    let textDetectedCurrency: CurrencyCode | null = null;
     try {
-      const counts = new Map<string, number>();
-      for (const r of rows) {
-        const c = detectCurrencyFromText(r.price ?? r.raw_text ?? null);
-        if (c) counts.set(c, (counts.get(c) ?? 0) + 1);
+      const samples = rows.map((r) => (r.price ?? r.raw_text ?? null) as string | null);
+      const textOnly = resolveCurrency({ samples, useLocale: false });
+      textDetectedCurrency = textOnly.source === "text" ? textOnly.currency : null;
+
+      let venueCurrency: CurrencyCode | null = null;
+      if (restaurantId) {
+        const { data: rest } = await supabase
+          .from("restaurants").select("currency").eq("id", restaurantId).maybeSingle();
+        const c = (rest as { currency?: string | null } | null)?.currency ?? null;
+        venueCurrency = c === "USD" || c === "EUR" || c === "GBP" ? c : null;
       }
-      let winner: string | null = null; let best = 0;
-      for (const [k, v] of counts) if (v > best) { winner = k; best = v; }
-      textDetectedCurrency = winner;
-      if (winner) await supabase.from("scans").update({ currency: winner }).eq("id", scanId);
+
+      // useLocale: false — there is no browser locale on the server, and
+      // guessing one from request headers would be a fabricated rung.
+      const resolved = resolveCurrency({
+        samples, restaurantCurrency: venueCurrency, useLocale: false,
+      });
+      await supabase.from("scans")
+        .update({ currency: resolved.currency, currency_source: resolved.source })
+        .eq("id", scanId);
     } catch { /* non-fatal */ }
+
 
     // Teach the restaurant its currency — but only from "text" evidence, and
     // only when the column is empty. Locale/default fallbacks never write,
@@ -123,30 +145,14 @@ export async function finalizeScanCore(
         } catch { /* single-line C2 failures are best-effort */ }
       }
     }
-    // ---- Persist predicted_stars per scan line ----
-    // Written AFTER the C2 backfill so on-demand bottles are included. This is
-    // the denominator for accuracy: without it we can only see the wines
-    // someone chose to rate, never the ones we offered and they walked past.
-    // Scores stay computed-on-read everywhere they are *shown*; this column is
-    // an audit record of what we said at finalize time, not a served value.
-    try {
-      const ids = (rows ?? [])
-        .map((r: any) => r.matched_bottle_id)
-        .filter((id: string | null): id is string => !!id);
-      if (ids.length > 0) {
-        const { predictForBottlesCore } = await import("@/lib/predict.functions");
-        const preds = await predictForBottlesCore(supabase as any, userId, ids);
-        for (const r of rows as any[]) {
-          if (!r.matched_bottle_id) continue;
-          const p = preds.get(r.matched_bottle_id);
-          if (!p || p.predicted === null) continue;
-          r.predicted_stars = p.predicted;
-          await supabase.from("scan_wines")
-            .update({ predicted_stars: p.predicted })
-            .eq("id", r.id);
-        }
-      }
-    } catch { /* an unmeasured scan must never block the user's list */ }
+    // scan_wines.predicted_stars used to be written here, N+1 round-trips deep,
+    // as "the denominator for accuracy". prediction_outcomes now captures that
+    // properly — with the palate_version, pipeline, rank and axis deltas that
+    // make a stored score interpretable — so this column was a worse copy of a
+    // better record, and one that invariant 5 forbids: a prediction is not a
+    // fact about a wine. Dropped, along with its per-row UPDATE loop.
+
+
 
     const winesForLog = (rows ?? []).map((r: any) => ({
 
