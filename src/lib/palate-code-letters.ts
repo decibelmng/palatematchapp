@@ -142,3 +142,68 @@ export function explainLetter(
 export function explainCode(type: PaletteType, code: string): LetterMeaning[] {
   return parseCode(code, axesFor(type)).map((_, i) => explainLetter(type, code, i));
 }
+
+// ---------------------------------------------------------------
+// Short decoded words — for surfaces with no tap affordance
+// (/u/$username, the share card, og:description). Derived from the
+// same POSITIONS tables as explainLetter() above, so the two can
+// never disagree about what a slot means.
+// ---------------------------------------------------------------
+
+/** Two-to-four-word phrase per pole, keyed the same way as `letters`. */
+const RED_SHORT: Array<Record<string, string>> = [
+  { L: "light", B: "bold", N: "middleweight", "±": "light and bold both", X: "body unread" },
+  { F: "fruit-forward", E: "earthy", N: "fruit balanced", "±": "fruit both ways", X: "fruit unread" },
+  { S: "silky", G: "grippy", N: "medium grip", "±": "grip both ways", X: "grip unread" },
+  { R: "round", C: "crisp", N: "balanced acidity", "±": "acidity both ways", X: "acidity unread" },
+  { D: "dry", W: "sweet", N: "mostly dry", "±": "dry and sweet both", X: "sweetness unread" },
+];
+
+const WHITE_SHORT: Array<Record<string, string>> = [
+  { L: "light", B: "bold", N: "middleweight", "±": "light and bold both", X: "body unread" },
+  { F: "fruit-forward", E: "mineral", N: "fruit balanced", "±": "fruit both ways", X: "fruit unread" },
+  { U: "unoaked", O: "oaked", N: "light oak", "±": "oak both ways", X: "oak unread" },
+  { R: "round", C: "crisp", N: "balanced acidity", "±": "acidity both ways", X: "acidity unread" },
+  { D: "dry", W: "sweet", N: "mostly dry", "±": "dry and sweet both", X: "sweetness unread" },
+];
+
+/** The short phrase for one slot. A dominant pole carrying the bimodal
+ *  marker reads "mostly <pole>" — same reading the tap path gives in prose. */
+export function shortPhrase(type: PaletteType, code: string, position: number): string {
+  const table = type === "red" ? RED_SHORT : WHITE_SHORT;
+  const row = table[position];
+  const slot = parseCode(code, axesFor(type))[position] ?? GLYPH_UNRESOLVED;
+  if (!row) return "";
+  const pole = poleOf(slot);
+  const marked = isBimodalSlot(slot);
+  if (marked && (pole === null || pole === GLYPH_MODERATE)) return row[GLYPH_BIMODAL] ?? "";
+  if (pole && marked) return `mostly ${row[pole] ?? ""}`.trim();
+  return row[slot] ?? row[GLYPH_UNRESOLVED] ?? "";
+}
+
+/** All five short phrases, in slot order. Always length 5. */
+export function codePhrases(type: PaletteType, code: string): string[] {
+  return [0, 1, 2, 3, 4].map((i) => shortPhrase(type, code, i));
+}
+
+/** True when a slot is unresolved, so callers can mute it. */
+export function slotResolved(type: PaletteType, code: string, position: number): boolean {
+  const slot = parseCode(code, axesFor(type))[position] ?? GLYPH_UNRESOLVED;
+  return poleOf(slot) !== null || isBimodalSlot(slot);
+}
+
+/** A sentence for link previews, where no legend can follow the glyphs:
+ *  "Bold reds, fruit both ways, mostly grippy, crisp and dry." */
+export function codeSentence(type: PaletteType, code: string): string {
+  const noun = type === "red" ? "reds" : "whites";
+  const kept = codePhrases(type, code).filter((_, i) => slotResolved(type, code, i));
+  if (kept.length === 0) return `Not enough ratings yet to read this ${noun.slice(0, -1)} palate.`;
+  const [first, ...rest] = kept;
+  const head = `${first} ${noun}`;
+  const parts = [head, ...rest];
+  const body =
+    parts.length === 1
+      ? parts[0]
+      : `${parts.slice(0, -1).join(", ")} and ${parts[parts.length - 1]}`;
+  return body.charAt(0).toUpperCase() + body.slice(1) + ".";
+}

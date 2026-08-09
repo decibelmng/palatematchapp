@@ -1,4 +1,7 @@
 import { axesFor, GLYPH_UNRESOLVED, parseCode, type PaletteType } from "@/lib/palate";
+import { codeSentence } from "@/lib/palate-code-letters";
+import { PalateCodeWords } from "@/components/PalateCodeWords";
+
 import { createFileRoute, notFound, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { useEffect, type ReactNode } from "react";
@@ -54,16 +57,21 @@ export const Route = createFileRoute("/u/$username")({
   head: ({ loaderData }) => {
     const p = loaderData?.profile;
     const name = p?.display_name || p?.username || "Palate Match";
-    const codes = p ? `${p.palate_code_red} / ${p.palate_code_white}` : "";
+    // Link previews carry no legend, so the code is spelled out as a sentence.
+    const sentence = p
+      ? `${codeSentence("red", p.palate_code_red)} ${codeSentence("white", p.palate_code_white)}`
+      : "";
+    const summary = p?.bio || sentence || "A wine palate on Palate Match.";
     return {
       meta: [
         { title: `${name} — Palate Match` },
-        { name: "description", content: p?.bio || `${name}'s wine palate on Palate Match${codes ? ` — ${codes}` : ""}.` },
+        { name: "description", content: `${name}'s wine palate on Palate Match. ${summary}`.trim() },
         { property: "og:title", content: `${name} — Palate Match` },
-        { property: "og:description", content: p?.bio || (codes ? `Palate codes: ${codes}` : "A wine palate on Palate Match.") },
+        { property: "og:description", content: summary },
         { property: "og:type", content: "profile" },
         { name: "twitter:card", content: "summary" },
       ],
+
     };
   },
   notFoundComponent: () => (
@@ -166,14 +174,16 @@ function PalateCodeCard({ label, type, code }: { label: string; type: PaletteTyp
   return (
     <div className="rounded-[14px] border border-border bg-card p-4">
       <div className="text-meta uppercase text-muted-foreground">{label}</div>
-      <div className="mt-3 font-serif text-title text-primary">
+      <div className="mt-3 font-serif text-title text-primary tracking-[0.14em]">
         {parseCode(code, axesFor(type)).map((ch, i) => (
           <span
             key={`${label}-${i}`}
             className={ch === GLYPH_UNRESOLVED ? "text-muted-foreground/60" : ""}
-          >{ch}</span>
+          >{ch}{" "}</span>
         ))}
       </div>
+      <PalateCodeWords type={type} code={code} className="mt-2" />
     </div>
+
   );
 }

@@ -493,7 +493,7 @@ function useCodeUpsert(uid: string | undefined, red: string, white: string, n: n
       palate_code_white: white,
       n_rated: n,
     }).eq("id", uid).then(({ error }) => {
-      if (error) console.warn("[palate] code persist failed:", error.message);
+      if (error) console.error("[palate] code persist failed:", error.message);
     });
   }, [uid, red, white, n]);
 }
