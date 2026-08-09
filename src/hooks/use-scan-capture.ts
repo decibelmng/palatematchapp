@@ -23,6 +23,22 @@ import { prepareImageForScan } from "@/lib/image-downscale";
 
 export type ScanStatus = "idle" | "running" | "partial" | "complete" | "failed";
 
+/**
+ * One photo per vision call. Two pages per call doubled the JSON the model had
+ * to emit, and the hang we chased was a ~4.9k-token response severed at 23s.
+ * Smaller units finish sooner, retry independently, and land page by page — the
+ * batches run concurrently in the pool, so wall-clock time does not double.
+ */
+const PAGES_PER_BATCH = 1;
+
+/** Client-side per-batch deadline. Longer than the server's own 60s + 45s
+ *  retry budget on purpose — see the comment at the race below. */
+const BATCH_DEADLINE_MS = 150_000;
+
+/** After this long with no new wine landing, the screen says so and offers a
+ *  way out. A running scan must never be a dead end. */
+export const STALL_AFTER_MS = 15_000;
+
 export function useScanCapture() {
   const session = useSession();
 
@@ -43,7 +59,11 @@ export function useScanCapture() {
   const [prescanRestaurant, setPrescanRestaurant] = useState<{ id: string; name: string } | null>(null);
   const [autoAttributedTo, setAutoAttributedTo] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
+  const [stalled, setStalled] = useState(false);
   const finalizingRef = useRef(false);
+  /** Timestamp of the last real progress (a wine landed, or a batch settled).
+   *  A ref so the ticking interval never has to restart to see it. */
+  const progressRef = useRef(Date.now());
 
   const isRunning = status === "running";
 
@@ -65,10 +85,13 @@ export function useScanCapture() {
     const failed = new Set<number>(((scan.batches_failed ?? []) as number[]));
     const total = scan.batch_count ?? 0;
     const list: BatchState[] = [];
+    // Derive the resumed scan's OWN pages-per-batch rather than assuming the
+    // current constant — older scans were chunked two pages at a time.
+    const per = total > 0 ? Math.max(1, Math.ceil((scan.page_count ?? 1) / total)) : 1;
     for (let i = 0; i < total; i++) {
       list.push({
         index: i,
-        pageNumbers: [i * 2 + 1, Math.min(scan.page_count, i * 2 + 2)].filter((n, idx, arr) => arr.indexOf(n) === idx),
+        pageNumbers: Array.from({ length: per }, (_, k) => i * per + k + 1).filter((n) => n <= (scan.page_count ?? 1)),
         status: failed.has(i) ? "failed" : "done",
         images: [],
         image_paths: [],
@@ -87,14 +110,24 @@ export function useScanCapture() {
       const batch = list.find((b) => b.index === index)!;
       setBatches((prev) => prev.map((b) => (b.index === index ? { ...b, status: "running" } : b)));
       try {
-        const res = await runBatch({
-          data: {
-            scan_id: sid,
-            batch_index: index,
-            images: batch.images,
-            image_paths: batch.image_paths,
-          },
-        });
+        // Hard per-batch deadline. The server's own budget is 60s + a 45s
+        // retry = 105s worst case, so this MUST be longer or we would abandon
+        // a request that was still going to succeed. A severed request (the
+        // 499 hang) now resolves here as a failed batch instead of a batch
+        // that stays "running" forever with no exit.
+        const res = await Promise.race([
+          runBatch({
+            data: {
+              scan_id: sid,
+              batch_index: index,
+              images: batch.images,
+              image_paths: batch.image_paths,
+            },
+          }),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("That page took too long to read.")), BATCH_DEADLINE_MS),
+          ),
+        ]);
         setBatches((prev) => prev.map((b) => (b.index === index ? { ...b, status: "done", error: undefined } : b)));
         setWines((prev) => [...prev, ...res.wines]);
       } catch (e) {
@@ -184,7 +217,7 @@ export function useScanCapture() {
       );
 
       const image_paths_all = prepared.map((p) => p.storagePath).filter((p): p is string => !!p);
-      const preparedBatches = chunkArr(prepared, 2);
+      const preparedBatches = chunkArr(prepared, PAGES_PER_BATCH);
       const created = await stage("Starting the scan", () => createScan({
         data: {
           page_count: files.length,
@@ -200,7 +233,7 @@ export function useScanCapture() {
 
       const initial: BatchState[] = preparedBatches.map((group, i) => ({
         index: i,
-        pageNumbers: group.map((_, k) => i * 2 + k + 1),
+        pageNumbers: group.map((_, k) => i * PAGES_PER_BATCH + k + 1),
         status: "pending",
         images: group.map((g) => ({ image_base64: g.image_base64, media_type: g.media_type })),
         image_paths: group.map((g) => g.storagePath).filter((p): p is string => !!p),
@@ -307,22 +340,49 @@ export function useScanCapture() {
     mutation.mutate(staged.map((s) => s.file));
   }, [mutation, staged]);
 
+  // Any wine landing or any batch settling counts as progress and resets the
+  // stall clock — so "no progress for 15s" means exactly that, not "15s in".
+  const settledCount = batches.filter((b) => b.status === "done" || b.status === "failed").length;
   useEffect(() => {
-    if (!isRunning) return;
+    progressRef.current = Date.now();
+    setStalled(false);
+  }, [wines.length, settledCount, status]);
+
+  useEffect(() => {
+    if (!isRunning) { setStalled(false); return; }
     setElapsed(0);
     const start = Date.now();
-    const id = setInterval(() => setElapsed(Math.floor((Date.now() - start) / 1000)), 250);
+    const id = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - start) / 1000));
+      setStalled(Date.now() - progressRef.current > STALL_AFTER_MS);
+    }, 250);
     return () => clearInterval(id);
   }, [isRunning]);
+
+  /** "Read what we have so far." Finalizes the scan against whatever landed,
+   *  so a stalled read is an inconvenience with an exit, not a dead end. */
+  const readSoFar = useCallback(async () => {
+    if (!scanId) return;
+    setStalled(false);
+    try {
+      const fin = await finalize({ data: { scan_id: scanId } });
+      setScanLogId(fin.scan_log_id ?? null);
+      setStatus(wines.length > 0 ? "partial" : "failed");
+      void fin;
+    } catch (e) {
+      toast.error(friendlyError(e, "Couldn't wrap up that scan"));
+      setStatus(wines.length > 0 ? "partial" : "failed");
+    }
+  }, [scanId, finalize, wines.length]);
 
   return {
     // state
     staged, wines, batches, scanId, scanLogId, status, isRunning,
-    resumedAt, dismissedResume, prescanRestaurant, autoAttributedTo, elapsed,
+    resumedAt, dismissedResume, prescanRestaurant, autoAttributedTo, elapsed, stalled,
     mutation,
     // setters
     setPrescanRestaurant, setDismissedResume,
     // actions
-    addFiles, addFileObjects, removeAt, submit, retryFailed, startOver, beginNewScan,
+    addFiles, addFileObjects, removeAt, submit, retryFailed, startOver, beginNewScan, readSoFar,
   };
 }

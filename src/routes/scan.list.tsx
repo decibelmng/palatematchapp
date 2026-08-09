@@ -111,7 +111,10 @@ function Scan() {
     : null;
 
 
-  const showDecisionSurface = !failure && rank.enoughRatings && (rank.readable.length > 0 || anyBatchInFlight);
+  // A decision surface with nothing to decide is not a decision surface. While
+  // a scan is reading with zero wines behind it, the scan state is the only
+  // thing on screen — no verdict shell, no "see all 0 wines" disclosure.
+  const showDecisionSurface = !failure && rank.enoughRatings && rank.readable.length > 0;
   const totalWines = rank.dedupWines.length;
   const resumable = !failure && !handoffWaiting && !!cap.resumedAt && !!cap.scanId && cap.batches.length > 0 && cap.staged.length === 0 && !cap.dismissedResume;
   // A full wine list that came back with one or two wines barely worked. Say so
@@ -252,6 +255,35 @@ function Scan() {
           Failed pages keep the card, because it carries the retry action. */}
       {!failure && (!showDecisionSurface || anyFailedBatch) && (
         <BatchProgress batches={cap.batches} isRunning={cap.isRunning} elapsed={cap.elapsed} onRetry={cap.retryFailed} />
+      )}
+
+      {/* ── STALLED ─────────────────────────────────────────────────────────
+          15 seconds with nothing new landing. A reading screen with no exit
+          should be impossible, so this always carries a way out. */}
+      {!failure && cap.stalled && anyBatchInFlight && (
+        <div className="mt-3 rounded-md border border-border bg-card p-3" role="status" aria-live="polite">
+          <p className="text-sub text-foreground">
+            This is taking longer than usual{cap.wines.length > 0 ? ` — ${cap.wines.length} wine${cap.wines.length === 1 ? "" : "s"} read so far.` : "."}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-3">
+            {cap.wines.length > 0 && (
+              <button
+                type="button"
+                onClick={() => { void cap.readSoFar(); }}
+                className="min-h-11 rounded-md bg-primary text-primary-foreground px-4 py-2 text-sub font-medium"
+              >
+                Read what we have so far
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={cap.startOver}
+              className="min-h-11 rounded-md border border-border bg-card px-4 py-2 text-sub font-medium"
+            >
+              Start a new scan
+            </button>
+          </div>
+        </div>
       )}
 
       {showDecisionSurface && anyBatchInFlight && !anyFailedBatch && (
