@@ -31,6 +31,12 @@ import {
   FINGERPRINT_PROMPT_HASH,
 } from "@/lib/fingerprint-prompt";
 import { composeBottleName } from "@/lib/wine-name";
+import {
+  scoreNotelessV3,
+  V3_AXES,
+  FINGERPRINT_PIPELINE_V3_ONDEMAND,
+  FINGERPRINT_MODEL_V3 as FINGERPRINT_MODEL_V3_ONDEMAND,
+} from "@/lib/fingerprint-prompt-v3";
 
 
 const WineType = z.enum(["red", "white", "sparkling", "rose", "dessert"]);
