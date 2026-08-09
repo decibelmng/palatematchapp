@@ -80,7 +80,7 @@ for (const [scanId, ls] of scans) {
     const t = l.type === "white" ? "white" : l.type === "red" ? "red" : null;
     if (!t) continue;
     const b = l.b_fp;
-    const isCatalog = l.fp_source === "catalog" && !!b;
+    const isCatalog = !!b; // variant B: any line resolved to a catalog bottle counts as a real reading
     const fp = b ? fpOfBottle(b) : fpOfJson(l.fp);
     if (Object.keys(fp).length === 0) continue;
     const key = l.id as string;
