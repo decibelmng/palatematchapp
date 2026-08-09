@@ -16,12 +16,13 @@
  */
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { resolveOrCreateOnDemandCore } from "./on-demand-bottle.functions";
 export type { RemediationClass, RemediationItem } from "./vintage-remediation.server";
 
 export const vintageRemediationQueue = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { assertAdmin, buildQueue, stampReason } = await import("./vintage-remediation.server");
+    const { assertAdmin, buildQueue } = await import("./vintage-remediation.server");
     await assertAdmin(context.userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const items = await buildQueue(supabaseAdmin);
@@ -95,7 +96,6 @@ export const vintageConfirmRepoint = createServerFn({ method: "POST" })
       if (!data.resolveOnDemand) throw new Error("No row for that year yet — confirm the on-demand resolve.");
       const key = process.env.LOVABLE_API_KEY;
       if (!key) throw new Error("Missing LOVABLE_API_KEY");
-      const { resolveOrCreateOnDemandCore } = await import("./on-demand-bottle.functions");
       const res = await resolveOrCreateOnDemandCore(context.supabase as any, context.userId, key, {
         producer: item.wrong_producer ?? item.scanned_producer ?? "",
         name: item.scanned_cuvee ?? item.wrong_name,
