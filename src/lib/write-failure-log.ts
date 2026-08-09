@@ -35,13 +35,22 @@ export async function logWriteFailure(args: {
   );
 
   try {
+    // The insert policy is `auth.uid() = user_id`, so a null user_id is
+    // rejected and the failure log itself disappears — resolve the caller when
+    // it wasn't passed in.
+    let uid = args.userId ?? null;
+    if (!uid) {
+      const { data } = await supabase.auth.getUser();
+      uid = data.user?.id ?? null;
+    }
     const { error } = await supabase.from("write_failures").insert({
-      user_id: args.userId ?? null,
+      user_id: uid,
       target_table: args.table,
       operation: args.operation ?? "insert",
       message,
       context: args.context as never,
     });
+
     if (error) {
       console.error("[write-failure] could not persist failure log:", error.message);
     }
