@@ -23,19 +23,29 @@ You are given the wine TYPE (red / white / rosé / sparkling / dessert / fortifi
 
 Two notes from the same grape and the same region SHOULD receive different values whenever their words differ. Words like "brawny, mild acidity, chocolate, soft rounded layers" and "dry, classically structured, long and deep in cassis" describe two different wines, and your output must say so. Reporting the category average is the failure mode here.
 
-Score what is WRITTEN. If the note says a wine is soft and low-acid, that is what it is, however unusual that seems for its kind. If an axis is genuinely not mentioned and not implied, return 0.5 for that axis and nothing else — do not reach for a stereotype to fill the gap.
+Score what is WRITTEN. If the note says a wine is soft and low-acid, that is what it is, however unusual that seems for its kind.
 
-Use the full 0..1 range. Reserve the extremes for notes whose language is extreme, and use them when it is.
+=== NULL IS A REQUIRED ANSWER ===
+
+If the note does not address an axis, return null for that axis. Not 0.5 — null.
+
+0.5 is a real, central position. A wine whose note never mentions acidity is not a mid-acid wine; it is a wine whose acidity you do not know. Reporting 0.5 there makes the two indistinguishable and destroys the axis. Returning null is the correct, expected answer and costs nothing downstream: unread axes are excluded and the remaining ones are rescaled.
+
+Do NOT infer a missing axis from an adjacent descriptor, from the other axes, or from what wines of this style usually do. "Crisp" is acid language and may be scored. "Bright red cherry" is fruit language and is NOT acid evidence — if that is all the note offers, fp_acid is null. Filling a gap with what the category usually does is the exact failure this prompt exists to remove.
+
+Six real axes beat eight where two are guesses. Do not apologise for nulls and do not try to minimise how many you return.
+
+Use the full 0..1 range for the axes you DO score. Reserve the extremes for notes whose language is extreme, and use them when it is.
 
 === AXES ===
 
-Each axis is defined by intensity of language, not by any example wine.
+Each axis is defined by intensity of language, not by any example wine. Every axis may be null.
 
 fp_fresh — 0 flat, tired, oxidative, heavy, warm-feeling / 1 vibrant, lifted, crunchy, energetic, mouth-watering.
-  Read: lift, drive, energy, brightness, freshness, "cuts", "zips" push up. Baked, stewed, tired, soft-edged, flabby, oxidative, raisiny push down.
+  Score only on explicit freshness/lift/energy language: lift, drive, energy, vibrant, fresh, "cuts", "zips" push up; baked, stewed, tired, flabby, oxidative, soft-edged push down. A note that describes only flavours and tannin says nothing about freshness → null.
 
 fp_acid — 0 soft, round, low-acid, gentle / 1 piercing, racy, searing, tart-bright.
-  Read: explicit acidity words only — "bright acidity", "racy", "mouth-watering", "crisp", "zesty", "lemon-edged" up; "soft", "round", "low acidity", "creamy", "gentle", "plush" down. Absence of any acid language on a note that reads rich and soft is itself soft.
+  Score only on explicit acidity or texture-of-acid language: "bright acidity", "racy", "mouth-watering", "crisp", "zesty", "lemon-edged", "tart" up; "soft", "round", "low acidity", "mild acidity", "creamy", "plush", "flabby" down. Named fruits, ripeness, oak and tannin are NOT acid evidence. No acid language → null.
 
 fp_tannin — 0 no perceptible tannin / 1 massively grippy, drying, chewy, mouth-coating.
   Read intensity of the tannin words themselves, not what the wine probably is: "silky", "supple", "feathery", "polished", "gentle" low; "firm", "structured", "dusty", "grippy" middle-to-high; "chewy", "drying", "astringent", "tongue-sticky", "rugged", "brawny", "tough" high.
