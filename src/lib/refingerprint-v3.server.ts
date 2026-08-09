@@ -33,12 +33,19 @@ export async function acquireRefingerprintV3Lock(
     if (Number.isFinite(heldAt) && Date.now() - heldAt < ttlMs) return false;
   }
   const cleaned = note.replace(/\[v3 lock [^\]]*\]/g, "").trim();
-  const { error: writeError } = await supabaseAdmin
+  const nextNote = `${cleaned} ${LOCK_PREFIX}${new Date().toISOString()}]`.trim();
+  const writeQuery = supabaseAdmin
     .from("catalog_jobs")
-    .update({ note: `${cleaned} ${LOCK_PREFIX}${new Date().toISOString()}]`.trim() })
-    .eq("id", jobId);
+    .update({ note: nextNote })
+    .eq("id", jobId)
+    // Compare-and-swap makes the lease atomic. A plain read followed by an
+    // unconditional update allowed two simultaneous cron ticks to acquire it.
+    .eq("note", note)
+    .select("id")
+    .maybeSingle();
+  const { data: written, error: writeError } = await writeQuery;
   if (writeError) throw new Error(writeError.message);
-  return true;
+  return Boolean(written);
 }
 
 export async function releaseRefingerprintV3Lock(supabaseAdmin: AdminClient, jobId: string) {
@@ -198,6 +205,7 @@ export async function runRefingerprintV3Batch(
   let wrote = 0;
   let empty = 0;
   let ambiguousWrote = 0;
+  let retries = 0;
 
   await mapLimit<PendingRow>(batch, lanes, async (row) => {
     let fp: Record<string, number | null> | null = null;
@@ -209,7 +217,10 @@ export async function runRefingerprintV3Batch(
       } catch (error: any) {
         const message = error?.message ?? String(error);
         if (attempt === 2) errors.push(`${row.id}: ${message}`);
-        else await new Promise((resolve) => setTimeout(resolve, 800 * (attempt + 1)));
+        else {
+          retries++;
+          await new Promise((resolve) => setTimeout(resolve, 800 * (attempt + 1)));
+        }
       }
     }
     const values = fp ?? Object.fromEntries(V3_AXES.map((axis) => [axis, null]));
@@ -250,6 +261,7 @@ export async function runRefingerprintV3Batch(
     wrote,
     ambiguousWrote,
     empty,
+    retries,
     remaining: remaining ?? 0,
     errors: errors.slice(0, 10),
   };
