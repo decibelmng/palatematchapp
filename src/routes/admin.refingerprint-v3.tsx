@@ -70,6 +70,39 @@ function RefingerprintV3() {
     }
   }
 
+  /** One batch, then stop. Used to meter cost and wall-clock before the run. */
+  async function once() {
+    if (!jobId) {
+      setFatal("Paste the catalog_jobs id for this run first — every reading records its job.");
+      return;
+    }
+    setRunning(true);
+    setFatal(null);
+    const t0 = Date.now();
+    try {
+      const res = await runBatch({ data: { jobId, model: MODEL } });
+      setLog((l) =>
+        [
+          {
+            at: `${new Date().toLocaleTimeString()} (${((Date.now() - t0) / 1000).toFixed(1)}s)`,
+            picked: res.picked,
+            wrote: res.wrote,
+            empty: res.empty,
+            remaining: res.remaining,
+          },
+          ...l,
+        ].slice(0, 60),
+      );
+      if (res.errors.length > 0) setFatal(res.errors.join("\n"));
+      setProgress(await readProgress());
+      (window as unknown as Record<string, unknown>).__v3Once = { ...res, ms: Date.now() - t0 };
+    } catch (e: any) {
+      setFatal(e?.message ?? String(e));
+    } finally {
+      setRunning(false);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-2xl space-y-4 p-4">
       <header className="space-y-1">
@@ -108,6 +141,13 @@ function RefingerprintV3() {
           className="min-h-[44px] flex-1 rounded-md bg-(--accent) px-4 text-(length:--fs-body) font-medium text-(--accent-fg) disabled:opacity-50"
         >
           {running ? "Reading…" : "Run until done"}
+        </button>
+        <button
+          onClick={once}
+          disabled={running}
+          className="min-h-[44px] rounded-md border border-(--border-strong) px-4 text-(length:--fs-body) text-(--text) disabled:opacity-50"
+        >
+          One batch
         </button>
         <button
           onClick={() => {
