@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { logWriteFailure } from "@/lib/write-failure-log";
 import { friendlyError } from "@/lib/error-message";
 import { searchRestaurantsFn, createRestaurantFn, attributeScanFn, attributeScanToVenueFn } from "@/lib/restaurants.functions";
 
@@ -276,7 +277,15 @@ export function VenueAttribution({
           : `This list is now on record at ${res.restaurant_name}`,
       );
     },
-    onError: (e: any) => toast.error(friendlyError(e, "Couldn't save the venue")),
+    onError: (e: any, vars) => {
+      void logWriteFailure({
+        table: "scans",
+        operation: "update",
+        error: e,
+        context: { path: "attributeScanToVenueFn", scan_id: scanId, restaurant_id: vars?.id, restaurant_name: vars?.name },
+      });
+      toast.error(friendlyError(e, "Couldn't save the venue"));
+    },
   });
 
   const createAndAttach = useMutation({
@@ -292,7 +301,15 @@ export function VenueAttribution({
       qc.invalidateQueries({ queryKey: ["feed"] });
       toast.success(`${res.restaurant_name} added — ${res.wines} wine${res.wines === 1 ? "" : "s"} on record`);
     },
-    onError: (e: any) => toast.error(friendlyError(e, "Couldn't add that restaurant")),
+    onError: (e: any, name) => {
+      void logWriteFailure({
+        table: "restaurants",
+        operation: "insert",
+        error: e,
+        context: { path: "createRestaurantFn+attributeScanToVenueFn", scan_id: scanId, name, city: city.trim() || null },
+      });
+      toast.error(friendlyError(e, "Couldn't add that restaurant"));
+    },
   });
 
   const busy = attach.isPending || createAndAttach.isPending;

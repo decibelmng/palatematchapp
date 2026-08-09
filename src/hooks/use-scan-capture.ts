@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
+import { logWriteFailure } from "@/lib/write-failure-log";
 import { friendlyError } from "@/lib/error-message";
 import {
   createScanRecord,
@@ -165,6 +166,13 @@ export function useScanCapture() {
           });
           setAutoAttributedTo(res.restaurant_name);
         } catch (e) {
+          void logWriteFailure({
+            table: "scans",
+            operation: "update",
+            error: e,
+            userId: session?.user.id ?? null,
+            context: { path: "prescanAttribute", scan_id: sid, restaurant_id: prescanRestaurant.id },
+          });
           toast.error(friendlyError(e, "Couldn't save the venue"));
         }
       }
