@@ -72,7 +72,7 @@ export function ScanDetailSheet({
         className="absolute inset-0 bg-black/60 motion-safe:animate-in motion-safe:fade-in"
       />
       <div
-        className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-[--surface] border-t border-border p-5 pb-8 motion-safe:animate-in motion-safe:slide-in-from-bottom max-h-[85vh] overflow-y-auto"
+        className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-(--surface) border-t border-border p-5 pb-8 motion-safe:animate-in motion-safe:slide-in-from-bottom max-h-[85vh] overflow-y-auto"
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)" }}
       >
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-border" aria-hidden />
@@ -84,8 +84,8 @@ export function ScanDetailSheet({
           <div className="shrink-0 text-right">
             {r.predicted > 0 ? (
               <>
-                <span className="font-serif text-[--accent-color] text-3xl leading-none">{r.predicted.toFixed(1)}</span>
-                <span className="text-[--accent-color] text-lg leading-none">★</span>
+                <span className="font-serif text-(--accent-color) text-3xl leading-none">{r.predicted.toFixed(1)}</span>
+                <span className="text-(--accent-color) text-lg leading-none">★</span>
               </>
             ) : (
               <span className="text-meta text-muted-foreground">no score</span>
@@ -99,7 +99,7 @@ export function ScanDetailSheet({
         <p className="mt-3 text-heading text-foreground leading-snug">{verdict}</p>
         <p className="mt-2 text-body text-muted-foreground">{because}</p>
         <p className="mt-3 text-sub">
-          <span className="text-[--accent-color] font-medium">{priceLabel(row)}</span>
+          <span className="text-(--accent-color) font-medium">{priceLabel(row)}</span>
           <span className="ml-2 text-label uppercase tracking-label text-muted-foreground">
             {row.isCatalog ? "Catalog match" : "Estimated"}
           </span>
@@ -108,7 +108,7 @@ export function ScanDetailSheet({
           <span
             className={`mt-2 inline-block rounded-full px-2 py-0.5 text-label uppercase tracking-label border ${
               row.verdict.tone === "good"
-                ? "border-[--good]/50 bg-[--good]/10 text-foreground"
+                ? "border-(--good)/50 bg-(--good)/10 text-foreground"
                 : row.verdict.tone === "warn"
                 ? "border-[color-mix(in_oklab,var(--amber)_55%,transparent)] bg-[color-mix(in_oklab,var(--amber)_10%,transparent)] text-foreground"
                 : "border-[color-mix(in_oklab,var(--crimson)_55%,transparent)] bg-[color-mix(in_oklab,var(--crimson)_12%,transparent)] text-foreground"
@@ -175,7 +175,7 @@ export function ScanDetailSheet({
             {r.nearest ? (
               <p>
                 Closest to your <span className="text-foreground">{r.nearest.stars}★ {r.nearest.name}</span>
-                {r.nearestIsCanon && <span className="ml-1 text-[--accent-color]">· Benchmark</span>}
+                {r.nearestIsCanon && <span className="ml-1 text-(--accent-color)">· Benchmark</span>}
               </p>
             ) : (
               <p>No close neighbor in your rated wines yet.</p>
