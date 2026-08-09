@@ -211,6 +211,21 @@ export function isThinRead(fp: FpVec | null | undefined, type: WineType): boolea
   return axesRead(fp, type) <= THIN_READ_MAX_AXES;
 }
 
+/**
+ * A reading taken from a review that may describe a sibling bottle.
+ *
+ * The v3 shadow run scores these rather than leaving 10k rows on the old
+ * typicity grid, but until their spread is measured against the clean set the
+ * reading is not trusted enough to name one bottle to order. Same treatment as
+ * a thin read: rankable, never the Call.
+ */
+export const AMBIGUOUS_JOIN_PIPELINE = "note_v3_ambiguous_join";
+
+export function isAmbiguousJoinRead(bottle: { fpPipeline?: string | null }): boolean {
+  return bottle.fpPipeline === AMBIGUOUS_JOIN_PIPELINE;
+}
+
+
 // ────────── Step 1: learn axis-importance ω via pairwise non-neg ridge ──────────
 
 type OmegaFit = { omega: Record<FpKey, number>; active: FpKey[] };
