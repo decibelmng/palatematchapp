@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { recommend, __debug_learnOmega, type BottleFp, type RatedFp, type FpKey } from "@/lib/recommender";
+import { recommend, __debug_learnOmega, omegaDistance, axisApplies, RETIRED_AXES, MIN_COMPARABLE_AXES, type BottleFp, type RatedFp, type FpKey } from "@/lib/recommender";
 import { computeCode, RED_AXES, WHITE_AXES } from "@/lib/palate";
 import { cuveeKey } from "@/lib/cuvee";
 
