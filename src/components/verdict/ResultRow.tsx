@@ -1,5 +1,6 @@
 import type { ScanRow } from "./types";
 import { approxVintage, approxCaveat } from "./vintage";
+import { ESTIMATED_SENTENCE, isEstimated } from "./estimated";
 import { priceLabel } from "./types";
 import { becauseLine } from "./reason";
 import { OrderedButton } from "./OrderedButton";
