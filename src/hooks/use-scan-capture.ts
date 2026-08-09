@@ -10,7 +10,7 @@ import {
   loadRecentScan,
   type ResolvedWine,
 } from "@/lib/scan.functions";
-import { attributeScanFn } from "@/lib/restaurants.functions";
+import { attributeScanToVenueFn } from "@/lib/restaurants.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
 import {
@@ -30,7 +30,7 @@ export function useScanCapture() {
   const runBatch = useServerFn(scanWineBatch);
   const finalize = useServerFn(finalizeScan);
   const loadRecent = useServerFn(loadRecentScan);
-  const attributeFn = useServerFn(attributeScanFn);
+  const attributeVenueFn = useServerFn(attributeScanToVenueFn);
 
   const [staged, setStaged] = useState<{ file: File; url: string }[]>([]);
   const [scanId, setScanId] = useState<string | null>(null);
@@ -121,19 +121,24 @@ export function useScanCapture() {
       setStatus(fin.status as any);
       if (fin.status === "partial") toast.warning("Some pages didn't parse — retry them below.");
       else if (fin.status === "failed") toast.error("Scan failed — try again.");
-      if (fin.scan_log_id && prescanRestaurant) {
+      if (fin.restaurant_id && prescanRestaurant) {
+        setAutoAttributedTo(prescanRestaurant.name);
+      } else if (prescanRestaurant) {
+        // Creation-time write missed (older row, resumed scan) — attribute now
+        // against the scan row so the fact capture still runs.
         try {
-          const res = await attributeFn({ data: { scan_id: fin.scan_log_id, restaurant_id: prescanRestaurant.id } });
+          const res = await attributeVenueFn({
+            data: { scan_id: sid, restaurant_id: prescanRestaurant.id, scan_log_id: fin.scan_log_id ?? null },
+          });
           setAutoAttributedTo(res.restaurant_name);
-          toast.success(`Added to ${res.restaurant_name}`);
         } catch (e) {
-          toast.error(friendlyError(e, "Couldn't attribute to restaurant"));
+          toast.error(friendlyError(e, "Couldn't save the venue"));
         }
       }
     } finally {
       finalizingRef.current = false;
     }
-  }, [runBatch, finalize, attributeFn, prescanRestaurant]);
+  }, [runBatch, finalize, attributeVenueFn, prescanRestaurant]);
 
   const mutation = useMutation({
     mutationFn: async (files: File[]) => {
@@ -164,7 +169,14 @@ export function useScanCapture() {
       const image_paths_all = prepared.map((p) => p.storagePath).filter((p): p is string => !!p);
       const preparedBatches = chunkArr(prepared, 2);
       const created = await createScan({
-        data: { page_count: files.length, batch_count: preparedBatches.length, image_paths: image_paths_all },
+        data: {
+          page_count: files.length,
+          batch_count: preparedBatches.length,
+          image_paths: image_paths_all,
+          // The pre-scan pick has to land on the scan row itself, otherwise
+          // finalize sees a null venue and skips every fact capture.
+          restaurant_id: prescanRestaurant?.id ?? null,
+        },
       });
 
       const initial: BatchState[] = preparedBatches.map((group, i) => ({
