@@ -1,4 +1,5 @@
 import type { ScanRow } from "./types";
+import { approxVintage, approxCaveat } from "./vintage";
 import { priceLabel } from "./types";
 import { becauseLine } from "./reason";
 import { OrderedButton } from "./OrderedButton";
@@ -69,9 +70,10 @@ export function ResultRow({
               {r.bottle.name}
             </p>
           </div>
-          {r.scanned.vintage_approx && r.scanned.matched_vintage != null && (
-            <p className="mt-1 text-meta leading-snug text-foreground">
-              Closest vintage we have — {r.scanned.matched_vintage}
+          {/* Rows stay quiet: one line, no chip. */}
+          {approx && (
+            <p className="mt-1 text-meta leading-snug text-muted-foreground">
+              {approxCaveat(approx)}
             </p>
           )}
           {reason && (

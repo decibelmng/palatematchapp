@@ -28,6 +28,7 @@ export function TheCall({
   canOrder?: boolean;
 }) {
   const [confOpen, setConfOpen] = useState(false);
+  const [vintOpen, setVintOpen] = useState(false);
   const eyebrow = kind === "closest-match" ? "Closest match" : "Your pick";
 
   const price = priceLabel(row);
@@ -120,10 +121,27 @@ export function TheCall({
             {confChip}
             <span aria-hidden>ⓘ</span>
           </button>
+
+          {/* Same weight as the confidence chip: which bottle we scored is a
+              confidence claim, not a footnote. */}
+          {approx && (
+            <button
+              type="button"
+              onClick={() => setVintOpen((v) => !v)}
+              aria-expanded={vintOpen}
+              className="pointer-events-auto inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-label uppercase tracking-label text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              {approxChipLabel(approx)}
+              <span aria-hidden>ⓘ</span>
+            </button>
+          )}
         </div>
 
         {confOpen && (
           <p className="mt-2 text-meta text-muted-foreground leading-snug">{confExplain}</p>
+        )}
+        {vintOpen && approx && (
+          <p className="mt-2 text-meta text-muted-foreground leading-snug">{approxCaveat(approx)}</p>
         )}
 
         {canOrder && onOrdered && (
