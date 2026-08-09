@@ -37,11 +37,16 @@ export function TheCall({
   // Confidence rests on two real signals — a clean catalog match and genuine
   // similarity to a wine you've rated. Don't invent a neighbour count the
   // recommender never computed (it exposes maxSimilarity, not how many).
+  const estimated = isEstimated(row);
   const confident = row.isCatalog && row.ranked.maxSimilarity >= 0.35;
-  const confChip = confident ? "Confident match" : "Estimated match";
-  const confExplain = confident
+  // Three states, not two. "Estimated match" reads as a grade we gave the wine;
+  // the true fact is about our catalog, so an unmatched line says so plainly.
+  const confChip = estimated ? ESTIMATED_CHIP : confident ? "Confident match" : "Close match";
+  const confExplain = estimated
+    ? ESTIMATED_SENTENCE
+    : confident
     ? "This wine is in our catalog and sits close to a bottle you've rated."
-    : "This wine isn't in our catalog yet, so we matched it by style.";
+    : "This wine is in our catalog, but it sits some way from anything you've rated.";
 
   const bottle = row.ranked.bottle;
   const region = bottle.region ?? null;
