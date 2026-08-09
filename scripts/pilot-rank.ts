@@ -96,7 +96,8 @@ for (const [label, pick] of variants) {
       .filter(({ r }) => (r.bottle.producer ?? "").toLowerCase().includes(w.toLowerCase()));
     ranks[w] ??= {};
     ranks[w][label] = hits.length
-      ? hits.map(({ r, i }) => `#${i + 1}/${n} (${r.predicted.toFixed(2)})`).join(", ")
+      ? hits.map(({ r, i }) => `#${i + 1}/${n} (${r.predicted.toFixed(2)}${
+          r.veto ? " VETO" : r.contested ? " contested" : ""})`).join(", ")
       : "absent";
   }
 
