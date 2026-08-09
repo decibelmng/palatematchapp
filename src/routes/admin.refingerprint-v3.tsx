@@ -46,7 +46,13 @@ function RefingerprintV3() {
     setFatal(null);
     try {
       while (!stop.current) {
-        const res = await runBatch({ data: { jobId, model: MODEL } });
+        // 60 rows per round trip, 16 lanes. Measured at 24 rows the loop ran
+        // 7.4 rows/s — the ceiling was driver round-trip overhead between
+        // batches, not gateway lanes. Per-row request shape is untouched, so
+        // calibration is unaffected.
+        const res = await runBatch({
+          data: { jobId, model: MODEL, batchSize: 60, concurrency: 16 },
+        });
         setLog((l) =>
           [
             {
