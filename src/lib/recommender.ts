@@ -173,6 +173,32 @@ function activeAxesFor(type: WineType): FpKey[] {
  */
 export const MIN_COMPARABLE_AXES = 3;
 
+/**
+ * A reading this thin may be RANKED but may never be THE CALL.
+ *
+ * v3 reads a wine from one human tasting note and returns null for every axis
+ * the note does not address. A note that yields three or fewer active axes has
+ * not described a style — it has described a fragment of one. Such a wine can
+ * still be compared (MIN_COMPARABLE_AXES = 3 is met) and can still appear as
+ * an alternate, but naming it as the single bottle to order claims a confidence
+ * the read does not carry.
+ *
+ * Counted from the reading itself, not from a column: post-swap the live fp_*
+ * values ARE the v3 values, so a present axis is a read axis. On the v1 grid
+ * every axis is dense, so nothing is thin and the rule is inert until the swap.
+ */
+export const THIN_READ_MAX_AXES = 3;
+
+/** How many SCORED axes this reading carries for its type (retired axes excluded). */
+export function axesRead(fp: FpVec, type: WineType): number {
+  return activeAxesFor(type).reduce((n, a) => (hasAxis(fp, a) ? n + 1 : n), 0);
+}
+
+/** True when the reading is too thin to be named as the Call. */
+export function isThinRead(fp: FpVec, type: WineType): boolean {
+  return axesRead(fp, type) <= THIN_READ_MAX_AXES;
+}
+
 // ────────── Step 1: learn axis-importance ω via pairwise non-neg ridge ──────────
 
 type OmegaFit = { omega: Record<FpKey, number>; active: FpKey[] };
