@@ -124,11 +124,10 @@ const anchors = rated
 
 // ── top five per type, from the real recommender ──
 const recs = recommend(rated, unrated);
+const candType = new Map(cands.map((c) => [c.id, c.type === "white" ? "white" : "red"]));
 const topN = (type: "red" | "white", n = 5) =>
   recs
-    .filter((r) => (r as any).type === type || byId.get(r.id)?.type === type ||
-      (cands.find((c) => c.id === r.id)?.type ?? "") === (type === "white" ? "white" : "red"))
-    .filter((r) => !r.vetoed)
+    .filter((r) => candType.get(r.id) === type && !r.vetoed)
     .slice(0, n)
     .map((r, idx) => ({
       rank: idx + 1,
