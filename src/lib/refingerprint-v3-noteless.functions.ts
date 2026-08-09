@@ -55,32 +55,32 @@ async function mapLimit<T>(items: T[], limit: number, fn: (item: T) => Promise<v
 }
 
 /**
- * Rows with no recovered review and no shadow reading. There is no `NOT EXISTS`
- * in the PostgREST embed grammar, so the note-less set is derived: read the
- * pending ids, read the ids that DO have a review, and subtract. The set is 116
- * rows, so one extra read is cheaper than a view.
+ * Rows with no recovered review and no shadow reading.
+ *
+ * This used to read the 4,000 oldest pending ids, then ask
+ * catalog_source_notes which of them HAD a review in chunks of 500 and subtract
+ * the two sets client-side. That threw `TypeError: fetch failed` — a transport
+ * failure, not a PostgREST error, which is why it surfaced as a blank screen
+ * instead of a message: 500 uuids in an `in.()` filter is a ~19 KB query string,
+ * and the request is rejected at the URL-length limit before any handler runs.
+ * The main queue never hit it because it asks the database for the join
+ * (`catalog_source_notes!inner`) and ships one short URL per batch.
+ *
+ * So do the same thing here, inverted: a LEFT embed with `is.null` on it is an
+ * anti-join evaluated server-side. One request, constant URL length.
  */
 async function pickNoteless(supabaseAdmin: any, limit: number) {
-  const { data: pending, error: e1 } = await supabaseAdmin
+  const { data, error } = await supabaseAdmin
     .from("bottles")
-    .select("id,producer,name,type,region,country,grape,vintage,tasting_note")
+    .select(
+      "id,producer,name,type,region,country,grape,vintage,tasting_note,catalog_source_notes!left(bottle_id)",
+    )
     .is("fp_v3_scored_at", null)
+    .is("catalog_source_notes", null)
     .order("id", { ascending: true })
-    .limit(4000);
-  if (e1) throw new Error(e1.message);
-  const ids = (pending ?? []).map((r: any) => r.id);
-  if (ids.length === 0) return [];
-  const withNote = new Set<string>();
-  // Chunked so the `in.()` filter stays inside URL length limits.
-  for (let i = 0; i < ids.length; i += 500) {
-    const { data, error } = await supabaseAdmin
-      .from("catalog_source_notes")
-      .select("bottle_id")
-      .in("bottle_id", ids.slice(i, i + 500));
-    if (error) throw new Error(error.message);
-    for (const r of data ?? []) withNote.add(r.bottle_id as string);
-  }
-  return (pending ?? []).filter((r: any) => !withNote.has(r.id)).slice(0, limit);
+    .limit(limit);
+  if (error) throw new Error(error.message);
+  return data ?? [];
 }
 
 export const refingerprintV3NotelessProgress = createServerFn({ method: "GET" })

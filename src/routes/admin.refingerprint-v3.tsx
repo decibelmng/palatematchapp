@@ -98,6 +98,9 @@ const MODEL = "google/gemini-3.6-flash";
 /** No write for this long with rows outstanding = stalled, said out loud. */
 const STALL_AFTER_MS = 5 * 60_000;
 
+/** Transient batch failures are retried; this many in a row is a real outage. */
+const MAX_CONSECUTIVE_FAILURES = 6;
+
 type Entry = { at: string; picked: number; wrote: number; empty: number; remaining: number };
 
 function RefingerprintV3() {
@@ -111,6 +114,7 @@ function RefingerprintV3() {
   const [now, setNow] = useState(() => Date.now());
   const [running, setRunning] = useState(false);
   const [fatal, setFatal] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState<string | null>(null);
   const [jobId, setJobId] = useState(JOB_ID);
   const stop = useRef(false);
 
@@ -143,15 +147,42 @@ function RefingerprintV3() {
     stop.current = false;
     setRunning(true);
     setFatal(null);
+    // A 3.6-hour run must not die on one bad round trip. Before this, a single
+    // failed batch fetch — a dropped connection, a gateway 502, a cold worker —
+    // escaped to the outer catch and ended the loop, which is exactly how the
+    // note-less runner produced a blank screen. Now each batch is caught on its
+    // own and the loop continues; only a sustained outage stops the run.
+    let consecutive = 0;
     try {
       while (!stop.current) {
         // 60 rows per round trip, 16 lanes. Measured at 24 rows the loop ran
         // 7.4 rows/s — the ceiling was driver round-trip overhead between
         // batches, not gateway lanes. Per-row request shape is untouched, so
         // calibration is unaffected.
-        const res = await runBatch({
-          data: { jobId, model: MODEL, batchSize: 60, concurrency: 16 },
-        });
+        let res: Awaited<ReturnType<typeof runBatch>>;
+        try {
+          res = await runBatch({
+            data: { jobId, model: MODEL, batchSize: 60, concurrency: 16 },
+          });
+          consecutive = 0;
+          setRetrying(null);
+        } catch (e: any) {
+          consecutive++;
+          const msg = e?.message ?? String(e);
+          if (consecutive >= MAX_CONSECUTIVE_FAILURES) {
+            setFatal(
+              `Stopped after ${consecutive} failed batches in a row — last error: ${msg}. ` +
+                `Nothing already written is lost; press Run to resume where it left off.`,
+            );
+            break;
+          }
+          // Backoff, then take the same slice again. Rows are only claimed by a
+          // successful write, so a failed batch re-picks the identical ids.
+          const waitMs = Math.min(30_000, 2_000 * 2 ** (consecutive - 1));
+          setRetrying(`Batch failed (${msg}) — retry ${consecutive} in ${waitMs / 1000}s`);
+          await new Promise((r) => setTimeout(r, waitMs));
+          continue;
+        }
         setLog((l) =>
           [
             {
@@ -164,6 +195,8 @@ function RefingerprintV3() {
             ...l,
           ].slice(0, 60),
         );
+        // Per-row failures inside a batch are reported without stopping — the
+        // handler already retries each row three times and drains the rest.
         if (res.errors.length > 0) setFatal(res.errors.join("\n"));
         if (res.picked === 0 || res.remaining <= 0) break;
       }
@@ -171,9 +204,11 @@ function RefingerprintV3() {
     } catch (e: any) {
       setFatal(e?.message ?? String(e));
     } finally {
+      setRetrying(null);
       setRunning(false);
     }
   }
+
 
   /** One batch, then stop. Used to meter cost and wall-clock before the run. */
   async function once() {
@@ -250,6 +285,14 @@ function RefingerprintV3() {
           </p>
         </div>
       )}
+
+      {retrying && (
+        <div className="pm-card border-(--amber) p-3">
+          <p className="text-(length:--fs-meta) text-(--text)">{retrying}</p>
+        </div>
+      )}
+
+
 
       <div className="flex gap-2">
         <button
