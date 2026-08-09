@@ -496,7 +496,23 @@ export function useRestoreRatingAndBenchmark() {
         p_neighbor_support: p?.neighborSupport ?? null,
         p_axis_deltas: p?.axisDeltas ?? null,
       });
-      if (error) throw error;
+      if (error) {
+        await logWriteFailure({
+          table: "ratings",
+          operation: "upsert",
+          error,
+          userId: uid,
+          context: {
+            rpc: "restore_rating_and_benchmark",
+            path: "restore_hook",
+            bottle_id: args.bottleId,
+            stars: args.stars,
+            tier: args.tier,
+          },
+        });
+        throw error;
+      }
+
       const row = Array.isArray(data) ? data[0] : data;
       return {
         benchmarkId: (row?.benchmark_id ?? null) as string | null,
