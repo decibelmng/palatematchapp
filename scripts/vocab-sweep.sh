@@ -21,3 +21,17 @@ echo "== A) string literals =="
 rg -n --pcre2 -i "(\"|'|\`)[^\"'\`]*($WORDS)[^\"'\`]*(\"|'|\`)" src "${EXCL[@]}"
 echo "== B) JSX text nodes =="
 rg -n --pcre2 -i ">[^<>{}\"']*($WORDS)[^<>{}\"']*<" src "${EXCL[@]}"
+
+# ── C) Tailwind v4 custom-property syntax ───────────────────────────────────
+# `bg-[--surface]` compiles to `background-color: --surface` — invalid CSS, so
+# the declaration is dropped and the element gets NO background. It fails
+# silently: no build error, no console warning, just a transparent panel over
+# other text. v4 requires the paren form: `bg-(--surface)`.
+# This shipped as a real bug in the scan detail sheet; it is now a standing check.
+echo "== C) Tailwind v4 bracket-form custom property (must be paren form) =="
+if rg -n --pcre2 -e "-\[--[a-z0-9-]+\]" src; then
+  echo "FAIL: rewrite as utility-(--token)"
+  exit 1
+else
+  echo "clean"
+fi

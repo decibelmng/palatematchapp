@@ -45,7 +45,11 @@ export type ScanListItem = {
   front_thumb_url: string | null;
   bottle_label: string | null; // "Producer — Cuvee, Vintage" or similar
   rated_stars: number | null;
+  /** Wines the person marked as ordered on this scan that they have not rated
+   *  yet. Facts only — the prompt names the wine instead of guessing. */
+  ordered_unrated: { bottle_id: string; name: string }[];
 };
+
 
 export const listUserScans = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
@@ -100,6 +104,40 @@ export const listUserScans = createServerFn({ method: "GET" })
       }
     }
 
+    // Wines marked "I ordered this" that still have no rating. The prompt has
+    // to name the wine, so it reads the outcome rows rather than inferring.
+    const orderedByScan = new Map<string, { bottle_id: string; name: string }[]>();
+    {
+      const { data: outcomes } = await supabase
+        .from("scan_outcomes")
+        .select("scan_id,chosen_bottle_id")
+        .eq("user_id", userId)
+        .in("scan_id", ids);
+      const rows = ((outcomes as any[]) ?? []).filter((o) => o.chosen_bottle_id);
+      const bottleIds = [...new Set(rows.map((o) => o.chosen_bottle_id as string))];
+      if (bottleIds.length > 0) {
+        const [{ data: bottles }, { data: rated }] = await Promise.all([
+          supabase.from("bottles").select("id,name,producer,vintage").in("id", bottleIds),
+          supabase.from("ratings").select("bottle_id").eq("user_id", userId).in("bottle_id", bottleIds),
+        ]);
+        const ratedIds = new Set(((rated as any[]) ?? []).map((r) => r.bottle_id as string));
+        const nameOf = new Map<string, string>();
+        for (const b of ((bottles as any[]) ?? [])) {
+          // Never truncate: the catalog name already carries producer + vintage.
+          nameOf.set(b.id, (b.name as string) ?? [b.producer, b.vintage].filter(Boolean).join(" "));
+        }
+        for (const o of rows) {
+          const id = o.chosen_bottle_id as string;
+          if (ratedIds.has(id)) continue;
+          const name = nameOf.get(id);
+          if (!name) continue;
+          const list0 = orderedByScan.get(o.scan_id) ?? [];
+          if (!list0.some((x) => x.bottle_id === id)) list0.push({ bottle_id: id, name });
+          orderedByScan.set(o.scan_id, list0);
+        }
+      }
+    }
+
     return list.map((s): ScanListItem => {
       const c = counts.get(s.id) ?? { total: 0, matched: 0 };
       const kind: "list" | "bottle" = s.kind === "bottle" ? "bottle" : "list";
@@ -122,9 +160,11 @@ export const listUserScans = createServerFn({ method: "GET" })
         front_thumb_url: thumbByScan.get(s.id) ?? null,
         bottle_label: kind === "bottle" ? (label || null) : null,
         rated_stars: kind === "bottle" && bw?.user_rated_stars ? bw.user_rated_stars : null,
+        ordered_unrated: orderedByScan.get(s.id) ?? [],
       };
     });
   });
+
 
 export type StoredScanRow = {
   id: string;

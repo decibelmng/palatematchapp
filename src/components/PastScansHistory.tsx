@@ -39,7 +39,11 @@ export function PastScansHistory() {
             const scannedMs = new Date(s.scanned_at).getTime();
             const isPostMeal =
               Number.isFinite(scannedMs) && (Date.now() - scannedMs) > 3 * 3600 * 1000;
-            const showRatePrompt = isPostMeal && s.wine_count > 0;
+            const ordered = s.ordered_unrated ?? [];
+            // Named prompt when we know what was ordered; the generic nudge
+            // only survives where there is no outcome row.
+            const showNamed = isPostMeal && ordered.length > 0;
+            const showGeneric = isPostMeal && ordered.length === 0 && s.wine_count > 0;
             return (
               <li key={s.id}>
                 <Link
@@ -63,7 +67,24 @@ export function PastScansHistory() {
                       </span>
                     )}
                   </div>
-                  {showRatePrompt && (
+                  {showNamed && (
+                    <div className="mt-3 space-y-2">
+                      {ordered.map((o) => (
+                        <div
+                          key={o.bottle_id}
+                          className="flex items-center justify-between gap-3 rounded-md border border-primary/40 bg-primary/5 px-3 py-2"
+                        >
+                          <span className="min-w-0 text-meta text-foreground">
+                            How was the {o.name}?
+                          </span>
+                          <span className="shrink-0 text-label uppercase tracking-label text-primary font-medium">
+                            Rate it →
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {showGeneric && (
                     <div className="mt-3 flex items-center justify-between gap-3 rounded-md border border-primary/40 bg-primary/5 px-3 py-2">
                       <span className="text-meta text-foreground">Did you order something? Rate it.</span>
                       <span className="shrink-0 text-label uppercase tracking-label text-primary font-medium">
@@ -75,6 +96,7 @@ export function PastScansHistory() {
               </li>
             );
           })}
+
         </ul>
 
       )}
