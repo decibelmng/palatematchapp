@@ -56,6 +56,15 @@ export type BottleFp = {
   /** Reading provenance (bottles.fp_pipeline). Present only where a caller
    *  selects it; absent is not a claim either way. */
   fpPipeline?: string | null;
+  /**
+   * Years between the vintage on the list and the vintage of the row this
+   * reading actually came from. Absent (or null) means the reading is for the
+   * exact bottle in hand — NOT that the gap is zero-but-known. A present gap
+   * only ever weakens confidence in the reading; it never changes evidence
+   * mass M, because M is a claim about how much of the person's own rated set
+   * sits nearby and that claim is unaffected by which year we read.
+   */
+  vintageGap?: number | null;
 };
 
 
@@ -122,6 +131,51 @@ export type Recommendation = {
 // ────────── Config (single tunable object) ──────────
 export const SHARPEN_GAMMA = 2.0;
 export const PRIOR_ALPHA = 0.5;
+
+/**
+ * Vintage staleness → extra shrinkage toward the per-type mean.
+ *
+ * A reading taken off a different year is still evidence, just weaker
+ * evidence. We express that as a larger prior weight α, so the prediction
+ * pulls further toward the person's own per-type mean. We deliberately do NOT
+ * attenuate evidence mass M: M feeds evidenceTier, which answers "how much of
+ * your rated set is nearby" — a different question from "how sure are we this
+ * reading describes the bottle in hand". Merging the two would make a stale
+ * reading indistinguishable from a thin neighbourhood.
+ *
+ * Shape: flat below the floor (adjacent years are the same wine in practice),
+ * rising through the middle, saturating. A 25-year gap is not meaningfully
+ * worse than a 15-year one — past a decade or so it is simply a different
+ * wine, and there is no further information in the extra years.
+ *
+ *   g(gap) = 0                                     for gap ≤ 2
+ *   g(gap) = GAP_MAX · (1 − e^(−(gap−2)/GAP_TAU))  otherwise
+ *
+ * With GAP_MAX = 1.0 and GAP_TAU = 5, α_eff runs 0.5 → ~1.0:
+ *   3y 0.09 · 5y 0.23 · 7y 0.32 · 8y 0.35 · 10y 0.40 · 15y 0.46 · 25y 0.49
+ * (values are the α increment; α_eff = 0.5·(1+g)).
+ *
+ * These constants are a considered guess, not a measurement. The per-axis
+ * within-cuvée decay regression over the v3 shadow columns is what will
+ * replace them with real numbers.
+ */
+export const VINTAGE_GAP_FLOOR = 2;
+export const VINTAGE_GAP_TAU = 5;
+export const VINTAGE_GAP_MAX = 1.0;
+
+/** g(gap) ∈ [0, VINTAGE_GAP_MAX]. Unknown/absent gap ⇒ 0: we cannot claim
+ *  staleness we did not observe. */
+export function vintageGapPenalty(gap: number | null | undefined): number {
+  if (gap == null || !Number.isFinite(gap)) return 0;
+  const over = Math.abs(gap) - VINTAGE_GAP_FLOOR;
+  if (over <= 0) return 0;
+  return VINTAGE_GAP_MAX * (1 - Math.exp(-over / VINTAGE_GAP_TAU));
+}
+
+/** Effective prior weight for one candidate. */
+export function effectiveAlpha(cand: BottleFp): number {
+  return PRIOR_ALPHA * (1 + vintageGapPenalty(cand.vintageGap));
+}
 export const BENCHMARK_WEIGHT = 3.0;
 /** Back-compat alias — old code imports CANON_WEIGHT. */
 export const CANON_WEIGHT = BENCHMARK_WEIGHT;
@@ -459,7 +513,10 @@ function scoreOne(cand: BottleFp, ctx: TypeCtx): Recommendation {
   const nemesisWinsBasin =
     inNemesisReach && nearNemesisDist < nearestPositiveDist;
 
-  let predicted = (num + PRIOR_ALPHA * muPrior) / (M + PRIOR_ALPHA);
+  // α_eff, not α: a reading taken off a different vintage shrinks further
+  // toward the per-type mean. Evidence mass M is untouched.
+  const alphaEff = effectiveAlpha(cand);
+  let predicted = (num + alphaEff * muPrior) / (M + alphaEff);
 
   // Step 6: dislike guard — nearest anchor by ω-distance is a plain-dislike
   // we're sitting on top of. Cap so a lonely candidate glued to a 1★ can't
@@ -502,7 +559,7 @@ function scoreOne(cand: BottleFp, ctx: TypeCtx): Recommendation {
     nearest: bestKAnchor,
     nearestIsCanon: !!bestKAnchor?.canon,
     maxSimilarity: bestSim,
-    confidence: M / (M + PRIOR_ALPHA),
+    confidence: M / (M + alphaEff),
     evidence: M,
     evidenceTier: tier,
     vetoed: !!vetoReason,
