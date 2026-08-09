@@ -43,6 +43,12 @@ export async function logWriteFailure(args: {
       const { data } = await supabase.auth.getUser();
       uid = data.user?.id ?? null;
     }
+    if (!uid) {
+      // No session: RLS would reject the row anyway, and a signed-out visitor
+      // has no app write that could have failed. Say so instead of vanishing.
+      console.error("[write-failure] not logged (no session):", args.table, args.operation ?? "insert", message);
+      return;
+    }
     const { error } = await supabase.from("write_failures").insert({
       user_id: uid,
       target_table: args.table,
