@@ -6,7 +6,7 @@ import {
 } from "@/lib/fingerprint-prompt-v3";
 
 export const REFINGERPRINT_V3_BATCH_SIZE = 125;
-export const REFINGERPRINT_V3_CONCURRENCY = 64;
+export const REFINGERPRINT_V3_CONCURRENCY = 48;
 export const REFINGERPRINT_V3_PAUSE_MARKER = "[v3 cron paused]";
 const LOCK_PREFIX = "[v3 lock ";
 
