@@ -29,7 +29,7 @@ rg -n --pcre2 -i ">[^<>{}\"']*($WORDS)[^<>{}\"']*<" src "${EXCL[@]}"
 # other text. v4 requires the paren form: `bg-(--surface)`.
 # This shipped as a real bug in the scan detail sheet; it is now a standing check.
 echo "== C) Tailwind v4 bracket-form custom property (must be paren form) =="
-if rg -n --pcre2 "-\[--[a-z0-9-]+\]" src; then
+if rg -n --pcre2 -e "-\[--[a-z0-9-]+\]" src; then
   echo "FAIL: rewrite as utility-(--token)"
   exit 1
 else
