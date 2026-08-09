@@ -26,7 +26,7 @@ function RefingerprintV3() {
   const runBatch = useServerFn(refingerprintV3Batch);
   const readProgress = useServerFn(refingerprintV3Progress);
   const [log, setLog] = useState<Entry[]>([]);
-  const [progress, setProgress] = useState<{ scored: number; pending: number; thin: number; empty: number } | null>(null);
+  const [progress, setProgress] = useState<{ scored: number; pending: number; thin: number; empty: number; ambiguous: number } | null>(null);
   const [running, setRunning] = useState(false);
   const [fatal, setFatal] = useState<string | null>(null);
   const [jobId, setJobId] = useState(JOB_ID);
