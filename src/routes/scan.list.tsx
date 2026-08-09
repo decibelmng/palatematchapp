@@ -84,7 +84,11 @@ function Scan() {
   // wins (step 2), which is correct for mixed-currency venues.
   const restaurantId = cap.prescanRestaurant?.id ?? null;
   const { data: restaurantCurrency } = useRestaurantCurrency(restaurantId);
-  const rank = useScanRanking(cap.wines, null, restaurantCurrency ?? null);
+  // Stored scan currency wins; derivation runs only when the column is null
+  // (an in-flight scan, or one finalized before the aggregation shipped).
+  const { data: storedScanCurrency } = useScanCurrency(cap.scanId ?? null);
+  const rank = useScanRanking(cap.wines, storedScanCurrency ?? null, restaurantCurrency ?? null);
+
 
   // Photo captured on the chooser sheet. The camera already opened there, so
   // this screen is the review step, never a gate in front of the camera.
