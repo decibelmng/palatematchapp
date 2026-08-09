@@ -96,6 +96,8 @@ function RefingerprintV3() {
           <div>Pending: {progress.pending.toLocaleString()}</div>
           <div>Thin (≤3 axes): {progress.thin.toLocaleString()}</div>
           <div>Unreadable: {progress.empty.toLocaleString()}</div>
+          <div>Ambiguous join: {progress.ambiguous.toLocaleString()}</div>
+
         </div>
       )}
 
