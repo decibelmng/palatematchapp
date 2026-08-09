@@ -1,4 +1,4 @@
-import { isThinRead, isAmbiguousJoinRead } from "@/lib/recommender";
+import { isThinRead, isAmbiguousJoinRead, isGeneratedNoteRead } from "@/lib/recommender";
 import type { ScanRow } from "./types";
 import { isExactVintage } from "./vintage";
 
