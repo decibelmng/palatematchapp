@@ -63,9 +63,9 @@ export function compareCallCandidates(a: ScanRow, b: ScanRow): number {
 }
 
 /**
- * Who the single recommendation may be drawn from. Two exclusions, each with
- * the same escape hatch — if it would empty the pool, it stands down, because
- * a best guess beats no answer at a restaurant table.
+ * Who the single recommendation may be drawn from. Every exclusion carries the
+ * same escape hatch — if it would empty the pool it stands down, because a best
+ * guess beats no answer at a restaurant table.
  *
  *   1. An ESTIMATED line — one we could not find in the catalog — is ranked and
  *      can be an alternate, but cannot be the Call. Its reading is inferred
@@ -75,6 +75,8 @@ export function compareCallCandidates(a: ScanRow, b: ScanRow): number {
  *   2. A wine read on three or fewer style axes — or read from a review that may
  *      describe a sibling bottle — can be ranked but must not be named as the
  *      Call; see THIN_READ_MAX_AXES.
+ *   3. A wine read from a note no human wrote — see isGeneratedNoteRead. Two
+ *      inferences deep, and measurably flatter than the note-derived tier.
  *
  * Excluded rows stay in `eligible`, so they still appear in the alternates and
  * the full list.
@@ -83,7 +85,10 @@ export function callEligible(eligible: ScanRow[]): ScanRow[] {
   const catalog = eligible.filter((r) => r.isCatalog);
   const pool = catalog.length > 0 ? catalog : eligible;
   const solid = pool.filter(
-    (r) => !isThinRead(r.ranked.bottle.fp, r.type) && !isAmbiguousJoinRead(r.ranked.bottle),
+    (r) =>
+      !isThinRead(r.ranked.bottle.fp, r.type) &&
+      !isAmbiguousJoinRead(r.ranked.bottle) &&
+      !isGeneratedNoteRead(r.ranked.bottle),
   );
   return solid.length > 0 ? solid : pool;
 }
