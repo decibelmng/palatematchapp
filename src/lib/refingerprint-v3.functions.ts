@@ -138,7 +138,7 @@ export const refingerprintV3Batch = createServerFn({ method: "POST" })
       );
       if (fp == null) empty++;
 
-      const patch: Record<string, unknown> = {
+      const patch: Record<string, string | number | null> = {
         fp_v3_scored_at: new Date().toISOString(),
         fp_v3_job_id: data.jobId,
         fp_v3_axes_read: axesReadCount,
@@ -148,7 +148,7 @@ export const refingerprintV3Batch = createServerFn({ method: "POST" })
       // so it has no shadow column; it is left alone by the shadow run.
       void sweet;
 
-      const { error: wErr } = await supabaseAdmin.from("bottles").update(patch).eq("id", row.id);
+      const { error: wErr } = await supabaseAdmin.from("bottles").update(patch as never).eq("id", row.id);
       if (wErr) errors.push(`${row.id} write: ${wErr.message}`);
       else wrote++;
     });
