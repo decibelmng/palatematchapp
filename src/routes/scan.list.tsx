@@ -37,6 +37,24 @@ function useRestaurantCurrency(restaurantId: string | null) {
   });
 }
 
+/** Read the currency finalize wrote for THIS scan. One value, one owner: the
+ *  column is authoritative and derivation is only the fallback when it's null.
+ *  Two paths computing the same figure is how scans.currency drifted to null
+ *  while every wine on it carried USD. */
+function useScanCurrency(scanId: string | null) {
+  return useQuery({
+    queryKey: ["scan-currency", scanId],
+    enabled: !!scanId,
+    queryFn: async () => {
+      const { data } = await supabase.from("scans").select("currency").eq("id", scanId!).maybeSingle();
+      const c = (data as { currency: string | null } | null)?.currency ?? null;
+      return (c as CurrencyCode | null);
+    },
+  });
+}
+
+
+
 
 export const Route = createFileRoute("/scan/list")({
   ssr: false,
