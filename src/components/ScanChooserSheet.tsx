@@ -13,8 +13,10 @@ export function ScanChooserSheet({
   sommVerified?: boolean;
 }) {
   const navigate = useNavigate();
-  const listInput = useRef<HTMLInputElement>(null);
-  const bottleInput = useRef<HTMLInputElement>(null);
+  const listCamera = useRef<HTMLInputElement>(null);
+  const listLibrary = useRef<HTMLInputElement>(null);
+  const bottleCamera = useRef<HTMLInputElement>(null);
+  const bottleLibrary = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -35,9 +37,15 @@ export function ScanChooserSheet({
    * check, no navigation, no analytics, no state update before the click. The
    * navigation happens later, in the input's change handler, which is itself a
    * fresh user-initiated event.
+   *
+   * The library path is the same rule: one ref lookup, one synchronous click.
+   * The only difference between the two inputs is the `capture` attribute.
    */
-  const openCamera = (kind: CaptureKind) => {
-    const el = kind === "list" ? listInput.current : bottleInput.current;
+  const openPicker = (source: "camera" | "library", kind: CaptureKind) => {
+    const el =
+      kind === "list"
+        ? source === "camera" ? listCamera.current : listLibrary.current
+        : source === "camera" ? bottleCamera.current : bottleLibrary.current;
     el?.click();
   };
 
@@ -49,6 +57,10 @@ export function ScanChooserSheet({
     onClose();
     navigate({ to: kind === "list" ? "/scan/list" : "/scan/bottle" });
   };
+
+  const linkClass =
+    "block w-full min-h-11 px-4 py-3 text-left text-meta text-muted-foreground underline underline-offset-2 hover:text-foreground";
+
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
