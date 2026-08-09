@@ -21,6 +21,7 @@ export function ResultRow({
   hideReason?: boolean;
 }) {
   const r = row.ranked;
+  const approx = approxVintage(row);
   const score = r.predicted > 0 ? r.predicted.toFixed(1) : null;
   const reason = hideReason ? null : becauseLine(row);
 
