@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { friendlyError } from "@/lib/error-message";
 import { logWriteFailure } from "@/lib/write-failure-log";
 import type { ScanRow } from "./types";
+import { outcomeBottleId } from "./types";
 
 function median(values: number[]): number | null {
   const v = values.filter((n) => Number.isFinite(n)).sort((a, b) => a - b);
@@ -26,8 +27,11 @@ function median(values: number[]): number | null {
 export type ScanOutcomeApi = {
   /** Whether the control should render at all — needs a persisted scan. */
   enabled: boolean;
-  /** Bottle id of the current answer, or null. */
+  /** Catalog bottle id of the current answer, or null. */
   chosenBottleId: string | null;
+  /** True when this row is the recorded answer. Compares CATALOG ids, never
+   *  the synthetic per-scan key. */
+  isOrdered: (row: ScanRow) => boolean;
   /** Tap handler: sets, replaces, or (same wine again) clears. */
   toggle: (row: ScanRow) => void;
   /** True while a write is in flight, so the control can't double-fire. */
@@ -45,6 +49,7 @@ export function useScanOutcome({
   eligible: ScanRow[];
   rows: ScanRow[];
 }): ScanOutcomeApi {
+
   const [chosenBottleId, setChosen] = useState<string | null>(null);
   const inFlight = useRef(false);
   const [pending, setPending] = useState(false);
