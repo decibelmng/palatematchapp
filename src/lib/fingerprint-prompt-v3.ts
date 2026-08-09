@@ -23,48 +23,81 @@ You are given the wine TYPE (red / white / rosé / sparkling / dessert / fortifi
 
 Two notes from the same grape and the same region SHOULD receive different values whenever their words differ. Words like "brawny, mild acidity, chocolate, soft rounded layers" and "dry, classically structured, long and deep in cassis" describe two different wines, and your output must say so. Reporting the category average is the failure mode here.
 
-Score what is WRITTEN. If the note says a wine is soft and low-acid, that is what it is, however unusual that seems for its kind. If an axis is genuinely not mentioned and not implied, return 0.5 for that axis and nothing else — do not reach for a stereotype to fill the gap.
+Score what is WRITTEN. If the note says a wine is soft and low-acid, that is what it is, however unusual that seems for its kind.
 
-Use the full 0..1 range. Reserve the extremes for notes whose language is extreme, and use them when it is.
+=== NULL IS A REQUIRED ANSWER ===
+
+If the note does not address an axis, return null for that axis. Not 0.5 — null.
+
+0.5 is a real, central position. A wine whose note never mentions acidity is not a mid-acid wine; it is a wine whose acidity you do not know. Reporting 0.5 there makes the two indistinguishable and destroys the axis. Returning null is the correct, expected answer and costs nothing downstream: unread axes are excluded and the remaining ones are rescaled.
+
+Do NOT infer a missing axis from an adjacent descriptor, from the other axes, or from what wines of this style usually do. "Crisp" is acid language and may be scored. "Bright red cherry" is fruit language and is NOT acid evidence — if that is all the note offers, fp_acid is null. Filling a gap with what the category usually does is the exact failure this prompt exists to remove.
+
+Six real axes beat eight where two are guesses. Do not apologise for nulls and do not try to minimise how many you return.
+
+Use the full 0..1 range for the axes you DO score. Reserve the extremes for notes whose language is extreme, and use them when it is.
 
 === AXES ===
 
-Each axis is defined by intensity of language, not by any example wine.
+Each axis is defined by intensity of language, not by any example wine. Every axis may be null.
 
 fp_fresh — 0 flat, tired, oxidative, heavy, warm-feeling / 1 vibrant, lifted, crunchy, energetic, mouth-watering.
-  Read: lift, drive, energy, brightness, freshness, "cuts", "zips" push up. Baked, stewed, tired, soft-edged, flabby, oxidative, raisiny push down.
+  Score only on explicit freshness/lift/energy language: lift, drive, energy, vibrant, fresh, "cuts", "zips" push up; baked, stewed, tired, flabby, oxidative, soft-edged push down. A note that describes only flavours and tannin says nothing about freshness → null.
 
 fp_acid — 0 soft, round, low-acid, gentle / 1 piercing, racy, searing, tart-bright.
-  Read: explicit acidity words only — "bright acidity", "racy", "mouth-watering", "crisp", "zesty", "lemon-edged" up; "soft", "round", "low acidity", "creamy", "gentle", "plush" down. Absence of any acid language on a note that reads rich and soft is itself soft.
+  Score only on explicit acidity or texture-of-acid language: "bright acidity", "racy", "mouth-watering", "crisp", "zesty", "lemon-edged", "tart" up; "soft", "round", "low acidity", "mild acidity", "creamy", "plush", "flabby" down. Named fruits, ripeness, oak and tannin are NOT acid evidence. No acid language → null.
 
 fp_tannin — 0 no perceptible tannin / 1 massively grippy, drying, chewy, mouth-coating.
-  Read intensity of the tannin words themselves, not what the wine probably is: "silky", "supple", "feathery", "polished", "gentle" low; "firm", "structured", "dusty", "grippy" middle-to-high; "chewy", "drying", "astringent", "tongue-sticky", "rugged", "brawny", "tough" high.
+  Read intensity of the tannin words themselves, not what the wine probably is: "silky", "supple", "feathery", "polished", "gentle" low; "firm", "structured", "dusty", "grippy" middle-to-high; "chewy", "drying", "astringent", "tongue-sticky", "rugged", "brawny", "tough" high. A red note with no tannin or texture language at all → null.
   Non-reds: 0 (enforced downstream).
 
 fp_fruit_dark — 0 purely red, citrus, or stone fruit / 1 purely black fruit.
-  Read the named fruits. cherry, cranberry, raspberry, redcurrant, strawberry, pomegranate → low. plum, black cherry, boysenberry → middle. blackberry, blackcurrant, cassis, blueberry, black plum, fig → high. A note naming both red and black fruit sits between, weighted by which leads.
+  Read the named fruits. cherry, cranberry, raspberry, redcurrant, strawberry, pomegranate → low. plum, black cherry, boysenberry → middle. blackberry, blackcurrant, cassis, blueberry, black plum, fig → high. A note naming both red and black fruit sits between, weighted by which leads. A note naming no fruit → null.
   Non-reds: 0 (enforced downstream).
 
 fp_ripe — 0 tart, green, underripe, austere, lean / 1 jammy, raisined, super-ripe, hedonistic.
-  Read: green, herbaceous, unripe, sour, austere, "canned peas", stalky low; ripe, generous, juicy middle-high; jammy, opulent, lush, decadent, candied, raisiny, "super-ripe", port-like at the top.
+  Read: green, herbaceous, unripe, sour, austere, "canned peas", stalky low; ripe, generous, juicy middle-high; jammy, opulent, lush, decadent, candied, raisiny, "super-ripe", port-like at the top. No ripeness language → null.
 
 fp_oak — 0 no oak signature at all / 1 dominant new oak.
-  Read: "unoaked", "stainless", "steel", or a note with zero oak descriptors → very low. cedar, tobacco leaf from wood, subtle spice → low-middle. vanilla, toast, mocha, caramel, coconut, sawdust, char, "smoky oak", "generously oaked" → high, and higher again when the note says the oak leads or dominates.
+  "unoaked", "stainless", "steel-fermented" → near 0. cedar, tobacco leaf from wood, subtle spice → low-middle. vanilla, toast, mocha, caramel, coconut, sawdust, char, "smoky oak", "generously oaked" → high, and higher again when the note says the oak leads or dominates. A note that mentions neither oak nor its absence → null. (Silence is not evidence of no oak.)
 
 fp_body — 0 water-light, delicate / 1 thick, heavy, mouth-filling.
-  Read: light, lean, delicate, "compact", "lightly spritzy" low; medium-bodied, "weight", "richness" middle; full-bodied, dense, thick, syrupy, "sizable", "powerful weight", "concentrated and packed" high. Ignore alcohol guesses.
+  Read: light, lean, delicate, "compact", "lightly spritzy" low; medium-bodied, "weight", "richness" middle; full-bodied, dense, thick, syrupy, "sizable", "powerful weight", "concentrated and packed" high. Ignore alcohol guesses. No weight or texture language → null.
 
 fp_savory — 0 pure fruit and nothing else / 1 dominated by earth, mineral, saline, leather, tobacco, meat.
   Read and COUNT the non-fruit savory descriptors: minerality, salinity, wet stone, chalk, flint, iodine, sea spray, oyster shell, earth, forest floor, mushroom, truffle, tar, leather, tobacco, graphite, pencil shavings, garrigue, dried herbs, olive, peat, smoke, bacon fat, soy, meat, umami.
-  Zero such descriptors and a fruit-led note → 0.10–0.20. One → about 0.55. Two → 0.65 or above. Three or more, or a note where earth/mineral clearly leads over fruit → 0.75 or above, up to 0.95.
+  Zero such descriptors on a note that DOES describe flavour and names only fruit → 0.10–0.20 (this is real evidence of absence). One → about 0.55. Two → 0.65 or above. Three or more, or a note where earth/mineral clearly leads over fruit → 0.75 or above, up to 0.95. A note that describes no flavours at all → null.
 
-ax_sweet — 0 bone dry; 0.15 off-dry / trace of sweetness; 0.5 medium-sweet; 1 full dessert or fortified-sweet. A stated residual sugar or "hint of sweetness" moves it off 0; "drinks dry" is 0. Ripe fruit is NOT sweetness.
+ax_sweet — 0 bone dry; 0.15 off-dry / trace of sweetness; 0.5 medium-sweet; 1 full dessert or fortified-sweet. A stated residual sugar or "hint of sweetness" moves it off 0; "drinks dry" is 0. Ripe fruit is NOT sweetness. Null if the note gives no reading either way.
 
 === OUTPUT ===
-{ "fp": { "fresh":0,"acid":0,"tannin":0,"fruit_dark":0,"ripe":0,"oak":0,"body":0,"savory":0 },
-  "ax_sweet": 0 }`;
+Every value is a number 0..1 OR null. Use JSON null, never the string "null", never 0.5 as a stand-in.
 
-import { clamp01, type FpValues } from "./fingerprint-prompt";
+{ "fp": { "fresh":null,"acid":null,"tannin":null,"fruit_dark":null,"ripe":null,"oak":null,"body":null,"savory":null },
+  "ax_sweet": null }`;
+
+import type { FpValues } from "./fingerprint-prompt";
+
+/** Axis keys in canonical order. */
+export const V3_AXES = [
+  "fresh", "acid", "tannin", "fruit_dark", "ripe", "oak", "body", "savory",
+] as const satisfies readonly (keyof FpValues)[];
+
+/** A v3 reading: every axis is a real 0..1 value or null for "the note does not say".
+ *  Null is NEVER coerced to a number — not here, not on write, not on read. */
+export type FpValuesNullable = { [K in keyof FpValues]: number | null };
+
+/**
+ * Clamp to 0..1 while preserving null. The v2 `clamp01` returns 0.5 for any
+ * non-finite input, which is precisely the sentinel bug this pipeline removes:
+ * 0.5 is a real central position and must never stand in for "unread".
+ */
+export function clamp01OrNull(n: unknown): number | null {
+  if (n === null || n === undefined || n === "") return null;
+  const x = typeof n === "number" ? n : Number(n);
+  if (!Number.isFinite(x)) return null;
+  return Math.max(0, Math.min(1, x));
+}
 
 const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 export const FINGERPRINT_MODEL_V3 = "google/gemini-2.5-flash";
@@ -108,27 +141,33 @@ async function gatewayCall(system: string, user: string, apiKey: string): Promis
  * v3 blind score. Sees ONLY the wine type and a real human tasting note.
  * No grape, no region, no producer, no price — nothing a typicity grid could
  * be rebuilt from.
+ *
+ * Any axis the note does not address comes back NULL. Callers must carry the
+ * null through to storage; `fpOf` omits unread axes and `omegaDistance`
+ * rescales over the axes actually present, so a wine read on 6 of 8 axes is
+ * compared correctly against one read on 8.
  */
 export async function scoreFromNoteV3(
   type: string,
   tasting_note: string,
   apiKey: string,
-): Promise<{ fp: FpValues; ax_sweet: number }> {
+): Promise<{ fp: FpValuesNullable; ax_sweet: number | null }> {
   const userMsg = JSON.stringify({ type, tasting_note });
   const parsed = await gatewayCall(SCORE_SYS_V3, userMsg, apiKey);
-  const fp: FpValues = {
-    fresh: clamp01(parsed?.fp?.fresh),
-    acid: clamp01(parsed?.fp?.acid),
-    tannin: clamp01(parsed?.fp?.tannin),
-    fruit_dark: clamp01(parsed?.fp?.fruit_dark),
-    ripe: clamp01(parsed?.fp?.ripe),
-    oak: clamp01(parsed?.fp?.oak),
-    body: clamp01(parsed?.fp?.body),
-    savory: clamp01(parsed?.fp?.savory),
+  const fp: FpValuesNullable = {
+    fresh: clamp01OrNull(parsed?.fp?.fresh),
+    acid: clamp01OrNull(parsed?.fp?.acid),
+    tannin: clamp01OrNull(parsed?.fp?.tannin),
+    fruit_dark: clamp01OrNull(parsed?.fp?.fruit_dark),
+    ripe: clamp01OrNull(parsed?.fp?.ripe),
+    oak: clamp01OrNull(parsed?.fp?.oak),
+    body: clamp01OrNull(parsed?.fp?.body),
+    savory: clamp01OrNull(parsed?.fp?.savory),
   };
+  // Structurally impossible, not unread: a white has no tannin to fail to read.
   if (type !== "red" && type !== "dessert") {
     fp.tannin = 0;
     fp.fruit_dark = 0;
   }
-  return { fp, ax_sweet: clamp01(parsed?.ax_sweet ?? 0) };
+  return { fp, ax_sweet: clamp01OrNull(parsed?.ax_sweet) };
 }

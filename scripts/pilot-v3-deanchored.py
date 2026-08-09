@@ -36,9 +36,17 @@ def score(note, wtype):
     c = r.json()["choices"][0]["message"]["content"]
     c = re.sub(r"^```(?:json)?|```$", "", c.strip()).strip()
     j = json.loads(c)
-    fp = {a: max(0.0, min(1.0, float(j["fp"][a]))) for a in AXES}
+    def one(v):
+        if v is None or v == "" or (isinstance(v, str) and v.lower() == "null"):
+            return None
+        try:
+            x = float(v)
+        except (TypeError, ValueError):
+            return None
+        return None if x != x else max(0.0, min(1.0, x))
+    fp = {a: one(j["fp"].get(a)) for a in AXES}
     if wtype not in ("red", "dessert"):
-        fp["tannin"] = fp["fruit_dark"] = 0.0
+        fp["tannin"] = fp["fruit_dark"] = 0.0  # structurally absent, not unread
     return fp
 
 
@@ -76,30 +84,56 @@ for r, fp in zip(rows, fps):
 
 
 def spread(vals):
-    return {"sd": st.pstdev(vals) if len(vals) > 1 else 0.0,
-            "range": max(vals) - min(vals)}
+    vals = [v for v in vals if v is not None]
+    if len(vals) < 2:
+        return {"sd": 0.0, "range": 0.0, "n": len(vals)}
+    return {"sd": st.pstdev(vals), "range": max(vals) - min(vals), "n": len(vals)}
 
 
 def group_report(label, subset):
     if len(subset) < 3:
         return
     print(f"--- {label}  (n={len(subset)}) ---")
-    print(f"{'axis':<11}{'v1 sd':>8}{'v3 sd':>8}{'ratio':>8}{'v1 rng':>9}{'v3 rng':>9}")
+    print(f"{'axis':<11}{'v1 sd':>8}{'v3 sd':>8}{'ratio':>8}{'v1 rng':>9}{'v3 rng':>9}{'v3 n':>7}{'null%':>7}")
     ratios = []
     for a in AXES:
         p = spread([r["prior"][a] for r in subset])
         v = spread([r["v3"][a] for r in subset])
         ratio = (v["sd"] / p["sd"]) if p["sd"] > 1e-9 else float("inf")
         ratios.append(ratio)
-        print(f"{a:<11}{p['sd']:>8.3f}{v['sd']:>8.3f}{ratio:>8.2f}{p['range']:>9.3f}{v['range']:>9.3f}")
+        nullpct = 100.0 * (len(subset) - v["n"]) / len(subset)
+        print(f"{a:<11}{p['sd']:>8.3f}{v['sd']:>8.3f}{ratio:>8.2f}{p['range']:>9.3f}"
+              f"{v['range']:>9.3f}{v['n']:>7}{nullpct:>7.0f}")
     fin = [x for x in ratios if x != float("inf")]
     print(f"mean sd ratio v3/v1: {st.mean(fin):.2f}  "
           f"axes improved: {sum(1 for x in ratios if x > 1)}/{len(ratios)}\n")
 
 
 def dist(x, y):
-    return sum((x[a] - y[a]) ** 2 for a in AXES) ** 0.5
+    """Rescaled over the axes readable on BOTH sides — same convention as
+    omegaDistance. No comparable axis returns inf, never 0."""
+    ks = [a for a in AXES if x.get(a) is not None and y.get(a) is not None]
+    if not ks:
+        return float("inf")
+    return (sum((x[a] - y[a]) ** 2 for a in ks) / len(ks)) ** 0.5 * (len(AXES) ** 0.5)
 
+
+def null_report(rows):
+    print("--- null rate per axis (all %d wines) ---" % len(rows))
+    for a in AXES:
+        n = sum(1 for r in rows if r["v3"][a] is None)
+        print(f"{a:<11}{n:>4} null  {100.0*n/len(rows):>5.1f}%")
+    counts = [sum(1 for a in AXES if r["v3"][a] is None) for r in rows]
+    print("nulls per wine: " + "  ".join(
+        f"{k}:{counts.count(k)}" for k in range(0, 9) if counts.count(k)))
+    thin = [(r["name"], c) for r, c in zip(rows, counts) if c > 3]
+    print(f"wines with >3 null axes: {len(thin)}")
+    for n, c in thin:
+        print(f"   {c} nulls  {n}")
+    print()
+
+
+null_report(rows)
 
 napa_cab = [r for r in rows if r["region"] == "Napa Valley" and r["grape"] == "Cabernet Sauvignon"]
 group_report("PRIMARY GATE — Napa Valley / Cabernet Sauvignon", napa_cab)
