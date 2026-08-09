@@ -117,11 +117,30 @@ function tokens(s: string | null | undefined): string[] {
 function typeMatches(a: string | null | undefined, b: string | null | undefined): boolean {
   return (a ?? "red").toLowerCase() === (b ?? "red").toLowerCase();
 }
+export type MatchVerdict = {
+  score: number;
+  reasons: string[];
+  /** true only when the scanned vintage and the catalog row's vintage agree. */
+  vintageExact: boolean;
+  /** Years apart when both vintages are known and differ; null otherwise. */
+  vintageGap: number | null;
+};
+
+const NO_MATCH: MatchVerdict = { score: 0, reasons: [], vintageExact: false, vintageGap: null };
+
+/**
+ * Vintage participates in scoring. It used to be accepted and ignored, which
+ * let a 2022 list line resolve to a 2008 catalog row purely on trigram luck —
+ * an accurate per-vintage fingerprint is worthless if the matcher then picks an
+ * arbitrary vintage.
+ */
 function scoreMatch(
   scanned: ScannedWine,
   bottle: { name: string; producer: string | null; type: string | null; vintage: number | null },
-): number {
-  if (!typeMatches(scanned.type, bottle.type)) return 0;
+): MatchVerdict {
+  if (!typeMatches(scanned.type, bottle.type)) {
+    return { ...NO_MATCH, reasons: [`type mismatch (${scanned.type ?? "red"} vs ${bottle.type ?? "red"})`] };
+  }
   const sProd = tokens(scanned.producer);
   const sName = tokens(scanned.wine_name);
   const bProd = tokens(bottle.producer);
@@ -130,13 +149,44 @@ function scoreMatch(
   const nameOverlap = sName.filter((t) => bName.includes(t) || bProd.includes(t)).length;
   const haveProd = sProd.length > 0;
   const needNameMatch = Math.max(1, Math.ceil(sName.length / 2));
-  if (haveProd && prodOverlap < 1) return 0;
-  if (!haveProd && (sName.length + prodOverlap) < 2) return 0;
-  if (sName.length > 0 && nameOverlap < needNameMatch) return 0;
+  if (haveProd && prodOverlap < 1) return { ...NO_MATCH, reasons: ["producer: no shared word"] };
+  if (!haveProd && (sName.length + prodOverlap) < 2) return { ...NO_MATCH, reasons: ["too little name evidence"] };
+  if (sName.length > 0 && nameOverlap < needNameMatch) {
+    return { ...NO_MATCH, reasons: [`name: ${nameOverlap}/${sName.length} words, needed ${needNameMatch}`] };
+  }
   const prodScore = haveProd ? Math.min(1, prodOverlap / Math.max(1, sProd.length)) : 0.5;
   const nameScore = sName.length > 0 ? nameOverlap / sName.length : 0.5;
-  return Math.min(1, 0.6 + 0.25 * prodScore + 0.15 * nameScore);
+
+  const reasons: string[] = [
+    `producer ${prodOverlap}/${Math.max(1, sProd.length)} (${prodScore.toFixed(2)})`,
+    `name ${nameOverlap}/${Math.max(1, sName.length)} (${nameScore.toFixed(2)})`,
+  ];
+
+  let vintageTerm = 0;
+  let vintageExact = false;
+  let vintageGap: number | null = null;
+  const sv = scanned.vintage ?? null;
+  const bv = bottle.vintage ?? null;
+  if (sv != null && bv != null) {
+    if (sv === bv) {
+      vintageExact = true;
+      vintageTerm = 0.12;
+      reasons.push(`vintage exact ${sv} (+0.12)`);
+    } else {
+      vintageGap = Math.abs(sv - bv);
+      // One year apart is a near-miss; fifteen is a different wine.
+      vintageTerm = -Math.min(0.35, 0.035 * vintageGap);
+      reasons.push(`vintage ${sv} vs ${bv}, ${vintageGap}y apart (${vintageTerm.toFixed(2)})`);
+    }
+  } else {
+    reasons.push(sv == null ? "vintage not read on list" : "catalog row has no vintage");
+  }
+
+  const score = Math.max(0.05, Math.min(1, 0.6 + 0.25 * prodScore + 0.15 * nameScore + vintageTerm));
+  reasons.push(`score ${score.toFixed(3)}`);
+  return { score, reasons, vintageExact, vintageGap };
 }
+
 
 // ---------- JSON repair ----------
 
