@@ -199,39 +199,81 @@ export async function finalizeScanCore(
 }
 
 /**
- * Finalize a scan only if it is stuck: status "processing" while every batch has
- * reported. Returns what it did so callers can log/report rather than guess.
+ * Mark every batch that never reported as failed, so the counters add up and
+ * finalizeScanCore can classify the scan.
+ *
+ * This exists because the old skip condition (`done + failed < total` → leave
+ * alone) meant the scans that most needed rescuing — a handler that died
+ * BEFORE it could call mark_scan_batch_done or mark_scan_batch_failed — were
+ * the only ones the reconciler would never touch. Those sat in "processing"
+ * forever. A batch that has not reported long past the cutoff did not report;
+ * treating it as failed yields "partial" when other pages landed and "failed"
+ * when none did, which is the truth in both cases.
+ */
+async function abandonUnreportedBatches(
+  supabase: SupabaseClient,
+  scanId: string,
+  total: number,
+  failedIdx: number[],
+): Promise<void> {
+  const { data: rows } = await supabase
+    .from("scan_wines").select("batch_index").eq("scan_id", scanId);
+  const landed = new Set<number>(((rows ?? []) as any[]).map((r) => r.batch_index as number));
+  const nextFailed = new Set<number>(failedIdx);
+  for (let i = 0; i < total; i++) if (!landed.has(i)) nextFailed.add(i);
+  await supabase
+    .from("scans")
+    .update({
+      batches_done: landed.size,
+      batches_failed: Array.from(nextFailed).sort((a, b) => a - b) as any,
+    })
+    .eq("id", scanId);
+}
+
+/**
+ * Finalize a scan only if it is stuck. "All batches reported" finalizes
+ * immediately; a scan whose batches never reported is abandoned to
+ * failed/partial once it is older than `abandonAfterMinutes`, so a handler that
+ * died silently cannot leave the row in "processing" forever.
  */
 export async function reconcileOne(
   supabase: SupabaseClient,
   userId: string,
   scanId: string,
+  opts: { abandonAfterMinutes?: number } = {},
 ): Promise<{ reconciled: boolean; status: string | null }> {
+  const abandonAfter = opts.abandonAfterMinutes ?? 10;
   const { data: scan } = await supabase
     .from("scans")
-    .select("status,batch_count,batches_done,batches_failed")
+    .select("status,batch_count,batches_done,batches_failed,updated_at")
     .eq("id", scanId)
     .maybeSingle();
   if (!scan) return { reconciled: false, status: null };
   if (scan.status !== "processing") return { reconciled: false, status: scan.status as string };
   const done = (scan.batches_done as number | null) ?? 0;
   const total = (scan.batch_count as number | null) ?? 0;
-  const failed = ((scan.batches_failed as number[] | null) ?? []).length;
-  // Nothing reported yet and nothing failed: still genuinely in flight.
-  if (done + failed < total || total === 0) return { reconciled: false, status: "processing" };
+  const failedIdx = ((scan.batches_failed as number[] | null) ?? []);
+  if (total === 0) return { reconciled: false, status: "processing" };
+  if (done + failedIdx.length < total) {
+    const age = Date.now() - new Date((scan as any).updated_at as string).getTime();
+    // Genuinely still in flight — the client is mid-scan, leave it alone.
+    if (age < abandonAfter * 60_000) return { reconciled: false, status: "processing" };
+    await abandonUnreportedBatches(supabase, scanId, total, failedIdx);
+  }
   const res = await finalizeScanCore(supabase, userId, scanId);
   return { reconciled: true, status: res.status };
 }
 
 /**
- * Scheduled sweep. Finds scans left in "processing" past `olderThanMinutes`
- * whose batches all reported, and finalizes them. Bounded per run so one bad
+ * Scheduled sweep. Finds scans left in "processing" past `olderThanMinutes` and
+ * finalizes them — including the ones whose batches never reported, which are
+ * abandoned to failed/partial rather than skipped. Bounded per run so one bad
  * scan can't stall the queue and a burst can't run unbounded.
  */
 export async function reconcileStuckScans(
   supabase: SupabaseClient,
   opts: { olderThanMinutes?: number; limit?: number } = {},
-): Promise<{ examined: number; reconciled: number; results: Array<{ scan_id: string; status: string | null; error?: string }> }> {
+): Promise<{ examined: number; reconciled: number; abandoned: number; results: Array<{ scan_id: string; status: string | null; abandoned?: boolean; error?: string }> }> {
   const olderThan = opts.olderThanMinutes ?? 10;
   const limit = opts.limit ?? 25;
   const cutoff = new Date(Date.now() - olderThan * 60_000).toISOString();
@@ -244,23 +286,29 @@ export async function reconcileStuckScans(
     .limit(limit);
   if (error) throw new Error(error.message);
 
-  const results: Array<{ scan_id: string; status: string | null; error?: string }> = [];
+  const results: Array<{ scan_id: string; status: string | null; abandoned?: boolean; error?: string }> = [];
   let reconciled = 0;
+  let abandoned = 0;
   for (const s of stuck ?? []) {
     const total = (s.batch_count as number | null) ?? 0;
     const done = (s.batches_done as number | null) ?? 0;
-    const failed = ((s.batches_failed as number[] | null) ?? []).length;
-    if (total === 0 || done + failed < total) {
-      results.push({ scan_id: s.id as string, status: "still-processing" });
+    const failedIdx = ((s.batches_failed as number[] | null) ?? []);
+    if (total === 0) {
+      results.push({ scan_id: s.id as string, status: "no-batches" });
       continue;
     }
+    const unreported = done + failedIdx.length < total;
     try {
+      if (unreported) {
+        await abandonUnreportedBatches(supabase, s.id as string, total, failedIdx);
+        abandoned += 1;
+      }
       const res = await finalizeScanCore(supabase, s.user_id as string, s.id as string);
       reconciled += 1;
-      results.push({ scan_id: s.id as string, status: res.status });
+      results.push({ scan_id: s.id as string, status: res.status, ...(unreported ? { abandoned: true } : {}) });
     } catch (e) {
       results.push({ scan_id: s.id as string, status: null, error: (e as Error).message });
     }
   }
-  return { examined: (stuck ?? []).length, reconciled, results };
+  return { examined: (stuck ?? []).length, reconciled, abandoned, results };
 }
