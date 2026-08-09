@@ -433,9 +433,23 @@ export function useRate() {
 
 
               if (error) {
+                await logWriteFailure({
+                  table: "ratings",
+                  operation: "upsert",
+                  error,
+                  userId: session?.user.id ?? null,
+                  context: {
+                    rpc: "restore_rating_and_benchmark",
+                    path: "undo_toast",
+                    bottle_id: result.bottleId,
+                    stars: result.previousStars,
+                    tier: result.demotedTier,
+                  },
+                });
                 toast.error(friendlyError(error, "Couldn't undo."));
                 return;
               }
+
               qc.invalidateQueries({ queryKey: ["ratings"] });
               qc.invalidateQueries({ queryKey: ["canons"] });
               qc.invalidateQueries({ queryKey: ["palate-version"] });
