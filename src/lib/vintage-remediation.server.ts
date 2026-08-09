@@ -41,12 +41,19 @@ export type RemediationItem = {
   benchmark_tier: "canon" | "nemesis" | null;
   prediction_rows: number;
   klass: RemediationClass;
+  /**
+   * How the owner already answered, if they have. "kept" = they confirmed the
+   * bottle it sits on is the one they drank; "undecided" = they chose to leave
+   * it. Neither moved any data — the stamp only stops the card re-asking.
+   */
+  settled: "kept" | "undecided" | null;
 };
 
 type SW = {
   id: string; scan_id: string; user_id: string; vintage: number | null;
   producer: string | null; cuvee: string | null; wine_type: string | null;
   matched_bottle_id: string | null; created_at: string | null;
+  match_reasons: unknown;
 };
 type B = {
   id: string; name: string; producer: string | null; region: string | null;
@@ -56,7 +63,7 @@ type B = {
 export async function buildQueue(admin: any): Promise<RemediationItem[]> {
   const { data: lines, error: e1 } = await admin
     .from("scan_wines")
-    .select("id,scan_id,user_id,vintage,producer,cuvee,wine_type,matched_bottle_id,created_at")
+    .select("id,scan_id,user_id,vintage,producer,cuvee,wine_type,matched_bottle_id,created_at,match_reasons")
     .not("matched_bottle_id", "is", null)
     .not("vintage", "is", null)
     .limit(5000);
@@ -130,6 +137,14 @@ export async function buildQueue(admin: any): Promise<RemediationItem[]> {
     const stars = ratings.get(k) ?? null;
     const tier = tiers.get(k) ?? null;
     const predictionRows = preds.get(k) ?? 0;
+    const reasons = Array.isArray(r.match_reasons) ? (r.match_reasons as string[]) : [];
+    const settled: "kept" | "undecided" | null = reasons.some((x) =>
+      String(x).startsWith("remediation:vintage_kept"),
+    )
+      ? "kept"
+      : reasons.some((x) => String(x).startsWith("remediation:vintage_undecided"))
+        ? "undecided"
+        : null;
     const ownRating = stars != null ? 1 : 0;
     const carriesJudgment = stars != null || tier != null || predictionRows > 0;
     return {
@@ -154,6 +169,7 @@ export async function buildQueue(admin: any): Promise<RemediationItem[]> {
       benchmark_tier: tier,
       prediction_rows: predictionRows,
       klass: !carriesJudgment ? "unrated" : c ? "confirm-existing" : "confirm-resolve",
+      settled,
     } satisfies RemediationItem;
   });
 }
