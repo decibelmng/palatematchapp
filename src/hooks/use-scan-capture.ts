@@ -163,20 +163,22 @@ export function useScanCapture() {
       const prepared = await Promise.all(
         files.map(async (file, i) => {
           const img = await stage(`Preparing photo ${i + 1}`, () => prepareImageForScan(file));
-          let storagePath: string | null = null;
           const ext = img.mediaType === "image/png" ? "png" : img.mediaType === "image/webp" ? "webp" : "jpg";
           const path = `${uid}/${scanUuid}/page-${i + 1}.${ext}`;
-          const { error } = await supabase.storage
+          // Fire-and-forget, exactly like the bottle path. A slow or hanging
+          // upload must never sit in front of the scan insert — the scan ships
+          // base64 to the model anyway; the stored copy is only for re-opening.
+          void supabase.storage
             .from("scan-images")
-            .upload(path, img.blob, { contentType: img.mediaType, upsert: true });
-          // A failed upload is survivable (the scan ships base64 anyway) but
-          // was previously invisible, so it could never be ruled out.
-          if (error) console.error(`[scan] photo ${i + 1} upload failed: ${error.message}`);
-          else storagePath = path;
+            .upload(path, img.blob, { contentType: img.mediaType, upsert: true })
+            .then(({ error }) => {
+              if (error) console.error(`[scan] photo ${i + 1} upload failed: ${error.message}`);
+            })
+            .catch((e) => console.error(`[scan] photo ${i + 1} upload threw`, e));
           return {
             image_base64: img.base64,
             media_type: img.mediaType as BatchImage["media_type"],
-            storagePath,
+            storagePath: path,
           };
         }),
       );
@@ -188,11 +190,12 @@ export function useScanCapture() {
           page_count: files.length,
           batch_count: preparedBatches.length,
           image_paths: image_paths_all,
-          // The pre-scan pick has to land on the scan row itself, otherwise
-          // finalize sees a null venue and skips every fact capture.
+          // Optional attribution. The server drops it if it doesn't resolve,
+          // so it can never fail the insert.
           restaurant_id: prescanRestaurant?.id ?? null,
         },
       }));
+
 
 
       const initial: BatchState[] = preparedBatches.map((group, i) => ({
