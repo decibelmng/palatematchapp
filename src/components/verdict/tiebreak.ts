@@ -1,4 +1,4 @@
-import { isThinRead } from "@/lib/recommender";
+import { isThinRead, isAmbiguousJoinRead } from "@/lib/recommender";
 import type { ScanRow } from "./types";
 
 /**
@@ -55,15 +55,17 @@ export function compareCallCandidates(a: ScanRow, b: ScanRow): number {
 }
 
 /**
- * A wine read on three or fewer style axes can be ranked but must not be named
- * as the Call — see THIN_READ_MAX_AXES. It stays in `eligible`, so it still
+* A wine read on three or fewer style axes — or read from a review that may
+ * describe a sibling bottle — can be ranked but must not be named as the Call — see THIN_READ_MAX_AXES. It stays in `eligible`, so it still
  * appears in the alternates and the full list; it is only removed from the
  * shortlist the single recommendation is drawn from. If EVERY candidate is a
  * thin read we do not refuse to answer: the screen still names one, because a
  * thin best guess beats no guess at a restaurant table.
  */
 export function callEligible(eligible: ScanRow[]): ScanRow[] {
-  const solid = eligible.filter((r) => !isThinRead(r.ranked.bottle.fp, r.type));
+  const solid = eligible.filter(
+    (r) => !isThinRead(r.ranked.bottle.fp, r.type) && !isAmbiguousJoinRead(r.ranked.bottle),
+  );
   return solid.length > 0 ? solid : eligible;
 }
 
