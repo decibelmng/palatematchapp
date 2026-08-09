@@ -3,11 +3,11 @@ import { priceLabel } from "./types";
 import { OrderedButton } from "./OrderedButton";
 
 export function Alternates({
-  items, onOpen, orderedBottleId, onOrdered, orderPending, canOrder,
+  items, onOpen, isOrdered, onOrdered, orderPending, canOrder,
 }: {
   items: Alternate[];
   onOpen: (key: string) => void;
-  orderedBottleId?: string | null;
+  isOrdered?: (row: Alternate["row"]) => boolean;
   onOrdered?: (a: Alternate) => void;
   orderPending?: boolean;
   canOrder?: boolean;
@@ -16,7 +16,8 @@ export function Alternates({
   return (
     <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
       {items.map((a) => {
-        const ordered = !!orderedBottleId && orderedBottleId === a.row.ranked.bottle.id;
+        const ordered = !!isOrdered?.(a.row);
+
         return (
           // The card's open affordance is an overlay button UNDER the content,
           // so the "I ordered this" control can sit inside the card without
