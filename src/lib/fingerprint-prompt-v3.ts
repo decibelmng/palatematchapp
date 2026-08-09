@@ -48,31 +48,33 @@ fp_acid — 0 soft, round, low-acid, gentle / 1 piercing, racy, searing, tart-br
   Score only on explicit acidity or texture-of-acid language: "bright acidity", "racy", "mouth-watering", "crisp", "zesty", "lemon-edged", "tart" up; "soft", "round", "low acidity", "mild acidity", "creamy", "plush", "flabby" down. Named fruits, ripeness, oak and tannin are NOT acid evidence. No acid language → null.
 
 fp_tannin — 0 no perceptible tannin / 1 massively grippy, drying, chewy, mouth-coating.
-  Read intensity of the tannin words themselves, not what the wine probably is: "silky", "supple", "feathery", "polished", "gentle" low; "firm", "structured", "dusty", "grippy" middle-to-high; "chewy", "drying", "astringent", "tongue-sticky", "rugged", "brawny", "tough" high.
+  Read intensity of the tannin words themselves, not what the wine probably is: "silky", "supple", "feathery", "polished", "gentle" low; "firm", "structured", "dusty", "grippy" middle-to-high; "chewy", "drying", "astringent", "tongue-sticky", "rugged", "brawny", "tough" high. A red note with no tannin or texture language at all → null.
   Non-reds: 0 (enforced downstream).
 
 fp_fruit_dark — 0 purely red, citrus, or stone fruit / 1 purely black fruit.
-  Read the named fruits. cherry, cranberry, raspberry, redcurrant, strawberry, pomegranate → low. plum, black cherry, boysenberry → middle. blackberry, blackcurrant, cassis, blueberry, black plum, fig → high. A note naming both red and black fruit sits between, weighted by which leads.
+  Read the named fruits. cherry, cranberry, raspberry, redcurrant, strawberry, pomegranate → low. plum, black cherry, boysenberry → middle. blackberry, blackcurrant, cassis, blueberry, black plum, fig → high. A note naming both red and black fruit sits between, weighted by which leads. A note naming no fruit → null.
   Non-reds: 0 (enforced downstream).
 
 fp_ripe — 0 tart, green, underripe, austere, lean / 1 jammy, raisined, super-ripe, hedonistic.
-  Read: green, herbaceous, unripe, sour, austere, "canned peas", stalky low; ripe, generous, juicy middle-high; jammy, opulent, lush, decadent, candied, raisiny, "super-ripe", port-like at the top.
+  Read: green, herbaceous, unripe, sour, austere, "canned peas", stalky low; ripe, generous, juicy middle-high; jammy, opulent, lush, decadent, candied, raisiny, "super-ripe", port-like at the top. No ripeness language → null.
 
 fp_oak — 0 no oak signature at all / 1 dominant new oak.
-  Read: "unoaked", "stainless", "steel", or a note with zero oak descriptors → very low. cedar, tobacco leaf from wood, subtle spice → low-middle. vanilla, toast, mocha, caramel, coconut, sawdust, char, "smoky oak", "generously oaked" → high, and higher again when the note says the oak leads or dominates.
+  "unoaked", "stainless", "steel-fermented" → near 0. cedar, tobacco leaf from wood, subtle spice → low-middle. vanilla, toast, mocha, caramel, coconut, sawdust, char, "smoky oak", "generously oaked" → high, and higher again when the note says the oak leads or dominates. A note that mentions neither oak nor its absence → null. (Silence is not evidence of no oak.)
 
 fp_body — 0 water-light, delicate / 1 thick, heavy, mouth-filling.
-  Read: light, lean, delicate, "compact", "lightly spritzy" low; medium-bodied, "weight", "richness" middle; full-bodied, dense, thick, syrupy, "sizable", "powerful weight", "concentrated and packed" high. Ignore alcohol guesses.
+  Read: light, lean, delicate, "compact", "lightly spritzy" low; medium-bodied, "weight", "richness" middle; full-bodied, dense, thick, syrupy, "sizable", "powerful weight", "concentrated and packed" high. Ignore alcohol guesses. No weight or texture language → null.
 
 fp_savory — 0 pure fruit and nothing else / 1 dominated by earth, mineral, saline, leather, tobacco, meat.
   Read and COUNT the non-fruit savory descriptors: minerality, salinity, wet stone, chalk, flint, iodine, sea spray, oyster shell, earth, forest floor, mushroom, truffle, tar, leather, tobacco, graphite, pencil shavings, garrigue, dried herbs, olive, peat, smoke, bacon fat, soy, meat, umami.
-  Zero such descriptors and a fruit-led note → 0.10–0.20. One → about 0.55. Two → 0.65 or above. Three or more, or a note where earth/mineral clearly leads over fruit → 0.75 or above, up to 0.95.
+  Zero such descriptors on a note that DOES describe flavour and names only fruit → 0.10–0.20 (this is real evidence of absence). One → about 0.55. Two → 0.65 or above. Three or more, or a note where earth/mineral clearly leads over fruit → 0.75 or above, up to 0.95. A note that describes no flavours at all → null.
 
-ax_sweet — 0 bone dry; 0.15 off-dry / trace of sweetness; 0.5 medium-sweet; 1 full dessert or fortified-sweet. A stated residual sugar or "hint of sweetness" moves it off 0; "drinks dry" is 0. Ripe fruit is NOT sweetness.
+ax_sweet — 0 bone dry; 0.15 off-dry / trace of sweetness; 0.5 medium-sweet; 1 full dessert or fortified-sweet. A stated residual sugar or "hint of sweetness" moves it off 0; "drinks dry" is 0. Ripe fruit is NOT sweetness. Null if the note gives no reading either way.
 
 === OUTPUT ===
-{ "fp": { "fresh":0,"acid":0,"tannin":0,"fruit_dark":0,"ripe":0,"oak":0,"body":0,"savory":0 },
-  "ax_sweet": 0 }`;
+Every value is a number 0..1 OR null. Use JSON null, never the string "null", never 0.5 as a stand-in.
+
+{ "fp": { "fresh":null,"acid":null,"tannin":null,"fruit_dark":null,"ripe":null,"oak":null,"body":null,"savory":null },
+  "ax_sweet": null }`;
 
 import { clamp01, type FpValues } from "./fingerprint-prompt";
 
