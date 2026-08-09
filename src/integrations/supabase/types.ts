@@ -1885,6 +1885,36 @@ export type Database = {
           },
         ]
       }
+      write_failures: {
+        Row: {
+          context: Json | null
+          created_at: string
+          id: string
+          message: string | null
+          operation: string
+          target_table: string
+          user_id: string | null
+        }
+        Insert: {
+          context?: Json | null
+          created_at?: string
+          id?: string
+          message?: string | null
+          operation?: string
+          target_table: string
+          user_id?: string | null
+        }
+        Update: {
+          context?: Json | null
+          created_at?: string
+          id?: string
+          message?: string | null
+          operation?: string
+          target_table?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       prediction_axis_bias: {
@@ -2209,6 +2239,7 @@ export type Database = {
         }[]
       }
       are_friends: { Args: { _a: string; _b: string }; Returns: boolean }
+      bump_fingerprint_attempts: { Args: { _ids: string[] }; Returns: number }
       ct_eq: { Args: { a: string; b: string }; Returns: boolean }
       follow_user: {
         Args: { p_followee: string }
