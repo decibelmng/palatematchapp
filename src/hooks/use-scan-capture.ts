@@ -87,14 +87,24 @@ export function useScanCapture() {
       const batch = list.find((b) => b.index === index)!;
       setBatches((prev) => prev.map((b) => (b.index === index ? { ...b, status: "running" } : b)));
       try {
-        const res = await runBatch({
-          data: {
-            scan_id: sid,
-            batch_index: index,
-            images: batch.images,
-            image_paths: batch.image_paths,
-          },
-        });
+        // Hard per-batch deadline. The server's own budget is 60s + a 45s
+        // retry = 105s worst case, so this MUST be longer or we would abandon
+        // a request that was still going to succeed. A severed request (the
+        // 499 hang) now resolves here as a failed batch instead of a batch
+        // that stays "running" forever with no exit.
+        const res = await Promise.race([
+          runBatch({
+            data: {
+              scan_id: sid,
+              batch_index: index,
+              images: batch.images,
+              image_paths: batch.image_paths,
+            },
+          }),
+          new Promise<never>((_, reject) =>
+            setTimeout(() => reject(new Error("That page took too long to read.")), BATCH_DEADLINE_MS),
+          ),
+        ]);
         setBatches((prev) => prev.map((b) => (b.index === index ? { ...b, status: "done", error: undefined } : b)));
         setWines((prev) => [...prev, ...res.wines]);
       } catch (e) {
