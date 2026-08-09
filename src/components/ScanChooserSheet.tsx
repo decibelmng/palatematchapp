@@ -13,8 +13,10 @@ export function ScanChooserSheet({
   sommVerified?: boolean;
 }) {
   const navigate = useNavigate();
-  const listInput = useRef<HTMLInputElement>(null);
-  const bottleInput = useRef<HTMLInputElement>(null);
+  const listCamera = useRef<HTMLInputElement>(null);
+  const listLibrary = useRef<HTMLInputElement>(null);
+  const bottleCamera = useRef<HTMLInputElement>(null);
+  const bottleLibrary = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -35,9 +37,15 @@ export function ScanChooserSheet({
    * check, no navigation, no analytics, no state update before the click. The
    * navigation happens later, in the input's change handler, which is itself a
    * fresh user-initiated event.
+   *
+   * The library path is the same rule: one ref lookup, one synchronous click.
+   * The only difference between the two inputs is the `capture` attribute.
    */
-  const openCamera = (kind: CaptureKind) => {
-    const el = kind === "list" ? listInput.current : bottleInput.current;
+  const openPicker = (source: "camera" | "library", kind: CaptureKind) => {
+    const el =
+      kind === "list"
+        ? source === "camera" ? listCamera.current : listLibrary.current
+        : source === "camera" ? bottleCamera.current : bottleLibrary.current;
     el?.click();
   };
 
@@ -50,6 +58,10 @@ export function ScanChooserSheet({
     navigate({ to: kind === "list" ? "/scan/list" : "/scan/bottle" });
   };
 
+  const linkClass =
+    "block w-full min-h-11 px-4 py-3 text-left text-meta text-muted-foreground underline underline-offset-2 hover:text-foreground";
+
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center">
       <button
@@ -58,14 +70,23 @@ export function ScanChooserSheet({
         className="absolute inset-0 bg-black/50 backdrop-blur-sm"
       />
 
-      {/* Hidden capture inputs live in the sheet so the click is synchronous
-          with the tap on the card above them. */}
+      {/* Hidden inputs live in the sheet so the click is synchronous with the
+          tap on the card (or link) above them. Camera and library differ only
+          by the `capture` attribute; lists take many pages, bottles take one. */}
       <input
-        ref={listInput} type="file" accept="image/*" capture="environment" multiple className="hidden"
+        ref={listCamera} type="file" accept="image/*" capture="environment" multiple className="hidden"
         onChange={(e) => onCaptured("list", e.target.files, e.currentTarget)}
       />
       <input
-        ref={bottleInput} type="file" accept="image/*" capture="environment" className="hidden"
+        ref={listLibrary} type="file" accept="image/*" multiple className="hidden"
+        onChange={(e) => onCaptured("list", e.target.files, e.currentTarget)}
+      />
+      <input
+        ref={bottleCamera} type="file" accept="image/*" capture="environment" className="hidden"
+        onChange={(e) => onCaptured("bottle", e.target.files, e.currentTarget)}
+      />
+      <input
+        ref={bottleLibrary} type="file" accept="image/*" className="hidden"
         onChange={(e) => onCaptured("bottle", e.target.files, e.currentTarget)}
       />
 
@@ -87,34 +108,57 @@ export function ScanChooserSheet({
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={() => openCamera("list")}
-            className="rounded-xl border-2 border-primary/60 bg-gradient-to-br from-primary/15 via-card to-card p-4 hover:border-primary transition text-left"
-          >
-            <div className="h-11 w-11 rounded-xl bg-primary/20 text-primary flex items-center justify-center mb-3">
-              <ScanLine size={22} strokeWidth={1.8} />
-            </div>
-            <div className="font-serif text-base leading-tight">Wine list</div>
-            <p className="mt-1 text-meta text-muted-foreground">
-              Rank every bottle on a menu.
-            </p>
-          </button>
+          {/* Card body and its secondary link are siblings, never nested —
+              a button inside a button is not a valid tap target. */}
+          <div className="rounded-xl border-2 border-primary/60 bg-gradient-to-br from-primary/15 via-card to-card overflow-hidden">
+            <button
+              type="button"
+              onClick={() => openPicker("camera", "list")}
+              className="block w-full p-4 text-left"
+            >
+              <div className="h-11 w-11 rounded-xl bg-primary/20 text-primary flex items-center justify-center mb-3">
+                <ScanLine size={22} strokeWidth={1.8} />
+              </div>
+              <div className="font-serif text-base leading-tight">Wine list</div>
+              <p className="mt-1 text-meta text-muted-foreground">
+                Rank every bottle on a menu.
+              </p>
+            </button>
+            <button
+              type="button"
+              onClick={() => openPicker("library", "list")}
+              aria-label="Upload wine list photos from your library"
+              className={linkClass}
+            >
+              Upload instead
+            </button>
+          </div>
 
-          <button
-            type="button"
-            onClick={() => openCamera("bottle")}
-            className="rounded-xl border-2 border-border bg-card p-4 hover:border-primary/60 transition text-left"
-          >
-            <div className="h-11 w-11 rounded-xl bg-accent/40 text-foreground flex items-center justify-center mb-3">
-              <Camera size={22} strokeWidth={1.8} />
-            </div>
-            <div className="font-serif text-base leading-tight">Bottle label</div>
-            <p className="mt-1 text-meta text-muted-foreground">
-              Identify one bottle and rate it.
-            </p>
-          </button>
+          <div className="rounded-xl border-2 border-border bg-card overflow-hidden">
+            <button
+              type="button"
+              onClick={() => openPicker("camera", "bottle")}
+              className="block w-full p-4 text-left"
+            >
+              <div className="h-11 w-11 rounded-xl bg-accent/40 text-foreground flex items-center justify-center mb-3">
+                <Camera size={22} strokeWidth={1.8} />
+              </div>
+              <div className="font-serif text-base leading-tight">Bottle label</div>
+              <p className="mt-1 text-meta text-muted-foreground">
+                Identify one bottle and rate it.
+              </p>
+            </button>
+            <button
+              type="button"
+              onClick={() => openPicker("library", "bottle")}
+              aria-label="Upload a bottle label photo from your library"
+              className={linkClass}
+            >
+              Upload instead
+            </button>
+          </div>
         </div>
+
 
         {sommVerified && (
           <Link

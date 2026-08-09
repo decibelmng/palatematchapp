@@ -1,4 +1,4 @@
-import { ScanLine, ArrowRight, Image as ImageIcon } from "lucide-react";
+import { ScanLine, ArrowRight } from "lucide-react";
 import type { RefObject } from "react";
 import type { BatchState } from "@/lib/scan-helpers";
 
@@ -35,15 +35,10 @@ export function ScanEntryButtons({
           <ArrowRight className="shrink-0 text-primary" size={18} />
         </div>
       </button>
-      <button
-        type="button"
-        onClick={() => libraryRef.current?.click()}
-        disabled={disabled}
-        data-testid="scan-entry-library"
-        className="mt-2 inline-flex items-center gap-1.5 text-meta text-muted-foreground hover:text-foreground disabled:opacity-60"
-      >
-        <ImageIcon size={14} /> Upload photos instead (up to 8 pages)
-      </button>
+      {/* The library path now lives on the chooser sheet ("Upload instead"), so
+          the idle scan screen keeps exactly one action. libraryRef stays wired —
+          the review screen still uses it to swap a bad photo. */}
+
     </>
   );
 }
