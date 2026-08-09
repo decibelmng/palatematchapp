@@ -19,6 +19,18 @@ const CUVEE_GROUP_MAX = 40;
  *  unscoreable wine must not burn gateway budget every session. */
 export const MAX_FINGERPRINT_ATTEMPTS = 3;
 
+/** Advance the attempt counter for every row we were about to score.
+ *  Uses an RPC so the whole target set moves in one statement — incrementing
+ *  only the seed left siblings at 0 attempts, which the sweep then re-picked. */
+async function bumpAttempts(supabaseAdmin: any, ids: string[], why: string): Promise<void> {
+  const { error } = await supabaseAdmin.rpc("bump_fingerprint_attempts", { _ids: ids });
+  if (error) {
+    console.error(
+      `[refingerprint] could not record ${why} for ${ids.length} row(s): ${error.message}`,
+    );
+  }
+}
+
 export function stripYear(s: string): string {
   return s.replace(/\b(19|20)\d{2}\b/g, "").replace(/\s+/g, " ").trim();
 }
@@ -144,7 +156,7 @@ export async function refingerprintCuveeByBottleId(
 
   // 5. Write to every row in the group. Provenance columns are NOT NULL —
   // every fp_ write must record model + prompt hash + pipeline + scored_at.
-  const ids = targets.map((r: any) => r.id as string);
+  const ids = targetIds;
   const nowIso = new Date().toISOString();
   const { error: uErr } = await supabaseAdmin
     .from("bottles")
@@ -174,7 +186,12 @@ export async function refingerprintCuveeByBottleId(
     })
     .in("id", ids);
 
-  if (uErr) return { skipped: true, reason: uErr.message };
+  if (uErr) {
+    console.error(
+      `[refingerprint] write failed for ${seed.producer} ${seed.name} (${ids.length} rows): ${uErr.message}`,
+    );
+    return { skipped: true, reason: uErr.message };
+  }
 
   return { ok: true, groupSize: ids.length };
 }
