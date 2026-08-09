@@ -142,9 +142,36 @@ export function axisApplies(axis: FpKey, type: WineType): boolean {
   return true;
 }
 
+/**
+ * Axes retired from SCORING while still stored and written.
+ *
+ * `fresh` is retired: recovered reviewer prose addresses it on 15% of wines,
+ * and where both are present it correlates with `acid` at 0.53 (reds) / 0.74
+ * (whites) — reviewers do not write freshness as distinct from acidity because
+ * it largely is acidity. An axis that is absent 85% of the time and collinear
+ * when present contributes noise plus a rescaling penalty, not signal.
+ *
+ * This is deliberately NOT `axisApplies`: fp_fresh is still scored, still
+ * written, and still displayed. It is excluded from the metric only, so the
+ * decision is reversible the moment a note source that discusses freshness
+ * independently arrives.
+ */
+export const RETIRED_AXES: readonly FpKey[] = ["fresh"];
+
 function activeAxesFor(type: WineType): FpKey[] {
-  return RAX.filter((a) => axisApplies(a, type));
+  return RAX.filter((a) => axisApplies(a, type) && !RETIRED_AXES.includes(a));
 }
+
+/**
+ * Minimum axes two readings must BOTH carry to be treated as neighbours.
+ *
+ * A kernel weight computed from two shared dimensions is noise with a
+ * confidence interval wider than the scale it reports. Below this floor the
+ * pair has no usable geometry, so the distance is Infinity — the same
+ * convention as no overlap at all — rather than a small number that
+ * masquerades as similarity.
+ */
+export const MIN_COMPARABLE_AXES = 3;
 
 // ────────── Step 1: learn axis-importance ω via pairwise non-neg ridge ──────────
 
