@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { friendlyError } from "@/lib/error-message";
+import { logWriteFailure } from "@/lib/write-failure-log";
 import type { ScanRow } from "./types";
 
 function median(values: number[]): number | null {
@@ -137,16 +138,41 @@ export function useScanOutcome({
               label: "Undo",
               onClick: () => {
                 setChosen(null);
-                void supabase
-                  .from("scan_outcomes")
-                  .delete()
-                  .eq("user_id", uid)
-                  .eq("scan_id", scanId);
+                void (async () => {
+                  const { error: delErr } = await supabase
+                    .from("scan_outcomes")
+                    .delete()
+                    .eq("user_id", uid)
+                    .eq("scan_id", scanId);
+                  if (delErr) {
+                    await logWriteFailure({
+                      table: "scan_outcomes",
+                      operation: "delete",
+                      error: delErr,
+                      userId: uid,
+                      context: { scan_id: scanId, undo: true },
+                    });
+                  }
+                })();
               },
             },
           });
         } catch (e) {
           setChosen(previous);
+          // The user sees a friendly message; the measurement layer records the
+          // row that was lost, so a broken write path is never mistaken for an
+          // unused feature.
+          await logWriteFailure({
+            table: "scan_outcomes",
+            operation: clearing ? "delete" : "upsert",
+            error: e,
+            context: {
+              scan_id: scanId,
+              chosen_bottle_id: clearing ? null : bottleId,
+              chosen_rank: clearing ? null : rankOf(row),
+              n_candidates: rows.length,
+            },
+          });
           toast.error(friendlyError(e, "Couldn't save what you ordered."));
         } finally {
           inFlight.current = false;
