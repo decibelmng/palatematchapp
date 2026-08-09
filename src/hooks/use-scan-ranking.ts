@@ -92,6 +92,13 @@ export function useScanRanking(
       name: [w.producer, w.wine_name, w.vintage].filter(Boolean).join(" ") || "Unknown wine",
       producer: w.producer ?? null, region: w.region ?? null,
       type: (w.type ?? "red") as WineType, fp: w.fp_resolved!,
+      // Years between the year on the list and the year we actually read.
+      // Absent unless both are known — an unlisted year is not a gap of zero
+      // and is not a gap we can size, so it earns no extra shrinkage.
+      vintageGap:
+        w.vintage_approx && w.vintage != null && w.matched_vintage != null
+          ? Math.abs(w.vintage - w.matched_vintage)
+          : null,
     }));
     // Quiz seeds: inject one synthetic loved-bottle per scanned type when the
     // user hasn't yet built up enough real ratings for that type. Seeds fade
