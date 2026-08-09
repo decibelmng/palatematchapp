@@ -43,11 +43,15 @@ export function useScanOutcome({
   call,
   eligible,
   rows,
+  onConfirmed,
 }: {
   scanId: string | null;
   call: ScanRow | null;
   eligible: ScanRow[];
   rows: ScanRow[];
+  /** Fired the instant a wine becomes the recorded answer, so the surface can
+   *  confirm the tap on screen instead of relying on a toast. */
+  onConfirmed?: (row: ScanRow) => void;
 }): ScanOutcomeApi {
 
   const [chosenBottleId, setChosen] = useState<string | null>(null);
@@ -109,6 +113,7 @@ export function useScanOutcome({
       // Optimistic: the tap is the whole interaction, so it must feel instant.
       const previous = chosenBottleId;
       setChosen(clearing ? null : bottleId);
+      if (!clearing) onConfirmed?.(row);
 
 
       void (async () => {
@@ -200,7 +205,7 @@ export function useScanOutcome({
         }
       })();
     },
-    [scanId, chosenBottleId, call, rows, listMedian, rankOf],
+    [scanId, chosenBottleId, call, rows, listMedian, rankOf, onConfirmed],
   );
 
   return { enabled: !!scanId, chosenBottleId, isOrdered, toggle, pending };
