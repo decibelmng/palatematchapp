@@ -78,6 +78,11 @@ export function ResultRow({
               {approxCaveat(approx)}
             </p>
           )}
+          {isEstimated(row) && (
+            <p className="mt-1 text-meta leading-snug text-muted-foreground">
+              {ESTIMATED_SENTENCE}
+            </p>
+          )}
           {reason && (
             <p className="mt-1 text-meta leading-snug text-muted-foreground truncate">{reason}</p>
           )}
