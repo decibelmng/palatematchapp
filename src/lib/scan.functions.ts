@@ -71,6 +71,9 @@ export type ResolvedWine = ScannedWine & {
   matched_bottle_name: string | null;
   match_score: number;
   match_reasons?: string[];
+  /** Matched a different vintage than the list showed — surface as
+   *  "closest vintage we have", never as a clean match. */
+  vintage_approx?: boolean;
   /** Present when the row came from persisted scan_wines — lets a rating link
    *  back to the exact scan line it was made from. */
   scan_wine_id?: string | null;
