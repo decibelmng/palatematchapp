@@ -51,7 +51,11 @@ export function useScanCapture() {
   const [prescanRestaurant, setPrescanRestaurant] = useState<{ id: string; name: string } | null>(null);
   const [autoAttributedTo, setAutoAttributedTo] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
+  const [stalled, setStalled] = useState(false);
   const finalizingRef = useRef(false);
+  /** Timestamp of the last real progress (a wine landed, or a batch settled).
+   *  A ref so the ticking interval never has to restart to see it. */
+  const progressRef = useRef(Date.now());
 
   const isRunning = status === "running";
 
