@@ -85,10 +85,13 @@ export function useScanCapture() {
     const failed = new Set<number>(((scan.batches_failed ?? []) as number[]));
     const total = scan.batch_count ?? 0;
     const list: BatchState[] = [];
+    // Derive the resumed scan's OWN pages-per-batch rather than assuming the
+    // current constant — older scans were chunked two pages at a time.
+    const per = total > 0 ? Math.max(1, Math.ceil((scan.page_count ?? 1) / total)) : 1;
     for (let i = 0; i < total; i++) {
       list.push({
         index: i,
-        pageNumbers: [i * 2 + 1, Math.min(scan.page_count, i * 2 + 2)].filter((n, idx, arr) => arr.indexOf(n) === idx),
+        pageNumbers: Array.from({ length: per }, (_, k) => i * per + k + 1).filter((n) => n <= (scan.page_count ?? 1)),
         status: failed.has(i) ? "failed" : "done",
         images: [],
         image_paths: [],
