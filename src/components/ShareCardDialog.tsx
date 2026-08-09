@@ -60,16 +60,17 @@ export function ShareCardDialog({ open, onClose, type, code, displayName }: Prop
         <div ref={cardRef} className="rounded-xl bg-background border border-border p-6 flex flex-col items-center text-center">
           <PalateStar axes={axesFor(type)} letters={letters} size={200} />
           <div
-            className="mt-4 font-serif text-2xl text-primary"
-            style={{  }}
+            className="mt-4 font-serif text-2xl text-primary tracking-[0.14em]"
           >
             {parseCode(code, axesFor(type)).map((c, i) => (
-              <span key={i} className={c === GLYPH_UNRESOLVED ? "text-muted-foreground/60" : ""}>{c}</span>
+              <span key={i} className={c === GLYPH_UNRESOLVED ? "text-muted-foreground/60" : ""}>{c}{" "}</span>
             ))}
           </div>
+          <PalateCodeWords type={type} code={code} className="mt-2 max-w-[18rem]" />
           <p className="mt-3 text-xs text-muted-foreground">
             My {type} palate · Palate Match
           </p>
+
           {displayName && (
             <p className="mt-1 text-sm font-medium">{displayName}</p>
           )}
