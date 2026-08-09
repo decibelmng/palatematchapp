@@ -288,10 +288,28 @@ export const createScanRecord = createServerFn({ method: "POST" })
     batch_count: z.number().int().min(1).max(8),
     image_paths: StringArray.optional(),
     venue_raw_text: z.string().max(200).nullable().optional(),
-    restaurant_id: z.string().uuid().nullable().optional(),
+    // Deliberately loose: an unparseable value is dropped below rather than
+    // rejected. Attribution is optional and must never fail the scan.
+    restaurant_id: z.string().nullable().optional(),
   }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
+
+    // Optional attribution never participates in the required write path.
+    // Anything that isn't a real restaurants.id is dropped; the user can
+    // attribute after the results render.
+    let restaurantId: string | null = null;
+    const candidate = data.restaurant_id?.trim() || null;
+    if (candidate && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(candidate)) {
+      try {
+        const { data: venue } = await supabase
+          .from("restaurants").select("id").eq("id", candidate).maybeSingle();
+        if (venue?.id) restaurantId = venue.id as string;
+      } catch {
+        restaurantId = null;
+      }
+    }
+
     const { data: inserted, error } = await supabase.from("scans").insert({
       user_id: userId,
       status: "processing",
@@ -299,13 +317,12 @@ export const createScanRecord = createServerFn({ method: "POST" })
       batch_count: data.batch_count,
       image_paths: data.image_paths ?? [],
       venue_raw_text: data.venue_raw_text?.trim() || null,
-      // A pre-scan pick used to live only in client state, so finalize saw a
-      // null venue and skipped every capture. It lands on the row now.
-      restaurant_id: data.restaurant_id ?? null,
+      restaurant_id: restaurantId,
     }).select("id").single();
     if (error || !inserted) throw new Error(error?.message ?? "Failed to create scan");
     return { scan_id: inserted.id as string };
   });
+
 
 export const scanWineBatch = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
