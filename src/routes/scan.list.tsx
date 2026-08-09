@@ -257,6 +257,35 @@ function Scan() {
         <BatchProgress batches={cap.batches} isRunning={cap.isRunning} elapsed={cap.elapsed} onRetry={cap.retryFailed} />
       )}
 
+      {/* ── STALLED ─────────────────────────────────────────────────────────
+          15 seconds with nothing new landing. A reading screen with no exit
+          should be impossible, so this always carries a way out. */}
+      {!failure && cap.stalled && anyBatchInFlight && (
+        <div className="mt-3 rounded-md border border-border bg-card p-3" role="status" aria-live="polite">
+          <p className="text-sub text-foreground">
+            This is taking longer than usual{cap.wines.length > 0 ? ` — ${cap.wines.length} wine${cap.wines.length === 1 ? "" : "s"} read so far.` : "."}
+          </p>
+          <div className="mt-3 flex flex-wrap gap-3">
+            {cap.wines.length > 0 && (
+              <button
+                type="button"
+                onClick={() => { void cap.readSoFar(); }}
+                className="min-h-11 rounded-md bg-primary text-primary-foreground px-4 py-2 text-sub font-medium"
+              >
+                Read what we have so far
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={cap.startOver}
+              className="min-h-11 rounded-md border border-border bg-card px-4 py-2 text-sub font-medium"
+            >
+              Start a new scan
+            </button>
+          </div>
+        </div>
+      )}
+
       {showDecisionSurface && anyBatchInFlight && !anyFailedBatch && (
         <p className="mt-3 text-meta text-muted-foreground" role="status" aria-live="polite">
           Still reading page {(cap.batches.find((b) => b.status === "running" || b.status === "pending")?.pageNumbers ?? []).join("–") || "…"}
