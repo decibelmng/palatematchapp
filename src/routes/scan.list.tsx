@@ -88,7 +88,7 @@ function Scan() {
   const { data: restaurantCurrency } = useRestaurantCurrency(restaurantId);
   // Stored scan currency wins; derivation runs only when the column is null
   // (an in-flight scan, or one finalized before the aggregation shipped).
-  const { data: storedScanCurrency } = useScanCurrency(cap.scanId ?? null);
+  const { data: storedScanCurrency } = useScanCurrency(cap.scanId ?? null, cap.status);
   const rank = useScanRanking(cap.wines, storedScanCurrency ?? null, restaurantCurrency ?? null);
 
 
