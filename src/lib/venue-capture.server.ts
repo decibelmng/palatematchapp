@@ -47,7 +47,7 @@ export async function captureVenueFacts(opts: {
     const amount = r.price_amount ?? null;
     const format = r.format ?? "bottle";
     const currency = r.currency ?? "USD";
-    const ckey = cuveeKey(r.producer, r.cuvee);
+    const ckey = cuveeKey({ producer: r.producer, name: r.cuvee ?? "" });
 
     if (r.matched_bottle_id) {
       try {
