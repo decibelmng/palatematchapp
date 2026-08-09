@@ -363,8 +363,12 @@ async function resolveAgainstCatalog(
         `q="${q}"`,
         ...best.verdict.reasons,
         ...(runnerUpNote ? [runnerUpNote] : []),
+        // The vintage actually on the matched row, so a reopened scan can name
+        // it ("closest vintage we have — 2013") without re-reading the catalog.
+        ...(r.vintage != null ? [`matched_vintage:${r.vintage}`] : []),
         ...(best.verdict.vintageGap != null ? ["flag:vintage_approx"] : []),
       ];
+
       return {
         ...w,
         fp_resolved: {
