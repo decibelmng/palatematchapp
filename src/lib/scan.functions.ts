@@ -337,18 +337,31 @@ async function resolveAgainstCatalog(
       return { ...w, fp_resolved: null, fp_source: "unreadable", matched_bottle_id: null, matched_bottle_name: null, match_score: 0 };
     }
     const q = [w.producer, w.wine_name].filter(Boolean).join(" ").trim();
-    let best: { row: any; score: number } | null = null;
+    let best: { row: any; verdict: MatchVerdict } | null = null;
+    let runnerUpNote: string | null = null;
     if (q.length >= 3) {
+      // The scanned vintage now reaches retrieval, so the exact-vintage row is
+      // in the candidate set instead of depending on trigram luck.
       const { data: candidates } = await supabase.rpc("search_bottles_fuzzy", {
         q, type_variants: w.type ? [w.type as string] : undefined, lim: 8, threshold: 0.25,
+        v_vintage: w.vintage ?? null,
       });
       for (const row of (candidates ?? []) as any[]) {
-        const s = scoreMatch(w, row);
-        if (s > 0 && (!best || s > best.score)) best = { row, score: s };
+        const v = scoreMatch(w, row);
+        if (v.score > 0 && (!best || v.score > best.verdict.score)) best = { row, verdict: v };
+      }
+      if (best && !best.verdict.vintageExact && w.vintage != null) {
+        runnerUpNote = `no ${w.vintage} row in catalog — closest vintage we have`;
       }
     }
     if (best) {
       const r = best.row;
+      const reasons = [
+        `q="${q}"`,
+        ...best.verdict.reasons,
+        ...(runnerUpNote ? [runnerUpNote] : []),
+        ...(best.verdict.vintageGap != null ? ["flag:vintage_approx"] : []),
+      ];
       return {
         ...w,
         fp_resolved: {
@@ -359,10 +372,16 @@ async function resolveAgainstCatalog(
         fp_source: "catalog",
         matched_bottle_id: r.id,
         matched_bottle_name: [r.producer, r.name, r.vintage].filter(Boolean).join(" "),
-        match_score: best.score,
+        match_score: best.verdict.score,
+        match_reasons: reasons,
+        vintage_approx: best.verdict.vintageGap != null,
       };
     }
-    return { ...w, fp_resolved: w.fp, fp_source: "estimated", matched_bottle_id: null, matched_bottle_name: null, match_score: 0 };
+    return {
+      ...w, fp_resolved: w.fp, fp_source: "estimated",
+      matched_bottle_id: null, matched_bottle_name: null, match_score: 0,
+      match_reasons: [`q="${q}"`, "no candidate cleared the matcher"],
+    };
   }));
 }
 
