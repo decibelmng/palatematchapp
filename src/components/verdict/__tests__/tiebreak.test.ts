@@ -211,3 +211,29 @@ describe("estimated lines rank but cannot be the Call", () => {
     expect(pickCall([est, thinCat])!.key).toBe("thin-cat");
   });
 });
+
+describe("generated-note readings cannot be the Call", () => {
+  it("prefers a lower-scoring human-note reading over a higher-scoring generated one", () => {
+    const a = row({ key: "gen", predicted: 4.9, isCatalog: true });
+    a.ranked.bottle.fpPipeline = "note_v3_generated";
+    const b = row({ key: "human", predicted: 4.2, isCatalog: true });
+    b.ranked.bottle.fpPipeline = "note_v3_deanchored";
+    expect(pickCall([a, b])?.key).toBe("human");
+  });
+
+  it("treats an on-demand generated reading the same way", () => {
+    const a = row({ key: "ondemand", predicted: 4.8, isCatalog: true });
+    a.ranked.bottle.fpPipeline = "on_demand_v3_generated";
+    const b = row({ key: "human", predicted: 4.1, isCatalog: true });
+    b.ranked.bottle.fpPipeline = "note_v3_deanchored";
+    expect(pickCall([a, b])?.key).toBe("human");
+  });
+
+  it("stands down when every reading on the list is generated — a best guess beats nothing", () => {
+    const a = row({ key: "g1", predicted: 4.6, isCatalog: true });
+    a.ranked.bottle.fpPipeline = "note_v3_generated";
+    const b = row({ key: "g2", predicted: 4.0, isCatalog: true });
+    b.ranked.bottle.fpPipeline = "on_demand_v3_generated";
+    expect(pickCall([a, b])?.key).toBe("g1");
+  });
+});

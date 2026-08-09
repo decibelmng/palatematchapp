@@ -279,6 +279,32 @@ export function isAmbiguousJoinRead(bottle: { fpPipeline?: string | null }): boo
   return bottle.fpPipeline === AMBIGUOUS_JOIN_PIPELINE;
 }
 
+/**
+ * Readings taken from a note no human wrote.
+ *
+ * Two inferences deep: a model inferred the wine's character from producer /
+ * region / grape (or from a menu line), then the scorer read that prose. Measured
+ * against the 2,507 note-derived reds on 2026-08-09 the tier is flatter and more
+ * assertive — fresh 0.800 at SD 0.047 against 0.615 at SD 0.247, savory 0.655
+ * against 0.519, and MORE axes claimed per wine (6.22 vs 5.44) rather than fewer.
+ * A note that volunteers more than a critic did is not a better reading.
+ *
+ * Same treatment as a thin read and an ambiguous join: fully rankable, eligible
+ * as an alternate, never the single bottle we name. If the whole list is this
+ * tier the rule stands down — see callEligible.
+ *
+ * NOTE this is a Call-eligibility rule, not a scoring rule. If the post-swap
+ * tier comparison shows these vectors sitting toward the middle of style space,
+ * they are close to everything and score well for everyone, and the correct fix
+ * is tier-keyed α-shrinkage in the predictor — not this exclusion, which only
+ * hides the symptom on one surface.
+ */
+export const GENERATED_NOTE_PIPELINES = ["note_v3_generated", "on_demand_v3_generated"] as const;
+
+export function isGeneratedNoteRead(bottle: { fpPipeline?: string | null }): boolean {
+  return (GENERATED_NOTE_PIPELINES as readonly string[]).includes(bottle.fpPipeline ?? "");
+}
+
 
 // ────────── Step 1: learn axis-importance ω via pairwise non-neg ridge ──────────
 
