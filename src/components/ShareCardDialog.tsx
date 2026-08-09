@@ -3,6 +3,8 @@ import { PalateStar, lettersFromCode } from "./PalateStar";
 import { axesFor, GLYPH_UNRESOLVED, parseCode, type PaletteType } from "@/lib/palate";
 import { useSommelierBrief } from "@/hooks/use-sommelier-brief";
 import { SommelierBriefCard } from "./SommelierBriefCard";
+import { PalateCodeWords } from "./PalateCodeWords";
+import { codePhrases } from "@/lib/palate-code-letters";
 
 type Props = {
   open: boolean;
@@ -17,6 +19,8 @@ export function ShareCardDialog({ open, onClose, type, code, displayName }: Prop
   const [msg, setMsg] = useState<string | null>(null);
   const letters = lettersFromCode(code, axesFor(type));
   const brief = useSommelierBrief();
+  // Same phrases the on-screen words render, so the PNG cannot drift from them.
+  const wordsText = codePhrases(type, code).join(" · ");
 
   useEffect(() => { if (!open) setMsg(null); }, [open]);
 
@@ -26,7 +30,7 @@ export function ShareCardDialog({ open, onClose, type, code, displayName }: Prop
     const svg = cardRef.current?.querySelector("svg");
     if (!svg) return;
     try {
-      const png = await renderCardToPng(cardRef.current!, svg as SVGSVGElement);
+      const png = await renderCardToPng(cardRef.current!, svg as SVGSVGElement, wordsText);
       if (mode === "copy" && typeof (window as any).ClipboardItem !== "undefined" && navigator.clipboard?.write) {
         try {
           await navigator.clipboard.write([
@@ -107,7 +111,7 @@ export function ShareCardDialog({ open, onClose, type, code, displayName }: Prop
 }
 
 /** Render an HTML card (containing an SVG) to a PNG Blob using an offscreen canvas. */
-async function renderCardToPng(card: HTMLElement, svg: SVGSVGElement): Promise<Blob> {
+async function renderCardToPng(card: HTMLElement, svg: SVGSVGElement, wordsText: string): Promise<Blob> {
   const dpr = Math.min(window.devicePixelRatio || 1, 2);
   const rect = card.getBoundingClientRect();
   const W = Math.ceil(rect.width);
@@ -165,17 +169,24 @@ async function renderCardToPng(card: HTMLElement, svg: SVGSVGElement): Promise<B
   const codeText = card.querySelector("div.font-serif")?.textContent || "";
   ctx.fillText(spaceOut(codeText), W / 2, gy + svgSize + 40);
 
+  // Decoded words — the glyphs are unreadable without them in a shared image.
+  ctx.fillStyle = fg.trim() || "#eee";
+  ctx.font = "400 12px ui-sans-serif, system-ui, sans-serif";
+  ctx.fillText(wordsText, W / 2, gy + svgSize + 64);
+
   // "My {type} palate · Palate Match"
   ctx.fillStyle = muted.trim() || "#888";
   ctx.font = "400 12px ui-sans-serif, system-ui, sans-serif";
   const meta = paragraphs.find((t) => t.includes("Palate Match")) || "";
-  if (meta) ctx.fillText(meta, W / 2, gy + svgSize + 66);
+  if (meta) ctx.fillText(meta, W / 2, gy + svgSize + 86);
 
   // display name
   ctx.fillStyle = fg.trim() || "#eee";
   ctx.font = "500 14px ui-sans-serif, system-ui, sans-serif";
-  const name = paragraphs.find((t) => t && !t.includes("Palate Match") && t !== codeText);
-  if (name) ctx.fillText(name, W / 2, gy + svgSize + 88);
+  const name = paragraphs.find(
+    (t) => t && !t.includes("Palate Match") && t !== codeText && t !== wordsText,
+  );
+  if (name) ctx.fillText(name, W / 2, gy + svgSize + 108);
 
   return await new Promise<Blob>((resolve, reject) =>
     canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("toBlob failed"))), "image/png")
