@@ -329,6 +329,14 @@ export function useScanCapture() {
     mutation.mutate(staged.map((s) => s.file));
   }, [mutation, staged]);
 
+  // Any wine landing or any batch settling counts as progress and resets the
+  // stall clock — so "no progress for 15s" means exactly that, not "15s in".
+  const settledCount = batches.filter((b) => b.status === "done" || b.status === "failed").length;
+  useEffect(() => {
+    progressRef.current = Date.now();
+    setStalled(false);
+  }, [wines.length, settledCount, status]);
+
   useEffect(() => {
     if (!isRunning) { setStalled(false); return; }
     setElapsed(0);
