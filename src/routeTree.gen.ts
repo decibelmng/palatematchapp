@@ -40,6 +40,7 @@ import { Route as AdminUsageRouteImport } from './routes/admin.usage'
 import { Route as AdminTypeFixRouteImport } from './routes/admin.type-fix'
 import { Route as AdminStyleMapRouteImport } from './routes/admin.style-map'
 import { Route as AdminSommCodesRouteImport } from './routes/admin.somm-codes'
+import { Route as AdminRefingerprintV3RouteImport } from './routes/admin.refingerprint-v3'
 import { Route as AdminInspectRouteImport } from './routes/admin.inspect'
 import { Route as AdminFeedbackRouteImport } from './routes/admin.feedback'
 import { Route as AdminDisputesRouteImport } from './routes/admin.disputes'
@@ -206,6 +207,11 @@ const AdminSommCodesRoute = AdminSommCodesRouteImport.update({
   path: '/admin/somm-codes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRefingerprintV3Route = AdminRefingerprintV3RouteImport.update({
+  id: '/admin/refingerprint-v3',
+  path: '/admin/refingerprint-v3',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminInspectRoute = AdminInspectRouteImport.update({
   id: '/admin/inspect',
   path: '/admin/inspect',
@@ -281,6 +287,7 @@ export interface FileRoutesByFullPath {
   '/admin/disputes': typeof AdminDisputesRoute
   '/admin/feedback': typeof AdminFeedbackRoute
   '/admin/inspect': typeof AdminInspectRoute
+  '/admin/refingerprint-v3': typeof AdminRefingerprintV3Route
   '/admin/somm-codes': typeof AdminSommCodesRoute
   '/admin/style-map': typeof AdminStyleMapRoute
   '/admin/type-fix': typeof AdminTypeFixRoute
@@ -324,6 +331,7 @@ export interface FileRoutesByTo {
   '/admin/disputes': typeof AdminDisputesRoute
   '/admin/feedback': typeof AdminFeedbackRoute
   '/admin/inspect': typeof AdminInspectRoute
+  '/admin/refingerprint-v3': typeof AdminRefingerprintV3Route
   '/admin/somm-codes': typeof AdminSommCodesRoute
   '/admin/style-map': typeof AdminStyleMapRoute
   '/admin/type-fix': typeof AdminTypeFixRoute
@@ -368,6 +376,7 @@ export interface FileRoutesById {
   '/admin/disputes': typeof AdminDisputesRoute
   '/admin/feedback': typeof AdminFeedbackRoute
   '/admin/inspect': typeof AdminInspectRoute
+  '/admin/refingerprint-v3': typeof AdminRefingerprintV3Route
   '/admin/somm-codes': typeof AdminSommCodesRoute
   '/admin/style-map': typeof AdminStyleMapRoute
   '/admin/type-fix': typeof AdminTypeFixRoute
@@ -413,6 +422,7 @@ export interface FileRouteTypes {
     | '/admin/disputes'
     | '/admin/feedback'
     | '/admin/inspect'
+    | '/admin/refingerprint-v3'
     | '/admin/somm-codes'
     | '/admin/style-map'
     | '/admin/type-fix'
@@ -456,6 +466,7 @@ export interface FileRouteTypes {
     | '/admin/disputes'
     | '/admin/feedback'
     | '/admin/inspect'
+    | '/admin/refingerprint-v3'
     | '/admin/somm-codes'
     | '/admin/style-map'
     | '/admin/type-fix'
@@ -499,6 +510,7 @@ export interface FileRouteTypes {
     | '/admin/disputes'
     | '/admin/feedback'
     | '/admin/inspect'
+    | '/admin/refingerprint-v3'
     | '/admin/somm-codes'
     | '/admin/style-map'
     | '/admin/type-fix'
@@ -543,6 +555,7 @@ export interface RootRouteChildren {
   AdminDisputesRoute: typeof AdminDisputesRoute
   AdminFeedbackRoute: typeof AdminFeedbackRoute
   AdminInspectRoute: typeof AdminInspectRoute
+  AdminRefingerprintV3Route: typeof AdminRefingerprintV3Route
   AdminSommCodesRoute: typeof AdminSommCodesRoute
   AdminStyleMapRoute: typeof AdminStyleMapRoute
   AdminTypeFixRoute: typeof AdminTypeFixRoute
@@ -778,6 +791,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminSommCodesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/refingerprint-v3': {
+      id: '/admin/refingerprint-v3'
+      path: '/admin/refingerprint-v3'
+      fullPath: '/admin/refingerprint-v3'
+      preLoaderRoute: typeof AdminRefingerprintV3RouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/inspect': {
       id: '/admin/inspect'
       path: '/admin/inspect'
@@ -900,6 +920,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminDisputesRoute: AdminDisputesRoute,
   AdminFeedbackRoute: AdminFeedbackRoute,
   AdminInspectRoute: AdminInspectRoute,
+  AdminRefingerprintV3Route: AdminRefingerprintV3Route,
   AdminSommCodesRoute: AdminSommCodesRoute,
   AdminStyleMapRoute: AdminStyleMapRoute,
   AdminTypeFixRoute: AdminTypeFixRoute,

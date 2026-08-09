@@ -108,12 +108,12 @@ export const FINGERPRINT_PIPELINE_V3 = "note_v3_deanchored";
  */
 export const FINGERPRINT_PROMPT_V3_TEXT = SCORE_SYS_V3;
 
-async function gatewayCall(system: string, user: string, apiKey: string): Promise<any> {
+async function gatewayCall(system: string, user: string, apiKey: string, model = FINGERPRINT_MODEL_V3): Promise<any> {
   const res = await fetch(GATEWAY_URL, {
     method: "POST",
     headers: { "content-type": "application/json", "Lovable-API-Key": apiKey },
     body: JSON.stringify({
-      model: FINGERPRINT_MODEL_V3,
+      model,
       messages: [
         { role: "system", content: system },
         { role: "user", content: user },
@@ -151,9 +151,11 @@ export async function scoreFromNoteV3(
   type: string,
   tasting_note: string,
   apiKey: string,
+  /** Defaults to the pilot model; the full run passes the settled model in. */
+  model: string = FINGERPRINT_MODEL_V3,
 ): Promise<{ fp: FpValuesNullable; ax_sweet: number | null }> {
   const userMsg = JSON.stringify({ type, tasting_note });
-  const parsed = await gatewayCall(SCORE_SYS_V3, userMsg, apiKey);
+  const parsed = await gatewayCall(SCORE_SYS_V3, userMsg, apiKey, model);
   const fp: FpValuesNullable = {
     fresh: clamp01OrNull(parsed?.fp?.fresh),
     acid: clamp01OrNull(parsed?.fp?.acid),
