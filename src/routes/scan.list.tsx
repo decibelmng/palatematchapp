@@ -111,7 +111,10 @@ function Scan() {
     : null;
 
 
-  const showDecisionSurface = !failure && rank.enoughRatings && (rank.readable.length > 0 || anyBatchInFlight);
+  // A decision surface with nothing to decide is not a decision surface. While
+  // a scan is reading with zero wines behind it, the scan state is the only
+  // thing on screen — no verdict shell, no "see all 0 wines" disclosure.
+  const showDecisionSurface = !failure && rank.enoughRatings && rank.readable.length > 0;
   const totalWines = rank.dedupWines.length;
   const resumable = !failure && !handoffWaiting && !!cap.resumedAt && !!cap.scanId && cap.batches.length > 0 && cap.staged.length === 0 && !cap.dismissedResume;
   // A full wine list that came back with one or two wines barely worked. Say so
