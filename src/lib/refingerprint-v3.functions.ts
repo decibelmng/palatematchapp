@@ -24,6 +24,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   scoreFromNoteV3,
   FINGERPRINT_PIPELINE_V3,
+  FINGERPRINT_PIPELINE_V3_AMBIGUOUS,
+
   V3_AXES,
 } from "@/lib/fingerprint-prompt-v3";
 
