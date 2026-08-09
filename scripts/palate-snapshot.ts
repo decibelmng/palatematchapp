@@ -124,6 +124,7 @@ const anchors = rated
 
 // ── top five per type, from the real recommender ──
 const recs = recommend(rated, unrated);
+if (process.env["SNAP_DEBUG"]) console.error("recs", recs.length, "vetoed", recs.filter((r) => r.vetoed).length, JSON.stringify(recs[0] ?? null));
 const candType = new Map(cands.map((c) => [c.id, c.type === "white" ? "white" : "red"]));
 const topN = (type: "red" | "white", n = 5) =>
   recs
