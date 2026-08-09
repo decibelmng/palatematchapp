@@ -1,4 +1,4 @@
-import { ScanLine, ArrowRight, Image as ImageIcon } from "lucide-react";
+import { ScanLine, ArrowRight } from "lucide-react";
 import type { RefObject } from "react";
 import type { BatchState } from "@/lib/scan-helpers";
 
