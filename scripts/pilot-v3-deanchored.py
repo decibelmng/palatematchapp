@@ -15,6 +15,8 @@ AXES = ["fresh", "acid", "tannin", "fruit_dark", "ripe", "oak", "body", "savory"
 SRC = os.path.join(os.path.dirname(__file__), "..", "src", "lib", "fingerprint-prompt-v3.ts")
 PROMPT = re.search(r"const SCORE_SYS_V3 = `([\s\S]*?)`;", open(SRC).read()).group(1)
 KEY = os.environ["LOVABLE_API_KEY"]
+MODEL = sys.argv[1] if len(sys.argv) > 1 else "google/gemini-2.5-flash"
+OUT = sys.argv[2] if len(sys.argv) > 2 else "/tmp/pilot-v3.json"
 
 
 def q(sql):
@@ -27,7 +29,7 @@ def score(note, wtype):
     r = requests.post(
         "https://ai.gateway.lovable.dev/v1/chat/completions",
         headers={"content-type": "application/json", "Lovable-API-Key": KEY},
-        json={"model": "google/gemini-2.5-flash",
+        json={"model": MODEL,
               "messages": [{"role": "system", "content": PROMPT},
                            {"role": "user", "content": json.dumps({"type": wtype, "tasting_note": note})}],
               "response_format": {"type": "json_object"}},
@@ -72,6 +74,7 @@ select * from scan_reds union all select * from napa;
 
 cols = ["id", "name", "producer", "grape", "region", "type"] + [f"prior_{a}" for a in AXES] + ["note", "src"]
 rows = [dict(zip(cols, r)) for r in q(COHORT_SQL)]
+print(f"model: {MODEL}")
 print(f"cohort: {len(rows)} wines "
       f"({sum(1 for r in rows if r['src']=='scan')} from scan {SCAN}, "
       f"{sum(1 for r in rows if r['src']=='napa_cab')} extra Napa Cab)\n")
@@ -163,5 +166,5 @@ if len(picks) >= 2:
         print(f"{r['producer']:<14} v3 " + " ".join(f"{a[:4]}={r['v3'][a]:.2f}" for a in AXES))
 
 json.dump([{k: r[k] for k in ("id", "name", "producer", "grape", "region", "src", "prior", "v3")} for r in rows],
-          open("/tmp/pilot-v3.json", "w"), indent=1)
-print("\nfull results → /tmp/pilot-v3.json (no database writes)")
+          open(OUT, "w"), indent=1)
+print(f"\nfull results → {OUT} (no database writes)")
