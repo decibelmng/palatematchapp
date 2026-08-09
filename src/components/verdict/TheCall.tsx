@@ -82,6 +82,12 @@ export function TheCall({
         {meta && (
           <p className="mt-1 text-sub text-muted-foreground break-words">{meta}</p>
         )}
+        {approxVintage != null && (
+          <p className="mt-1 text-meta text-foreground leading-snug">
+            Closest vintage we have — {approxVintage}
+          </p>
+        )}
+
         <p className="mt-4 text-heading text-foreground leading-snug">
           {verdict}
         </p>
