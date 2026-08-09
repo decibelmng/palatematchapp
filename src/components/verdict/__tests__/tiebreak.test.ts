@@ -14,6 +14,8 @@ function row(o: {
   /** Axis values present on the reading; omit for "no reading object". */
   fp?: Record<string, number> | null;
   type?: string;
+  /** Set to mark the score as taken off a different year than the list showed. */
+  approxFrom?: number;
 }): ScanRow {
   return {
     key: o.key,
@@ -22,6 +24,9 @@ function row(o: {
       maxSimilarity: o.sim ?? 0.5,
       vetoed: false,
       bottle: { name: o.name ?? o.key, fp: o.fp ?? null },
+      scanned: o.approxFrom == null
+        ? { vintage: 2022, vintage_approx: false, matched_vintage: 2022 }
+        : { vintage: 2022, vintage_approx: true, matched_vintage: o.approxFrom },
     },
     type: o.type ?? "red",
     isCatalog: o.isCatalog ?? true,
@@ -31,6 +36,16 @@ function row(o: {
 }
 
 describe("tie-break — each rule in isolation", () => {
+  it("0. an exact-vintage read beats an approximate one, ahead of catalog status", () => {
+    // The approximate row wins every later rule; the vintage rule must still
+    // decide, because a score taken off a 15-year-older bottle may not describe
+    // the wine on the list at all.
+    const exact = row({ key: "exact", predicted: 4.5, isCatalog: false, sim: 0.2, price: 300 });
+    const approx = row({ key: "approx", predicted: 4.5, isCatalog: true, sim: 0.9, greatValue: true, price: 20, approxFrom: 2007 });
+    expect(compareCallCandidates(exact, approx)).toBeLessThan(0);
+    expect(pickCall([approx, exact])!.key).toBe("exact");
+  });
+
   it("1. isCatalog wins first, even when the estimate is cheaper, better value and closer", () => {
     const catalog = row({ key: "cat", predicted: 4.5, isCatalog: true, sim: 0.2, greatValue: false, price: 200 });
     const estimate = row({ key: "est", predicted: 4.5, isCatalog: false, sim: 0.9, greatValue: true, price: 20 });
