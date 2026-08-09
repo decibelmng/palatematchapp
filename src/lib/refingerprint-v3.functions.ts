@@ -81,22 +81,28 @@ export const refingerprintV3Progress = createServerFn({ method: "GET" })
       if (error) throw new Error(error.message);
       return c ?? 0;
     };
+    // Pending = any bottle with a recovered review and no shadow reading yet.
+    // Ambiguous joins are IN scope: excluding them would leave ~10k rows on the
+    // v1 typicity grid after the swap, which is exactly the mixed calibration
+    // this pipeline exists to remove. They are scored, stamped
+    // note_v3_ambiguous_join, and kept out of the Call alongside thin reads.
     const pendingWithNote = async () => {
       const { count: c, error } = await supabaseAdmin
         .from("bottles")
         .select("id,catalog_source_notes!inner(bottle_id)", { count: "exact", head: true })
-        .is("fp_v3_scored_at", null)
-        .eq("catalog_source_notes.ambiguous", false);
+        .is("fp_v3_scored_at", null);
       if (error) throw new Error(error.message);
       return c ?? 0;
     };
-    const [scored, pending, thin, empty] = await Promise.all([
+    const [scored, pending, thin, empty, ambiguous] = await Promise.all([
       count((q: any) => q.not("fp_v3_scored_at", "is", null)),
       pendingWithNote(),
       count((q: any) => q.not("fp_v3_scored_at", "is", null).lte("fp_v3_axes_read", 3)),
       count((q: any) => q.not("fp_v3_scored_at", "is", null).eq("fp_v3_axes_read", 0)),
+      count((q: any) => q.eq("fp_v3_pipeline", FINGERPRINT_PIPELINE_V3_AMBIGUOUS)),
     ]);
-    return { scored, pending, thin, empty };
+    return { scored, pending, thin, empty, ambiguous };
+
   });
 
 export const refingerprintV3Batch = createServerFn({ method: "POST" })
