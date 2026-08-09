@@ -41,9 +41,11 @@ function useRestaurantCurrency(restaurantId: string | null) {
  *  column is authoritative and derivation is only the fallback when it's null.
  *  Two paths computing the same figure is how scans.currency drifted to null
  *  while every wine on it carried USD. */
-function useScanCurrency(scanId: string | null) {
+function useScanCurrency(scanId: string | null, phase: string) {
   return useQuery({
-    queryKey: ["scan-currency", scanId],
+    // Phase is part of the key: finalize writes the column after the scan row
+    // exists, so the first read (mid-scan) legitimately sees null.
+    queryKey: ["scan-currency", scanId, phase],
     enabled: !!scanId,
     queryFn: async () => {
       const { data } = await supabase.from("scans").select("currency").eq("id", scanId!).maybeSingle();
