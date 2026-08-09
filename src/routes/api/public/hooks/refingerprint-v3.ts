@@ -24,21 +24,37 @@ export const Route = createFileRoute("/api/public/hooks/refingerprint-v3")({
         try {
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
           const {
-            getRefingerprintV3Progress,
+            refreshRefingerprintV3Progress,
+            getRefingerprintV3PendingCount,
+            isRefingerprintV3Paused,
+            unscheduleRefingerprintV3Cron,
             runRefingerprintV3Batch,
             acquireRefingerprintV3Lock,
             releaseRefingerprintV3Lock,
             REFINGERPRINT_V3_BATCH_SIZE,
             REFINGERPRINT_V3_CONCURRENCY,
           } = await import("@/lib/refingerprint-v3.server");
-          const before = await getRefingerprintV3Progress(supabaseAdmin, JOB_ID);
-          if (before.paused || before.pending === 0) {
+
+          // Two cheap reads instead of nine full-table counts. An empty or paused
+          // tick pays for nothing beyond these.
+          const [paused, pendingBefore] = await Promise.all([
+            isRefingerprintV3Paused(supabaseAdmin, JOB_ID),
+            getRefingerprintV3PendingCount(supabaseAdmin),
+          ]);
+          if (paused || pendingBefore === 0) {
+            let unscheduled = false;
+            if (!paused && pendingBefore === 0) {
+              // Self-terminate rather than firing forever against an empty queue.
+              unscheduled = await unscheduleRefingerprintV3Cron(supabaseAdmin, CRON_JOB_NAME);
+              await refreshRefingerprintV3Progress(supabaseAdmin, JOB_ID);
+            }
             const output = {
               success: true,
-              paused: before.paused,
-              complete: before.pending === 0,
+              paused,
+              complete: pendingBefore === 0,
+              unscheduled,
               wrote: 0,
-              remaining: before.pending,
+              remaining: pendingBefore,
             };
             console.log("[refingerprint-v3-cron]", JSON.stringify(output));
             return Response.json(output);
@@ -50,7 +66,7 @@ export const Route = createFileRoute("/api/public/hooks/refingerprint-v3")({
               success: true,
               skipped: "another runner holds the lease",
               wrote: 0,
-              remaining: before.pending,
+              remaining: pendingBefore,
             };
             console.log("[refingerprint-v3-cron]", JSON.stringify(output));
             return Response.json(output);
@@ -83,18 +99,26 @@ export const Route = createFileRoute("/api/public/hooks/refingerprint-v3")({
           } finally {
             await releaseRefingerprintV3Lock(supabaseAdmin, JOB_ID);
           }
+          // One aggregate pass per tick, feeding the monitor's cache.
+          const after = await refreshRefingerprintV3Progress(supabaseAdmin, JOB_ID);
+          let unscheduled = false;
+          if (after.pending === 0) {
+            unscheduled = await unscheduleRefingerprintV3Cron(supabaseAdmin, CRON_JOB_NAME);
+          }
           const output = {
             success: errors.length === 0,
             picked,
             wrote,
             empty,
              retries,
-            remaining: Math.max(0, before.pending - wrote),
+            remaining: after.pending,
+            unscheduled,
             elapsedMs: Date.now() - started,
             errors: errors.slice(0, 10),
           };
           console.log("[refingerprint-v3-cron]", JSON.stringify(output));
           return Response.json(output, { status: errors.length > 0 ? 500 : 200 });
+
         } catch (error) {
            const message =
              error instanceof Error
