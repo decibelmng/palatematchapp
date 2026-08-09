@@ -127,8 +127,17 @@ async function gatewayCall(system: string, user: string, apiKey: string, model =
         { role: "user", content: user },
       ],
       response_format: { type: "json_object" },
+      // The answer is seven numbers and some nulls. With reasoning left on,
+      // Gemini spent 1,056 of 1,140 output tokens (93%) thinking before
+      // emitting them: 6.2s and 0.0223 credits per row. Measured on 300 real
+      // notes, turning it off changes nothing that matters — per-axis SD ratio
+      // 0.91–1.08, r 0.94–0.99, and within-region discrimination improves
+      // slightly (0.765 -> 0.792). It costs 79 output tokens and 1.1s instead.
+      // Do not re-enable without re-running scripts/reasoning-arm-check.
+      reasoning: { enabled: false },
     }),
   });
+
   if (!res.ok) {
     const body = await res.text();
     if (res.status === 429) throw new Error("Rate limited — try again in a moment.");
