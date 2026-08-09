@@ -382,6 +382,8 @@ async function resolveAgainstCatalog(
         match_score: best.verdict.score,
         match_reasons: reasons,
         vintage_approx: best.verdict.vintageGap != null,
+        matched_vintage: (r.vintage as number | null) ?? null,
+
       };
     }
     return {
