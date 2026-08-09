@@ -213,11 +213,6 @@ describe("estimated lines rank but cannot be the Call", () => {
 });
 
 describe("generated-note readings cannot be the Call", () => {
-  const gen = (over: Partial<ReturnType<typeof row>> = {}) => ({
-    ...row({ predicted: 4.9, isCatalog: true }),
-    ...over,
-  });
-
   it("prefers a lower-scoring human-note reading over a higher-scoring generated one", () => {
     const a = row({ key: "gen", predicted: 4.9, isCatalog: true });
     a.ranked.bottle.fpPipeline = "note_v3_generated";
@@ -240,6 +235,5 @@ describe("generated-note readings cannot be the Call", () => {
     const b = row({ key: "g2", predicted: 4.0, isCatalog: true });
     b.ranked.bottle.fpPipeline = "on_demand_v3_generated";
     expect(pickCall([a, b])?.key).toBe("g1");
-    void gen;
   });
 });
