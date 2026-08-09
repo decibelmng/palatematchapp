@@ -1,4 +1,7 @@
 import { axesFor, GLYPH_UNRESOLVED, parseCode, type PaletteType } from "@/lib/palate";
+import { codeSentence } from "@/lib/palate-code-letters";
+import { PalateCodeWords } from "@/components/PalateCodeWords";
+
 import { createFileRoute, notFound, Link, useNavigate } from "@tanstack/react-router";
 import { useSuspenseQuery, queryOptions } from "@tanstack/react-query";
 import { useEffect, type ReactNode } from "react";
