@@ -17,6 +17,7 @@ export type RefingerprintV3BatchInput = {
 };
 
 type AdminClient = any;
+type PendingRow = { id: string; type: string; note: string; ambiguous: boolean };
 
 async function mapLimit<T>(items: T[], limit: number, fn: (item: T) => Promise<void>) {
   let next = 0;
@@ -137,7 +138,7 @@ export async function runRefingerprintV3Batch(
     Array.isArray(row.catalog_source_notes)
       ? row.catalog_source_notes[0]
       : row.catalog_source_notes;
-  const batch = (rows ?? [])
+  const batch: PendingRow[] = (rows ?? [])
     .map((row: any) => {
       const sourceNote = firstNote(row) ?? {};
       return {
@@ -147,13 +148,13 @@ export async function runRefingerprintV3Batch(
         ambiguous: Boolean(sourceNote.ambiguous),
       };
     })
-    .filter((row: { note: string }) => row.note.trim().length >= 20);
+    .filter((row: PendingRow) => row.note.trim().length >= 20);
   const errors: string[] = [];
   let wrote = 0;
   let empty = 0;
   let ambiguousWrote = 0;
 
-  await mapLimit(batch, lanes, async (row) => {
+  await mapLimit<PendingRow>(batch, lanes, async (row) => {
     let fp: Record<string, number | null> | null = null;
     for (let attempt = 0; attempt < 3; attempt++) {
       try {
