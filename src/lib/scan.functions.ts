@@ -381,6 +381,25 @@ export const scanWineBatch = createServerFn({ method: "POST" })
       .from("scans").select("id").eq("id", data.scan_id).maybeSingle();
     if (!owned) throw new Error("Scan not found");
 
+    // IDEMPOTENCY GUARD. A client retry (or a re-sent request whose first
+    // response was lost in flight) must never write the same wines twice or
+    // pay for a second vision call. This batch index is already known, so if
+    // rows exist for it the work landed: re-assert mark_scan_batch_done (it is
+    // itself idempotent) and hand back what is already stored.
+    {
+      const { data: existing } = await supabase
+        .from("scan_wines").select("*")
+        .eq("scan_id", data.scan_id).eq("batch_index", data.batch_index);
+      if (existing && existing.length > 0) {
+        const { rowToResolved } = await import("@/lib/scan-helpers");
+        await supabase.rpc("mark_scan_batch_done", { p_scan_id: data.scan_id, p_batch_index: data.batch_index });
+        return {
+          batch_index: data.batch_index,
+          wines: existing.map((r: any) => ({ ...rowToResolved(r), scan_wine_id: r.id as string })),
+        };
+      }
+    }
+
     try {
       const raw = await extractWinesWithRetry(data.images, key);
       const resolved = await resolveAgainstCatalog(raw, supabase);
