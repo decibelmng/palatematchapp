@@ -2,8 +2,9 @@ import { createFileRoute } from "@tanstack/react-router";
 
 const JOB_ID = "fcf3b92a-0700-4a85-82a4-7d0d6b5af2a9";
 const MODEL = "google/gemini-3.6-flash";
-const INVOCATION_BUDGET_MS = 25_000;
-const MAX_ROWS_PER_INVOCATION = 180;
+const INVOCATION_BUDGET_MS = 55_000;
+const MAX_ROWS_PER_INVOCATION = 1500;
+const LOCK_TTL_MS = 180_000;
 
 export const Route = createFileRoute("/api/public/hooks/refingerprint-v3")({
   server: {
@@ -25,6 +26,8 @@ export const Route = createFileRoute("/api/public/hooks/refingerprint-v3")({
           const {
             getRefingerprintV3Progress,
             runRefingerprintV3Batch,
+            acquireRefingerprintV3Lock,
+            releaseRefingerprintV3Lock,
             REFINGERPRINT_V3_BATCH_SIZE,
             REFINGERPRINT_V3_CONCURRENCY,
           } = await import("@/lib/refingerprint-v3.server");
@@ -39,26 +42,40 @@ export const Route = createFileRoute("/api/public/hooks/refingerprint-v3")({
             });
           }
 
+          const gotLock = await acquireRefingerprintV3Lock(supabaseAdmin, JOB_ID, LOCK_TTL_MS);
+          if (!gotLock) {
+            return Response.json({
+              success: true,
+              skipped: "another runner holds the lease",
+              wrote: 0,
+              remaining: before.pending,
+            });
+          }
+
           const started = Date.now();
           let wrote = 0;
           let picked = 0;
           let empty = 0;
           const errors: string[] = [];
-          while (
-            Date.now() - started < INVOCATION_BUDGET_MS &&
-            picked < MAX_ROWS_PER_INVOCATION
-          ) {
-            const result = await runRefingerprintV3Batch(supabaseAdmin, key, {
-              jobId: JOB_ID,
-              model: MODEL,
-              batchSize: Math.min(REFINGERPRINT_V3_BATCH_SIZE, MAX_ROWS_PER_INVOCATION - picked),
-              concurrency: REFINGERPRINT_V3_CONCURRENCY,
-            });
-            wrote += result.wrote;
-            picked += result.picked;
-            empty += result.empty;
-            errors.push(...result.errors);
-            if (result.picked === 0 || result.remaining === 0 || result.errors.length > 0) break;
+          try {
+            while (
+              Date.now() - started < INVOCATION_BUDGET_MS &&
+              picked < MAX_ROWS_PER_INVOCATION
+            ) {
+              const result = await runRefingerprintV3Batch(supabaseAdmin, key, {
+                jobId: JOB_ID,
+                model: MODEL,
+                batchSize: Math.min(REFINGERPRINT_V3_BATCH_SIZE, MAX_ROWS_PER_INVOCATION - picked),
+                concurrency: REFINGERPRINT_V3_CONCURRENCY,
+              });
+              wrote += result.wrote;
+              picked += result.picked;
+              empty += result.empty;
+              errors.push(...result.errors);
+              if (result.picked === 0 || result.remaining === 0 || result.errors.length > 0) break;
+            }
+          } finally {
+            await releaseRefingerprintV3Lock(supabaseAdmin, JOB_ID);
           }
           const output = {
             success: errors.length === 0,

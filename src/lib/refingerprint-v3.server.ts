@@ -5,9 +5,54 @@ import {
   scoreFromNoteV3,
 } from "@/lib/fingerprint-prompt-v3";
 
-export const REFINGERPRINT_V3_BATCH_SIZE = 60;
-export const REFINGERPRINT_V3_CONCURRENCY = 16;
+export const REFINGERPRINT_V3_BATCH_SIZE = 125;
+export const REFINGERPRINT_V3_CONCURRENCY = 48;
 export const REFINGERPRINT_V3_PAUSE_MARKER = "[v3 cron paused]";
+const LOCK_PREFIX = "[v3 lock ";
+
+/**
+ * Single-flight lease. Only one runner (cron tick or admin/manual call) may hold
+ * the lease at a time, so two drivers can never claim the same pending rows and
+ * double-charge the gateway.
+ */
+export async function acquireRefingerprintV3Lock(
+  supabaseAdmin: AdminClient,
+  jobId: string,
+  ttlMs: number,
+): Promise<boolean> {
+  const { data, error } = await supabaseAdmin
+    .from("catalog_jobs")
+    .select("note")
+    .eq("id", jobId)
+    .single();
+  if (error) throw new Error(error.message);
+  const note = String(data.note ?? "");
+  const held = note.match(/\[v3 lock ([^\]]+)\]/);
+  if (held) {
+    const heldAt = Date.parse(held[1]);
+    if (Number.isFinite(heldAt) && Date.now() - heldAt < ttlMs) return false;
+  }
+  const cleaned = note.replace(/\[v3 lock [^\]]*\]/g, "").trim();
+  const { error: writeError } = await supabaseAdmin
+    .from("catalog_jobs")
+    .update({ note: `${cleaned} ${LOCK_PREFIX}${new Date().toISOString()}]`.trim() })
+    .eq("id", jobId);
+  if (writeError) throw new Error(writeError.message);
+  return true;
+}
+
+export async function releaseRefingerprintV3Lock(supabaseAdmin: AdminClient, jobId: string) {
+  const { data, error } = await supabaseAdmin
+    .from("catalog_jobs")
+    .select("note")
+    .eq("id", jobId)
+    .single();
+  if (error) return;
+  const cleaned = String(data.note ?? "")
+    .replace(/\[v3 lock [^\]]*\]/g, "")
+    .trim();
+  await supabaseAdmin.from("catalog_jobs").update({ note: cleaned }).eq("id", jobId);
+}
 
 export type RefingerprintV3BatchInput = {
   jobId: string;
