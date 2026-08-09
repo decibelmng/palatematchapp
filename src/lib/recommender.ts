@@ -56,6 +56,15 @@ export type BottleFp = {
   /** Reading provenance (bottles.fp_pipeline). Present only where a caller
    *  selects it; absent is not a claim either way. */
   fpPipeline?: string | null;
+  /**
+   * Years between the vintage on the list and the vintage of the row this
+   * reading actually came from. Absent (or null) means the reading is for the
+   * exact bottle in hand — NOT that the gap is zero-but-known. A present gap
+   * only ever weakens confidence in the reading; it never changes evidence
+   * mass M, because M is a claim about how much of the person's own rated set
+   * sits nearby and that claim is unaffected by which year we read.
+   */
+  vintageGap?: number | null;
 };
 
 
