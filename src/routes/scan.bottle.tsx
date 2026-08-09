@@ -1019,7 +1019,7 @@ function ConfirmReadCard({
   const shaky = rawConfidence !== "high";
   const highlight = (v: string | number | null | undefined) =>
     (shaky || v == null || v === "")
-      ? "border border-dashed border-[--amber] bg-transparent"
+      ? "border border-dashed border-(--amber) bg-transparent"
       : "border-border bg-background";
 
 

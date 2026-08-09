@@ -50,7 +50,7 @@ export function TheCall({
 
   return (
     <div
-      className="scan-hero relative rounded-xl border border-[--accent-color] p-5 bg-[--surface]"
+      className="scan-hero relative rounded-xl border border-(--accent-color) p-5 bg-(--surface)"
       style={{ boxShadow: "0 0 0 1px var(--accent-color), 0 12px 40px -12px color-mix(in oklab, var(--accent-color) 40%, transparent)" }}
     >
       {/* Full-card open affordance sits UNDER the content as an overlay button,
@@ -60,11 +60,11 @@ export function TheCall({
         type="button"
         onClick={onOpen}
         aria-label={`Open details for ${bottle.name}`}
-        className="absolute inset-0 z-0 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[--accent-color]"
+        className="absolute inset-0 z-0 rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-(--accent-color)"
       />
 
       <div className="relative z-10 pointer-events-none">
-        <p className="text-label uppercase tracking-label text-[--accent-color] font-medium">
+        <p className="text-label uppercase tracking-label text-(--accent-color) font-medium">
           {eyebrow}
         </p>
         <p className="mt-3 font-serif text-title text-foreground break-words leading-tight">
@@ -89,8 +89,8 @@ export function TheCall({
           {/* Exactly one value chip. The price-band mechanism ("bottom third on
               price") is not a verdict — it lives in the detail sheet. */}
           {row.greatValue && (
-            <span className="inline-flex items-center gap-1 rounded-full border border-[--good]/50 bg-[--good]/10 px-2 py-0.5 text-label uppercase tracking-label text-foreground">
-              <span aria-hidden className="inline-block w-1.5 h-1.5 rounded-full bg-[--good]" />
+            <span className="inline-flex items-center gap-1 rounded-full border border-(--good)/50 bg-(--good)/10 px-2 py-0.5 text-label uppercase tracking-label text-foreground">
+              <span aria-hidden className="inline-block w-1.5 h-1.5 rounded-full bg-(--good)" />
               Good value
             </span>
           )}

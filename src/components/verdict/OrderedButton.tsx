@@ -38,7 +38,7 @@ export function OrderedButton({
           ? "px-2.5 py-1 min-h-11 text-meta"
           : "px-3 min-h-11 text-sub",
         ordered
-          ? "border-[--good] bg-[color-mix(in_oklab,var(--good)_18%,transparent)] text-foreground"
+          ? "border-(--good) bg-[color-mix(in_oklab,var(--good)_18%,transparent)] text-foreground"
           : "border-border bg-card text-muted-foreground hover:bg-accent/40",
       ].join(" ")}
     >

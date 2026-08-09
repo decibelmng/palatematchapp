@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { friendlyError } from "@/lib/error-message";
 import { useRate, useRatings } from "@/hooks/use-palate-data";
@@ -18,7 +18,7 @@ import { OrderedButton } from "./OrderedButton";
  */
 export function ScanDetailSheet({
   row, scannedAt, nearTie, onClose, scanId, rank,
-  ordered, onOrdered, orderPending, canOrder,
+  ordered, onOrdered, orderPending, canOrder, orderedConfirm,
 }: {
   row: ScanRow | null;
   /** Secondary path for choice capture, for someone who tapped in first. */
@@ -26,6 +26,10 @@ export function ScanDetailSheet({
   onOrdered?: () => void;
   orderPending?: boolean;
   canOrder?: boolean;
+  /** Opened by the "I ordered this" tap: confirm the choice, do NOT ask for a
+   *  rating. Rating a wine at the moment you order it is rating something you
+   *  have not tasted. */
+  orderedConfirm?: boolean;
   /** Scan this wine came from, recorded with any rating made here. */
   scanId?: string | null;
   /** 1 = this was the Call. */
@@ -40,6 +44,9 @@ export function ScanDetailSheet({
   nearTie?: string | null;
   onClose: () => void;
 }) {
+
+  const [rateOpen, setRateOpen] = useState(false);
+  useEffect(() => { setRateOpen(false); }, [row?.key, orderedConfirm]);
 
   const { data: ratings } = useRatings();
   const rate = useRate();
@@ -72,7 +79,7 @@ export function ScanDetailSheet({
         className="absolute inset-0 bg-black/60 motion-safe:animate-in motion-safe:fade-in"
       />
       <div
-        className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-[--surface] border-t border-border p-5 pb-8 motion-safe:animate-in motion-safe:slide-in-from-bottom max-h-[85vh] overflow-y-auto"
+        className="absolute inset-x-0 bottom-0 rounded-t-2xl bg-(--surface) border-t border-border p-5 pb-8 motion-safe:animate-in motion-safe:slide-in-from-bottom max-h-[85vh] overflow-y-auto"
         style={{ paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 24px)" }}
       >
         <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-border" aria-hidden />
@@ -84,8 +91,8 @@ export function ScanDetailSheet({
           <div className="shrink-0 text-right">
             {r.predicted > 0 ? (
               <>
-                <span className="font-serif text-[--accent-color] text-3xl leading-none">{r.predicted.toFixed(1)}</span>
-                <span className="text-[--accent-color] text-lg leading-none">★</span>
+                <span className="font-serif text-(--accent-color) text-3xl leading-none">{r.predicted.toFixed(1)}</span>
+                <span className="text-(--accent-color) text-lg leading-none">★</span>
               </>
             ) : (
               <span className="text-meta text-muted-foreground">no score</span>
@@ -99,7 +106,7 @@ export function ScanDetailSheet({
         <p className="mt-3 text-heading text-foreground leading-snug">{verdict}</p>
         <p className="mt-2 text-body text-muted-foreground">{because}</p>
         <p className="mt-3 text-sub">
-          <span className="text-[--accent-color] font-medium">{priceLabel(row)}</span>
+          <span className="text-(--accent-color) font-medium">{priceLabel(row)}</span>
           <span className="ml-2 text-label uppercase tracking-label text-muted-foreground">
             {row.isCatalog ? "Catalog match" : "Estimated"}
           </span>
@@ -108,7 +115,7 @@ export function ScanDetailSheet({
           <span
             className={`mt-2 inline-block rounded-full px-2 py-0.5 text-label uppercase tracking-label border ${
               row.verdict.tone === "good"
-                ? "border-[--good]/50 bg-[--good]/10 text-foreground"
+                ? "border-(--good)/50 bg-(--good)/10 text-foreground"
                 : row.verdict.tone === "warn"
                 ? "border-[color-mix(in_oklab,var(--amber)_55%,transparent)] bg-[color-mix(in_oklab,var(--amber)_10%,transparent)] text-foreground"
                 : "border-[color-mix(in_oklab,var(--crimson)_55%,transparent)] bg-[color-mix(in_oklab,var(--crimson)_12%,transparent)] text-foreground"
@@ -121,7 +128,18 @@ export function ScanDetailSheet({
           <p className="mt-2 text-meta text-muted-foreground leading-snug">{row.valueSentence}</p>
         )}
 
-        {canOrder && onOrdered && (
+        {orderedConfirm && (
+          <div className="mt-4 rounded-xl border border-(--good) bg-[color-mix(in_oklab,var(--good)_14%,var(--surface))] p-4">
+            <p className="text-heading text-foreground leading-snug">
+              Ordered — {r.bottle.name}
+            </p>
+            <p className="mt-1 text-sub text-muted-foreground">
+              We'll ask how it was later tonight.
+            </p>
+          </div>
+        )}
+
+        {canOrder && onOrdered && !orderedConfirm && (
           <div className="mt-4 pt-3 border-t border-border flex items-center justify-between gap-3">
             <span className="text-label uppercase tracking-label text-muted-foreground">
               {isPostMeal ? "Is this the one you ordered?" : "Ordering this one?"}
@@ -136,7 +154,17 @@ export function ScanDetailSheet({
           </div>
         )}
 
-        {canRate && (
+        {canRate && orderedConfirm && !rateOpen && (
+          <button
+            type="button"
+            onClick={() => setRateOpen(true)}
+            className="mt-4 min-h-11 w-full rounded-full border border-border bg-card px-4 text-sub text-muted-foreground hover:bg-accent/40"
+          >
+            Rate it now
+          </button>
+        )}
+
+        {canRate && (!orderedConfirm || rateOpen) && (
           <div className="mt-4 pt-3 border-t border-border flex items-center justify-between gap-3">
             <span className="text-label uppercase tracking-label text-muted-foreground">
               {currentStars != null ? "Your rating" : isPostMeal ? "Did you order it? Rate it." : "Rate it"}
@@ -175,7 +203,7 @@ export function ScanDetailSheet({
             {r.nearest ? (
               <p>
                 Closest to your <span className="text-foreground">{r.nearest.stars}★ {r.nearest.name}</span>
-                {r.nearestIsCanon && <span className="ml-1 text-[--accent-color]">· Benchmark</span>}
+                {r.nearestIsCanon && <span className="ml-1 text-(--accent-color)">· Benchmark</span>}
               </p>
             ) : (
               <p>No close neighbor in your rated wines yet.</p>

@@ -41,11 +41,11 @@ export function ResultRow({
         className="absolute inset-0 z-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
       />
       <div className="relative z-10 pointer-events-none text-left py-4 pl-4 pr-3 flex items-start gap-4 min-h-11">
-        <div className="shrink-0 flex flex-col items-center justify-center w-14 h-14 rounded-xl border border-border bg-[--surface-2]">
+        <div className="shrink-0 flex flex-col items-center justify-center w-14 h-14 rounded-xl border border-border bg-(--surface-2)">
           {score ? (
             <>
-              <span className="font-serif text-[--accent-color] leading-none text-heading">{score}</span>
-              <span className="mt-0.5 text-sub text-[--accent-color] leading-none">★</span>
+              <span className="font-serif text-(--accent-color) leading-none text-heading">{score}</span>
+              <span className="mt-0.5 text-sub text-(--accent-color) leading-none">★</span>
             </>
           ) : (
             <span className="text-label uppercase tracking-label text-muted-foreground">n/a</span>
@@ -78,8 +78,8 @@ export function ResultRow({
         <div className="shrink-0 text-right pt-1">
           <p className="text-sub text-foreground font-medium">{price}</p>
           {row.greatValue && !r.vetoed && (
-            <p className="mt-0.5 flex items-center justify-end gap-1 text-meta text-[--value]">
-              <span aria-hidden className="inline-block w-1.5 h-1.5 rounded-full bg-[--value]" /> value
+            <p className="mt-0.5 flex items-center justify-end gap-1 text-meta text-(--value)">
+              <span aria-hidden className="inline-block w-1.5 h-1.5 rounded-full bg-(--value)" /> value
             </p>
           )}
           {canOrder && onOrdered && (
@@ -102,13 +102,13 @@ export function ResultRow({
 export function SkeletonRow() {
   return (
     <li className="list-none py-4 pl-4 pr-3 flex items-start gap-4 animate-pulse">
-      <div className="shrink-0 w-14 h-14 rounded-xl bg-[--surface-2]" />
+      <div className="shrink-0 w-14 h-14 rounded-xl bg-(--surface-2)" />
       <div className="flex-1 space-y-2">
-        <div className="h-4 w-3/4 rounded bg-[--surface-2]" />
-        <div className="h-3 w-1/3 rounded bg-[--surface-2]" />
+        <div className="h-4 w-3/4 rounded bg-(--surface-2)" />
+        <div className="h-3 w-1/3 rounded bg-(--surface-2)" />
         <p className="text-meta text-muted-foreground italic">still reading…</p>
       </div>
-      <div className="w-12 h-4 rounded bg-[--surface-2]" />
+      <div className="w-12 h-4 rounded bg-(--surface-2)" />
     </li>
   );
 }

@@ -134,7 +134,7 @@ function AuditPage() {
   const typePass = results.sizes.length <= 3;
 
   const badge = (ok: boolean) =>
-    <span className={`inline-block rounded px-2 py-0.5 text-meta font-semibold ${ok ? "bg-[--color-value] text-black" : "bg-destructive text-destructive-foreground"}`}>{ok ? "PASS" : "FAIL"}</span>;
+    <span className={`inline-block rounded px-2 py-0.5 text-meta font-semibold ${ok ? "bg-(--color-value) text-black" : "bg-destructive text-destructive-foreground"}`}>{ok ? "PASS" : "FAIL"}</span>;
 
   return (
     <div className="p-4 space-y-6 text-sm">
