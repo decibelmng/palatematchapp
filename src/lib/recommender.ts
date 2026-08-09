@@ -559,7 +559,7 @@ function scoreOne(cand: BottleFp, ctx: TypeCtx): Recommendation {
     nearest: bestKAnchor,
     nearestIsCanon: !!bestKAnchor?.canon,
     maxSimilarity: bestSim,
-    confidence: M / (M + PRIOR_ALPHA),
+    confidence: M / (M + alphaEff),
     evidence: M,
     evidenceTier: tier,
     vetoed: !!vetoReason,
