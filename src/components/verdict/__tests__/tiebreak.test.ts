@@ -182,3 +182,30 @@ describe("thin reads may be ranked but never named as the Call", () => {
     expect(pickCall([legacy, read])!.key).toBe("legacy");
   });
 });
+
+describe("estimated lines rank but cannot be the Call", () => {
+  it("passes over a higher-scoring estimated line for a catalog reading", () => {
+    const est = row({ key: "moulis", predicted: 4.6, isCatalog: false, sim: 0.9 });
+    const cat = row({ key: "chasse-spleen", predicted: 3.8, isCatalog: true, sim: 0.4 });
+    expect(pickCall([est, cat])!.key).toBe("chasse-spleen");
+  });
+
+  it("keeps the estimated line eligible for the list and the alternates", () => {
+    const est = row({ key: "est", predicted: 4.6, isCatalog: false });
+    const cat = row({ key: "cat", predicted: 3.8, isCatalog: true });
+    expect(callEligible([est, cat]).map((r) => r.key)).toEqual(["cat"]);
+  });
+
+  it("still names one when no line on the list matched the catalog", () => {
+    const a = row({ key: "a", predicted: 4.6, isCatalog: false });
+    const b = row({ key: "b", predicted: 4.1, isCatalog: false });
+    expect(pickCall([a, b])!.key).toBe("a");
+  });
+
+  it("a thin catalog read is preferred over an estimate, and only stands down within the catalog pool", () => {
+    const thin = { acid: 0.6, body: 0.5, savory: 0.4 };
+    const est = row({ key: "est", predicted: 4.9, isCatalog: false });
+    const thinCat = row({ key: "thin-cat", predicted: 4.0, isCatalog: true, fp: thin });
+    expect(pickCall([est, thinCat])!.key).toBe("thin-cat");
+  });
+});
