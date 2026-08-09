@@ -32,17 +32,21 @@ import {
 /** Rows per server call. Sized so a batch finishes well inside the edge
  *  request window even when a few calls retry. */
 const BATCH_SIZE = 24;
-/** Gateway calls in flight. Above ~8 the gateway starts returning 429s, which
- *  cost a retry each and make the run slower, not faster. */
-const CONCURRENCY = 6;
+/** Gateway calls in flight. The old ceiling of 6 was set when every call held a
+ *  connection for 6s and burned ~1,140 output tokens, and the 429s that showed
+ *  up above ~8 were a token-rate wall, not a lane wall. With reasoning off
+ *  (79 output tokens, ~1.1s) a 48-call probe returned zero 429s at 8, 12, 16
+ *  and 24 lanes; 300 real rows ran clean at 16. Staying at 16 leaves headroom. */
+const CONCURRENCY = 16;
 
 const Input = z
   .object({
     jobId: z.string().uuid(),
     model: z.string().min(3),
     batchSize: z.number().int().min(1).max(60).optional(),
-    concurrency: z.number().int().min(1).max(10).optional(),
+    concurrency: z.number().int().min(1).max(24).optional(),
   });
+
 
 async function admin(context: { userId: string }) {
   const adminId = process.env["ADMIN_USER_ID"];
