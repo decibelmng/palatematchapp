@@ -156,7 +156,7 @@ export function axisApplies(axis: FpKey, type: WineType): boolean {
  * decision is reversible the moment a note source that discusses freshness
  * independently arrives.
  */
-export const RETIRED_AXES: readonly FpKey[] = ["fresh"];
+export const RETIRED_AXES: readonly FpKey[] = (process.env.PM_KEEP_FRESH ? [] : ["fresh"]) as readonly FpKey[];
 
 function activeAxesFor(type: WineType): FpKey[] {
   return RAX.filter((a) => axisApplies(a, type) && !RETIRED_AXES.includes(a));
