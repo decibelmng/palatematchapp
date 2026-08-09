@@ -25,7 +25,7 @@ export const Route = createFileRoute("/admin/refingerprint-v3")({
  * inner join on catalog_source_notes excludes them. Fourteen are wines the owner
  * has rated, which makes this tail a swap blocker rather than a follow-up.
  */
-function NotelessTail({ jobId }: { jobId: string }) {
+function NotelessTail({ jobId, mainPending }: { jobId: string; mainPending: number | null }) {
   const runBatch = useServerFn(refingerprintV3NotelessBatch);
   const readProgress = useServerFn(refingerprintV3NotelessProgress);
   const [state, setState] = useState<{ pending: number; done: number } | null>(null);
@@ -71,9 +71,15 @@ function NotelessTail({ jobId }: { jobId: string }) {
           {state.pending.toLocaleString()} left · {state.done.toLocaleString()} read this way
         </p>
       )}
+      {mainPending != null && mainPending > 0 && (
+        <p className="text-(length:--fs-meta) text-(--text)">
+          Waiting on the main queue — {mainPending.toLocaleString()} wines left there. These are read
+          last so they sit on the same model and prompt as everything else.
+        </p>
+      )}
       <button
         onClick={run}
-        disabled={busy || !jobId}
+        disabled={busy || !jobId || mainPending == null || mainPending > 0}
         className="min-h-[44px] w-full rounded-md border border-(--border-strong) px-4 text-(length:--fs-body) text-(--text) disabled:opacity-50"
       >
         {busy ? "Reading…" : "Read these"}
@@ -89,21 +95,45 @@ function NotelessTail({ jobId }: { jobId: string }) {
 const JOB_ID = "fcf3b92a-0700-4a85-82a4-7d0d6b5af2a9";
 const MODEL = "google/gemini-3.6-flash";
 
+/** No write for this long with rows outstanding = stalled, said out loud. */
+const STALL_AFTER_MS = 5 * 60_000;
+
 type Entry = { at: string; picked: number; wrote: number; empty: number; remaining: number };
 
 function RefingerprintV3() {
   const runBatch = useServerFn(refingerprintV3Batch);
   const readProgress = useServerFn(refingerprintV3Progress);
   const [log, setLog] = useState<Entry[]>([]);
-  const [progress, setProgress] = useState<{ scored: number; pending: number; thin: number; empty: number; ambiguous: number } | null>(null);
+  const [progress, setProgress] = useState<{
+    scored: number; pending: number; thin: number; empty: number; ambiguous: number;
+    lastWriteAt: string | null;
+  } | null>(null);
+  const [now, setNow] = useState(() => Date.now());
   const [running, setRunning] = useState(false);
   const [fatal, setFatal] = useState<string | null>(null);
   const [jobId, setJobId] = useState(JOB_ID);
   const stop = useRef(false);
 
+  // Watchdog. The loop lives in this tab, so it dies with the tab, a sleeping
+  // phone, or a dropped connection — and the previous run did exactly that at
+  // 4,193 rows without saying so. This poll is deliberately INDEPENDENT of the
+  // loop: it reads the newest shadow write straight from the catalog every 30s,
+  // so it reports a stall whether the loop crashed, hung mid-batch, or was never
+  // started. Silence with work outstanding is the thing worth surfacing.
   useEffect(() => {
-    readProgress().then(setProgress).catch((e) => setFatal(e?.message ?? String(e)));
+    let alive = true;
+    const read = () =>
+      readProgress()
+        .then((p) => { if (alive) setProgress(p); })
+        .catch((e) => { if (alive) setFatal(e?.message ?? String(e)); });
+    read();
+    const poll = setInterval(read, 30_000);
+    const tick = setInterval(() => setNow(Date.now()), 5_000);
+    return () => { alive = false; clearInterval(poll); clearInterval(tick); };
   }, [readProgress]);
+
+  const idleMs = progress?.lastWriteAt ? now - Date.parse(progress.lastWriteAt) : null;
+  const stalled = idleMs != null && idleMs > STALL_AFTER_MS && (progress?.pending ?? 0) > 0;
 
   async function loop() {
     if (!jobId) {
@@ -209,6 +239,18 @@ function RefingerprintV3() {
         </div>
       )}
 
+      {stalled && (
+        <div className="pm-card space-y-1 border-(--amber) p-3">
+          <p className="text-(length:--fs-body) font-medium text-(--text)">
+            Stalled — nothing written for {Math.floor((idleMs ?? 0) / 60_000)} minutes
+          </p>
+          <p className="text-(length:--fs-meta) text-(--text-muted)">
+            {(progress?.pending ?? 0).toLocaleString()} wines are still waiting. Press Run until done
+            to pick up where it stopped — no reading is lost and nothing is read twice.
+          </p>
+        </div>
+      )}
+
       <div className="flex gap-2">
         <button
           onClick={loop}
@@ -239,7 +281,7 @@ function RefingerprintV3() {
         <p className="pm-card whitespace-pre-wrap p-3 text-(length:--fs-meta) text-(--text)">{fatal}</p>
       )}
 
-      <NotelessTail jobId={jobId} />
+      <NotelessTail jobId={jobId} mainPending={progress?.pending ?? null} />
 
       <ul className="space-y-1 text-(length:--fs-meta) text-(--text-muted)">
         {log.map((e, i) => (
