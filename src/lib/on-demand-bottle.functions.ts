@@ -35,7 +35,7 @@ import {
   scoreNotelessV3,
   V3_AXES,
   FINGERPRINT_PIPELINE_V3_ONDEMAND,
-  FINGERPRINT_MODEL_V3 as FINGERPRINT_MODEL_V3_ONDEMAND,
+  FINGERPRINT_MODEL_V3_RUN,
 } from "@/lib/fingerprint-prompt-v3";
 
 
@@ -217,7 +217,7 @@ export async function resolveOrCreateOnDemandCore(
           grape: input.grape ?? null, vintage: input.vintage ?? null,
         },
         apiKey,
-        FINGERPRINT_MODEL_V3_ONDEMAND,
+        FINGERPRINT_MODEL_V3_RUN,
         tasting_note,
       );
     }
@@ -274,6 +274,7 @@ export async function resolveOrCreateOnDemandCore(
       fp_prompt_hash: FINGERPRINT_PROMPT_HASH,
       fp_pipeline: "on_demand_blinded_v2",
       fp_scored_at: new Date().toISOString(),
+      ...v3Patch,
     } as never)
 
     .select("id")

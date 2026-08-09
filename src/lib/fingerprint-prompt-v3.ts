@@ -102,6 +102,10 @@ export function clamp01OrNull(n: unknown): number | null {
 const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 export const FINGERPRINT_MODEL_V3 = "google/gemini-2.5-flash";
 export const FINGERPRINT_PIPELINE_V3 = "note_v3_deanchored";
+/** The model the full catalog run is being read with. Any reading that must sit
+ *  on the same calibration as the swapped catalog — on-demand resolves, the
+ *  note-less tail — uses THIS, not the pilot default above. */
+export const FINGERPRINT_MODEL_V3_RUN = "google/gemini-3.6-flash";
 /**
  * Same scorer, same prompt — but the review it read may belong to a sibling
  * bottle (one review, several plausible rows). The reading is kept and stamped
