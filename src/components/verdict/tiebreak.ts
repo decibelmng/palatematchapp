@@ -1,3 +1,4 @@
+import { isThinRead } from "@/lib/recommender";
 import type { ScanRow } from "./types";
 
 /**
@@ -53,6 +54,19 @@ export function compareCallCandidates(a: ScanRow, b: ScanRow): number {
   return 0;
 }
 
+/**
+ * A wine read on three or fewer style axes can be ranked but must not be named
+ * as the Call — see THIN_READ_MAX_AXES. It stays in `eligible`, so it still
+ * appears in the alternates and the full list; it is only removed from the
+ * shortlist the single recommendation is drawn from. If EVERY candidate is a
+ * thin read we do not refuse to answer: the screen still names one, because a
+ * thin best guess beats no guess at a restaurant table.
+ */
+export function callEligible(eligible: ScanRow[]): ScanRow[] {
+  const solid = eligible.filter((r) => !isThinRead(r.ranked.bottle.fp, r.type));
+  return solid.length > 0 ? solid : eligible;
+}
+
 /** Rows within TIE★ of the best score, best first, ties broken above. */
 export function tiedCandidates(eligible: ScanRow[]): ScanRow[] {
   if (eligible.length === 0) return [];
@@ -63,7 +77,7 @@ export function tiedCandidates(eligible: ScanRow[]): ScanRow[] {
 }
 
 export function pickCall(eligible: ScanRow[]): ScanRow | null {
-  return tiedCandidates(eligible)[0] ?? null;
+  return tiedCandidates(callEligible(eligible))[0] ?? null;
 }
 
 /**
