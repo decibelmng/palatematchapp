@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { recommend, __debug_learnOmega, type BottleFp, type RatedFp, type FpKey } from "@/lib/recommender";
+import { recommend, __debug_learnOmega, omegaDistance, axisApplies, RETIRED_AXES, MIN_COMPARABLE_AXES, type BottleFp, type RatedFp, type FpKey } from "@/lib/recommender";
 import { computeCode, RED_AXES, WHITE_AXES } from "@/lib/palate";
 import { cuveeKey } from "@/lib/cuvee";
 
@@ -481,5 +481,43 @@ describe("cuveeKey()", () => {
     const a = cuveeKey({ producer: "Château Margaux", name: "Château Margaux", region: "Bordeaux", type: "red" });
     const b = cuveeKey({ producer: "Chateau Margaux", name: "the Chateau Margaux", region: "bordeaux", type: "red" });
     expect(a).toEqual(b);
+  });
+});
+
+describe("axis set and neighbour eligibility", () => {
+  it("retires fresh from scoring while leaving it stored and applicable", () => {
+    // fresh is excluded from the METRIC, not from the schema or the type rules.
+    expect(RETIRED_AXES).toContain("fresh");
+    expect(axisApplies("fresh", "red")).toBe(true);
+    expect(axisApplies("fresh", "white")).toBe(true);
+  });
+
+  it("ignores fresh entirely when computing distance", () => {
+    const om: Record<string, number> = {
+      fresh: 1, acid: 1, tannin: 1, fruit_dark: 1, ripe: 1, oak: 1, body: 1, savory: 1,
+    };
+    const active = ["acid", "tannin", "fruit_dark", "ripe", "oak", "body", "savory"] as FpKey[];
+    const base = { acid: 0.5, tannin: 0.5, fruit_dark: 0.5, ripe: 0.5, oak: 0.5, body: 0.5, savory: 0.5 };
+    // Two wines identical on the seven active axes but at opposite freshness
+    // poles are the SAME wine to the engine now.
+    const a = { ...base, fresh: 0.0 };
+    const b = { ...base, fresh: 1.0 };
+    expect(omegaDistance(a, b, om as never, active)).toBe(0);
+  });
+
+  it("refuses to call a two-axis overlap a neighbour", () => {
+    const om: Record<string, number> = { acid: 1, tannin: 1, body: 1, savory: 1, ripe: 1, oak: 1, fruit_dark: 1 };
+    const active = ["acid", "tannin", "fruit_dark", "ripe", "oak", "body", "savory"] as FpKey[];
+    // Exactly two shared axes, and identical on both — the old code called this
+    // distance 0, i.e. the same wine, off two dimensions of evidence.
+    const two = omegaDistance({ acid: 0.5, body: 0.5 }, { acid: 0.5, body: 0.5, ripe: 0.9 } as never, om as never, active);
+    expect(two).toBe(Infinity);
+    // Three shared is the floor and is admitted.
+    const three = omegaDistance(
+      { acid: 0.5, body: 0.5, savory: 0.5 } as never,
+      { acid: 0.5, body: 0.5, savory: 0.5, ripe: 0.9 } as never,
+      om as never, active,
+    );
+    expect(three).toBe(0);
   });
 });

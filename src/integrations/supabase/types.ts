@@ -46,40 +46,51 @@ export type Database = {
       bottles: {
         Row: {
           added_by: string | null
-          ax_acidity: number
-          ax_body: number
-          ax_fruit_char: number
+          ax_acidity: number | null
+          ax_body: number | null
+          ax_fruit_char: number | null
           ax_sweet: number
-          ax_tannin: number
+          ax_tannin: number | null
           country: string | null
           created_at: string
           critic_score: number | null
           excluded_from_recs: boolean
           fingerprint_attempts: number
-          fp_acid: number
+          fp_acid: number | null
           fp_acid_prior: number
-          fp_body: number
+          fp_acid_v3: number | null
+          fp_body: number | null
           fp_body_prior: number
+          fp_body_v3: number | null
           fp_dispute_count: number
-          fp_fresh: number
+          fp_fresh: number | null
           fp_fresh_prior: number
-          fp_fruit_dark: number
+          fp_fresh_v3: number | null
+          fp_fruit_dark: number | null
           fp_fruit_dark_prior: number
+          fp_fruit_dark_v3: number | null
           fp_harmonized_at: string | null
           fp_job_id: string | null
           fp_model: string
-          fp_oak: number
+          fp_oak: number | null
           fp_oak_prior: number
+          fp_oak_v3: number | null
           fp_pipeline: string
           fp_prior_precision: number
           fp_prompt_hash: string
-          fp_ripe: number
+          fp_ripe: number | null
           fp_ripe_prior: number
-          fp_savory: number
+          fp_ripe_v3: number | null
+          fp_savory: number | null
           fp_savory_prior: number
+          fp_savory_v3: number | null
           fp_scored_at: string
-          fp_tannin: number
+          fp_tannin: number | null
           fp_tannin_prior: number
+          fp_tannin_v3: number | null
+          fp_v3_axes_read: number | null
+          fp_v3_job_id: string | null
+          fp_v3_scored_at: string | null
           fp_vec: string | null
           grape: string | null
           id: string
@@ -97,40 +108,51 @@ export type Database = {
         }
         Insert: {
           added_by?: string | null
-          ax_acidity?: number
-          ax_body?: number
-          ax_fruit_char?: number
+          ax_acidity?: number | null
+          ax_body?: number | null
+          ax_fruit_char?: number | null
           ax_sweet: number
-          ax_tannin?: number
+          ax_tannin?: number | null
           country?: string | null
           created_at?: string
           critic_score?: number | null
           excluded_from_recs?: boolean
           fingerprint_attempts?: number
-          fp_acid: number
+          fp_acid?: number | null
           fp_acid_prior?: number
-          fp_body: number
+          fp_acid_v3?: number | null
+          fp_body?: number | null
           fp_body_prior?: number
+          fp_body_v3?: number | null
           fp_dispute_count?: number
-          fp_fresh: number
+          fp_fresh?: number | null
           fp_fresh_prior?: number
-          fp_fruit_dark: number
+          fp_fresh_v3?: number | null
+          fp_fruit_dark?: number | null
           fp_fruit_dark_prior?: number
+          fp_fruit_dark_v3?: number | null
           fp_harmonized_at?: string | null
           fp_job_id?: string | null
           fp_model: string
-          fp_oak: number
+          fp_oak?: number | null
           fp_oak_prior?: number
+          fp_oak_v3?: number | null
           fp_pipeline: string
           fp_prior_precision?: number
           fp_prompt_hash: string
-          fp_ripe: number
+          fp_ripe?: number | null
           fp_ripe_prior?: number
-          fp_savory: number
+          fp_ripe_v3?: number | null
+          fp_savory?: number | null
           fp_savory_prior?: number
+          fp_savory_v3?: number | null
           fp_scored_at: string
-          fp_tannin: number
+          fp_tannin?: number | null
           fp_tannin_prior?: number
+          fp_tannin_v3?: number | null
+          fp_v3_axes_read?: number | null
+          fp_v3_job_id?: string | null
+          fp_v3_scored_at?: string | null
           fp_vec?: string | null
           grape?: string | null
           id?: string
@@ -148,40 +170,51 @@ export type Database = {
         }
         Update: {
           added_by?: string | null
-          ax_acidity?: number
-          ax_body?: number
-          ax_fruit_char?: number
+          ax_acidity?: number | null
+          ax_body?: number | null
+          ax_fruit_char?: number | null
           ax_sweet?: number
-          ax_tannin?: number
+          ax_tannin?: number | null
           country?: string | null
           created_at?: string
           critic_score?: number | null
           excluded_from_recs?: boolean
           fingerprint_attempts?: number
-          fp_acid?: number
+          fp_acid?: number | null
           fp_acid_prior?: number
-          fp_body?: number
+          fp_acid_v3?: number | null
+          fp_body?: number | null
           fp_body_prior?: number
+          fp_body_v3?: number | null
           fp_dispute_count?: number
-          fp_fresh?: number
+          fp_fresh?: number | null
           fp_fresh_prior?: number
-          fp_fruit_dark?: number
+          fp_fresh_v3?: number | null
+          fp_fruit_dark?: number | null
           fp_fruit_dark_prior?: number
+          fp_fruit_dark_v3?: number | null
           fp_harmonized_at?: string | null
           fp_job_id?: string | null
           fp_model?: string
-          fp_oak?: number
+          fp_oak?: number | null
           fp_oak_prior?: number
+          fp_oak_v3?: number | null
           fp_pipeline?: string
           fp_prior_precision?: number
           fp_prompt_hash?: string
-          fp_ripe?: number
+          fp_ripe?: number | null
           fp_ripe_prior?: number
-          fp_savory?: number
+          fp_ripe_v3?: number | null
+          fp_savory?: number | null
           fp_savory_prior?: number
+          fp_savory_v3?: number | null
           fp_scored_at?: string
-          fp_tannin?: number
+          fp_tannin?: number | null
           fp_tannin_prior?: number
+          fp_tannin_v3?: number | null
+          fp_v3_axes_read?: number | null
+          fp_v3_job_id?: string | null
+          fp_v3_scored_at?: string | null
           fp_vec?: string | null
           grape?: string | null
           id?: string
@@ -201,6 +234,13 @@ export type Database = {
           {
             foreignKeyName: "bottles_fp_job_id_fkey"
             columns: ["fp_job_id"]
+            isOneToOne: false
+            referencedRelation: "catalog_jobs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bottles_fp_v3_job_id_fkey"
+            columns: ["fp_v3_job_id"]
             isOneToOne: false
             referencedRelation: "catalog_jobs"
             referencedColumns: ["id"]
@@ -2524,40 +2564,51 @@ export type Database = {
         }
         Returns: {
           added_by: string | null
-          ax_acidity: number
-          ax_body: number
-          ax_fruit_char: number
+          ax_acidity: number | null
+          ax_body: number | null
+          ax_fruit_char: number | null
           ax_sweet: number
-          ax_tannin: number
+          ax_tannin: number | null
           country: string | null
           created_at: string
           critic_score: number | null
           excluded_from_recs: boolean
           fingerprint_attempts: number
-          fp_acid: number
+          fp_acid: number | null
           fp_acid_prior: number
-          fp_body: number
+          fp_acid_v3: number | null
+          fp_body: number | null
           fp_body_prior: number
+          fp_body_v3: number | null
           fp_dispute_count: number
-          fp_fresh: number
+          fp_fresh: number | null
           fp_fresh_prior: number
-          fp_fruit_dark: number
+          fp_fresh_v3: number | null
+          fp_fruit_dark: number | null
           fp_fruit_dark_prior: number
+          fp_fruit_dark_v3: number | null
           fp_harmonized_at: string | null
           fp_job_id: string | null
           fp_model: string
-          fp_oak: number
+          fp_oak: number | null
           fp_oak_prior: number
+          fp_oak_v3: number | null
           fp_pipeline: string
           fp_prior_precision: number
           fp_prompt_hash: string
-          fp_ripe: number
+          fp_ripe: number | null
           fp_ripe_prior: number
-          fp_savory: number
+          fp_ripe_v3: number | null
+          fp_savory: number | null
           fp_savory_prior: number
+          fp_savory_v3: number | null
           fp_scored_at: string
-          fp_tannin: number
+          fp_tannin: number | null
           fp_tannin_prior: number
+          fp_tannin_v3: number | null
+          fp_v3_axes_read: number | null
+          fp_v3_job_id: string | null
+          fp_v3_scored_at: string | null
           fp_vec: string | null
           grape: string | null
           id: string

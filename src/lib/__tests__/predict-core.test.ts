@@ -33,7 +33,18 @@ describe("predict-core", () => {
       fp_ripe: 0, fp_oak: 0, fp_body: 0, fp_savory: 0,
     });
     expect(predictStars(rated, flat).nullReason).toBe("uncalibrated_bottle");
-    expect(predictStars(rated, row("t", { fp_fresh: null })).nullReason).toBe("uncalibrated_bottle");
+
+    // A missing fp_fresh is NOT uncalibrated. Reviewer prose addresses
+    // freshness on ~15% of wines, so gating calibration on that one axis
+    // refused to predict for most of the catalog. Any readable axis scores.
+    expect(predictStars(rated, row("t", { fp_fresh: null })).nullReason).toBeNull();
+    // Every axis absent, and never scored, still is.
+    expect(
+      predictStars(rated, row("t", {
+        fp_fresh: null, fp_acid: null, fp_tannin: null, fp_fruit_dark: null,
+        fp_ripe: null, fp_oak: null, fp_body: null, fp_savory: null,
+      })).nullReason,
+    ).toBe("uncalibrated_bottle");
 
     const white = row("w", { type: "white" });
     expect(predictStars(rated, white).nullReason).toBe("no_same_type_ratings");

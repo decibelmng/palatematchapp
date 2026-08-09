@@ -120,13 +120,24 @@ export function typeOf(b: FpRow): WineType {
   return "red";
 }
 
-/** A calibrated bottle has at least one non-zero axis. A whole-zero vector is
- *  indistinguishable from "never fingerprinted", so it is treated as absent. */
+/**
+ * A calibrated bottle carries at least one readable, non-zero axis. A
+ * whole-zero vector is indistinguishable from "never fingerprinted", so it is
+ * treated as absent.
+ *
+ * This must NEVER gate on a single named axis. It previously required
+ * fp_fresh, which under nullable per-note scoring would have reported ~85% of
+ * the catalog as uncalibrated and refused to predict on it — a wine whose
+ * reviewer simply did not mention freshness is fully scorable on its other
+ * axes. Presence of any axis, or a recorded fp_scored_at, is calibration.
+ */
 export function isFpCalibrated(b: FpRow | null | undefined): boolean {
   if (!b) return false;
-  if (b.fp_fresh === null || b.fp_fresh === undefined) return false;
   const vals = Object.values(fpOf(b));
-  return vals.length > 0 && vals.some((v) => v !== 0);
+  if (vals.length > 0 && vals.some((v) => v !== 0)) return true;
+  // Scored, but every axis the note addressed came back at an exact 0.0 — rare
+  // but real, and provably distinct from never-scored.
+  return Boolean((b as { fp_scored_at?: string | null }).fp_scored_at);
 }
 
 const noPrediction = (reason: PredictNullReason, nRated = 0): PredictResult => ({
