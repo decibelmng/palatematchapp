@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { ChevronLeft } from "lucide-react";
 import { useMutation } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -32,7 +32,11 @@ import { verdictLine } from "@/components/verdict/reason";
 import { toast } from "sonner";
 import { friendlyError } from "@/lib/error-message";
 import { prepareImageForScan } from "@/lib/image-downscale";
-import { takePendingCapture } from "@/lib/scan-handoff";
+import {
+  takePendingCapture,
+  subscribePendingCapture,
+  pendingCaptureVersion,
+} from "@/lib/scan-handoff";
 import { composeBottleName, displayWineName, wineNameMeta } from "@/lib/wine-name";
 
 
@@ -80,16 +84,20 @@ function BottleScan() {
   // The camera already opened on the chooser sheet (iOS keeps the gesture only
   // there), so this screen receives the captured photo and acts as the review
   // step: thumbnail, retake, continue.
-  const handoffRef = useRef(false);
+  // Subscription, not a mount-once effect: the chooser lives in the app shell,
+  // so tapping SCAN while already on this route remounts nothing.
+  const handoffVersion = useSyncExternalStore(
+    subscribePendingCapture,
+    pendingCaptureVersion,
+    pendingCaptureVersion,
+  );
   useEffect(() => {
-    if (handoffRef.current) return;
-    handoffRef.current = true;
     const files = takePendingCapture("bottle");
     const f = files?.[0];
     if (!f) return;
     setPickTarget("front");
     setFront({ file: f, url: URL.createObjectURL(f) });
-  }, []);
+  }, [handoffVersion]);
 
   // Confirm-first state: after vision reads the label, the user edits
   // the extracted fields (photo visible), and NOTHING resolves to a

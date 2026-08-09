@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { applyControls, DEFAULT_CONTROLS, type Controls } from "@/lib/list-controls";
 import { CellarMemorySection } from "@/components/CellarMemorySection";
 import { SommelierBriefDialog } from "@/components/SommelierBriefDialog";
@@ -9,7 +9,12 @@ import { PrescanRestaurantPicker, VenueAttribution } from "@/components/Restaura
 import { DrinkingGroupSelector } from "@/components/DrinkingGroupSelector";
 import { ScanEntryButtons, StagedPhotos, BatchProgress } from "@/components/ScanCaptureShell";
 import { ScanStateMessage, type ScanFailure } from "@/components/ScanStateMessage";
-import { takePendingCapture } from "@/lib/scan-handoff";
+import {
+  takePendingCapture,
+  subscribePendingCapture,
+  pendingCaptureVersion,
+  hasPendingCapture,
+} from "@/lib/scan-handoff";
 import { ServiceModeSwitch } from "@/components/ServiceModeSwitch";
 import { useScanCapture } from "@/hooks/use-scan-capture";
 import { useScanRanking } from "@/hooks/use-scan-ranking";
@@ -65,18 +70,28 @@ function Scan() {
 
   // Photo captured on the chooser sheet. The camera already opened there, so
   // this screen is the review step, never a gate in front of the camera.
-  // Every hand-off starts from a clean slate: no stale errors, no resume
-  // banner, no partial results from the previous attempt.
-  const handoffRef = useRef(false);
+  //
+  // The chooser lives in the app shell, so tapping SCAN while already standing
+  // on this route is a no-op navigation: nothing remounts and a mount-only
+  // effect never fires. So the hand-off is a subscription, and the arrival
+  // itself is what clears prior state — never a button, never a mount.
+  const handoffVersion = useSyncExternalStore(
+    subscribePendingCapture,
+    pendingCaptureVersion,
+    pendingCaptureVersion,
+  );
+  // Read synchronously during render: on the first paint after entry a waiting
+  // hand-off suppresses every prior-attempt surface, so a previous failure
+  // cannot flash before the consuming effect runs.
+  const handoffWaiting = hasPendingCapture("list");
+
   useEffect(() => {
-    if (handoffRef.current) return;
-    handoffRef.current = true;
     const files = takePendingCapture("list");
     if (!files) return;
     cap.beginNewScan();
     cap.addFileObjects(files);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [handoffVersion]);
 
   const surfaceRows = useMemo(() => applyControls(rank.allRowsFlat, controls), [rank.allRowsFlat, controls]);
   const anyBatchInFlight = cap.batches.some((b) => b.status === "running" || b.status === "pending");
@@ -87,15 +102,18 @@ function Scan() {
   // ONE failure state for the whole screen. An error and a success state are
   // mutually exclusive by construction: `showDecisionSurface` is false whenever
   // `failure` is non-null.
-  const failure: ScanFailure | null = cap.mutation.isError
+  const failure: ScanFailure | null = handoffWaiting
+    ? null
+    : cap.mutation.isError
     ? { kind: "threw", error: cap.mutation.error }
     : readFailed
     ? { kind: "unreadable" }
     : null;
 
+
   const showDecisionSurface = !failure && rank.enoughRatings && (rank.readable.length > 0 || anyBatchInFlight);
   const totalWines = rank.dedupWines.length;
-  const resumable = !failure && !!cap.resumedAt && !!cap.scanId && cap.batches.length > 0 && cap.staged.length === 0 && !cap.dismissedResume;
+  const resumable = !failure && !handoffWaiting && !!cap.resumedAt && !!cap.scanId && cap.batches.length > 0 && cap.staged.length === 0 && !cap.dismissedResume;
   // A full wine list that came back with one or two wines barely worked. Say so
   // rather than presenting it as a normal resume.
   const thinResume = resumable && totalWines > 0 && totalWines < 3;
