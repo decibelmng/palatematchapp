@@ -226,7 +226,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <ScanChooserSheet open={scanOpen} onClose={() => setScanOpen(false)} sommVerified={isVerifiedSomm} />
 
       <nav
-        className="fixed bottom-0 inset-x-0 border-t border-border bg-background/95 backdrop-blur"
+        className="fixed bottom-0 inset-x-0 z-40 border-t border-border bg-background"
         style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
         aria-label="Primary"
       >

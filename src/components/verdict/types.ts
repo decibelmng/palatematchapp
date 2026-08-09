@@ -20,3 +20,16 @@ export type ScanRow = Priced & {
 export function priceLabel(row: ScanRow): string {
   return row.price_display ?? "\u2014";
 }
+
+/**
+ * The real catalog bottle id for a scanned row, or null.
+ *
+ * `ranked.bottle.id` is a per-scan synthetic key (`scan-3`) minted by the
+ * ranking pipeline — it is NOT a bottles.id and must never be written to a
+ * column that references bottles. Every persisted answer about a scanned wine
+ * goes through here.
+ */
+export function outcomeBottleId(row: ScanRow): string | null {
+  return row.ranked.scanned.matched_bottle_id ?? null;
+}
+
