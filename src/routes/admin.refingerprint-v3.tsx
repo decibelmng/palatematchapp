@@ -25,6 +25,7 @@ type Progress = {
   rowsPerSecond: number;
   lastWriteAt: string | null;
   paused: boolean;
+  updatedAt: string | null;
 };
 
 export const Route = createFileRoute("/admin/refingerprint-v3")({
