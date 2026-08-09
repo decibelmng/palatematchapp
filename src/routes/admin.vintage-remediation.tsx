@@ -8,6 +8,7 @@ import {
   vintageRemediationQueue,
   vintageRematchUnrated,
   vintageConfirmRepoint,
+  vintageSettleWithoutMoving,
   type RemediationItem,
 } from "@/lib/vintage-remediation.functions";
 
@@ -26,6 +27,7 @@ function VintageRemediation() {
   const loadQueue = useServerFn(vintageRemediationQueue);
   const rematchUnrated = useServerFn(vintageRematchUnrated);
   const confirmOne = useServerFn(vintageConfirmRepoint);
+  const settleOne = useServerFn(vintageSettleWithoutMoving);
 
   const [items, setItems] = useState<RemediationItem[] | null>(null);
   const [counts, setCounts] = useState<Counts | null>(null);
