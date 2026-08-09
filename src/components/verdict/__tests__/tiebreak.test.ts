@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import type { ScanRow } from "../types";
-import { compareCallCandidates, pickCall, nearTieNote, pricePosition, countPriced } from "../tiebreak";
+import { compareCallCandidates, pickCall, callEligible, nearTieNote, pricePosition, countPriced } from "../tiebreak";
 
 /** Minimal ScanRow good enough for the tie-break; everything else is unused. */
 function row(o: {
@@ -11,6 +11,9 @@ function row(o: {
   greatValue?: boolean;
   price?: number | null;
   name?: string;
+  /** Axis values present on the reading; omit for "no reading object". */
+  fp?: Record<string, number> | null;
+  type?: string;
 }): ScanRow {
   return {
     key: o.key,
@@ -18,8 +21,9 @@ function row(o: {
       predicted: o.predicted,
       maxSimilarity: o.sim ?? 0.5,
       vetoed: false,
-      bottle: { name: o.name ?? o.key, fp: null },
+      bottle: { name: o.name ?? o.key, fp: o.fp ?? null },
     },
+    type: o.type ?? "red",
     isCatalog: o.isCatalog ?? true,
     greatValue: o.greatValue ?? false,
     price_amount: o.price === undefined ? 100 : o.price,
@@ -132,5 +136,34 @@ describe("pricePosition instrumentation", () => {
   it("counts only readable prices", () => {
     expect(countPriced(list)).toBe(9);
     expect(countPriced([...list.slice(0, 3), row({ key: "n", predicted: 4, price: null })])).toBe(3);
+  });
+});
+
+describe("thin reads may be ranked but never named as the Call", () => {
+  const thin = { acid: 0.6, body: 0.5, savory: 0.4 };            // 3 active axes
+  const solid = { acid: 0.6, body: 0.5, savory: 0.4, tannin: 0.7, ripe: 0.5 };
+
+  it("passes over a higher-scoring wine read on only three axes", () => {
+    const shallow = row({ key: "shallow", predicted: 4.6, fp: thin });
+    const read = row({ key: "read", predicted: 4.55, fp: solid });
+    expect(pickCall([shallow, read])!.key).toBe("read");
+  });
+
+  it("keeps the thin wine eligible for the list, only out of the shortlist", () => {
+    const shallow = row({ key: "shallow", predicted: 4.6, fp: thin });
+    const read = row({ key: "read", predicted: 4.55, fp: solid });
+    expect(callEligible([shallow, read]).map((r) => r.key)).toEqual(["read"]);
+  });
+
+  it("still names one when every candidate is a thin read", () => {
+    const a = row({ key: "a", predicted: 4.6, fp: thin });
+    const b = row({ key: "b", predicted: 4.1, fp: thin });
+    expect(pickCall([a, b])!.key).toBe("a");
+  });
+
+  it("a wine with no reading object is not treated as thin", () => {
+    const legacy = row({ key: "legacy", predicted: 4.6, fp: null });
+    const read = row({ key: "read", predicted: 4.55, fp: solid });
+    expect(pickCall([legacy, read])!.key).toBe("legacy");
   });
 });
