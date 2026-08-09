@@ -170,6 +170,17 @@ export const loadScanForRanking = createServerFn({ method: "POST" })
     if (error || !scan) throw new Error("Scan not found");
     if ((scan as any).user_id !== userId) throw new Error("Not your scan");
 
+    // Reconcile-on-read: a scan whose batches all landed but whose finalize was
+    // lost (app backgrounded at the table) gets finalized now, on open.
+    if ((scan as any).status === "processing") {
+      try {
+        const { reconcileOne } = await import("@/lib/scan-finalize.server");
+        const res = await reconcileOne(supabase as any, userId, data.scan_id);
+        if (res.reconciled) (scan as any).status = res.status;
+      } catch { /* a reconcile failure must never block opening the scan */ }
+    }
+
+
     const [{ data: wines }, restRes] = await Promise.all([
       supabase.from("scan_wines")
         .select("id,scan_id,batch_index,producer,cuvee,vintage,wine_type,region,grape,price,price_amount,currency,format,raw_text,fp,fp_source,matched_bottle_id,match_score")
