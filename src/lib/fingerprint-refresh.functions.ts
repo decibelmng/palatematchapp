@@ -31,6 +31,9 @@ export const refreshBottleFingerprint = createServerFn({ method: "POST" })
       }
       return { skipped: true, reason: result.reason };
     } catch (e: any) {
+      console.error(
+        `[refingerprint] self-heal threw for ${data.bottle_id}: ${e?.message ?? e}`,
+      );
       return { skipped: true, reason: e?.message ?? String(e) };
     }
   });
@@ -74,11 +77,21 @@ export const sweepMyUnscoredBottles = createServerFn({ method: "POST" })
           if ("ok" in r) { ok++; results.push(`${row.id}: ok`); }
           else results.push(`${row.id}: ${r.reason}`);
         } catch (e: any) {
+          console.error(`[refingerprint] sweep threw for ${row.id}: ${e?.message ?? e}`);
           results.push(`${row.id}: ${e?.message ?? String(e)}`);
         }
       }
-      return { attempted: (pending ?? []).length, ok, results };
+      const attempted = (pending ?? []).length;
+      // A sweep that attempts rows and scores none is a broken write path, not
+      // a quiet session. Say so.
+      if (attempted > ok) {
+        console.error(
+          `[refingerprint] sweep scored ${ok} of ${attempted}: ${results.join(" | ")}`,
+        );
+      }
+      return { attempted, ok, results };
     } catch (e: any) {
+      console.error(`[refingerprint] sweep failed: ${e?.message ?? e}`);
       return { attempted: 0, ok: 0, results: [e?.message ?? String(e)] };
     }
   });
