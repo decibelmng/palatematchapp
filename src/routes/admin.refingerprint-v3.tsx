@@ -168,6 +168,8 @@ function RefingerprintV3Monitor() {
         </h1>
         <p className="text-(length:--fs-meta) text-(--text-muted)">
           The scheduled runner works independently of this page and writes shadow columns only.
+          These figures are the runner's own last count, read once — this page no longer counts the
+          catalog itself.
         </p>
       </header>
 
@@ -181,8 +183,15 @@ function RefingerprintV3Monitor() {
           <div>Last minute: {progress.wrote1m.toLocaleString()}</div>
           <div>Five-minute rate: {progress.rowsPerSecond.toFixed(1)}/s</div>
           <div>Status: {progress.pending === 0 ? "Complete" : progress.paused ? "Paused" : "Scheduled"}</div>
+          <div className="col-span-2 text-(--text-muted)">
+            Counted{" "}
+            {progress.updatedAt
+              ? new Date(progress.updatedAt).toLocaleTimeString()
+              : "not yet — waiting for the next run"}
+          </div>
         </section>
       )}
+
 
       {stalled && (
         <section className="pm-card space-y-1 border-(--amber) p-3">
