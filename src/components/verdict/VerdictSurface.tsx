@@ -98,13 +98,13 @@ export function VerdictSurface({
           onOpen={setDetailKey}
           stillReading={stillReading}
           currency={currency}
-          orderedBottleId={order.chosenBottleId}
+          isOrdered={order.isOrdered}
           onOrdered={order.toggle}
           orderPending={order.pending}
           canOrder={order.enabled}
         />
         <ScanDetailSheet row={detailFor} scannedAt={scannedAt} scanId={scanId ?? null} rank={detailRank} nearTie={detailFor ? nearTieNote(detailFor, eligible) : null} onClose={() => setDetailKey(null)}
-          ordered={!!detailFor && order.chosenBottleId === detailFor.ranked.bottle.id}
+          ordered={!!detailFor && order.isOrdered(detailFor)}
           onOrdered={detailFor ? () => order.toggle(detailFor) : undefined}
           orderPending={order.pending}
           canOrder={order.enabled}
@@ -120,7 +120,7 @@ export function VerdictSurface({
         row={call}
         kind={callKind}
         onOpen={() => setDetailKey(call.key)}
-        ordered={order.chosenBottleId === call.ranked.bottle.id}
+        ordered={order.isOrdered(call)}
         onOrdered={() => order.toggle(call)}
         orderPending={order.pending}
         canOrder={order.enabled}
@@ -128,7 +128,7 @@ export function VerdictSurface({
       <Alternates
         items={alternates}
         onOpen={setDetailKey}
-        orderedBottleId={order.chosenBottleId}
+        isOrdered={order.isOrdered}
         onOrdered={(a) => order.toggle(a.row)}
         orderPending={order.pending}
         canOrder={order.enabled}
@@ -139,7 +139,7 @@ export function VerdictSurface({
         onOpen={setDetailKey}
         stillReading={stillReading}
         currency={currency}
-        orderedBottleId={order.chosenBottleId}
+        isOrdered={order.isOrdered}
         onOrdered={order.toggle}
         orderPending={order.pending}
         canOrder={order.enabled}
@@ -152,7 +152,7 @@ export function VerdictSurface({
         rows={rows}
       />
       <ScanDetailSheet row={detailFor} scannedAt={scannedAt} scanId={scanId ?? null} rank={detailRank} nearTie={detailFor ? nearTieNote(detailFor, eligible) : null} onClose={() => setDetailKey(null)}
-          ordered={!!detailFor && order.chosenBottleId === detailFor.ranked.bottle.id}
+          ordered={!!detailFor && order.isOrdered(detailFor)}
           onOrdered={detailFor ? () => order.toggle(detailFor) : undefined}
           orderPending={order.pending}
           canOrder={order.enabled}

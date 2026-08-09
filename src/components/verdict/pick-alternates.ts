@@ -47,6 +47,10 @@ function fpDistance(a: FpVec | null | undefined, b: FpVec | null | undefined): n
  */
 const DIFFERENT_DIRECTION_FLOOR = 3.5;
 const DIFFERENT_DIRECTION_SOFT_GAP = 0.7;
+/** An alternate is an alternate to the wine in hand. A $690 bottle is not an
+ *  alternate to a $65 one, however different its style — so a different
+ *  direction may not cost more than 2.5x the Call. */
+const DIFFERENT_DIRECTION_PRICE_CEILING = 2.5;
 
 export function pickAlternates(call: ScanRow, pool: ScanRow[]): Alternate[] {
   const out: Alternate[] = [];
@@ -80,7 +84,10 @@ export function pickAlternates(call: ScanRow, pool: ScanRow[]): Alternate[] {
   const callFp = call.ranked.bottle.fp;
   const remaining = others.filter((r) => !out.some((o) => o.row.key === r.key));
 
+  const ceiling = callAmt && callAmt > 0 ? callAmt * DIFFERENT_DIRECTION_PRICE_CEILING : null;
   const scored = remaining
+    // A missing price abstains rather than being treated as affordable.
+    .filter((r) => (ceiling == null ? true : r.price_amount == null || r.price_amount <= ceiling))
     .map((r) => ({ r, dist: fpDistance(callFp, r.ranked.bottle.fp) }))
     .filter((x) => x.dist > 0 && x.r.ranked.predicted >= DIFFERENT_DIRECTION_FLOOR)
     .sort((a, b) => b.dist - a.dist);
