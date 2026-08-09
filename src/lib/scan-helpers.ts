@@ -51,6 +51,11 @@ export function rowToResolved(r: any): ResolvedWine {
     matched_bottle_name: null,
     match_score: r.match_score ?? 0,
     match_reasons: (r.match_reasons ?? []) as string[] | undefined,
+    // The approximate-vintage flag lives in match_reasons so a reopened scan
+    // reports it the same way the live scan did.
+    vintage_approx: Array.isArray(r.match_reasons)
+      ? (r.match_reasons as string[]).includes("flag:vintage_approx")
+      : false,
     // Carry the scan_wines PK. Omitting it here is what silently broke the
     // join from a rating back to the OCR'd line: the resume-in-place path
     // (use-scan-capture) maps stored rows through this function, so a rating
