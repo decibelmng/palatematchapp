@@ -326,21 +326,40 @@ export function useScanCapture() {
   }, [mutation, staged]);
 
   useEffect(() => {
-    if (!isRunning) return;
+    if (!isRunning) { setStalled(false); return; }
     setElapsed(0);
     const start = Date.now();
-    const id = setInterval(() => setElapsed(Math.floor((Date.now() - start) / 1000)), 250);
+    const id = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - start) / 1000));
+      setStalled(Date.now() - progressRef.current > STALL_AFTER_MS);
+    }, 250);
     return () => clearInterval(id);
   }, [isRunning]);
+
+  /** "Read what we have so far." Finalizes the scan against whatever landed,
+   *  so a stalled read is an inconvenience with an exit, not a dead end. */
+  const readSoFar = useCallback(async () => {
+    if (!scanId) return;
+    setStalled(false);
+    try {
+      const fin = await finalize({ data: { scan_id: scanId } });
+      setScanLogId(fin.scan_log_id ?? null);
+      setStatus(wines.length > 0 ? "partial" : "failed");
+      void fin;
+    } catch (e) {
+      toast.error(friendlyError(e, "Couldn't wrap up that scan"));
+      setStatus(wines.length > 0 ? "partial" : "failed");
+    }
+  }, [scanId, finalize, wines.length]);
 
   return {
     // state
     staged, wines, batches, scanId, scanLogId, status, isRunning,
-    resumedAt, dismissedResume, prescanRestaurant, autoAttributedTo, elapsed,
+    resumedAt, dismissedResume, prescanRestaurant, autoAttributedTo, elapsed, stalled,
     mutation,
     // setters
     setPrescanRestaurant, setDismissedResume,
     // actions
-    addFiles, addFileObjects, removeAt, submit, retryFailed, startOver, beginNewScan,
+    addFiles, addFileObjects, removeAt, submit, retryFailed, startOver, beginNewScan, readSoFar,
   };
 }
