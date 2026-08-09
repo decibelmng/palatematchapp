@@ -120,8 +120,9 @@ function RootComponent() {
           position="bottom-center"
           closeButton
           richColors
-          offset="calc(56px + env(safe-area-inset-bottom, 0px) + 8px)"
-          mobileOffset="calc(56px + env(safe-area-inset-bottom, 0px) + 8px)"
+          offset="calc(76px + env(safe-area-inset-bottom, 0px))"
+          mobileOffset="calc(76px + env(safe-area-inset-bottom, 0px))"
+
         />
 
 

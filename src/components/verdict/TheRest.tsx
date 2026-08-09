@@ -4,17 +4,18 @@ import { applyControlsGrouped, DEFAULT_CONTROLS, type Controls } from "@/lib/lis
 import type { CurrencyCode } from "@/lib/currency";
 import type { ScanRow } from "./types";
 import { ResultRow, SkeletonRow } from "./ResultRow";
+import { becauseLine } from "./reason";
 
 export function TheRest({
   rows, pendingSkeletons, onOpen, stillReading, currency,
-  orderedBottleId, onOrdered, orderPending, canOrder,
+  isOrdered, onOrdered, orderPending, canOrder,
 }: {
   rows: ScanRow[];
   pendingSkeletons: number;
   onOpen: (key: string) => void;
   stillReading: boolean;
   currency?: CurrencyCode;
-  orderedBottleId?: string | null;
+  isOrdered?: (row: ScanRow) => boolean;
   onOrdered?: (row: ScanRow) => void;
   orderPending?: boolean;
   canOrder?: boolean;
@@ -89,12 +90,13 @@ export function TheRest({
                 </p>
               )}
               <ul className="divide-y divide-border">
-                {g.rows.map((r) => (
+                {g.rows.map((r, ri) => (
                   <ResultRow
                     key={r.key}
                     row={r}
                     onOpen={() => onOpen(r.key)}
-                    ordered={!!orderedBottleId && orderedBottleId === r.ranked.bottle.id}
+                    hideReason={ri > 0 && becauseLine(r) === becauseLine(g.rows[ri - 1]!)}
+                    ordered={!!isOrdered?.(r)}
                     onOrdered={onOrdered ? () => onOrdered(r) : undefined}
                     orderPending={orderPending}
                     canOrder={canOrder}

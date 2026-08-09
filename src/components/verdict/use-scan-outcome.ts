@@ -15,6 +15,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { friendlyError } from "@/lib/error-message";
 import { logWriteFailure } from "@/lib/write-failure-log";
 import type { ScanRow } from "./types";
+import { outcomeBottleId } from "./types";
 
 function median(values: number[]): number | null {
   const v = values.filter((n) => Number.isFinite(n)).sort((a, b) => a - b);
@@ -26,8 +27,11 @@ function median(values: number[]): number | null {
 export type ScanOutcomeApi = {
   /** Whether the control should render at all — needs a persisted scan. */
   enabled: boolean;
-  /** Bottle id of the current answer, or null. */
+  /** Catalog bottle id of the current answer, or null. */
   chosenBottleId: string | null;
+  /** True when this row is the recorded answer. Compares CATALOG ids, never
+   *  the synthetic per-scan key. */
+  isOrdered: (row: ScanRow) => boolean;
   /** Tap handler: sets, replaces, or (same wine again) clears. */
   toggle: (row: ScanRow) => void;
   /** True while a write is in flight, so the control can't double-fire. */
@@ -45,6 +49,7 @@ export function useScanOutcome({
   eligible: ScanRow[];
   rows: ScanRow[];
 }): ScanOutcomeApi {
+
   const [chosenBottleId, setChosen] = useState<string | null>(null);
   const inFlight = useRef(false);
   const [pending, setPending] = useState(false);
@@ -79,10 +84,24 @@ export function useScanOutcome({
     [call, eligible],
   );
 
+  const isOrdered = useCallback(
+    (row: ScanRow) => {
+      const id = outcomeBottleId(row);
+      return !!id && id === chosenBottleId;
+    },
+    [chosenBottleId],
+  );
+
   const toggle = useCallback(
     (row: ScanRow) => {
       if (!scanId || inFlight.current) return;
-      const bottleId = row.ranked.bottle.id;
+      // MUST be the catalog bottles.id — the ranker's `scan-N` key is not a
+      // uuid and the write fails on every tap if it leaks through.
+      const bottleId = outcomeBottleId(row);
+      if (!bottleId) {
+        toast("We can only save this once the wine is identified in the catalog.");
+        return;
+      }
       const clearing = chosenBottleId === bottleId;
 
       inFlight.current = true;
@@ -90,6 +109,7 @@ export function useScanOutcome({
       // Optimistic: the tap is the whole interaction, so it must feel instant.
       const previous = chosenBottleId;
       setChosen(clearing ? null : bottleId);
+
 
       void (async () => {
         try {
@@ -120,7 +140,7 @@ export function useScanOutcome({
               chosen_bottle_id: bottleId,
               chosen_predicted: row.ranked.predicted > 0 ? row.ranked.predicted : null,
               chosen_rank: rankOf(row),
-              call_bottle_id: call?.ranked.bottle.id ?? null,
+              call_bottle_id: call ? outcomeBottleId(call) : null,
               call_predicted: call && call.ranked.predicted > 0 ? call.ranked.predicted : null,
               n_candidates: rows.length,
               chosen_price: row.price_amount,
@@ -183,5 +203,5 @@ export function useScanOutcome({
     [scanId, chosenBottleId, call, rows, listMedian, rankOf],
   );
 
-  return { enabled: !!scanId, chosenBottleId, toggle, pending };
+  return { enabled: !!scanId, chosenBottleId, isOrdered, toggle, pending };
 }

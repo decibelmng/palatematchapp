@@ -8,7 +8,7 @@ import { OrderedButton } from "./OrderedButton";
  * The score badge is kept for the enthusiast reading the expanded list.
  */
 export function ResultRow({
-  row, onOpen, ordered, onOrdered, orderPending, canOrder,
+  row, onOpen, ordered, onOrdered, orderPending, canOrder, hideReason,
 }: {
   row: ScanRow;
   onOpen: () => void;
@@ -16,10 +16,13 @@ export function ResultRow({
   onOrdered?: () => void;
   orderPending?: boolean;
   canOrder?: boolean;
+  /** The row above says the same thing — repeating it is noise, not evidence. */
+  hideReason?: boolean;
 }) {
   const r = row.ranked;
   const score = r.predicted > 0 ? r.predicted.toFixed(1) : null;
-  const reason = becauseLine(row);
+  const reason = hideReason ? null : becauseLine(row);
+
   const price = priceLabel(row);
   const edge = r.vetoed
     ? "pm-vetoed-rail bg-[color-mix(in_oklab,var(--crimson)_6%,transparent)]"
@@ -67,8 +70,9 @@ export function ResultRow({
             </p>
           </div>
           {reason && (
-            <p className="mt-1 text-meta leading-snug text-muted-foreground">{reason}</p>
+            <p className="mt-1 text-meta leading-snug text-muted-foreground truncate">{reason}</p>
           )}
+
 
         </div>
         <div className="shrink-0 text-right pt-1">
