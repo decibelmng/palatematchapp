@@ -1915,6 +1915,24 @@ export type Database = {
         }
         Relationships: []
       }
+      write_path_ships: {
+        Row: {
+          note: string | null
+          path: string
+          shipped_at: string
+        }
+        Insert: {
+          note?: string | null
+          path: string
+          shipped_at: string
+        }
+        Update: {
+          note?: string | null
+          path?: string
+          shipped_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       prediction_axis_bias: {
@@ -2086,13 +2104,15 @@ export type Database = {
         }[]
       }
       admin_data_integrity: {
-        Args: never
+        Args: { _since?: string }
         Returns: {
           derived_table: string
           last_write: string
           parent_count: number
           parent_label: string
           row_count: number
+          shipped_at: string
+          window_from: string
         }[]
       }
       admin_fp_drift: {
