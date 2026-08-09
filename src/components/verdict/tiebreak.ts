@@ -1,5 +1,6 @@
 import { isThinRead, isAmbiguousJoinRead } from "@/lib/recommender";
 import type { ScanRow } from "./types";
+import { isExactVintage } from "./vintage";
 
 /**
  * Deterministic Call selection.
@@ -9,6 +10,8 @@ import type { ScanRow } from "./types";
  * the person came here to avoid.
  *
  * Order, confidence first and price genuinely last:
+ *   0. the year on the list beats a score taken off another year — knowing
+ *      WHICH bottle we read outranks knowing it is in the catalog
  *   1. clean catalog match beats an estimated read
  *   2. closer to a wine you've actually rated (maxSimilarity)
  *   3. good-value verdict
@@ -36,6 +39,11 @@ function amount(r: ScanRow): number | null {
 }
 
 export function compareCallCandidates(a: ScanRow, b: ScanRow): number {
+  // 0. Vintage: an exact-year read beats one derived from a different year.
+  const ea = isExactVintage(a);
+  const eb = isExactVintage(b);
+  if (ea !== eb) return ea ? -1 : 1;
+
   // 1. Confidence: a clean catalog match beats an estimate.
   if (a.isCatalog !== b.isCatalog) return a.isCatalog ? -1 : 1;
 

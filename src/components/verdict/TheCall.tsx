@@ -3,6 +3,7 @@ import type { ScanRow } from "./types";
 import { priceLabel } from "./types";
 import { verdictLine, becauseLine } from "./reason";
 import { OrderedButton } from "./OrderedButton";
+import { approxVintage, approxChipLabel, approxCaveat, approxSubline } from "./vintage";
 
 /**
  * Eyebrow states — there are exactly two, and each renders the same thing:
@@ -27,6 +28,7 @@ export function TheCall({
   canOrder?: boolean;
 }) {
   const [confOpen, setConfOpen] = useState(false);
+  const [vintOpen, setVintOpen] = useState(false);
   const eyebrow = kind === "closest-match" ? "Closest match" : "Your pick";
 
   const price = priceLabel(row);
@@ -47,14 +49,13 @@ export function TheCall({
   const producer = bottle.producer ?? null;
 
   // A different vintage than the list showed is stated, never substituted:
-  // a person can judge "closest vintage we have — 2013"; a silent swap they
-  // cannot.
-  const approxVintage =
-    row.ranked.scanned.vintage_approx && row.ranked.scanned.matched_vintage != null
-      ? row.ranked.scanned.matched_vintage
-      : null;
+  // a person can judge "scored off the 2013"; a silent swap they cannot. When
+  // the year is approximate the meta line carries the year we ACTUALLY scored,
+  // not the year on the list — otherwise the card claims a bottle it did not
+  // read.
+  const approx = approxVintage(row);
 
-  const meta = [producer, region, vintage].filter(Boolean).join(" · ");
+  const meta = [producer, region, approx ? null : vintage].filter(Boolean).join(" · ");
 
 
   return (
@@ -82,9 +83,9 @@ export function TheCall({
         {meta && (
           <p className="mt-1 text-sub text-muted-foreground break-words">{meta}</p>
         )}
-        {approxVintage != null && (
-          <p className="mt-1 text-meta text-foreground leading-snug">
-            Closest vintage we have — {approxVintage}
+        {approx && (
+          <p className="mt-1 text-sub text-muted-foreground break-words">
+            {approxSubline(approx)}
           </p>
         )}
 
@@ -120,10 +121,27 @@ export function TheCall({
             {confChip}
             <span aria-hidden>ⓘ</span>
           </button>
+
+          {/* Same weight as the confidence chip: which bottle we scored is a
+              confidence claim, not a footnote. */}
+          {approx && (
+            <button
+              type="button"
+              onClick={() => setVintOpen((v) => !v)}
+              aria-expanded={vintOpen}
+              className="pointer-events-auto inline-flex items-center gap-1 rounded-full border border-border bg-card px-2 py-0.5 text-label uppercase tracking-label text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
+            >
+              {approxChipLabel(approx)}
+              <span aria-hidden>ⓘ</span>
+            </button>
+          )}
         </div>
 
         {confOpen && (
           <p className="mt-2 text-meta text-muted-foreground leading-snug">{confExplain}</p>
+        )}
+        {vintOpen && approx && (
+          <p className="mt-2 text-meta text-muted-foreground leading-snug">{approxCaveat(approx)}</p>
         )}
 
         {canOrder && onOrdered && (

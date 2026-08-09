@@ -36,6 +36,7 @@ import { Route as PalateVerifyRouteImport } from './routes/palate.verify'
 import { Route as PalateTypeRouteImport } from './routes/palate.$type'
 import { Route as ITokenRouteImport } from './routes/i.$token'
 import { Route as AuthCallbackRouteImport } from './routes/auth.callback'
+import { Route as AdminVintageRemediationRouteImport } from './routes/admin.vintage-remediation'
 import { Route as AdminUsageRouteImport } from './routes/admin.usage'
 import { Route as AdminTypeFixRouteImport } from './routes/admin.type-fix'
 import { Route as AdminStyleMapRouteImport } from './routes/admin.style-map'
@@ -187,6 +188,11 @@ const AuthCallbackRoute = AuthCallbackRouteImport.update({
   path: '/auth/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminVintageRemediationRoute = AdminVintageRemediationRouteImport.update({
+  id: '/admin/vintage-remediation',
+  path: '/admin/vintage-remediation',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminUsageRoute = AdminUsageRouteImport.update({
   id: '/admin/usage',
   path: '/admin/usage',
@@ -292,6 +298,7 @@ export interface FileRoutesByFullPath {
   '/admin/style-map': typeof AdminStyleMapRoute
   '/admin/type-fix': typeof AdminTypeFixRoute
   '/admin/usage': typeof AdminUsageRoute
+  '/admin/vintage-remediation': typeof AdminVintageRemediationRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/i/$token': typeof ITokenRoute
   '/palate/$type': typeof PalateTypeRoute
@@ -336,6 +343,7 @@ export interface FileRoutesByTo {
   '/admin/style-map': typeof AdminStyleMapRoute
   '/admin/type-fix': typeof AdminTypeFixRoute
   '/admin/usage': typeof AdminUsageRoute
+  '/admin/vintage-remediation': typeof AdminVintageRemediationRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/i/$token': typeof ITokenRoute
   '/palate/$type': typeof PalateTypeRoute
@@ -381,6 +389,7 @@ export interface FileRoutesById {
   '/admin/style-map': typeof AdminStyleMapRoute
   '/admin/type-fix': typeof AdminTypeFixRoute
   '/admin/usage': typeof AdminUsageRoute
+  '/admin/vintage-remediation': typeof AdminVintageRemediationRoute
   '/auth/callback': typeof AuthCallbackRoute
   '/i/$token': typeof ITokenRoute
   '/palate/$type': typeof PalateTypeRoute
@@ -427,6 +436,7 @@ export interface FileRouteTypes {
     | '/admin/style-map'
     | '/admin/type-fix'
     | '/admin/usage'
+    | '/admin/vintage-remediation'
     | '/auth/callback'
     | '/i/$token'
     | '/palate/$type'
@@ -471,6 +481,7 @@ export interface FileRouteTypes {
     | '/admin/style-map'
     | '/admin/type-fix'
     | '/admin/usage'
+    | '/admin/vintage-remediation'
     | '/auth/callback'
     | '/i/$token'
     | '/palate/$type'
@@ -515,6 +526,7 @@ export interface FileRouteTypes {
     | '/admin/style-map'
     | '/admin/type-fix'
     | '/admin/usage'
+    | '/admin/vintage-remediation'
     | '/auth/callback'
     | '/i/$token'
     | '/palate/$type'
@@ -560,6 +572,7 @@ export interface RootRouteChildren {
   AdminStyleMapRoute: typeof AdminStyleMapRoute
   AdminTypeFixRoute: typeof AdminTypeFixRoute
   AdminUsageRoute: typeof AdminUsageRoute
+  AdminVintageRemediationRoute: typeof AdminVintageRemediationRoute
   AuthCallbackRoute: typeof AuthCallbackRoute
   ITokenRoute: typeof ITokenRoute
   PalateTypeRoute: typeof PalateTypeRoute
@@ -763,6 +776,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/vintage-remediation': {
+      id: '/admin/vintage-remediation'
+      path: '/admin/vintage-remediation'
+      fullPath: '/admin/vintage-remediation'
+      preLoaderRoute: typeof AdminVintageRemediationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/usage': {
       id: '/admin/usage'
       path: '/admin/usage'
@@ -925,6 +945,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminStyleMapRoute: AdminStyleMapRoute,
   AdminTypeFixRoute: AdminTypeFixRoute,
   AdminUsageRoute: AdminUsageRoute,
+  AdminVintageRemediationRoute: AdminVintageRemediationRoute,
   AuthCallbackRoute: AuthCallbackRoute,
   ITokenRoute: ITokenRoute,
   PalateTypeRoute: PalateTypeRoute,
