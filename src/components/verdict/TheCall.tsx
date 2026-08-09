@@ -46,7 +46,16 @@ export function TheCall({
   const vintage = row.ranked.scanned.vintage ?? null;
   const producer = bottle.producer ?? null;
 
+  // A different vintage than the list showed is stated, never substituted:
+  // a person can judge "closest vintage we have — 2013"; a silent swap they
+  // cannot.
+  const approxVintage =
+    row.ranked.scanned.vintage_approx && row.ranked.scanned.matched_vintage != null
+      ? row.ranked.scanned.matched_vintage
+      : null;
+
   const meta = [producer, region, vintage].filter(Boolean).join(" · ");
+
 
   return (
     <div
