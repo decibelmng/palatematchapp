@@ -206,7 +206,7 @@ export function useScanCapture() {
       );
 
       const image_paths_all = prepared.map((p) => p.storagePath).filter((p): p is string => !!p);
-      const preparedBatches = chunkArr(prepared, 2);
+      const preparedBatches = chunkArr(prepared, PAGES_PER_BATCH);
       const created = await stage("Starting the scan", () => createScan({
         data: {
           page_count: files.length,
