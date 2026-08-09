@@ -84,10 +84,24 @@ export function useScanOutcome({
     [call, eligible],
   );
 
+  const isOrdered = useCallback(
+    (row: ScanRow) => {
+      const id = outcomeBottleId(row);
+      return !!id && id === chosenBottleId;
+    },
+    [chosenBottleId],
+  );
+
   const toggle = useCallback(
     (row: ScanRow) => {
       if (!scanId || inFlight.current) return;
-      const bottleId = row.ranked.bottle.id;
+      // MUST be the catalog bottles.id — the ranker's `scan-N` key is not a
+      // uuid and the write fails on every tap if it leaks through.
+      const bottleId = outcomeBottleId(row);
+      if (!bottleId) {
+        toast("We can only save this once the wine is identified in the catalog.");
+        return;
+      }
       const clearing = chosenBottleId === bottleId;
 
       inFlight.current = true;
@@ -95,6 +109,7 @@ export function useScanOutcome({
       // Optimistic: the tap is the whole interaction, so it must feel instant.
       const previous = chosenBottleId;
       setChosen(clearing ? null : bottleId);
+
 
       void (async () => {
         try {
