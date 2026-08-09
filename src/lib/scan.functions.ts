@@ -184,7 +184,24 @@ function repairAndParse(raw: string): unknown {
 
 // ---------- Vision + resolve (shared) ----------
 
-async function callVision(images: z.infer<typeof ImageSchema>[], apiKey: string) {
+/**
+ * Per-attempt deadlines. A severed gateway request used to hang the whole
+ * screen forever (http 499 at 23s, handler never returned), so nothing here is
+ * allowed to wait indefinitely.
+ *
+ * FIRST_ATTEMPT_MS (60s) comfortably exceeds the slowest scan we have observed
+ * end to end (45s, 2026-08-09 01:01). RETRY_MS is shorter because a retry only
+ * happens after we already burned that budget — worst case server-side is
+ * 60 + 45 = 105s, which is what the client deadline is sized against.
+ */
+export const VISION_FIRST_ATTEMPT_MS = 60_000;
+export const VISION_RETRY_MS = 45_000;
+
+async function callVision(
+  images: z.infer<typeof ImageSchema>[],
+  apiKey: string,
+  timeoutMs: number,
+) {
   const imageBlocks = images.map((img) => ({
     type: "image_url" as const,
     image_url: { url: `data:${img.media_type};base64,${img.image_base64}` },
@@ -192,16 +209,28 @@ async function callVision(images: z.infer<typeof ImageSchema>[], apiKey: string)
   const intro = images.length > 1
     ? `${PROMPT}\n\nNOTE: ${images.length} photos of the SAME wine list (multiple pages). Combine into ONE array; deduplicate.`
     : PROMPT;
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: { "content-type": "application/json", "Lovable-API-Key": apiKey },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      max_tokens: 8000,
-      messages: [{ role: "user", content: [{ type: "text", text: intro }, ...imageBlocks] }],
-      response_format: { type: "json_object" },
-    }),
-  });
+  let res: Response;
+  try {
+    res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: { "content-type": "application/json", "Lovable-API-Key": apiKey },
+      // No timeout here at all was the hang: an aborted request now surfaces
+      // as a thrown error the handler can record as a failed batch.
+      signal: AbortSignal.timeout(timeoutMs),
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        max_tokens: 8000,
+        messages: [{ role: "user", content: [{ type: "text", text: intro }, ...imageBlocks] }],
+        response_format: { type: "json_object" },
+      }),
+    });
+  } catch (e) {
+    const name = (e as Error)?.name ?? "";
+    if (name === "TimeoutError" || name === "AbortError") {
+      throw new VisionTimeout(`Reading timed out after ${Math.round(timeoutMs / 1000)}s`);
+    }
+    throw e;
+  }
   if (!res.ok) {
     const body = await res.text();
     if (res.status === 429) throw new Error("Rate limited — try again in a moment.");
@@ -214,9 +243,14 @@ async function callVision(images: z.infer<typeof ImageSchema>[], apiKey: string)
   return { content, finishReason };
 }
 
+/** Timed-out or severed gateway call — the only class of failure we retry. */
+class VisionTimeout extends Error {
+  readonly isTimeout = true;
+}
+
 async function extractWinesWithRetry(images: z.infer<typeof ImageSchema>[], apiKey: string): Promise<ScannedWine[]> {
-  const attempt = async (imgs: z.infer<typeof ImageSchema>[]) => {
-    const { content, finishReason } = await callVision(imgs, apiKey);
+  const attempt = async (imgs: z.infer<typeof ImageSchema>[], timeoutMs: number) => {
+    const { content, finishReason } = await callVision(imgs, apiKey, timeoutMs);
     let parsed: unknown;
     try { parsed = JSON.parse(content); }
     catch {
@@ -228,12 +262,17 @@ async function extractWinesWithRetry(images: z.infer<typeof ImageSchema>[], apiK
     return shape.data.wines;
   };
   try {
-    return await attempt(images);
+    return await attempt(images, VISION_FIRST_ATTEMPT_MS);
   } catch (e) {
     // Truncated? If we sent >1 image, split into single-page calls and merge.
     if (images.length > 1) {
-      const parts = await Promise.all(images.map((img) => attempt([img])));
+      const parts = await Promise.all(images.map((img) => attempt([img], VISION_RETRY_MS)));
       return parts.flat();
+    }
+    // A timeout is the one failure worth re-sending: nothing has been written
+    // yet at this point in the handler, so a retry cannot duplicate wines.
+    if ((e as VisionTimeout)?.isTimeout) {
+      return await attempt(images, VISION_RETRY_MS);
     }
     throw e;
   }
