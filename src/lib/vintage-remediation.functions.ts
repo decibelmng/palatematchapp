@@ -36,12 +36,6 @@ export const vintageRemediationQueue = createServerFn({ method: "GET" })
     };
   });
 
-async function stampReason(admin: any, scanWineId: string, tag: string) {
-  const { data } = await admin.from("scan_wines").select("match_reasons").eq("id", scanWineId).single();
-  const prev = Array.isArray(data?.match_reasons) ? data!.match_reasons : [];
-  await admin.from("scan_wines").update({ match_reasons: [...prev, tag] } as never).eq("id", scanWineId);
-}
-
 /**
  * The 110 lines with nothing attached. No judgment to protect, so the corrected
  * matcher's answer is written straight in: the correct-vintage row where one
