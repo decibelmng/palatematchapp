@@ -163,9 +163,8 @@ export const listUserScans = createServerFn({ method: "GET" })
         ordered_unrated: orderedByScan.get(s.id) ?? [],
       };
     });
-
-    });
   });
+
 
 export type StoredScanRow = {
   id: string;
