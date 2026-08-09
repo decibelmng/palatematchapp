@@ -288,6 +288,7 @@ export const createScanRecord = createServerFn({ method: "POST" })
     batch_count: z.number().int().min(1).max(8),
     image_paths: StringArray.optional(),
     venue_raw_text: z.string().max(200).nullable().optional(),
+    restaurant_id: z.string().uuid().nullable().optional(),
   }).parse(input))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context;
@@ -298,6 +299,9 @@ export const createScanRecord = createServerFn({ method: "POST" })
       batch_count: data.batch_count,
       image_paths: data.image_paths ?? [],
       venue_raw_text: data.venue_raw_text?.trim() || null,
+      // A pre-scan pick used to live only in client state, so finalize saw a
+      // null venue and skipped every capture. It lands on the row now.
+      restaurant_id: data.restaurant_id ?? null,
     }).select("id").single();
     if (error || !inserted) throw new Error(error?.message ?? "Failed to create scan");
     return { scan_id: inserted.id as string };
@@ -536,69 +540,16 @@ export const finalizeScan = createServerFn({ method: "POST" })
     //     with raw_line + cuvee_key preserved. We NEVER fabricate a bottle_id.
     //   - price_observations is append-only + timestamped: a re-scan appends
     //     a fresh row, never overwrites.
-    if (restaurantId && (rows ?? []).length > 0) {
-      try {
-        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-        const now = ((scan as any).scanned_at as string | null) ?? new Date().toISOString();
-        for (const r of rows as any[]) {
-          const amount: number | null = r.price_amount ?? null;
-          const format: string = r.format ?? "bottle";
-          const currency: string = r.currency ?? "USD";
-          const ckey = cuveeKey(r.producer, r.cuvee);
-
-          // Matched → upsert restaurant_wines edge, keyed by format.
-          if (r.matched_bottle_id) {
-            const { data: existing } = await supabaseAdmin
-              .from("restaurant_wines")
-              .select("id,seen_count")
-              .eq("restaurant_id", restaurantId)
-              .eq("bottle_id", r.matched_bottle_id)
-              .eq("format", format)
-              .maybeSingle();
-            if (existing) {
-              await supabaseAdmin.from("restaurant_wines").update({
-                last_seen_at: now,
-                seen_count: (existing.seen_count ?? 1) + 1,
-                menu_price: r.price ?? undefined,
-                menu_price_amount: amount ?? undefined,
-                source_scan_id: data.scan_id,
-              }).eq("id", existing.id);
-            } else {
-              await supabaseAdmin.from("restaurant_wines").insert({
-                restaurant_id: restaurantId,
-                bottle_id: r.matched_bottle_id,
-                format,
-                menu_price: r.price ?? null,
-                menu_price_amount: amount,
-                first_seen_at: now,
-                last_seen_at: now,
-                seen_count: 1,
-                source_scan_id: data.scan_id,
-                added_by: userId,
-              });
-            }
-          }
-
-          // Price observation: append for matched AND unmatched lines.
-          // Unmatched keeps bottle_id null; raw_line + cuvee_key preserve the
-          // identity for future re-resolution.
-          if (amount && amount > 0) {
-            await supabaseAdmin.from("price_observations").insert({
-              restaurant_id: restaurantId,
-              bottle_id: r.matched_bottle_id ?? null,
-              cuvee_key: ckey || null,
-              raw_line: r.raw_text ?? r.price ?? null,
-              menu_price: amount,
-              currency,
-              format,
-              scan_id: data.scan_id,
-              user_id: userId,
-              source: "ocr",
-              observed_at: now,
-            });
-          }
-        }
-      } catch { /* capture is best-effort; never blocks the user's scan result */ }
+    if (restaurantId && rows.length > 0) {
+      const { captureVenueFacts } = await import("@/lib/venue-capture.server");
+      await captureVenueFacts({
+        restaurantId,
+        userId,
+        scanLogId: scan_log_id,
+        scanId: data.scan_id,
+        observedAt: ((scan as any).scanned_at as string | null) ?? new Date().toISOString(),
+        rows: rows as any[],
+      });
     }
 
     return { status, scan_log_id, restaurant_id: restaurantId };
