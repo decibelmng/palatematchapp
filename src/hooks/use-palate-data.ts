@@ -473,29 +473,29 @@ export function useRestoreRatingAndBenchmark() {
   });
 }
 
-export function usePersistCode(red: string, white: string, nRated: number) {
-  const session = useSession();
-  useCodeUpsert(session?.user.id, red, white, nRated);
+/**
+ * Ask the server to recompute and store the palate codes.
+ *
+ * The old client path computed the code from React Query caches inside an effect
+ * and wrote it opportunistically, so a screen that had not loaded the rated set
+ * wrote an unresolved code — twice over, that left every profile row empty. The
+ * computation now happens where the ratings are; the client only asks for it.
+ */
+export function syncPalateCodes() {
+  void recomputePalateCodesFn().catch((e: unknown) => {
+    console.error("[palate] code recompute failed:", friendlyError(e));
+  });
 }
 
 import { useEffect } from "react";
-function useCodeUpsert(uid: string | undefined, red: string, white: string, n: number) {
+
+/** One recompute per app open, so existing rows heal without a rating. */
+export function usePalateCodeRefresh(ready: boolean) {
   useEffect(() => {
-    if (!uid) return;
-    // Never overwrite a stored code with an all-unresolved one: this effect runs
-    // on first paint, before ratings load, and a "?????" write was landing last
-    // and leaving every profile row unresolved for readers of this column.
-    const allUnresolved = (c: string) => parseCode(c, RED_AXES).every((s) => s === GLYPH_UNRESOLVED);
-    if (n === 0 || (allUnresolved(red) && allUnresolved(white))) return;
-    void supabase.from("profiles").update({
-      palate_code: red,           // legacy column — keep populated with the red code
-      palate_code_red: red,
-      palate_code_white: white,
-      n_rated: n,
-    }).eq("id", uid).then(({ error }) => {
-      if (error) console.error("[palate] code persist failed:", error.message);
-    });
-  }, [uid, red, white, n]);
+    if (!ready) return;
+    syncPalateCodes();
+  }, [ready]);
 }
+
 
 
