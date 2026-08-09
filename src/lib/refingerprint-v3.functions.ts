@@ -119,28 +119,37 @@ export const refingerprintV3Batch = createServerFn({ method: "POST" })
     // The note is the recovered human review in catalog_source_notes, joined on
     // bottle_id — NOT bottles.tasting_note, which carries a note for only 116
     // rows. An ambiguous join (one review that could belong to any of several
-    // sibling bottles) is EXCLUDED: reading a wine from a review that may
-    // describe its neighbour is the same fabrication this pipeline exists to
-    // remove. Those rows keep their v1 values until the join is resolved.
+    // sibling bottles) is IN SCOPE and stamped note_v3_ambiguous_join. Leaving
+    // it out would keep ~10k rows on the v1 typicity grid after the swap — the
+    // mixed calibration we rejected — and it turns a guess into a measurement:
+    // their within-group SD can be compared against the clean set afterward.
+    // Until that check clears, the flag keeps them out of the Call.
     const { data: rows, error: readErr } = await supabaseAdmin
       .from("bottles")
       .select("id,type,catalog_source_notes!inner(note,ambiguous)")
       .is("fp_v3_scored_at", null)
-      .eq("catalog_source_notes.ambiguous", false)
       .order("id", { ascending: true })
       .limit(size);
     if (readErr) throw new Error(readErr.message);
 
+    const firstNote = (r: any) =>
+      Array.isArray(r.catalog_source_notes) ? r.catalog_source_notes[0] : r.catalog_source_notes;
     const batch = (rows ?? [])
-      .map((r: any) => ({
-        id: r.id as string,
-        type: r.type as string,
-        note: String(r.catalog_source_notes?.[0]?.note ?? r.catalog_source_notes?.note ?? ""),
-      }))
+      .map((r: any) => {
+        const n = firstNote(r) ?? {};
+        return {
+          id: r.id as string,
+          type: r.type as string,
+          note: String(n.note ?? ""),
+          ambiguous: Boolean(n.ambiguous),
+        };
+      })
       .filter((r) => r.note.trim().length >= 20);
     const errors: string[] = [];
     let wrote = 0;
     let empty = 0;
+    let ambiguousWrote = 0;
+
 
     await mapLimit(batch, lanes, async (row) => {
       let fp: Record<string, number | null> | null = null;
