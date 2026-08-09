@@ -58,5 +58,6 @@ export function rowToResolved(r: any): ResolvedWine {
     // during the live scan logged it fine. Callers that used to re-attach it
     // by hand are now redundant rather than load-bearing.
     scan_wine_id: (r.id as string | null) ?? null,
-
+  };
 }
+
