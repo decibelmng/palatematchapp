@@ -53,7 +53,11 @@ export type BottleFp = {
   region?: string | null;
   type: WineType;
   fp: FpVec;
+  /** Reading provenance (bottles.fp_pipeline). Present only where a caller
+   *  selects it; absent is not a claim either way. */
+  fpPipeline?: string | null;
 };
+
 
 export type RatedFp = BottleFp & {
   stars: number;
