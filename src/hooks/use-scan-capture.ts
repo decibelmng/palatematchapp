@@ -233,7 +233,7 @@ export function useScanCapture() {
 
       const initial: BatchState[] = preparedBatches.map((group, i) => ({
         index: i,
-        pageNumbers: group.map((_, k) => i * 2 + k + 1),
+        pageNumbers: group.map((_, k) => i * PAGES_PER_BATCH + k + 1),
         status: "pending",
         images: group.map((g) => ({ image_base64: g.image_base64, media_type: g.media_type })),
         image_paths: group.map((g) => g.storagePath).filter((p): p is string => !!p),
