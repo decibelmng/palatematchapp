@@ -166,14 +166,16 @@ function PalateCodeCard({ label, type, code }: { label: string; type: PaletteTyp
   return (
     <div className="rounded-[14px] border border-border bg-card p-4">
       <div className="text-meta uppercase text-muted-foreground">{label}</div>
-      <div className="mt-3 font-serif text-title text-primary">
+      <div className="mt-3 font-serif text-title text-primary tracking-[0.14em]">
         {parseCode(code, axesFor(type)).map((ch, i) => (
           <span
             key={`${label}-${i}`}
             className={ch === GLYPH_UNRESOLVED ? "text-muted-foreground/60" : ""}
-          >{ch}</span>
+          >{ch}{" "}</span>
         ))}
       </div>
+      <PalateCodeWords type={type} code={code} className="mt-2" />
     </div>
+
   );
 }
