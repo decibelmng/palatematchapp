@@ -8,6 +8,7 @@ import type { ScanRow } from "./types";
 import { priceLabel } from "./types";
 import { verdictLine, becauseLine } from "./reason";
 import { OrderedButton } from "./OrderedButton";
+import { ESTIMATED_SENTENCE } from "./estimated";
 
 /**
  * Detail sheet — the ONLY place a decimal score is allowed to appear on

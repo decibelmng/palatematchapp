@@ -4,6 +4,7 @@ import { priceLabel } from "./types";
 import { verdictLine, becauseLine } from "./reason";
 import { OrderedButton } from "./OrderedButton";
 import { approxVintage, approxChipLabel, approxCaveat, approxSubline } from "./vintage";
+import { ESTIMATED_CHIP, ESTIMATED_SENTENCE, isEstimated } from "./estimated";
 
 /**
  * Eyebrow states — there are exactly two, and each renders the same thing:
