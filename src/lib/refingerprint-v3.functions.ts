@@ -81,9 +81,18 @@ export const refingerprintV3Progress = createServerFn({ method: "GET" })
       if (error) throw new Error(error.message);
       return c ?? 0;
     };
+    const pendingWithNote = async () => {
+      const { count: c, error } = await supabaseAdmin
+        .from("bottles")
+        .select("id,catalog_source_notes!inner(bottle_id)", { count: "exact", head: true })
+        .is("fp_v3_scored_at", null)
+        .eq("catalog_source_notes.ambiguous", false);
+      if (error) throw new Error(error.message);
+      return c ?? 0;
+    };
     const [scored, pending, thin, empty] = await Promise.all([
       count((q: any) => q.not("fp_v3_scored_at", "is", null)),
-      count((q: any) => q.is("fp_v3_scored_at", null)),
+      pendingWithNote(),
       count((q: any) => q.not("fp_v3_scored_at", "is", null).lte("fp_v3_axes_read", 3)),
       count((q: any) => q.not("fp_v3_scored_at", "is", null).eq("fp_v3_axes_read", 0)),
     ]);
@@ -100,26 +109,39 @@ export const refingerprintV3Batch = createServerFn({ method: "POST" })
 
     // Pending slice off bottles_fp_v3_pending_idx. Ordered by id so the read is
     // deterministic and two overlapping drivers converge instead of thrashing.
+    //
+    // The note is the recovered human review in catalog_source_notes, joined on
+    // bottle_id — NOT bottles.tasting_note, which carries a note for only 116
+    // rows. An ambiguous join (one review that could belong to any of several
+    // sibling bottles) is EXCLUDED: reading a wine from a review that may
+    // describe its neighbour is the same fabrication this pipeline exists to
+    // remove. Those rows keep their v1 values until the join is resolved.
     const { data: rows, error: readErr } = await supabaseAdmin
       .from("bottles")
-      .select("id,type,tasting_note")
+      .select("id,type,catalog_source_notes!inner(note,ambiguous)")
       .is("fp_v3_scored_at", null)
-      .not("tasting_note", "is", null)
+      .eq("catalog_source_notes.ambiguous", false)
       .order("id", { ascending: true })
       .limit(size);
     if (readErr) throw new Error(readErr.message);
 
-    const batch = (rows ?? []).filter((r: any) => (r.tasting_note ?? "").trim().length >= 20);
+    const batch = (rows ?? [])
+      .map((r: any) => ({
+        id: r.id as string,
+        type: r.type as string,
+        note: String(r.catalog_source_notes?.[0]?.note ?? r.catalog_source_notes?.note ?? ""),
+      }))
+      .filter((r) => r.note.trim().length >= 20);
     const errors: string[] = [];
     let wrote = 0;
     let empty = 0;
 
-    await mapLimit(batch, lanes, async (row: any) => {
+    await mapLimit(batch, lanes, async (row) => {
       let fp: Record<string, number | null> | null = null;
       let sweet: number | null = null;
       for (let attempt = 0; attempt < 3; attempt++) {
         try {
-          const res = await scoreFromNoteV3(row.type, row.tasting_note, key, data.model);
+          const res = await scoreFromNoteV3(row.type, row.note, key, data.model);
           fp = res.fp as any;
           sweet = res.ax_sweet;
           break;
@@ -155,9 +177,9 @@ export const refingerprintV3Batch = createServerFn({ method: "POST" })
 
     const { count: remaining } = await supabaseAdmin
       .from("bottles")
-      .select("id", { count: "exact", head: true })
+      .select("id,catalog_source_notes!inner(bottle_id)", { count: "exact", head: true })
       .is("fp_v3_scored_at", null)
-      .not("tasting_note", "is", null);
+      .eq("catalog_source_notes.ambiguous", false);
 
     return {
       pipeline: FINGERPRINT_PIPELINE_V3,
