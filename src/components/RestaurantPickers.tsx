@@ -120,11 +120,12 @@ export function PrescanRestaurantPicker({
 /**
  * Attribute a saved scan to a venue, after the results are on screen.
  *
- * This is the one that writes scans.restaurant_id — the column venue cards,
- * per-venue list history and currency learning all read. The older
- * RestaurantAttribution above writes a mirror table only, so it is kept for
- * nothing new; use this one.
+ * The only attribution surface. It writes scans.restaurant_id — the column
+ * venue cards, per-venue list history and currency learning all read. The
+ * former RestaurantAttribution wrote scan_logs.restaurant_id, a mirror nothing
+ * reads, and has been deleted.
  */
+
 export function VenueAttribution({
   scanId,
   scanLogId,
