@@ -35,3 +35,19 @@ if rg -n --pcre2 -e "-\[--[a-z0-9-]+\]" src; then
 else
   echo "clean"
 fi
+
+# ── D) plpgsql OUT-name shadowing in RETURNS TABLE functions ────────────────
+# A function with `RETURNS TABLE(... delta double precision ...)` exposes every
+# OUT name as a plpgsql variable. A bare `delta` inside the body that also
+# names a column of a table the body touches raises 42702 at CALL time — never
+# at migration time, so it ships green and fails on the first real write.
+# This shipped twice: save_rating_with_cascade (delta) and admin_consensus_validate
+# (bottle_id). Rule: in any plpgsql RETURNS TABLE body, table-qualify EVERY
+# column reference (alias the table) and prefix every local with v_.
+# `SET col = …` left-hand sides and INSERT/ON CONFLICT column lists are exempt —
+# those are unambiguously columns.
+echo "== D) SQL: bare column refs in RETURNS TABLE bodies (manual, migrations only) =="
+if [ -d supabase/migrations ]; then
+  rg -n --pcre2 -e "RETURNS TABLE" supabase/migrations | tail -5 || true
+  echo "reminder: qualify every column ref; prefix locals with v_"
+fi
