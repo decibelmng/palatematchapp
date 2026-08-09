@@ -109,6 +109,30 @@ export const FINGERPRINT_PIPELINE_V3 = "note_v3_deanchored";
  * carrying this stamp may be ranked but never named as the Call.
  */
 export const FINGERPRINT_PIPELINE_V3_AMBIGUOUS = "note_v3_ambiguous_join";
+/**
+ * No recovered human review exists for this bottle, so the note the scorer read
+ * was written by a model from producer / region / grape / vintage (step 1 below)
+ * — or was the note the v2 on-demand gateway already generated at insert.
+ *
+ * This is NOT the two-step design that failed the v2 pilot. That pilot failed
+ * because the SCORER carried per-grape calibration bands and named-wine
+ * anchors, so an uncertain note collapsed to the grape's midpoint. The v3
+ * scorer has neither. What remains is a weaker but different risk: the note
+ * itself is typicity prose, so it cannot say anything the metadata did not
+ * already imply.
+ *
+ * Measured against the note-derived population (52 reds vs 2,507, 2026-08-09)
+ * these readings land systematically differently — fresh 0.800 vs 0.615 at
+ * SD 0.047 vs 0.247, savory 0.655 vs 0.519, oak 0.509 vs 0.587 — i.e. flatter
+ * and more optimistic on the axes a generated note tends to assert. They are
+ * therefore second-class by measurement, not by suspicion, and the stamp is
+ * what lets a future audit, a weighting rule, or a Call-eligibility rule find
+ * them.
+ */
+export const FINGERPRINT_PIPELINE_V3_GENERATED = "note_v3_generated";
+/** Same scorer and same generated-note weakness, reached through the live
+ *  on-demand resolve path rather than the bulk queue. */
+export const FINGERPRINT_PIPELINE_V3_ONDEMAND = "on_demand_v3_generated";
 
 /** sha256 of SCORE_SYS_V3; recompute and re-register in `fingerprint_prompts`
  *  whenever the prompt text above changes:
