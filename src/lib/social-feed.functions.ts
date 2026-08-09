@@ -278,6 +278,10 @@ export const getPaletteOverlapSuggestions = createServerFn({ method: "POST" })
   .inputValidator((raw: unknown) => OverlapInput.parse(raw ?? {}))
   .handler(async ({ data, context }): Promise<OverlapSuggestion[]> => {
     const { supabase, userId } = context;
+    // Self-heal on read: a stale or empty code silently made every overlap
+    // score identical, so repair the viewer's row before comparing against it.
+    const { ensureCodesFresh } = await import("@/lib/palate-code.server");
+    await ensureCodesFresh(supabase, userId);
     const { data: me } = await supabase
       .from("profiles")
       .select("palate_code_red, palate_code_white")
