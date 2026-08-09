@@ -76,7 +76,28 @@ Every value is a number 0..1 OR null. Use JSON null, never the string "null", ne
 { "fp": { "fresh":null,"acid":null,"tannin":null,"fruit_dark":null,"ripe":null,"oak":null,"body":null,"savory":null },
   "ax_sweet": null }`;
 
-import { clamp01, type FpValues } from "./fingerprint-prompt";
+import type { FpValues } from "./fingerprint-prompt";
+
+/** Axis keys in canonical order. */
+export const V3_AXES = [
+  "fresh", "acid", "tannin", "fruit_dark", "ripe", "oak", "body", "savory",
+] as const satisfies readonly (keyof FpValues)[];
+
+/** A v3 reading: every axis is a real 0..1 value or null for "the note does not say".
+ *  Null is NEVER coerced to a number — not here, not on write, not on read. */
+export type FpValuesNullable = { [K in keyof FpValues]: number | null };
+
+/**
+ * Clamp to 0..1 while preserving null. The v2 `clamp01` returns 0.5 for any
+ * non-finite input, which is precisely the sentinel bug this pipeline removes:
+ * 0.5 is a real central position and must never stand in for "unread".
+ */
+export function clamp01OrNull(n: unknown): number | null {
+  if (n === null || n === undefined || n === "") return null;
+  const x = typeof n === "number" ? n : Number(n);
+  if (!Number.isFinite(x)) return null;
+  return Math.max(0, Math.min(1, x));
+}
 
 const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 export const FINGERPRINT_MODEL_V3 = "google/gemini-2.5-flash";
