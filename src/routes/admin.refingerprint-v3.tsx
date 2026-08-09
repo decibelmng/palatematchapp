@@ -13,7 +13,6 @@ import {
 
 const JOB_ID = "fcf3b92a-0700-4a85-82a4-7d0d6b5af2a9";
 const MODEL = "google/gemini-3.6-flash";
-const STALL_AFTER_MS = 5 * 60_000;
 
 type Progress = {
   scored: number;
@@ -116,7 +115,6 @@ function RefingerprintV3Monitor() {
   const readProgress = useServerFn(refingerprintV3Progress);
   const setPaused = useServerFn(refingerprintV3SetPaused);
   const [progress, setProgress] = useState<Progress | null>(null);
-  const [now, setNow] = useState(() => Date.now());
   const [error, setError] = useState<string | null>(null);
   const [pauseBusy, setPauseBusy] = useState(false);
 
@@ -135,19 +133,16 @@ function RefingerprintV3Monitor() {
         });
     read();
     const poll = setInterval(read, 30_000);
-    const tick = setInterval(() => setNow(Date.now()), 5_000);
     return () => {
       alive = false;
       clearInterval(poll);
-      clearInterval(tick);
     };
   }, [readProgress]);
 
-  const idleMs = progress?.lastWriteAt ? now - Date.parse(progress.lastWriteAt) : null;
   const stalled =
     !progress?.paused &&
-    idleMs != null &&
-    idleMs > STALL_AFTER_MS &&
+    progress != null &&
+    progress.wrote5m === 0 &&
     (progress?.pending ?? 0) > 0;
 
   async function togglePaused() {
@@ -191,7 +186,7 @@ function RefingerprintV3Monitor() {
       {stalled && (
         <section className="pm-card space-y-1 border-(--amber) p-3">
           <p className="text-(length:--fs-body) font-medium text-(--text)">
-            Stalled — nothing written for {Math.floor((idleMs ?? 0) / 60_000)} minutes
+            Stalled — nothing written for five minutes
           </p>
           <p className="text-(length:--fs-meta) text-(--text-muted)">
             The next scheduled invocation will retry the oldest waiting rows.

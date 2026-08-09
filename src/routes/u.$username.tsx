@@ -38,7 +38,7 @@ type PublicProfile = {
   is_own: boolean;
 };
 
-const profileQueryOptions = (username: string) =>
+export const profileQueryOptions = (username: string) =>
   queryOptions({
     queryKey: ["public-profile", username],
     queryFn: async () => {

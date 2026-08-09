@@ -33,29 +33,34 @@ export const Route = createFileRoute("/api/public/hooks/refingerprint-v3")({
           } = await import("@/lib/refingerprint-v3.server");
           const before = await getRefingerprintV3Progress(supabaseAdmin, JOB_ID);
           if (before.paused || before.pending === 0) {
-            return Response.json({
+            const output = {
               success: true,
               paused: before.paused,
               complete: before.pending === 0,
               wrote: 0,
               remaining: before.pending,
-            });
+            };
+            console.log("[refingerprint-v3-cron]", JSON.stringify(output));
+            return Response.json(output);
           }
 
           const gotLock = await acquireRefingerprintV3Lock(supabaseAdmin, JOB_ID, LOCK_TTL_MS);
           if (!gotLock) {
-            return Response.json({
+            const output = {
               success: true,
               skipped: "another runner holds the lease",
               wrote: 0,
               remaining: before.pending,
-            });
+            };
+            console.log("[refingerprint-v3-cron]", JSON.stringify(output));
+            return Response.json(output);
           }
 
           const started = Date.now();
           let wrote = 0;
           let picked = 0;
           let empty = 0;
+           let retries = 0;
           const errors: string[] = [];
           try {
             while (
@@ -71,6 +76,7 @@ export const Route = createFileRoute("/api/public/hooks/refingerprint-v3")({
               wrote += result.wrote;
               picked += result.picked;
               empty += result.empty;
+               retries += result.retries;
               errors.push(...result.errors);
               if (result.picked === 0 || result.remaining === 0 || result.errors.length > 0) break;
             }
@@ -82,6 +88,7 @@ export const Route = createFileRoute("/api/public/hooks/refingerprint-v3")({
             picked,
             wrote,
             empty,
+             retries,
             remaining: Math.max(0, before.pending - wrote),
             elapsedMs: Date.now() - started,
             errors: errors.slice(0, 10),
@@ -89,8 +96,11 @@ export const Route = createFileRoute("/api/public/hooks/refingerprint-v3")({
           console.log("[refingerprint-v3-cron]", JSON.stringify(output));
           return Response.json(output, { status: errors.length > 0 ? 500 : 200 });
         } catch (error) {
-          const message = error instanceof Error ? error.message : String(error);
-          console.error("[refingerprint-v3-cron] failed:", message);
+           const message =
+             error instanceof Error
+               ? `${error.name}: ${error.message || "No error message"}`
+               : String(error) || "Unknown error";
+           console.error("[refingerprint-v3-cron] failed:", message);
           return Response.json({ success: false, error: message }, { status: 500 });
         }
       },
