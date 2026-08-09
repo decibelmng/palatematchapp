@@ -98,6 +98,9 @@ const MODEL = "google/gemini-3.6-flash";
 /** No write for this long with rows outstanding = stalled, said out loud. */
 const STALL_AFTER_MS = 5 * 60_000;
 
+/** Transient batch failures are retried; this many in a row is a real outage. */
+const MAX_CONSECUTIVE_FAILURES = 6;
+
 type Entry = { at: string; picked: number; wrote: number; empty: number; remaining: number };
 
 function RefingerprintV3() {
@@ -111,6 +114,7 @@ function RefingerprintV3() {
   const [now, setNow] = useState(() => Date.now());
   const [running, setRunning] = useState(false);
   const [fatal, setFatal] = useState<string | null>(null);
+  const [retrying, setRetrying] = useState<string | null>(null);
   const [jobId, setJobId] = useState(JOB_ID);
   const stop = useRef(false);
 
