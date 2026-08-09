@@ -286,6 +286,14 @@ function RefingerprintV3() {
         </div>
       )}
 
+      {retrying && (
+        <div className="pm-card border-(--amber) p-3">
+          <p className="text-(length:--fs-meta) text-(--text)">{retrying}</p>
+        </div>
+      )}
+
+
+
       <div className="flex gap-2">
         <button
           onClick={loop}
