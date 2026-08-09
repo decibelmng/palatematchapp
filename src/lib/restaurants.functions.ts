@@ -307,3 +307,87 @@ export const getRestaurantWinesFn = createServerFn({ method: "POST" })
       })),
     };
   });
+
+// ============================================================================
+// Attribute a persisted scan (scans.id) to a venue, AFTER results render.
+//
+// The older attributeScanFn writes scan_logs.restaurant_id — a mirror table
+// nothing downstream reads. Venue cards, per-venue list history, saved
+// restaurants and currency learning all key off scans.restaurant_id and the
+// fact tables, so attribution has to land there. It also re-runs the same
+// capture finalize does, because a scan attributed later must produce the same
+// facts as one attributed up front.
+// ============================================================================
+
+export const attributeScanToVenueFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({
+      scan_id: z.string().uuid(),
+      restaurant_id: z.string().uuid(),
+      scan_log_id: z.string().uuid().nullable().optional(),
+    }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+
+    const { data: scan, error: scanErr } = await supabase
+      .from("scans")
+      .select("id,user_id,scanned_at,currency,restaurant_id")
+      .eq("id", data.scan_id)
+      .single();
+    if (scanErr || !scan) throw new Error("Scan not found");
+    if (scan.user_id !== userId) throw new Error("Not your scan");
+
+    const { data: rest, error: restErr } = await supabase
+      .from("restaurants")
+      .select("id,name,currency")
+      .eq("id", data.restaurant_id)
+      .single();
+    if (restErr || !rest) throw new Error("Restaurant not found");
+
+    const { error: upErr } = await supabase
+      .from("scans")
+      .update({ restaurant_id: data.restaurant_id })
+      .eq("id", data.scan_id);
+    if (upErr) throw new Error(upErr.message);
+
+    // Keep the legacy mirror in step when the caller knows its row.
+    if (data.scan_log_id) {
+      await supabase
+        .from("scan_logs")
+        .update({ restaurant_id: data.restaurant_id })
+        .eq("id", data.scan_log_id);
+    }
+
+    const { data: rows } = await supabase
+      .from("scan_wines")
+      .select("producer,cuvee,price,price_amount,currency,format,raw_text,matched_bottle_id")
+      .eq("scan_id", data.scan_id);
+
+    // Teach the venue its currency only from the scan's own detected value, and
+    // only while the column is empty — a venue must not inherit a guess.
+    if (!rest.currency && scan.currency) {
+      await supabase
+        .from("restaurants")
+        .update({ currency: scan.currency })
+        .eq("id", data.restaurant_id);
+    }
+
+    const { captureVenueFacts } = await import("@/lib/venue-capture.server");
+    const captured = await captureVenueFacts({
+      restaurantId: data.restaurant_id,
+      userId,
+      scanLogId: data.scan_log_id ?? null,
+      scanId: data.scan_id,
+      observedAt: (scan.scanned_at as string | null) ?? new Date().toISOString(),
+      rows: (rows ?? []) as never,
+    });
+
+    return {
+      restaurant_id: rest.id as string,
+      restaurant_name: rest.name as string,
+      wines: captured.edges,
+      prices: captured.prices,
+    };
+  });
