@@ -1,0 +1,1 @@
+ALTER VIEW public.prediction_axis_bias SET (security_invoker = true);
