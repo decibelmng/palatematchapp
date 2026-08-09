@@ -144,20 +144,35 @@ export function useScanCapture() {
     mutationFn: async (files: File[]) => {
       if (files.length === 0) throw new Error("Add at least one photo first.");
       const uid = session?.user.id;
+      if (!uid) throw new Error("You're signed out — sign in again and re-take the photo.");
       const scanUuid = crypto.randomUUID();
+
+      // Every stage names itself in the thrown message. A scan that dies
+      // before the first insert leaves no database row at all, so the stage
+      // label is the ONLY evidence of where it died.
+      const stage = async <T,>(label: string, fn: () => Promise<T>): Promise<T> => {
+        try {
+          return await fn();
+        } catch (e) {
+          const msg = (e as Error)?.message ?? String(e);
+          console.error(`[scan] ${label} failed: ${msg}`, e);
+          throw new Error(`${label}: ${msg}`);
+        }
+      };
 
       const prepared = await Promise.all(
         files.map(async (file, i) => {
-          const img = await prepareImageForScan(file);
+          const img = await stage(`Preparing photo ${i + 1}`, () => prepareImageForScan(file));
           let storagePath: string | null = null;
-          if (uid) {
-            const ext = img.mediaType === "image/png" ? "png" : img.mediaType === "image/webp" ? "webp" : "jpg";
-            const path = `${uid}/${scanUuid}/page-${i + 1}.${ext}`;
-            const { error } = await supabase.storage
-              .from("scan-images")
-              .upload(path, img.blob, { contentType: img.mediaType, upsert: true });
-            if (!error) storagePath = path;
-          }
+          const ext = img.mediaType === "image/png" ? "png" : img.mediaType === "image/webp" ? "webp" : "jpg";
+          const path = `${uid}/${scanUuid}/page-${i + 1}.${ext}`;
+          const { error } = await supabase.storage
+            .from("scan-images")
+            .upload(path, img.blob, { contentType: img.mediaType, upsert: true });
+          // A failed upload is survivable (the scan ships base64 anyway) but
+          // was previously invisible, so it could never be ruled out.
+          if (error) console.error(`[scan] photo ${i + 1} upload failed: ${error.message}`);
+          else storagePath = path;
           return {
             image_base64: img.base64,
             media_type: img.mediaType as BatchImage["media_type"],
@@ -168,7 +183,7 @@ export function useScanCapture() {
 
       const image_paths_all = prepared.map((p) => p.storagePath).filter((p): p is string => !!p);
       const preparedBatches = chunkArr(prepared, 2);
-      const created = await createScan({
+      const created = await stage("Starting the scan", () => createScan({
         data: {
           page_count: files.length,
           batch_count: preparedBatches.length,
@@ -177,7 +192,8 @@ export function useScanCapture() {
           // finalize sees a null venue and skips every fact capture.
           restaurant_id: prescanRestaurant?.id ?? null,
         },
-      });
+      }));
+
 
       const initial: BatchState[] = preparedBatches.map((group, i) => ({
         index: i,
