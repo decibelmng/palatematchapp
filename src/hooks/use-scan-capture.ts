@@ -10,7 +10,7 @@ import {
   loadRecentScan,
   type ResolvedWine,
 } from "@/lib/scan.functions";
-import { attributeScanFn } from "@/lib/restaurants.functions";
+import { attributeScanToVenueFn } from "@/lib/restaurants.functions";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "@/hooks/use-session";
 import {
@@ -30,7 +30,7 @@ export function useScanCapture() {
   const runBatch = useServerFn(scanWineBatch);
   const finalize = useServerFn(finalizeScan);
   const loadRecent = useServerFn(loadRecentScan);
-  const attributeFn = useServerFn(attributeScanFn);
+  const attributeVenueFn = useServerFn(attributeScanToVenueFn);
 
   const [staged, setStaged] = useState<{ file: File; url: string }[]>([]);
   const [scanId, setScanId] = useState<string | null>(null);

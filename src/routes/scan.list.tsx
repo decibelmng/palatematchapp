@@ -5,7 +5,7 @@ import { CellarMemorySection } from "@/components/CellarMemorySection";
 import { SommelierBriefDialog } from "@/components/SommelierBriefDialog";
 import { VerdictSurface } from "@/components/verdict";
 import { PastScansHistory } from "@/components/PastScansHistory";
-import { PrescanRestaurantPicker, RestaurantAttribution } from "@/components/RestaurantPickers";
+import { PrescanRestaurantPicker, VenueAttribution } from "@/components/RestaurantPickers";
 import { DrinkingGroupSelector } from "@/components/DrinkingGroupSelector";
 import { ScanEntryButtons, StagedPhotos, BatchProgress } from "@/components/ScanCaptureShell";
 import { ScanStateMessage, type ScanFailure } from "@/components/ScanStateMessage";
@@ -287,7 +287,9 @@ function Scan() {
               Added to <span className="font-medium">{cap.autoAttributedTo}</span>.
             </div>
           )}
-          {cap.scanLogId && totalWines > 0 && !cap.autoAttributedTo && <RestaurantAttribution scanId={cap.scanLogId} />}
+          {cap.scanId && totalWines > 0 && !cap.autoAttributedTo && (
+            <VenueAttribution scanId={cap.scanId} scanLogId={cap.scanLogId} />
+          )}
           {totalWines > 0 && (
             <button type="button" onClick={() => setSommOpen(true)} className="text-label uppercase text-muted-foreground hover:text-primary">
               Show your palate to the somm →
