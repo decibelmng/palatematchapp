@@ -17,7 +17,7 @@ export const Route = createFileRoute("/admin/refingerprint-v3")({
 });
 
 /** The catalog_jobs row opened for this run. */
-const JOB_ID = "";
+const JOB_ID = "fcf3b92a-0700-4a85-82a4-7d0d6b5af2a9";
 const MODEL = "google/gemini-3.6-flash";
 
 type Entry = { at: string; picked: number; wrote: number; empty: number; remaining: number };
