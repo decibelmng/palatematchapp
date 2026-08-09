@@ -51,5 +51,12 @@ export function rowToResolved(r: any): ResolvedWine {
     matched_bottle_name: null,
     match_score: r.match_score ?? 0,
     match_reasons: (r.match_reasons ?? []) as string[] | undefined,
-  };
+    // Carry the scan_wines PK. Omitting it here is what silently broke the
+    // join from a rating back to the OCR'd line: the resume-in-place path
+    // (use-scan-capture) maps stored rows through this function, so a rating
+    // after a reload logged scan_wine_id null while the same wine rated
+    // during the live scan logged it fine. Callers that used to re-attach it
+    // by hand are now redundant rather than load-bearing.
+    scan_wine_id: (r.id as string | null) ?? null,
+
 }
