@@ -128,12 +128,12 @@ if (process.env["SNAP_DEBUG"]) console.error("recs", recs.length, "vetoed", recs
 const candType = new Map(cands.map((c) => [c.id, c.type === "white" ? "white" : "red"]));
 const topN = (type: "red" | "white", n = 5) =>
   recs
-    .filter((r) => candType.get(r.id) === type && !r.vetoed)
+    .filter((r) => r.bottle.type === type && !r.vetoed)
     .slice(0, n)
     .map((r, idx) => ({
       rank: idx + 1,
-      id: r.id,
-      name: r.name,
+      id: r.bottle.id,
+      name: r.bottle.name,
       predicted: Number(r.predicted.toFixed(4)),
       maxSimilarity: r.maxSimilarity == null ? null : Number(r.maxSimilarity.toFixed(4)),
       contested: !!r.contestedReason,
