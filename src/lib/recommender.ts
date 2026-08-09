@@ -190,12 +190,20 @@ export const MIN_COMPARABLE_AXES = 3;
 export const THIN_READ_MAX_AXES = 3;
 
 /** How many SCORED axes this reading carries for its type (retired axes excluded). */
-export function axesRead(fp: FpVec, type: WineType): number {
+export function axesRead(fp: FpVec | null | undefined, type: WineType): number {
+  if (!fp) return 0;
   return activeAxesFor(type).reduce((n, a) => (hasAxis(fp, a) ? n + 1 : n), 0);
 }
 
-/** True when the reading is too thin to be named as the Call. */
-export function isThinRead(fp: FpVec, type: WineType): boolean {
+/**
+ * True when the reading is too thin to be named as the Call.
+ *
+ * No reading object at all is a different fact from a thin one — an absent fp
+ * means this row never went through the note scorer — so it is NOT thin here
+ * and is judged by the ordinary rules.
+ */
+export function isThinRead(fp: FpVec | null | undefined, type: WineType): boolean {
+  if (!fp) return false;
   return axesRead(fp, type) <= THIN_READ_MAX_AXES;
 }
 
