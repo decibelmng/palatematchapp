@@ -23,6 +23,14 @@ import { prepareImageForScan } from "@/lib/image-downscale";
 
 export type ScanStatus = "idle" | "running" | "partial" | "complete" | "failed";
 
+/** Client-side per-batch deadline. Longer than the server's own 60s + 45s
+ *  retry budget on purpose — see the comment at the race below. */
+const BATCH_DEADLINE_MS = 150_000;
+
+/** After this long with no new wine landing, the screen says so and offers a
+ *  way out. A running scan must never be a dead end. */
+export const STALL_AFTER_MS = 15_000;
+
 export function useScanCapture() {
   const session = useSession();
 
