@@ -13,7 +13,7 @@
 // that already have a bottle, and price_observations is append-only by design.
 
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { detectCurrencyFromText } from "@/lib/currency";
+import { resolveCurrency, type CurrencyCode } from "@/lib/currency";
 
 export type FinalizeResult = {
   status: "processing" | "partial" | "complete" | "failed";
