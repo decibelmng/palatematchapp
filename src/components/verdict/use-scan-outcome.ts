@@ -140,7 +140,7 @@ export function useScanOutcome({
               chosen_bottle_id: bottleId,
               chosen_predicted: row.ranked.predicted > 0 ? row.ranked.predicted : null,
               chosen_rank: rankOf(row),
-              call_bottle_id: call?.ranked.bottle.id ?? null,
+              call_bottle_id: call ? outcomeBottleId(call) : null,
               call_predicted: call && call.ranked.predicted > 0 ? call.ranked.predicted : null,
               n_candidates: rows.length,
               chosen_price: row.price_amount,
