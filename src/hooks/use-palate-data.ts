@@ -12,6 +12,8 @@ import { refreshBottleFingerprint } from "@/lib/fingerprint-refresh.functions";
 import { recomputePalateCodesFn } from "@/lib/palate-code.functions";
 import { usePalateVersion } from "./use-palate-version";
 import { confirmDialog } from "@/components/confirm-dialog";
+import { logWriteFailure } from "@/lib/write-failure-log";
+
 import { askMissAttribution } from "@/components/MissFollowUp";
 import { createElement, Fragment } from "react";
 
