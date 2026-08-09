@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useSession } from "./use-session";
+import { recomputePalateCodesFn } from "@/lib/palate-code.functions";
 
 /**
  * B2 — palate_version cascade.
@@ -46,6 +47,11 @@ export function useApplyBumpedPalateVersion() {
   return (nextVersion: number | null | undefined) => {
     if (nextVersion == null || !session) return;
     qc.setQueryData(["palate-version", session.user.id], nextVersion);
+    // The palate code is derived from the same state as this version, so every
+    // bump path (rating, promote, demote, swap, undo) recomputes it server-side.
+    void recomputePalateCodesFn().catch((e: unknown) => {
+      console.error("[palate] code recompute failed:", (e as Error).message);
+    });
     // Downstream queries (canons, ratings, pour, matches, scan) either key on
     // palate_version directly or are invalidated by the mutations that call
     // this. Nothing more to do here.

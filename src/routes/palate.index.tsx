@@ -10,7 +10,6 @@ import {
   useRatings,
   bottleToValues,
   bottleType,
-  usePersistCode,
   isCalibrated,
 
 } from "@/hooks/use-palate-data";
@@ -81,7 +80,6 @@ function PalateHome() {
 
   const red = useMemo(() => computeCode(redRated, axesFor("red")), [redRated]);
   const white = useMemo(() => computeCode(whiteRated, axesFor("white")), [whiteRated]);
-  usePersistCode(red.code, white.code, ratings?.length ?? 0);
 
   const totalRated = ratings?.length ?? 0;
   const canonsCount = (canons ?? []).filter((c) => c.tier === "canon").length;

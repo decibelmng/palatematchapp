@@ -1086,6 +1086,7 @@ export type Database = {
           onboarding_stage: string
           palate_code: string
           palate_code_red: string
+          palate_code_version: number
           palate_code_white: string
           palate_shareable: boolean
           palate_version: number
@@ -1115,6 +1116,7 @@ export type Database = {
           onboarding_stage?: string
           palate_code?: string
           palate_code_red?: string
+          palate_code_version?: number
           palate_code_white?: string
           palate_shareable?: boolean
           palate_version?: number
@@ -1144,6 +1146,7 @@ export type Database = {
           onboarding_stage?: string
           palate_code?: string
           palate_code_red?: string
+          palate_code_version?: number
           palate_code_white?: string
           palate_shareable?: boolean
           palate_version?: number
