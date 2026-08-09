@@ -51,6 +51,7 @@ import { Route as AdminCorrectionsRouteImport } from './routes/admin.corrections
 import { Route as AdminConsensusRouteImport } from './routes/admin.consensus'
 import { Route as AdminAuthAuditRouteImport } from './routes/admin.auth-audit'
 import { Route as AddFriendUsernameRouteImport } from './routes/add-friend.$username'
+import { Route as ApiPublicHooksRefingerprintV3RouteImport } from './routes/api/public/hooks/refingerprint-v3'
 import { Route as ApiPublicHooksReconcileScansRouteImport } from './routes/api/public/hooks/reconcile-scans'
 
 const WishlistRoute = WishlistRouteImport.update({
@@ -263,6 +264,12 @@ const AddFriendUsernameRoute = AddFriendUsernameRouteImport.update({
   path: '/add-friend/$username',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksRefingerprintV3Route =
+  ApiPublicHooksRefingerprintV3RouteImport.update({
+    id: '/api/public/hooks/refingerprint-v3',
+    path: '/api/public/hooks/refingerprint-v3',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksReconcileScansRoute =
   ApiPublicHooksReconcileScansRouteImport.update({
     id: '/api/public/hooks/reconcile-scans',
@@ -314,6 +321,7 @@ export interface FileRoutesByFullPath {
   '/admin/': typeof AdminIndexRoute
   '/palate/': typeof PalateIndexRoute
   '/api/public/hooks/reconcile-scans': typeof ApiPublicHooksReconcileScansRoute
+  '/api/public/hooks/refingerprint-v3': typeof ApiPublicHooksRefingerprintV3Route
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -359,6 +367,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminIndexRoute
   '/palate': typeof PalateIndexRoute
   '/api/public/hooks/reconcile-scans': typeof ApiPublicHooksReconcileScansRoute
+  '/api/public/hooks/refingerprint-v3': typeof ApiPublicHooksRefingerprintV3Route
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -405,6 +414,7 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/palate/': typeof PalateIndexRoute
   '/api/public/hooks/reconcile-scans': typeof ApiPublicHooksReconcileScansRoute
+  '/api/public/hooks/refingerprint-v3': typeof ApiPublicHooksRefingerprintV3Route
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -452,6 +462,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/palate/'
     | '/api/public/hooks/reconcile-scans'
+    | '/api/public/hooks/refingerprint-v3'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -497,6 +508,7 @@ export interface FileRouteTypes {
     | '/admin'
     | '/palate'
     | '/api/public/hooks/reconcile-scans'
+    | '/api/public/hooks/refingerprint-v3'
   id:
     | '__root__'
     | '/'
@@ -542,6 +554,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/palate/'
     | '/api/public/hooks/reconcile-scans'
+    | '/api/public/hooks/refingerprint-v3'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -583,6 +596,7 @@ export interface RootRouteChildren {
   AdminIndexRoute: typeof AdminIndexRoute
   PalateIndexRoute: typeof PalateIndexRoute
   ApiPublicHooksReconcileScansRoute: typeof ApiPublicHooksReconcileScansRoute
+  ApiPublicHooksRefingerprintV3Route: typeof ApiPublicHooksRefingerprintV3Route
 }
 
 declare module '@tanstack/react-router' {
@@ -881,6 +895,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AddFriendUsernameRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/refingerprint-v3': {
+      id: '/api/public/hooks/refingerprint-v3'
+      path: '/api/public/hooks/refingerprint-v3'
+      fullPath: '/api/public/hooks/refingerprint-v3'
+      preLoaderRoute: typeof ApiPublicHooksRefingerprintV3RouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/reconcile-scans': {
       id: '/api/public/hooks/reconcile-scans'
       path: '/api/public/hooks/reconcile-scans'
@@ -956,6 +977,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminIndexRoute: AdminIndexRoute,
   PalateIndexRoute: PalateIndexRoute,
   ApiPublicHooksReconcileScansRoute: ApiPublicHooksReconcileScansRoute,
+  ApiPublicHooksRefingerprintV3Route: ApiPublicHooksRefingerprintV3Route,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
