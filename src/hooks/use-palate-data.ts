@@ -366,6 +366,8 @@ export function useRate() {
     onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: ["ratings"] });
       qc.invalidateQueries({ queryKey: ["palate-version"] });
+      // Same event that bumps palate_version recomputes the derived code.
+      syncPalateCodes();
       // A full star or more off: ask which half of the system was wrong.
       // askMissAttribution ignores anything smaller, so no gate is needed here.
       if (result?.outcomeId && result.delta != null) {
@@ -470,6 +472,7 @@ export function useRestoreRatingAndBenchmark() {
       qc.invalidateQueries({ queryKey: ["ratings"] });
       qc.invalidateQueries({ queryKey: ["canons"] });
       qc.invalidateQueries({ queryKey: ["palate-version"] });
+      syncPalateCodes();
     },
   });
 }
