@@ -49,6 +49,7 @@ import { Route as AdminCorrectionsRouteImport } from './routes/admin.corrections
 import { Route as AdminConsensusRouteImport } from './routes/admin.consensus'
 import { Route as AdminAuthAuditRouteImport } from './routes/admin.auth-audit'
 import { Route as AddFriendUsernameRouteImport } from './routes/add-friend.$username'
+import { Route as ApiPublicHooksReconcileScansRouteImport } from './routes/api/public/hooks/reconcile-scans'
 
 const WishlistRoute = WishlistRouteImport.update({
   id: '/wishlist',
@@ -250,6 +251,12 @@ const AddFriendUsernameRoute = AddFriendUsernameRouteImport.update({
   path: '/add-friend/$username',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicHooksReconcileScansRoute =
+  ApiPublicHooksReconcileScansRouteImport.update({
+    id: '/api/public/hooks/reconcile-scans',
+    path: '/api/public/hooks/reconcile-scans',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -292,6 +299,7 @@ export interface FileRoutesByFullPath {
   '/wine/$id': typeof WineIdRoute
   '/admin/': typeof AdminIndexRoute
   '/palate/': typeof PalateIndexRoute
+  '/api/public/hooks/reconcile-scans': typeof ApiPublicHooksReconcileScansRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -334,6 +342,7 @@ export interface FileRoutesByTo {
   '/wine/$id': typeof WineIdRoute
   '/admin': typeof AdminIndexRoute
   '/palate': typeof PalateIndexRoute
+  '/api/public/hooks/reconcile-scans': typeof ApiPublicHooksReconcileScansRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -377,6 +386,7 @@ export interface FileRoutesById {
   '/wine/$id': typeof WineIdRoute
   '/admin/': typeof AdminIndexRoute
   '/palate/': typeof PalateIndexRoute
+  '/api/public/hooks/reconcile-scans': typeof ApiPublicHooksReconcileScansRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -421,6 +431,7 @@ export interface FileRouteTypes {
     | '/wine/$id'
     | '/admin/'
     | '/palate/'
+    | '/api/public/hooks/reconcile-scans'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -463,6 +474,7 @@ export interface FileRouteTypes {
     | '/wine/$id'
     | '/admin'
     | '/palate'
+    | '/api/public/hooks/reconcile-scans'
   id:
     | '__root__'
     | '/'
@@ -505,6 +517,7 @@ export interface FileRouteTypes {
     | '/wine/$id'
     | '/admin/'
     | '/palate/'
+    | '/api/public/hooks/reconcile-scans'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -543,6 +556,7 @@ export interface RootRouteChildren {
   WineIdRoute: typeof WineIdRoute
   AdminIndexRoute: typeof AdminIndexRoute
   PalateIndexRoute: typeof PalateIndexRoute
+  ApiPublicHooksReconcileScansRoute: typeof ApiPublicHooksReconcileScansRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -827,6 +841,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AddFriendUsernameRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/reconcile-scans': {
+      id: '/api/public/hooks/reconcile-scans'
+      path: '/api/public/hooks/reconcile-scans'
+      fullPath: '/api/public/hooks/reconcile-scans'
+      preLoaderRoute: typeof ApiPublicHooksReconcileScansRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -892,7 +913,18 @@ const rootRouteChildren: RootRouteChildren = {
   WineIdRoute: WineIdRoute,
   AdminIndexRoute: AdminIndexRoute,
   PalateIndexRoute: PalateIndexRoute,
+  ApiPublicHooksReconcileScansRoute: ApiPublicHooksReconcileScansRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

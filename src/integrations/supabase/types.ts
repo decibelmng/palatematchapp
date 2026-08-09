@@ -2055,6 +2055,16 @@ export type Database = {
           users: number
         }[]
       }
+      admin_data_integrity: {
+        Args: never
+        Returns: {
+          derived_table: string
+          last_write: string
+          parent_count: number
+          parent_label: string
+          row_count: number
+        }[]
+      }
       admin_fp_drift: {
         Args: never
         Returns: {

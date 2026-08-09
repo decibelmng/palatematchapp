@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AuthGate } from "@/components/AuthGate";
 import { useSession } from "@/hooks/use-session";
+import { DataIntegrityTable } from "@/components/admin/DataIntegrityTable";
 import {
   BarChart3, Database, Search, Ticket, MessageSquare, Wand2, Bug, Wrench, Map, ShieldCheck,
 } from "lucide-react";
@@ -50,6 +51,11 @@ function AdminHub() {
       {isAdmin === false && (
         <p className="text-meta text-muted-foreground">Signed in as non-admin — links will show "Not authorized".</p>
       )}
+
+      <section className="space-y-2">
+        <h2 className="text-sm font-medium">Write paths</h2>
+        <DataIntegrityTable />
+      </section>
 
       <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {ADMIN_LINKS.map(({ to, label, description, Icon }) => (
