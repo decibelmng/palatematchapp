@@ -102,11 +102,11 @@ const codes = {
 function omegaFor(type: "red" | "white") {
   const set = rated.filter((r) => r.type === type);
   if (!__debug_learnOmega || !__debug_pickBandwidth || set.length === 0) return null;
-  const omega = __debug_learnOmega(set as any, type as any);
-  const h = __debug_pickBandwidth(set as any, omega as any, type as any);
+  const fit = __debug_learnOmega(set as any, type as any);
+  const h = __debug_pickBandwidth(set as any, fit as any);
   const out: Record<string, number | null> = {};
-  for (const a of AXES) out[a] = (omega as any)?.[a] ?? null;
-  return { omega: out, h };
+  for (const a of AXES) out[a] = (fit as any)?.omega?.[a] ?? null;
+  return { omega: out, activeAxes: (fit as any)?.active ?? null, h: Number(h.toFixed(4)), n: set.length };
 }
 
 // ── anchors in style space ──
