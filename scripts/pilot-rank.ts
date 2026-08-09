@@ -13,7 +13,7 @@
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import {
-  recommend, buildTypeContext, distanceInContext, __debug_pickBandwidth,
+  recommend, buildTypeContext, distanceInContext,
   RAX, RETIRED_AXES, BENCHMARK_WEIGHT,
   type RatedFp, type BottleFp, type FpKey, type FpVec,
 } from "@/lib/recommender";
@@ -102,8 +102,8 @@ for (const [label, pick] of variants) {
 
   // local support: any rated wine inside the bandwidth
   const ctx = buildTypeContext(rated, "red");
-  if (ctx && __debug_pickBandwidth) {
-    const h = __debug_pickBandwidth(rated.map((r) => r.fp), ctx);
+  if (ctx) {
+    const h = ctx.h;
     let none = 0;
     for (const c of cands) {
       const near = rated.some((r) => {
