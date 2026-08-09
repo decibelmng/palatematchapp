@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { ScanRow } from "./types";
 import { countPriced, pricePosition } from "./tiebreak";
+import { logWriteFailure } from "@/lib/write-failure-log";
 
 /**
  * Silent, append-only instrumentation. NO UI.
@@ -13,7 +14,9 @@ import { countPriced, pricePosition } from "./tiebreak";
  * where did its price sit in that list's own spread.
  *
  * Never blocks or surfaces an error — a failed write must not touch the
- * decision screen.
+ * decision screen. It is NOT silent, though: a failed write is logged at error
+ * level and recorded in write_failures, so "no rows" can be told apart from
+ * "the write path is broken".
  */
 export function useLogCallShape(call: ScanRow | null, rows: ScanRow[], scanId: string | null) {
   const logged = useRef<string | null>(null);
@@ -34,8 +37,7 @@ export function useLogCallShape(call: ScanRow | null, rows: ScanRow[], scanId: s
           .eq("id", uid)
           .maybeSingle();
 
-        await supabase.from("call_instrumentation").upsert(
-          {
+        const payload = {
             user_id: uid,
             scan_id: scanId,
             is_catalog: call.isCatalog,
@@ -43,11 +45,32 @@ export function useLogCallShape(call: ScanRow | null, rows: ScanRow[], scanId: s
             list_size: rows.length,
             n_priced: countPriced(rows),
             palate_version: prof?.palate_version ?? null,
-          },
-          { onConflict: "user_id,scan_id", ignoreDuplicates: true },
-        );
-      } catch {
-        // Instrumentation is best-effort by design.
+        };
+
+        const { error } = await supabase
+          .from("call_instrumentation")
+          .upsert(payload, { onConflict: "user_id,scan_id", ignoreDuplicates: true });
+        if (error) {
+          await logWriteFailure({
+            table: "call_instrumentation",
+            operation: "upsert",
+            error,
+            userId: uid,
+            context: {
+              scan_id: scanId,
+              is_catalog: payload.is_catalog,
+              price_position: payload.price_position,
+              list_size: payload.list_size,
+            },
+          });
+        }
+      } catch (e) {
+        await logWriteFailure({
+          table: "call_instrumentation",
+          operation: "upsert",
+          error: e,
+          context: { scan_id: scanId, list_size: rows.length },
+        });
       }
     })();
   }, [call, rows, scanId]);
