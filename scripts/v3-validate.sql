@@ -93,3 +93,57 @@ group by 1, 2 order by 3 desc;
 select count(*) filter (where n.bottle_id is null) as no_note_rows,
        count(*) filter (where n.bottle_id is null and b.fp_pipeline like '%v2%') as no_note_v2_rows
 from bottles b left join catalog_source_notes n on n.bottle_id = b.id;
+
+-- ─────────────────────────────────────────────────────────────
+-- POST-SWAP GATE 4 (approved 2026-08-09): the three reading tiers side by side.
+--
+-- note_v3_deanchored        — scored from a recovered human review
+-- note_v3_generated         — scored from a note a model wrote (bulk tail)
+-- on_demand_v3_generated    — same, reached through a live resolve
+--
+-- What we are looking for is NOT "are the generated tiers different" — measured
+-- pre-swap they already are (fresh 0.800/SD 0.047 vs 0.615/SD 0.247). It is
+-- whether they sit toward the MIDDLE of style space on every axis at once. A
+-- vector that is central on all axes is close to everything, so it scores well
+-- for every palate — vagueness reading as proximity, the same failure as a thin
+-- OCR line. dist_from_centre below is the giveaway: if the generated tiers sit
+-- materially nearer the catalog centre than the note-derived tier, the fix is
+-- tier-keyed α-shrinkage in the predictor, NOT the Call exclusion, because the
+-- exclusion only hides it on one surface while the wine still outranks real
+-- readings everywhere else.
+-- ─────────────────────────────────────────────────────────────
+with c as (
+  select avg(fp_acid_v3) a, avg(fp_tannin_v3) t, avg(fp_fruit_dark_v3) f,
+         avg(fp_ripe_v3) r, avg(fp_oak_v3) o, avg(fp_body_v3) bd, avg(fp_savory_v3) s
+  from bottles where fp_v3_scored_at is not null and type = 'red'
+)
+select b.fp_v3_pipeline as tier,
+       count(*) as n,
+       round(avg(b.fp_v3_axes_read)::numeric, 2) as mean_axes_read,
+       round(avg(b.fp_ripe_v3)::numeric, 3)   as ripe_mean,
+       round(stddev_samp(b.fp_ripe_v3)::numeric, 3)   as ripe_sd,
+       round(avg(b.fp_body_v3)::numeric, 3)   as body_mean,
+       round(stddev_samp(b.fp_body_v3)::numeric, 3)   as body_sd,
+       round(avg(b.fp_savory_v3)::numeric, 3) as savory_mean,
+       round(stddev_samp(b.fp_savory_v3)::numeric, 3) as savory_sd,
+       round(avg(b.fp_oak_v3)::numeric, 3)    as oak_mean,
+       round(stddev_samp(b.fp_oak_v3)::numeric, 3)    as oak_sd,
+       -- Euclidean distance from the catalog centre over the axes actually read.
+       -- Lower on a generated tier = central = close to everything.
+       round(avg(sqrt(
+         coalesce((b.fp_acid_v3       - c.a)^2, 0) + coalesce((b.fp_tannin_v3 - c.t)^2, 0) +
+         coalesce((b.fp_fruit_dark_v3 - c.f)^2, 0) + coalesce((b.fp_ripe_v3   - c.r)^2, 0) +
+         coalesce((b.fp_oak_v3        - c.o)^2, 0) + coalesce((b.fp_body_v3   - c.bd)^2, 0) +
+         coalesce((b.fp_savory_v3     - c.s)^2, 0)
+       ))::numeric, 3) as dist_from_centre
+from bottles b cross join c
+where b.fp_v3_scored_at is not null and b.type = 'red'
+group by 1 order by 2 desc;
+
+-- Retired axis, second independent confirmation (2026-08-09): human reviews
+-- barely mention freshness (57.6% null) and generated notes assert it uniformly
+-- (0.800, SD 0.047). Either way it carries no information. fresh is out of the
+-- active set and must not be re-added on the strength of it looking dense.
+select round(100.0 * avg((fp_fresh_v3 is null)::int), 1) as fresh_null_pct,
+       round(stddev_samp(fp_fresh_v3)::numeric, 3)       as fresh_sd
+from bottles where fp_v3_scored_at is not null;
