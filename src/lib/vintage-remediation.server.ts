@@ -3,6 +3,18 @@
  * .functions.ts wrapper so nothing but server functions lives at its module
  * scope.
  */
+export async function assertAdmin(userId: string) {
+  const adminId = process.env.ADMIN_USER_ID;
+  if (!adminId || userId !== adminId) throw new Error("Not authorized");
+}
+
+/** Match reasons are append-only: the wrong-year match stays visible as history. */
+export async function stampReason(admin: any, scanWineId: string, tag: string) {
+  const { data } = await admin.from("scan_wines").select("match_reasons").eq("id", scanWineId).single();
+  const prev = Array.isArray(data?.match_reasons) ? data!.match_reasons : [];
+  await admin.from("scan_wines").update({ match_reasons: [...prev, tag] } as never).eq("id", scanWineId);
+}
+
 export type RemediationClass = "unrated" | "confirm-existing" | "confirm-resolve";
 
 export type RemediationItem = {
