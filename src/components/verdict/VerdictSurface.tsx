@@ -41,6 +41,10 @@ export function VerdictSurface({
 
 
   const [detailKey, setDetailKey] = useState<string | null>(null);
+  // Set when the sheet was opened by an "I ordered this" tap, so it opens in a
+  // confirmation state rather than on a rating control.
+  const [confirmKey, setConfirmKey] = useState<string | null>(null);
+  const closeDetail = () => { setDetailKey(null); setConfirmKey(null); };
   const detailFor = useMemo(
     () => rows.find((r) => r.key === detailKey) ?? null,
     [rows, detailKey],
@@ -85,7 +89,13 @@ export function VerdictSurface({
   // Choice capture. Richer than a star rating — it's a preference over the
   // thirty-nine alternatives we also showed, at their prices. CAPTURE ONLY:
   // nothing in the ranking above reads it.
-  const order = useScanOutcome({ scanId: scanId ?? null, call, eligible, rows });
+  const order = useScanOutcome({
+    scanId: scanId ?? null,
+    call,
+    eligible,
+    rows,
+    onConfirmed: (row) => { setDetailKey(row.key); setConfirmKey(row.key); },
+  });
 
 
 
@@ -103,7 +113,7 @@ export function VerdictSurface({
           orderPending={order.pending}
           canOrder={order.enabled}
         />
-        <ScanDetailSheet row={detailFor} scannedAt={scannedAt} scanId={scanId ?? null} rank={detailRank} nearTie={detailFor ? nearTieNote(detailFor, eligible) : null} onClose={() => setDetailKey(null)}
+        <ScanDetailSheet row={detailFor} scannedAt={scannedAt} scanId={scanId ?? null} rank={detailRank} nearTie={detailFor ? nearTieNote(detailFor, eligible) : null} onClose={closeDetail} orderedConfirm={!!detailFor && detailFor.key === confirmKey}
           ordered={!!detailFor && order.isOrdered(detailFor)}
           onOrdered={detailFor ? () => order.toggle(detailFor) : undefined}
           orderPending={order.pending}
@@ -151,7 +161,7 @@ export function VerdictSurface({
         currency={currency}
         rows={rows}
       />
-      <ScanDetailSheet row={detailFor} scannedAt={scannedAt} scanId={scanId ?? null} rank={detailRank} nearTie={detailFor ? nearTieNote(detailFor, eligible) : null} onClose={() => setDetailKey(null)}
+      <ScanDetailSheet row={detailFor} scannedAt={scannedAt} scanId={scanId ?? null} rank={detailRank} nearTie={detailFor ? nearTieNote(detailFor, eligible) : null} onClose={closeDetail} orderedConfirm={!!detailFor && detailFor.key === confirmKey}
           ordered={!!detailFor && order.isOrdered(detailFor)}
           onOrdered={detailFor ? () => order.toggle(detailFor) : undefined}
           orderPending={order.pending}
