@@ -513,7 +513,10 @@ function scoreOne(cand: BottleFp, ctx: TypeCtx): Recommendation {
   const nemesisWinsBasin =
     inNemesisReach && nearNemesisDist < nearestPositiveDist;
 
-  let predicted = (num + PRIOR_ALPHA * muPrior) / (M + PRIOR_ALPHA);
+  // α_eff, not α: a reading taken off a different vintage shrinks further
+  // toward the per-type mean. Evidence mass M is untouched.
+  const alphaEff = effectiveAlpha(cand);
+  let predicted = (num + alphaEff * muPrior) / (M + alphaEff);
 
   // Step 6: dislike guard — nearest anchor by ω-distance is a plain-dislike
   // we're sitting on top of. Cap so a lonely candidate glued to a 1★ can't
