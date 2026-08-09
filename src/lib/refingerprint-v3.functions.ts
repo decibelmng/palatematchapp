@@ -179,6 +179,9 @@ export const refingerprintV3Batch = createServerFn({ method: "POST" })
         fp_v3_scored_at: new Date().toISOString(),
         fp_v3_job_id: data.jobId,
         fp_v3_axes_read: axesReadCount,
+        fp_v3_pipeline: row.ambiguous
+          ? FINGERPRINT_PIPELINE_V3_AMBIGUOUS
+          : FINGERPRINT_PIPELINE_V3,
       };
       for (const a of V3_AXES) patch[`fp_${a}_v3`] = values[a];
       // ax_sweet is independent of the eight style axes and is not generated,
@@ -187,22 +190,26 @@ export const refingerprintV3Batch = createServerFn({ method: "POST" })
 
       const { error: wErr } = await supabaseAdmin.from("bottles").update(patch as never).eq("id", row.id);
       if (wErr) errors.push(`${row.id} write: ${wErr.message}`);
-      else wrote++;
+      else {
+        wrote++;
+        if (row.ambiguous) ambiguousWrote++;
+      }
     });
 
     const { count: remaining } = await supabaseAdmin
       .from("bottles")
       .select("id,catalog_source_notes!inner(bottle_id)", { count: "exact", head: true })
-      .is("fp_v3_scored_at", null)
-      .eq("catalog_source_notes.ambiguous", false);
+      .is("fp_v3_scored_at", null);
 
     return {
       pipeline: FINGERPRINT_PIPELINE_V3,
       model: data.model,
       picked: batch.length,
       wrote,
+      ambiguousWrote,
       empty,
       remaining: remaining ?? 0,
       errors: errors.slice(0, 10),
     };
   });
+
