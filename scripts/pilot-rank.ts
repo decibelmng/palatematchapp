@@ -97,7 +97,7 @@ for (const [label, pick] of variants) {
     ranks[w] ??= {};
     ranks[w][label] = hits.length
       ? hits.map(({ r, i }) => `#${i + 1}/${n} (${r.predicted.toFixed(2)}${
-          r.veto ? " VETO" : r.contested ? " contested" : ""})`).join(", ")
+          r.vetoed ? " VETO" : r.contested ? " contested" : ""})`).join(", ")
       : "absent";
   }
 
