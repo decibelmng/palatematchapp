@@ -70,8 +70,9 @@ export function ResultRow({
             </p>
           </div>
           {reason && (
-            <p className="mt-1 text-meta leading-snug text-muted-foreground">{reason}</p>
+            <p className="mt-1 text-meta leading-snug text-muted-foreground truncate">{reason}</p>
           )}
+
 
         </div>
         <div className="shrink-0 text-right pt-1">
