@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   getRefingerprintV3Progress,
+  refreshRefingerprintV3Progress,
   runRefingerprintV3Batch,
   setRefingerprintV3Paused,
 } from "@/lib/refingerprint-v3.server";
@@ -49,5 +50,9 @@ export const refingerprintV3SetPaused = createServerFn({ method: "POST" })
     const adminId = process.env["ADMIN_USER_ID"];
     if (!adminId || context.userId !== adminId) throw new Error("Not authorized");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    return setRefingerprintV3Paused(supabaseAdmin, data.jobId, data.paused);
+    const result = await setRefingerprintV3Paused(supabaseAdmin, data.jobId, data.paused);
+    // One aggregate pass on a manual tap so the monitor reflects the change now
+    // instead of waiting for the next scheduled tick.
+    await refreshRefingerprintV3Progress(supabaseAdmin, data.jobId);
+    return result;
   });

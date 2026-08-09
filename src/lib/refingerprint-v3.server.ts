@@ -84,69 +84,106 @@ async function mapLimit<T>(items: T[], limit: number, fn: (item: T) => Promise<v
   );
 }
 
-export async function getRefingerprintV3Progress(supabaseAdmin: AdminClient, jobId: string) {
-  const count = async (build: (q: any) => any) => {
-    const { count: value, error } = await build(
-      supabaseAdmin.from("bottles").select("id", { count: "exact", head: true }),
-    );
-    if (error) throw new Error(error.message);
-    return value ?? 0;
-  };
-  const pendingWithNote = async () => {
-    const { count: value, error } = await supabaseAdmin
-      .from("bottles")
-      .select("id,catalog_source_notes!inner(bottle_id)", { count: "exact", head: true })
-      .is("fp_v3_scored_at", null);
-    if (error) throw new Error(error.message);
-    return value ?? 0;
-  };
-  const lastWrite = async () => {
-    const { data, error } = await supabaseAdmin
-      .from("bottles")
-      .select("fp_v3_scored_at")
-      .not("fp_v3_scored_at", "is", null)
-      .order("fp_v3_scored_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    return (data?.fp_v3_scored_at as string | null) ?? null;
-  };
-  const jobState = async () => {
-    const { data, error } = await supabaseAdmin
-      .from("catalog_jobs")
-      .select("note")
-      .eq("id", jobId)
-      .maybeSingle();
-    if (error) throw new Error(error.message);
-    return String(data?.note ?? "").includes(REFINGERPRINT_V3_PAUSE_MARKER);
-  };
-  const oneMinuteAgo = new Date(Date.now() - 60_000).toISOString();
-  const fiveMinutesAgo = new Date(Date.now() - 300_000).toISOString();
-  const [scored, pending, thin, empty, ambiguous, wrote1m, wrote5m, lastWriteAt, paused] =
-    await Promise.all([
-      count((q) => q.not("fp_v3_scored_at", "is", null)),
-      pendingWithNote(),
-      count((q) => q.not("fp_v3_scored_at", "is", null).lte("fp_v3_axes_read", 3)),
-      count((q) => q.not("fp_v3_scored_at", "is", null).eq("fp_v3_axes_read", 0)),
-      count((q) => q.eq("fp_v3_pipeline", FINGERPRINT_PIPELINE_V3_AMBIGUOUS)),
-      count((q) => q.gte("fp_v3_scored_at", oneMinuteAgo)),
-      count((q) => q.gte("fp_v3_scored_at", fiveMinutesAgo)),
-      lastWrite(),
-      jobState(),
-    ]);
+export type RefingerprintV3Snapshot = {
+  scored: number;
+  pending: number;
+  thin: number;
+  empty: number;
+  ambiguous: number;
+  wrote1m: number;
+  wrote5m: number;
+  rowsPerSecond: number;
+  lastWriteAt: string | null;
+  paused: boolean;
+  updatedAt: string | null;
+};
+
+const EMPTY_SNAPSHOT: RefingerprintV3Snapshot = {
+  scored: 0,
+  pending: 0,
+  thin: 0,
+  empty: 0,
+  ambiguous: 0,
+  wrote1m: 0,
+  wrote5m: 0,
+  rowsPerSecond: 0,
+  lastWriteAt: null,
+  paused: false,
+  updatedAt: null,
+};
+
+function shapeSnapshot(raw: any, updatedAt: string | null): RefingerprintV3Snapshot {
+  const num = (value: unknown) => (typeof value === "number" ? value : Number(value ?? 0) || 0);
   return {
-    scored,
-    pending,
-    thin,
-    empty,
-    ambiguous,
-    wrote1m,
-    wrote5m,
-    rowsPerSecond: wrote5m / 300,
-    lastWriteAt,
-    paused,
+    scored: num(raw?.scored),
+    pending: num(raw?.pending),
+    thin: num(raw?.thin),
+    empty: num(raw?.empty),
+    ambiguous: num(raw?.ambiguous),
+    wrote1m: num(raw?.wrote1m),
+    wrote5m: num(raw?.wrote5m),
+    rowsPerSecond: num(raw?.rowsPerSecond),
+    lastWriteAt: (raw?.lastWriteAt as string | null) ?? null,
+    paused: Boolean(raw?.paused),
+    updatedAt,
   };
 }
+
+/**
+ * Reads the cached aggregate written by the runner. One indexed single-row read —
+ * the nine full-table counts this replaced were starving the request path.
+ */
+export async function getRefingerprintV3Progress(
+  supabaseAdmin: AdminClient,
+  jobId: string,
+): Promise<RefingerprintV3Snapshot> {
+  const { data, error } = await supabaseAdmin
+    .from("catalog_progress_cache")
+    .select("snapshot,updated_at")
+    .eq("job_id", jobId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!data) return EMPTY_SNAPSHOT;
+  return shapeSnapshot(data.snapshot, (data.updated_at as string | null) ?? null);
+}
+
+/** Recomputes the aggregate in a single database pass and caches it. */
+export async function refreshRefingerprintV3Progress(
+  supabaseAdmin: AdminClient,
+  jobId: string,
+): Promise<RefingerprintV3Snapshot> {
+  const { data, error } = await supabaseAdmin.rpc("refingerprint_v3_refresh_progress", {
+    v_job_id: jobId,
+  });
+  if (error) throw new Error(error.message);
+  return shapeSnapshot(data, new Date().toISOString());
+}
+
+/** Cheap queue check for a tick that must not pay for the full aggregate. */
+export async function getRefingerprintV3PendingCount(supabaseAdmin: AdminClient) {
+  const { data, error } = await supabaseAdmin.rpc("refingerprint_v3_pending_count");
+  if (error) throw new Error(error.message);
+  return Number(data ?? 0);
+}
+
+export async function isRefingerprintV3Paused(supabaseAdmin: AdminClient, jobId: string) {
+  const { data, error } = await supabaseAdmin
+    .from("catalog_jobs")
+    .select("note")
+    .eq("id", jobId)
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  return String(data?.note ?? "").includes(REFINGERPRINT_V3_PAUSE_MARKER);
+}
+
+export async function unscheduleRefingerprintV3Cron(supabaseAdmin: AdminClient, jobName: string) {
+  const { data, error } = await supabaseAdmin.rpc("refingerprint_v3_unschedule", {
+    v_job_name: jobName,
+  });
+  if (error) throw new Error(error.message);
+  return Boolean(data);
+}
+
 
 export async function setRefingerprintV3Paused(
   supabaseAdmin: AdminClient,
