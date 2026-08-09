@@ -169,11 +169,12 @@ export async function refingerprintCuveeByBottleId(
       fp_oak: fp.oak,
       fp_body: fp.body,
       fp_savory: fp.savory,
-      ax_body: fp.body,
-      ax_fruit_char: fp.savory,
-      ax_tannin: fp.tannin,
-      ax_acidity: fp.acid,
+      // ax_body / ax_fruit_char / ax_tannin / ax_acidity are GENERATED ALWAYS
+      // columns — writing them fails the whole update with
+      // 'column "ax_body" can only be updated to DEFAULT'. Only ax_sweet is
+      // an independent column.
       ax_sweet,
+
       source: seed.source
         ? `${seed.source}; refingerprinted (cuvée-level)`
         : "refingerprinted (cuvée-level)",

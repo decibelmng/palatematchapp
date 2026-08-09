@@ -19,10 +19,19 @@ export function ScanStateMessage({
   failure: ScanFailure;
   onRetry: () => void;
 }) {
+  // The mutation labels every stage it can die in ("Preparing photo 1",
+  // "Starting the scan"). That label is authored copy, never database text, so
+  // it survives the leak filter and tells the user (and us) where it stopped.
+  const raw = failure.kind === "threw" ? ((failure.error as Error)?.message ?? "") : "";
+  const stage = /^([A-Z][^:]{3,40}):/.exec(raw)?.[1] ?? null;
+
   const headline =
     failure.kind === "threw"
-      ? friendlyError(failure.error, "That scan didn't finish.")
+      ? stage
+        ? `${stage} didn't finish.`
+        : friendlyError(failure.error, "That scan didn't finish.")
       : "Couldn't read that list.";
+
 
   return (
     <div role="alert" className="mt-6 rounded-xl border border-destructive/40 bg-destructive/5 p-4">
