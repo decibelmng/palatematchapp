@@ -23,6 +23,14 @@ import { prepareImageForScan } from "@/lib/image-downscale";
 
 export type ScanStatus = "idle" | "running" | "partial" | "complete" | "failed";
 
+/**
+ * One photo per vision call. Two pages per call doubled the JSON the model had
+ * to emit, and the hang we chased was a ~4.9k-token response severed at 23s.
+ * Smaller units finish sooner, retry independently, and land page by page — the
+ * batches run concurrently in the pool, so wall-clock time does not double.
+ */
+const PAGES_PER_BATCH = 1;
+
 /** Client-side per-batch deadline. Longer than the server's own 60s + 45s
  *  retry budget on purpose — see the comment at the race below. */
 const BATCH_DEADLINE_MS = 150_000;
