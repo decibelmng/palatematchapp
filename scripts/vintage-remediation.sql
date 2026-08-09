@@ -23,7 +23,7 @@ resolvable AS (
     WHERE x.vintage = bad.scanned_vintage
       AND x.type = bad.b_type
       AND coalesce(lower(x.producer), '') = coalesce(lower(bad.b_producer), '')
-    ORDER BY word_similarity(coalesce(bad.b_name, ''), coalesce(x.name, '')) DESC
+    ORDER BY extensions.word_similarity(coalesce(bad.b_name, ''), coalesce(x.name, '')) DESC
     LIMIT 1
   ) AS correct_vintage_bottle_id
   FROM bad
