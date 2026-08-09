@@ -100,14 +100,28 @@ export const refingerprintV3Progress = createServerFn({ method: "GET" })
       if (error) throw new Error(error.message);
       return c ?? 0;
     };
-    const [scored, pending, thin, empty, ambiguous] = await Promise.all([
+    // Newest shadow write, so a reopened tab can tell "idle" from "still going"
+    // without waiting for its own first batch to land.
+    const lastWrite = async () => {
+      const { data, error } = await supabaseAdmin
+        .from("bottles")
+        .select("fp_v3_scored_at")
+        .not("fp_v3_scored_at", "is", null)
+        .order("fp_v3_scored_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw new Error(error.message);
+      return (data?.fp_v3_scored_at as string | null) ?? null;
+    };
+    const [scored, pending, thin, empty, ambiguous, lastWriteAt] = await Promise.all([
       count((q: any) => q.not("fp_v3_scored_at", "is", null)),
       pendingWithNote(),
       count((q: any) => q.not("fp_v3_scored_at", "is", null).lte("fp_v3_axes_read", 3)),
       count((q: any) => q.not("fp_v3_scored_at", "is", null).eq("fp_v3_axes_read", 0)),
       count((q: any) => q.eq("fp_v3_pipeline", FINGERPRINT_PIPELINE_V3_AMBIGUOUS)),
+      lastWrite(),
     ]);
-    return { scored, pending, thin, empty, ambiguous };
+    return { scored, pending, thin, empty, ambiguous, lastWriteAt };
 
   });
 
