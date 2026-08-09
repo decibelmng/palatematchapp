@@ -40,7 +40,9 @@ describe("tie-break — each rule in isolation", () => {
     // The approximate row wins every later rule; the vintage rule must still
     // decide, because a score taken off a 15-year-older bottle may not describe
     // the wine on the list at all.
-    const exact = row({ key: "exact", predicted: 4.5, isCatalog: false, sim: 0.2, price: 300 });
+    // Both are catalog readings — an estimated line can no longer be the Call
+    // at all, so this rule is exercised inside the catalog pool.
+    const exact = row({ key: "exact", predicted: 4.5, isCatalog: true, sim: 0.2, price: 300 });
     const approx = row({ key: "approx", predicted: 4.5, isCatalog: true, sim: 0.9, greatValue: true, price: 20, approxFrom: 2007 });
     expect(compareCallCandidates(exact, approx)).toBeLessThan(0);
     expect(pickCall([approx, exact])!.key).toBe("exact");
@@ -75,7 +77,7 @@ describe("tie-break — each rule in isolation", () => {
   });
 
   it("higher predicted still beats everything outside the 0.1 window", () => {
-    const best = row({ key: "best", predicted: 4.6, isCatalog: false, sim: 0.1, price: 400 });
+    const best = row({ key: "best", predicted: 4.6, isCatalog: true, sim: 0.1, price: 400 });
     const worse = row({ key: "worse", predicted: 4.2, isCatalog: true, sim: 0.9, price: 30 });
     expect(pickCall([best, worse])!.key).toBe("best");
   });
