@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 const JOB_ID = "fcf3b92a-0700-4a85-82a4-7d0d6b5af2a9";
+const CRON_JOB_NAME = "refingerprint-v3-main-queue";
 const MODEL = "google/gemini-3.6-flash";
 const INVOCATION_BUDGET_MS = 55_000;
 const MAX_ROWS_PER_INVOCATION = 1500;
