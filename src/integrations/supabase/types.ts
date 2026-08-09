@@ -396,6 +396,62 @@ export type Database = {
           },
         ]
       }
+      catalog_source_notes: {
+        Row: {
+          ambiguous: boolean
+          bottle_id: string
+          created_at: string
+          join_key: string
+          join_method: string
+          note: string
+          points: number | null
+          source: string
+          source_designation: string | null
+          source_price: number | null
+          source_province: string | null
+          source_region: string | null
+          source_variety: string | null
+        }
+        Insert: {
+          ambiguous?: boolean
+          bottle_id: string
+          created_at?: string
+          join_key: string
+          join_method: string
+          note: string
+          points?: number | null
+          source?: string
+          source_designation?: string | null
+          source_price?: number | null
+          source_province?: string | null
+          source_region?: string | null
+          source_variety?: string | null
+        }
+        Update: {
+          ambiguous?: boolean
+          bottle_id?: string
+          created_at?: string
+          join_key?: string
+          join_method?: string
+          note?: string
+          points?: number | null
+          source?: string
+          source_designation?: string | null
+          source_price?: number | null
+          source_province?: string | null
+          source_region?: string | null
+          source_variety?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "catalog_source_notes_bottle_id_fkey"
+            columns: ["bottle_id"]
+            isOneToOne: true
+            referencedRelation: "bottles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       feedback: {
         Row: {
           app_version: string | null
