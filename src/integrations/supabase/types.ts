@@ -90,6 +90,7 @@ export type Database = {
           fp_tannin_v3: number | null
           fp_v3_axes_read: number | null
           fp_v3_job_id: string | null
+          fp_v3_pipeline: string | null
           fp_v3_scored_at: string | null
           fp_vec: string | null
           grape: string | null
@@ -152,6 +153,7 @@ export type Database = {
           fp_tannin_v3?: number | null
           fp_v3_axes_read?: number | null
           fp_v3_job_id?: string | null
+          fp_v3_pipeline?: string | null
           fp_v3_scored_at?: string | null
           fp_vec?: string | null
           grape?: string | null
@@ -214,6 +216,7 @@ export type Database = {
           fp_tannin_v3?: number | null
           fp_v3_axes_read?: number | null
           fp_v3_job_id?: string | null
+          fp_v3_pipeline?: string | null
           fp_v3_scored_at?: string | null
           fp_vec?: string | null
           grape?: string | null
@@ -2585,6 +2588,7 @@ export type Database = {
               fp_tannin_v3: number | null
               fp_v3_axes_read: number | null
               fp_v3_job_id: string | null
+              fp_v3_pipeline: string | null
               fp_v3_scored_at: string | null
               fp_vec: string | null
               grape: string | null
@@ -2662,6 +2666,7 @@ export type Database = {
               fp_tannin_v3: number | null
               fp_v3_axes_read: number | null
               fp_v3_job_id: string | null
+              fp_v3_pipeline: string | null
               fp_v3_scored_at: string | null
               fp_vec: string | null
               grape: string | null

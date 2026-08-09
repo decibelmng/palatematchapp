@@ -74,6 +74,10 @@ export type ResolvedWine = ScannedWine & {
   /** Matched a different vintage than the list showed — surface as
    *  "closest vintage we have", never as a clean match. */
   vintage_approx?: boolean;
+  /** The vintage on the matched catalog row — what "closest vintage we have"
+   *  actually names. Null when nothing matched. */
+  matched_vintage?: number | null;
+
   /** Present when the row came from persisted scan_wines — lets a rating link
    *  back to the exact scan line it was made from. */
   scan_wine_id?: string | null;
@@ -363,8 +367,12 @@ async function resolveAgainstCatalog(
         `q="${q}"`,
         ...best.verdict.reasons,
         ...(runnerUpNote ? [runnerUpNote] : []),
+        // The vintage actually on the matched row, so a reopened scan can name
+        // it ("closest vintage we have — 2013") without re-reading the catalog.
+        ...(r.vintage != null ? [`matched_vintage:${r.vintage}`] : []),
         ...(best.verdict.vintageGap != null ? ["flag:vintage_approx"] : []),
       ];
+
       return {
         ...w,
         fp_resolved: {
@@ -378,6 +386,8 @@ async function resolveAgainstCatalog(
         match_score: best.verdict.score,
         match_reasons: reasons,
         vintage_approx: best.verdict.vintageGap != null,
+        matched_vintage: (r.vintage as number | null) ?? null,
+
       };
     }
     return {

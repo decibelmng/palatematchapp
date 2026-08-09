@@ -102,6 +102,14 @@ export function clamp01OrNull(n: unknown): number | null {
 const GATEWAY_URL = "https://ai.gateway.lovable.dev/v1/chat/completions";
 export const FINGERPRINT_MODEL_V3 = "google/gemini-2.5-flash";
 export const FINGERPRINT_PIPELINE_V3 = "note_v3_deanchored";
+/**
+ * Same scorer, same prompt — but the review it read may belong to a sibling
+ * bottle (one review, several plausible rows). The reading is kept and stamped
+ * so it can be measured against the clean set; until that check clears, a wine
+ * carrying this stamp may be ranked but never named as the Call.
+ */
+export const FINGERPRINT_PIPELINE_V3_AMBIGUOUS = "note_v3_ambiguous_join";
+
 /** sha256 of SCORE_SYS_V3; recompute and re-register in `fingerprint_prompts`
  *  whenever the prompt text above changes:
  *    bun run scripts/fp-prompt-hash.ts

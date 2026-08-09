@@ -24,6 +24,8 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import {
   scoreFromNoteV3,
   FINGERPRINT_PIPELINE_V3,
+  FINGERPRINT_PIPELINE_V3_AMBIGUOUS,
+
   V3_AXES,
 } from "@/lib/fingerprint-prompt-v3";
 
@@ -81,22 +83,28 @@ export const refingerprintV3Progress = createServerFn({ method: "GET" })
       if (error) throw new Error(error.message);
       return c ?? 0;
     };
+    // Pending = any bottle with a recovered review and no shadow reading yet.
+    // Ambiguous joins are IN scope: excluding them would leave ~10k rows on the
+    // v1 typicity grid after the swap, which is exactly the mixed calibration
+    // this pipeline exists to remove. They are scored, stamped
+    // note_v3_ambiguous_join, and kept out of the Call alongside thin reads.
     const pendingWithNote = async () => {
       const { count: c, error } = await supabaseAdmin
         .from("bottles")
         .select("id,catalog_source_notes!inner(bottle_id)", { count: "exact", head: true })
-        .is("fp_v3_scored_at", null)
-        .eq("catalog_source_notes.ambiguous", false);
+        .is("fp_v3_scored_at", null);
       if (error) throw new Error(error.message);
       return c ?? 0;
     };
-    const [scored, pending, thin, empty] = await Promise.all([
+    const [scored, pending, thin, empty, ambiguous] = await Promise.all([
       count((q: any) => q.not("fp_v3_scored_at", "is", null)),
       pendingWithNote(),
       count((q: any) => q.not("fp_v3_scored_at", "is", null).lte("fp_v3_axes_read", 3)),
       count((q: any) => q.not("fp_v3_scored_at", "is", null).eq("fp_v3_axes_read", 0)),
+      count((q: any) => q.eq("fp_v3_pipeline", FINGERPRINT_PIPELINE_V3_AMBIGUOUS)),
     ]);
-    return { scored, pending, thin, empty };
+    return { scored, pending, thin, empty, ambiguous };
+
   });
 
 export const refingerprintV3Batch = createServerFn({ method: "POST" })
@@ -113,28 +121,37 @@ export const refingerprintV3Batch = createServerFn({ method: "POST" })
     // The note is the recovered human review in catalog_source_notes, joined on
     // bottle_id — NOT bottles.tasting_note, which carries a note for only 116
     // rows. An ambiguous join (one review that could belong to any of several
-    // sibling bottles) is EXCLUDED: reading a wine from a review that may
-    // describe its neighbour is the same fabrication this pipeline exists to
-    // remove. Those rows keep their v1 values until the join is resolved.
+    // sibling bottles) is IN SCOPE and stamped note_v3_ambiguous_join. Leaving
+    // it out would keep ~10k rows on the v1 typicity grid after the swap — the
+    // mixed calibration we rejected — and it turns a guess into a measurement:
+    // their within-group SD can be compared against the clean set afterward.
+    // Until that check clears, the flag keeps them out of the Call.
     const { data: rows, error: readErr } = await supabaseAdmin
       .from("bottles")
       .select("id,type,catalog_source_notes!inner(note,ambiguous)")
       .is("fp_v3_scored_at", null)
-      .eq("catalog_source_notes.ambiguous", false)
       .order("id", { ascending: true })
       .limit(size);
     if (readErr) throw new Error(readErr.message);
 
+    const firstNote = (r: any) =>
+      Array.isArray(r.catalog_source_notes) ? r.catalog_source_notes[0] : r.catalog_source_notes;
     const batch = (rows ?? [])
-      .map((r: any) => ({
-        id: r.id as string,
-        type: r.type as string,
-        note: String(r.catalog_source_notes?.[0]?.note ?? r.catalog_source_notes?.note ?? ""),
-      }))
+      .map((r: any) => {
+        const n = firstNote(r) ?? {};
+        return {
+          id: r.id as string,
+          type: r.type as string,
+          note: String(n.note ?? ""),
+          ambiguous: Boolean(n.ambiguous),
+        };
+      })
       .filter((r) => r.note.trim().length >= 20);
     const errors: string[] = [];
     let wrote = 0;
     let empty = 0;
+    let ambiguousWrote = 0;
+
 
     await mapLimit(batch, lanes, async (row) => {
       let fp: Record<string, number | null> | null = null;
@@ -164,6 +181,9 @@ export const refingerprintV3Batch = createServerFn({ method: "POST" })
         fp_v3_scored_at: new Date().toISOString(),
         fp_v3_job_id: data.jobId,
         fp_v3_axes_read: axesReadCount,
+        fp_v3_pipeline: row.ambiguous
+          ? FINGERPRINT_PIPELINE_V3_AMBIGUOUS
+          : FINGERPRINT_PIPELINE_V3,
       };
       for (const a of V3_AXES) patch[`fp_${a}_v3`] = values[a];
       // ax_sweet is independent of the eight style axes and is not generated,
@@ -172,22 +192,26 @@ export const refingerprintV3Batch = createServerFn({ method: "POST" })
 
       const { error: wErr } = await supabaseAdmin.from("bottles").update(patch as never).eq("id", row.id);
       if (wErr) errors.push(`${row.id} write: ${wErr.message}`);
-      else wrote++;
+      else {
+        wrote++;
+        if (row.ambiguous) ambiguousWrote++;
+      }
     });
 
     const { count: remaining } = await supabaseAdmin
       .from("bottles")
       .select("id,catalog_source_notes!inner(bottle_id)", { count: "exact", head: true })
-      .is("fp_v3_scored_at", null)
-      .eq("catalog_source_notes.ambiguous", false);
+      .is("fp_v3_scored_at", null);
 
     return {
       pipeline: FINGERPRINT_PIPELINE_V3,
       model: data.model,
       picked: batch.length,
       wrote,
+      ambiguousWrote,
       empty,
       remaining: remaining ?? 0,
       errors: errors.slice(0, 10),
     };
   });
+
