@@ -8,6 +8,7 @@ import { AuthGate } from "@/components/AuthGate";
 import { loadScanForRanking, shareScan } from "@/lib/scans-history.functions";
 import { createOrGetInvite } from "@/lib/invites.functions";
 import { useScanRanking } from "@/hooks/use-scan-ranking";
+import { VenueAttribution } from "@/components/RestaurantPickers";
 import { VerdictSurface } from "@/components/verdict";
 import { applyControls, DEFAULT_CONTROLS, type Controls } from "@/lib/list-controls";
 import { storedRowToResolved, currencyOfStoredRows } from "@/lib/scan-row-adapt";
