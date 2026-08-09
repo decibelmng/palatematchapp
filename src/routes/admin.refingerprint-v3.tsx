@@ -6,6 +6,10 @@ import {
   refingerprintV3Batch,
   refingerprintV3Progress,
 } from "@/lib/refingerprint-v3.functions";
+import {
+  refingerprintV3NotelessBatch,
+  refingerprintV3NotelessProgress,
+} from "@/lib/refingerprint-v3-noteless.functions";
 
 export const Route = createFileRoute("/admin/refingerprint-v3")({
   ssr: false,
@@ -15,6 +19,71 @@ export const Route = createFileRoute("/admin/refingerprint-v3")({
     </AuthGate>
   ),
 });
+
+/**
+ * The 116 rows the main queue can never see: no recovered human review, so the
+ * inner join on catalog_source_notes excludes them. Fourteen are wines the owner
+ * has rated, which makes this tail a swap blocker rather than a follow-up.
+ */
+function NotelessTail({ jobId }: { jobId: string }) {
+  const runBatch = useServerFn(refingerprintV3NotelessBatch);
+  const readProgress = useServerFn(refingerprintV3NotelessProgress);
+  const [state, setState] = useState<{ pending: number; done: number } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    readProgress().then(setState).catch(() => setState(null));
+  }, [readProgress]);
+
+  async function run() {
+    setBusy(true);
+    setMsg(null);
+    try {
+      let guard = 0;
+      while (guard++ < 12) {
+        const res = await runBatch({ data: { jobId, model: MODEL, batchSize: 40, concurrency: 8 } });
+        setMsg(
+          `wrote ${res.wrote}/${res.picked}` +
+            (res.notesGenerated > 0 ? `, ${res.notesGenerated} notes written` : "") +
+            (res.errors.length > 0 ? `\n${res.errors.join("\n")}` : ""),
+        );
+        if (res.picked === 0) break;
+      }
+      setState(await readProgress());
+    } catch (e: any) {
+      setMsg(e?.message ?? String(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="pm-card space-y-2 p-3">
+      <h2 className="text-(length:--fs-body) font-medium text-(--text)">Wines with no review</h2>
+      <p className="text-(length:--fs-meta) text-(--text-muted)">
+        These have no recovered tasting note, so the main queue skips them. They are read from the
+        note the wine already carries, or from one written for it — a weaker reading, recorded
+        separately so it can be told apart later.
+      </p>
+      {state && (
+        <p className="text-(length:--fs-meta) text-(--text)">
+          {state.pending.toLocaleString()} left · {state.done.toLocaleString()} read this way
+        </p>
+      )}
+      <button
+        onClick={run}
+        disabled={busy || !jobId}
+        className="min-h-[44px] w-full rounded-md border border-(--border-strong) px-4 text-(length:--fs-body) text-(--text) disabled:opacity-50"
+      >
+        {busy ? "Reading…" : "Read these"}
+      </button>
+      {msg && (
+        <p className="whitespace-pre-wrap text-(length:--fs-meta) text-(--text-muted)">{msg}</p>
+      )}
+    </section>
+  );
+}
 
 /** The catalog_jobs row opened for this run. */
 const JOB_ID = "fcf3b92a-0700-4a85-82a4-7d0d6b5af2a9";
@@ -169,6 +238,8 @@ function RefingerprintV3() {
       {fatal && (
         <p className="pm-card whitespace-pre-wrap p-3 text-(length:--fs-meta) text-(--text)">{fatal}</p>
       )}
+
+      <NotelessTail jobId={jobId} />
 
       <ul className="space-y-1 text-(length:--fs-meta) text-(--text-muted)">
         {log.map((e, i) => (
