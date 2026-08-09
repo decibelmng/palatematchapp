@@ -37,6 +37,26 @@ function useRestaurantCurrency(restaurantId: string | null) {
   });
 }
 
+/** Read the currency finalize wrote for THIS scan. One value, one owner: the
+ *  column is authoritative and derivation is only the fallback when it's null.
+ *  Two paths computing the same figure is how scans.currency drifted to null
+ *  while every wine on it carried USD. */
+function useScanCurrency(scanId: string | null, phase: string) {
+  return useQuery({
+    // Phase is part of the key: finalize writes the column after the scan row
+    // exists, so the first read (mid-scan) legitimately sees null.
+    queryKey: ["scan-currency", scanId, phase],
+    enabled: !!scanId,
+    queryFn: async () => {
+      const { data } = await supabase.from("scans").select("currency").eq("id", scanId!).maybeSingle();
+      const c = (data as { currency: string | null } | null)?.currency ?? null;
+      return (c as CurrencyCode | null);
+    },
+  });
+}
+
+
+
 
 export const Route = createFileRoute("/scan/list")({
   ssr: false,
@@ -66,7 +86,11 @@ function Scan() {
   // wins (step 2), which is correct for mixed-currency venues.
   const restaurantId = cap.prescanRestaurant?.id ?? null;
   const { data: restaurantCurrency } = useRestaurantCurrency(restaurantId);
-  const rank = useScanRanking(cap.wines, null, restaurantCurrency ?? null);
+  // Stored scan currency wins; derivation runs only when the column is null
+  // (an in-flight scan, or one finalized before the aggregation shipped).
+  const { data: storedScanCurrency } = useScanCurrency(cap.scanId ?? null, cap.status);
+  const rank = useScanRanking(cap.wines, storedScanCurrency ?? null, restaurantCurrency ?? null);
+
 
   // Photo captured on the chooser sheet. The camera already opened there, so
   // this screen is the review step, never a gate in front of the camera.
