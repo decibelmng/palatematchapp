@@ -151,17 +151,32 @@ export const PRIOR_ALPHA = 0.5;
  *   g(gap) = 0                                     for gap ≤ 2
  *   g(gap) = GAP_MAX · (1 − e^(−(gap−2)/GAP_TAU))  otherwise
  *
- * With GAP_MAX = 1.0 and GAP_TAU = 5, α_eff runs 0.5 → ~1.0:
- *   3y 0.09 · 5y 0.23 · 7y 0.32 · 8y 0.35 · 10y 0.40 · 15y 0.46 · 25y 0.49
+ * CALIBRATED 2026-08-10 — the constants below are no longer a guess.
+ *
+ * The within-cuvée regression over the v3 shadow columns (|Δaxis| on |Δvintage|,
+ * same producer + cuvée, different years) came back nearly flat: slope
+ * 0.002–0.004 per year on an intercept of 0.16, r² ≤ 0.003. Two readings of the
+ * same cuvée a decade apart differ by about 0.19; two readings of the SAME
+ * vintage differ by about 0.16. Vintage explains almost none of it — the spread
+ * is read noise between reviewers, not the growing season.
+ *
+ * So the honest share of the gap that is real staleness is slope·gap /
+ * (intercept + slope·gap): about 0.16 at ten years, 0.32 at twenty-five, and it
+ * is close to LINEAR over the range we can observe rather than saturating early.
+ * GAP_MAX therefore drops 1.0 → 0.30 and GAP_TAU stretches 5 → 12, which tracks
+ * that near-linear rise across 0–25 years and stops well short of doubling α.
+ *
+ * α_eff now runs 0.5 → ~0.63 instead of 0.5 → ~1.0:
+ *   3y 0.02 · 5y 0.06 · 7y 0.09 · 8y 0.11 · 10y 0.15 · 15y 0.20 · 25y 0.25
  * (values are the α increment; α_eff = 0.5·(1+g)).
  *
- * These constants are a considered guess, not a measurement. The per-axis
- * within-cuvée decay regression over the v3 shadow columns is what will
- * replace them with real numbers.
+ * Do not restore the old constants without a new regression. The previous
+ * numbers moved a distant-vintage prediction by roughly a third of a star on
+ * strength of a decay this catalog does not contain.
  */
 export const VINTAGE_GAP_FLOOR = 2;
-export const VINTAGE_GAP_TAU = 5;
-export const VINTAGE_GAP_MAX = 1.0;
+export const VINTAGE_GAP_TAU = 12;
+export const VINTAGE_GAP_MAX = 0.3;
 
 /** g(gap) ∈ [0, VINTAGE_GAP_MAX]. Unknown/absent gap ⇒ 0: we cannot claim
  *  staleness we did not observe. */
@@ -171,6 +186,7 @@ export function vintageGapPenalty(gap: number | null | undefined): number {
   if (over <= 0) return 0;
   return VINTAGE_GAP_MAX * (1 - Math.exp(-over / VINTAGE_GAP_TAU));
 }
+
 
 /** Effective prior weight for one candidate. */
 export function effectiveAlpha(cand: BottleFp): number {
