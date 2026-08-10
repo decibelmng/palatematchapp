@@ -5,6 +5,7 @@ import { AuthGate } from "@/components/AuthGate";
 import {
   refingerprintV3Progress,
   refingerprintV3SetPaused,
+  refingerprintV3TickHealth,
 } from "@/lib/refingerprint-v3.functions";
 import {
   refingerprintV3NotelessBatch,
