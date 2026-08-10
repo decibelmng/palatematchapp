@@ -7,8 +7,67 @@ import {
 
 export const REFINGERPRINT_V3_BATCH_SIZE = 125;
 export const REFINGERPRINT_V3_CONCURRENCY = 48;
+/**
+ * One invocation's work budget. The lease TTL below is DERIVED from it — never
+ * set independently. A TTL far longer than the budget is what made three of
+ * every four cron ticks skip on "another runner holds the lease".
+ */
+export const REFINGERPRINT_V3_BUDGET_MS = 55_000;
+/** Budget + margin for teardown; still short enough that a crashed runner frees the queue fast. */
+export const REFINGERPRINT_V3_LOCK_TTL_MS = REFINGERPRINT_V3_BUDGET_MS + 25_000;
 export const REFINGERPRINT_V3_PAUSE_MARKER = "[v3 cron paused]";
+/**
+ * Tick-health row. Separate key from the progress snapshot so the batch writer
+ * cannot clobber it. A job returning 401 forever must look different from a job
+ * with an empty queue — watchdogs measure rate and outcome, not liveness.
+ */
+export const REFINGERPRINT_V3_TICK_KEY = "9f2c7d18-4f2b-4c6a-9c1e-7a6b5d3e2f10";
 const LOCK_PREFIX = "[v3 lock ";
+
+export type RefingerprintV3Tick = {
+  at: string;
+  status: number;
+  ok: boolean;
+  wrote: number;
+  remaining: number | null;
+  reason: string | null;
+};
+
+export async function recordRefingerprintV3Tick(
+  supabaseAdmin: AdminClient,
+  tick: RefingerprintV3Tick,
+) {
+  try {
+    await supabaseAdmin
+      .from("catalog_progress_cache")
+      .upsert(
+        { job_id: REFINGERPRINT_V3_TICK_KEY, snapshot: tick, updated_at: new Date().toISOString() },
+        { onConflict: "job_id" },
+      );
+  } catch {
+    // Never let health bookkeeping fail the run.
+  }
+}
+
+export async function getRefingerprintV3Tick(
+  supabaseAdmin: AdminClient,
+): Promise<RefingerprintV3Tick | null> {
+  const { data } = await supabaseAdmin
+    .from("catalog_progress_cache")
+    .select("snapshot")
+    .eq("job_id", REFINGERPRINT_V3_TICK_KEY)
+    .maybeSingle();
+  const raw = data?.snapshot as any;
+  if (!raw) return null;
+  return {
+    at: String(raw.at ?? ""),
+    status: Number(raw.status ?? 0),
+    ok: Boolean(raw.ok),
+    wrote: Number(raw.wrote ?? 0),
+    remaining: raw.remaining == null ? null : Number(raw.remaining),
+    reason: raw.reason == null ? null : String(raw.reason),
+  };
+}
 
 /**
  * Single-flight lease. Only one runner (cron tick or admin/manual call) may hold
