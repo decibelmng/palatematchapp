@@ -56,3 +56,12 @@ export const refingerprintV3SetPaused = createServerFn({ method: "POST" })
     await refreshRefingerprintV3Progress(supabaseAdmin, data.jobId);
     return result;
   });
+export const refingerprintV3TickHealth = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const adminId = process.env["ADMIN_USER_ID"];
+    if (!adminId || context.userId !== adminId) throw new Error("Not authorized");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { getRefingerprintV3Tick } = await import("@/lib/refingerprint-v3.server");
+    return getRefingerprintV3Tick(supabaseAdmin);
+  });
