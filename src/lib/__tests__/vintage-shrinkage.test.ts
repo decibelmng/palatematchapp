@@ -46,6 +46,17 @@ describe("g(gap) shape", () => {
     expect(vintageGapPenalty(25)).toBeLessThanOrEqual(1);
   });
 
+  // Calibrated against the within-cuvée regression (slope ~0.003/yr on a 0.16
+  // intercept, r² ≤ 0.003): vintage explains a small minority of the movement,
+  // so the shrinkage it buys must stay small. This test is the guard against
+  // quietly restoring the old, unmeasured GAP_MAX = 1.0.
+  it("stays within the measured share of movement — never doubles α", () => {
+    expect(vintageGapPenalty(10)).toBeLessThan(0.2);
+    expect(vintageGapPenalty(25)).toBeLessThan(0.35);
+    expect(effectiveAlpha(cand("far", 25))).toBeLessThan(PRIOR_ALPHA * 1.4);
+  });
+
+
   it("treats an unknown gap as no claim of staleness", () => {
     expect(vintageGapPenalty(null)).toBe(0);
     expect(vintageGapPenalty(undefined)).toBe(0);
