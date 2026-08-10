@@ -201,3 +201,13 @@ for (const m of marks) {
   const line = names.map((n) => `${n}=${perArmScores[n].get(m.id)?.toFixed(2) ?? "—"}`).join("  ");
   console.log(`  ${m.name} ${m.vintage ?? ""} (${m.region ?? "?"}) v3=${m.scored} ${line}`);
 }
+
+console.log("\nAll scored reds on the list, by arm (predicted):");
+for (const r of scored.filter((x) => x.type === "red").sort((a, b) => (perArmScores["B_4axis"].get(b.id) ?? 0) - (perArmScores["B_4axis"].get(a.id) ?? 0))) {
+  console.log(
+    `  ${names.map((n) => (perArmScores[n].get(r.id) ?? NaN).toFixed(2)).join("  ")}  ` +
+    `axes=${AX7.filter((a) => (r as any)[a] != null).length}  ${r.name} ${r.vintage ?? ""} ${r.price ?? ""}`,
+  );
+}
+console.log("\nUnscored (no v3 reading) reds on the list:");
+for (const r of scan.filter((x) => x.type === "red" && !x.scored)) console.log(`  ${r.name} ${r.vintage ?? ""} ${r.price ?? ""}`);
