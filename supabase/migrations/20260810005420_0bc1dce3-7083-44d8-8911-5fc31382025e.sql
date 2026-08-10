@@ -1,0 +1,1 @@
+DO $$ BEGIN PERFORM public.refingerprint_v3_schedule('refingerprint-v3-main-queue', '* * * * *'); END $$;

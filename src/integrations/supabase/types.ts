@@ -439,6 +439,24 @@ export type Database = {
           },
         ]
       }
+      catalog_progress_cache: {
+        Row: {
+          job_id: string
+          snapshot: Json
+          updated_at: string
+        }
+        Insert: {
+          job_id: string
+          snapshot?: Json
+          updated_at?: string
+        }
+        Update: {
+          job_id?: string
+          snapshot?: Json
+          updated_at?: string
+        }
+        Relationships: []
+      }
       catalog_source_notes: {
         Row: {
           ambiguous: boolean
@@ -2415,6 +2433,23 @@ export type Database = {
           somm_status: string
           verified_at: string
         }[]
+      }
+      refingerprint_v3_pending_count: { Args: never; Returns: number }
+      refingerprint_v3_refresh_progress: {
+        Args: { v_job_id: string }
+        Returns: Json
+      }
+      refingerprint_v3_schedule: {
+        Args: { v_job_name: string; v_schedule?: string }
+        Returns: boolean
+      }
+      refingerprint_v3_unschedule: {
+        Args: { v_job_name: string }
+        Returns: boolean
+      }
+      refingerprint_v3_write_batch: {
+        Args: { v_job_id: string; v_rows: Json }
+        Returns: Json
       }
       resolve_username_to_id: { Args: { p_username: string }; Returns: string }
       respond_follow: {
