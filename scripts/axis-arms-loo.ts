@@ -211,3 +211,26 @@ for (const r of scored.filter((x) => x.type === "red").sort((a, b) => (perArmSco
 }
 console.log("\nUnscored (no v3 reading) reds on the list:");
 for (const r of scan.filter((x) => x.type === "red" && !x.scored)) console.log(`  ${r.name} ${r.vintage ?? ""} ${r.price ?? ""}`);
+
+// Paired comparison over the identical held-out wines (same fits, no re-run).
+function looErrs(type: WineType, axes: FpKey[]): Map<string, number> {
+  const pool = rated.filter((r) => typeOf(r) === type && r.scored);
+  const out = new Map<string, number>();
+  for (const held of pool) {
+    const rest = pool.filter((r) => r.id !== held.id).map((r): RatedFp => ({
+      id: r.id, name: r.name, producer: r.producer, region: r.region, type: typeOf(r), fp: fpOf(r, axes), stars: r.stars!,
+    }));
+    if (rest.length < 3) continue;
+    const [rec] = recommend(rest, [{ id: held.id, name: held.name, type: typeOf(held), fp: fpOf(held, axes) }], { restrictToRatedTypes: false });
+    if (rec) out.set(held.id, Math.abs(rec.predicted - held.stars!));
+  }
+  return out;
+}
+console.log("\n=== Paired |error| differences vs the 7-axis arm (reds) ===");
+const base = looErrs("red", ARMS["A_7axis"]);
+for (const n of ["B_4axis", "C_5axis", "D_6axis"]) {
+  const o = looErrs("red", ARMS[n]);
+  const d = [...base.keys()].map((id) => (o.get(id) ?? NaN) - base.get(id)!).filter(Number.isFinite);
+  const m = mean(d), se = sd(d) / Math.sqrt(d.length);
+  console.log(`  ${n} − A: ${m >= 0 ? "+" : ""}${m.toFixed(3)} [95% CI ${(m - 1.96 * se).toFixed(3)}, ${(m + 1.96 * se).toFixed(3)}] n=${d.length}`);
+}
