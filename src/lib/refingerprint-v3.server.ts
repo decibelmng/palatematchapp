@@ -159,12 +159,21 @@ export async function refreshRefingerprintV3Progress(
   return shapeSnapshot(data, new Date().toISOString());
 }
 
-/** Cheap queue check for a tick that must not pay for the full aggregate. */
+/**
+ * Cheap queue check. Reads the incrementally-maintained cache — never a scan.
+ * The old count(*) took 60-120s under a throttled instance and held a
+ * PostgREST connection for the whole of it, which is what starved the pool.
+ */
 export async function getRefingerprintV3PendingCount(supabaseAdmin: AdminClient) {
-  const { data, error } = await supabaseAdmin.rpc("refingerprint_v3_pending_count");
+  const { data, error } = await supabaseAdmin
+    .from("catalog_progress_cache")
+    .select("snapshot")
+    .eq("job_id", JOB_ID_ANY)
+    .maybeSingle();
   if (error) throw new Error(error.message);
-  return Number(data ?? 0);
+  return Number((data?.snapshot as any)?.pending ?? 0);
 }
+
 
 export async function isRefingerprintV3Paused(supabaseAdmin: AdminClient, jobId: string) {
   const { data, error } = await supabaseAdmin
