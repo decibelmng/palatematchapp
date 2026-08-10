@@ -166,3 +166,7 @@ console.log(`  paired engine − null: ${(mean(d) >= 0 ? "+" : "") + mean(d).toF
 console.log(`  engine beat null on ${d.filter((x) => x < 0).length} of ${d.length} wines`);
 console.log(`  rating spread: SD ${sd(rows.map((r) => r.stars)).toFixed(3)}, mean ${mean(rows.map((r) => r.stars)).toFixed(2)}`);
 console.log(`  rank agreement engine vs actual: Spearman ${spearman(rows.map((r) => r.pred), rows.map((r) => r.stars)).toFixed(3)}`);
+console.log(`  prediction spread: SD ${sd(rows.map((r) => r.pred)).toFixed(3)}, range ${Math.min(...rows.map((r) => r.pred)).toFixed(2)}–${Math.max(...rows.map((r) => r.pred)).toFixed(2)}`);
+const lo = rows.filter((r) => r.stars <= 2), hi = rows.filter((r) => r.stars >= 4);
+if (lo.length && hi.length) console.log(`  mean prediction: dislikes (≤2★) ${mean(lo.map((r) => r.pred)).toFixed(2)} vs loves (≥4★) ${mean(hi.map((r) => r.pred)).toFixed(2)} — separation ${(mean(hi.map((r) => r.pred)) - mean(lo.map((r) => r.pred))).toFixed(2)}`);
+console.log(`  MAE excluding the 5 catastrophic misses (|err|≥3): ${mean(abs.filter((e) => e < 3)).toFixed(3)} (n=${abs.filter((e) => e < 3).length})`);
