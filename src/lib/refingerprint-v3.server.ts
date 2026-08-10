@@ -248,11 +248,14 @@ export async function runRefingerprintV3Batch(
     })
     .filter((row: PendingRow) => row.note.trim().length >= 20);
   const errors: string[] = [];
-  let wrote = 0;
   let empty = 0;
   let ambiguousWrote = 0;
   let retries = 0;
+  const payload: Record<string, string | number | null>[] = [];
 
+  // The gateway round trip holds no database connection: rows were read in one
+  // query above, the lanes below touch nothing but the network, and every result
+  // lands in a single write call. Two database calls per batch, not 126.
   await mapLimit<PendingRow>(batch, lanes, async (row) => {
     let fp: Record<string, number | null> | null = null;
     for (let attempt = 0; attempt < 3; attempt++) {
@@ -275,31 +278,32 @@ export async function runRefingerprintV3Batch(
       0,
     );
     if (fp == null) empty++;
-    const patch: Record<string, string | number | null> = {
-      fp_v3_scored_at: new Date().toISOString(),
-      fp_v3_job_id: input.jobId,
-      fp_v3_axes_read: axesReadCount,
-      fp_v3_pipeline: row.ambiguous
-        ? FINGERPRINT_PIPELINE_V3_AMBIGUOUS
-        : FINGERPRINT_PIPELINE_V3,
+    if (row.ambiguous) ambiguousWrote++;
+    const entry: Record<string, string | number | null> = {
+      id: row.id,
+      axes_read: axesReadCount,
+      pipeline: row.ambiguous ? FINGERPRINT_PIPELINE_V3_AMBIGUOUS : FINGERPRINT_PIPELINE_V3,
     };
-    for (const axis of V3_AXES) patch[`fp_${axis}_v3`] = values[axis];
-    const { error: writeError } = await supabaseAdmin
-      .from("bottles")
-      .update(patch as never)
-      .eq("id", row.id);
-    if (writeError) errors.push(`${row.id} write: ${writeError.message}`);
-    else {
-      wrote++;
-      if (row.ambiguous) ambiguousWrote++;
-    }
+    for (const axis of V3_AXES) entry[axis] = values[axis];
+    payload.push(entry);
   });
 
-  const { count: remaining, error: remainingError } = await supabaseAdmin
-    .from("bottles")
-    .select("id,catalog_source_notes!inner(bottle_id)", { count: "exact", head: true })
-    .is("fp_v3_scored_at", null);
-  if (remainingError) throw new Error(remainingError.message);
+  let wrote = 0;
+  let remaining = 0;
+  if (payload.length > 0) {
+    const { data: written, error: writeError } = await supabaseAdmin.rpc(
+      "refingerprint_v3_write_batch",
+      { v_job_id: input.jobId, v_rows: payload },
+    );
+    if (writeError) errors.push(`batch write: ${writeError.message}`);
+    else {
+      wrote = Number((written as any)?.written ?? 0);
+      remaining = Number((written as any)?.pending ?? 0);
+    }
+  } else {
+    remaining = await getRefingerprintV3PendingCount(supabaseAdmin, input.jobId);
+  }
+
   return {
     pipeline: FINGERPRINT_PIPELINE_V3,
     model: input.model,
@@ -308,7 +312,7 @@ export async function runRefingerprintV3Batch(
     ambiguousWrote,
     empty,
     retries,
-    remaining: remaining ?? 0,
+    remaining,
     errors: errors.slice(0, 10),
   };
 }
