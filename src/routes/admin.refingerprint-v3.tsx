@@ -207,6 +207,22 @@ function RefingerprintV3Monitor() {
         </section>
       )}
 
+      {tick && (
+        <section
+          className={`pm-card space-y-1 p-3 ${tickFailed ? "border-(--amber)" : ""}`}
+        >
+          <p className="text-(length:--fs-body) font-medium text-(--text)">
+            {tickFailed
+              ? `Last run failed — ${tick.status}`
+              : "Last run completed normally"}
+          </p>
+          <p className="text-(length:--fs-meta) text-(--text-muted)">
+            {new Date(tick.at).toLocaleTimeString()} · wrote {tick.wrote.toLocaleString()}
+            {tick.reason ? ` · ${tick.reason}` : ""}
+          </p>
+        </section>
+      )}
+
 
       {stalled && (
         <section className="pm-card space-y-1 border-(--amber) p-3">
