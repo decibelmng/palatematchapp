@@ -26,6 +26,7 @@ export const Route = createFileRoute("/api/public/hooks/refingerprint-v3")({
           const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
           const {
             refreshRefingerprintV3Progress,
+            getRefingerprintV3Progress,
             getRefingerprintV3PendingCount,
             isRefingerprintV3Paused,
             unscheduleRefingerprintV3Cron,
@@ -40,7 +41,7 @@ export const Route = createFileRoute("/api/public/hooks/refingerprint-v3")({
           // tick pays for nothing beyond these.
           const [paused, pendingBefore] = await Promise.all([
             isRefingerprintV3Paused(supabaseAdmin, JOB_ID),
-            getRefingerprintV3PendingCount(supabaseAdmin),
+            getRefingerprintV3PendingCount(supabaseAdmin, JOB_ID),
           ]);
           if (paused || pendingBefore === 0) {
             let unscheduled = false;
@@ -100,8 +101,9 @@ export const Route = createFileRoute("/api/public/hooks/refingerprint-v3")({
           } finally {
             await releaseRefingerprintV3Lock(supabaseAdmin, JOB_ID);
           }
-          // One aggregate pass per tick, feeding the monitor's cache.
-          const after = await refreshRefingerprintV3Progress(supabaseAdmin, JOB_ID);
+          // The cache is maintained incrementally by the batch writer, so a tick
+          // never pays for a full-table aggregate.
+          const after = await getRefingerprintV3Progress(supabaseAdmin, JOB_ID);
           let unscheduled = false;
           if (after.pending === 0) {
             unscheduled = await unscheduleRefingerprintV3Cron(supabaseAdmin, CRON_JOB_NAME);
