@@ -5,6 +5,7 @@ import { AuthGate } from "@/components/AuthGate";
 import {
   refingerprintV3Progress,
   refingerprintV3SetPaused,
+  refingerprintV3TickHealth,
 } from "@/lib/refingerprint-v3.functions";
 import {
   refingerprintV3NotelessBatch,
@@ -112,20 +113,32 @@ function NotelessTail({ mainPending }: { mainPending: number | null }) {
   );
 }
 
+type Tick = {
+  at: string;
+  status: number;
+  ok: boolean;
+  wrote: number;
+  remaining: number | null;
+  reason: string | null;
+};
+
 function RefingerprintV3Monitor() {
   const readProgress = useServerFn(refingerprintV3Progress);
+  const readTick = useServerFn(refingerprintV3TickHealth);
   const setPaused = useServerFn(refingerprintV3SetPaused);
   const [progress, setProgress] = useState<Progress | null>(null);
+  const [tick, setTick] = useState<Tick | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pauseBusy, setPauseBusy] = useState(false);
 
   useEffect(() => {
     let alive = true;
     const read = () =>
-      readProgress()
-        .then((value) => {
+      Promise.all([readProgress(), readTick().catch(() => null)])
+        .then(([value, health]) => {
           if (alive) {
             setProgress(value);
+            setTick(health as Tick | null);
             setError(null);
           }
         })
@@ -138,13 +151,15 @@ function RefingerprintV3Monitor() {
       alive = false;
       clearInterval(poll);
     };
-  }, [readProgress]);
+  }, [readProgress, readTick]);
 
   const stalled =
     !progress?.paused &&
     progress != null &&
     progress.wrote5m === 0 &&
     (progress?.pending ?? 0) > 0;
+  const tickFailed = tick != null && !tick.ok;
+
 
   async function togglePaused() {
     if (!progress) return;
@@ -189,6 +204,22 @@ function RefingerprintV3Monitor() {
               ? new Date(progress.updatedAt).toLocaleTimeString()
               : "not yet — waiting for the next run"}
           </div>
+        </section>
+      )}
+
+      {tick && (
+        <section
+          className={`pm-card space-y-1 p-3 ${tickFailed ? "border-(--amber)" : ""}`}
+        >
+          <p className="text-(length:--fs-body) font-medium text-(--text)">
+            {tickFailed
+              ? `Last run failed — ${tick.status}`
+              : "Last run completed normally"}
+          </p>
+          <p className="text-(length:--fs-meta) text-(--text-muted)">
+            {new Date(tick.at).toLocaleTimeString()} · wrote {tick.wrote.toLocaleString()}
+            {tick.reason ? ` · ${tick.reason}` : ""}
+          </p>
         </section>
       )}
 

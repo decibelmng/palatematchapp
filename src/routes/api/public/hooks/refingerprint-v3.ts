@@ -3,9 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 const JOB_ID = "fcf3b92a-0700-4a85-82a4-7d0d6b5af2a9";
 const CRON_JOB_NAME = "refingerprint-v3-main-queue";
 const MODEL = "google/gemini-3.6-flash";
-const INVOCATION_BUDGET_MS = 55_000;
 const MAX_ROWS_PER_INVOCATION = 1500;
-const LOCK_TTL_MS = 180_000;
 
 export const Route = createFileRoute("/api/public/hooks/refingerprint-v3")({
   server: {
@@ -16,27 +14,54 @@ export const Route = createFileRoute("/api/public/hooks/refingerprint-v3")({
           request.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ??
           "";
         const expected = process.env["SUPABASE_PUBLISHABLE_KEY"] ?? "";
+
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        const {
+          refreshRefingerprintV3Progress,
+          getRefingerprintV3Progress,
+          getRefingerprintV3PendingCount,
+          isRefingerprintV3Paused,
+          unscheduleRefingerprintV3Cron,
+          runRefingerprintV3Batch,
+          acquireRefingerprintV3Lock,
+          releaseRefingerprintV3Lock,
+          recordRefingerprintV3Tick,
+          REFINGERPRINT_V3_BATCH_SIZE,
+          REFINGERPRINT_V3_CONCURRENCY,
+          REFINGERPRINT_V3_BUDGET_MS,
+          REFINGERPRINT_V3_LOCK_TTL_MS,
+        } = await import("@/lib/refingerprint-v3.server");
+
+        // Every exit records its own outcome, so an auth failure or a crash is
+        // visible on the monitor instead of looking like a quiet queue.
+        const tick = async (
+          status: number,
+          ok: boolean,
+          wrote: number,
+          remaining: number | null,
+          reason: string | null,
+        ) => {
+          await recordRefingerprintV3Tick(supabaseAdmin, {
+            at: new Date().toISOString(),
+            status,
+            ok,
+            wrote,
+            remaining,
+            reason,
+          });
+        };
+
         if (!expected || supplied !== expected) {
+          await tick(401, false, 0, null, "unauthorized — wrong or missing apikey header");
           return Response.json({ error: "unauthorized" }, { status: 401 });
         }
         const key = process.env["LOVABLE_API_KEY"];
-        if (!key) return Response.json({ error: "AI service unavailable" }, { status: 503 });
+        if (!key) {
+          await tick(503, false, 0, null, "missing LOVABLE_API_KEY");
+          return Response.json({ error: "AI service unavailable" }, { status: 503 });
+        }
 
         try {
-          const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-          const {
-            refreshRefingerprintV3Progress,
-            getRefingerprintV3Progress,
-            getRefingerprintV3PendingCount,
-            isRefingerprintV3Paused,
-            unscheduleRefingerprintV3Cron,
-            runRefingerprintV3Batch,
-            acquireRefingerprintV3Lock,
-            releaseRefingerprintV3Lock,
-            REFINGERPRINT_V3_BATCH_SIZE,
-            REFINGERPRINT_V3_CONCURRENCY,
-          } = await import("@/lib/refingerprint-v3.server");
-
           // Two cheap reads instead of nine full-table counts. An empty or paused
           // tick pays for nothing beyond these.
           const [paused, pendingBefore] = await Promise.all([
@@ -58,11 +83,16 @@ export const Route = createFileRoute("/api/public/hooks/refingerprint-v3")({
               wrote: 0,
               remaining: pendingBefore,
             };
+            await tick(200, true, 0, pendingBefore, paused ? "paused" : "queue empty");
             console.log("[refingerprint-v3-cron]", JSON.stringify(output));
             return Response.json(output);
           }
 
-          const gotLock = await acquireRefingerprintV3Lock(supabaseAdmin, JOB_ID, LOCK_TTL_MS);
+          const gotLock = await acquireRefingerprintV3Lock(
+            supabaseAdmin,
+            JOB_ID,
+            REFINGERPRINT_V3_LOCK_TTL_MS,
+          );
           if (!gotLock) {
             const output = {
               success: true,
@@ -70,6 +100,7 @@ export const Route = createFileRoute("/api/public/hooks/refingerprint-v3")({
               wrote: 0,
               remaining: pendingBefore,
             };
+            await tick(200, true, 0, pendingBefore, "another runner holds the lease");
             console.log("[refingerprint-v3-cron]", JSON.stringify(output));
             return Response.json(output);
           }
@@ -78,11 +109,11 @@ export const Route = createFileRoute("/api/public/hooks/refingerprint-v3")({
           let wrote = 0;
           let picked = 0;
           let empty = 0;
-           let retries = 0;
+          let retries = 0;
           const errors: string[] = [];
           try {
             while (
-              Date.now() - started < INVOCATION_BUDGET_MS &&
+              Date.now() - started < REFINGERPRINT_V3_BUDGET_MS &&
               picked < MAX_ROWS_PER_INVOCATION
             ) {
               const result = await runRefingerprintV3Batch(supabaseAdmin, key, {
@@ -94,7 +125,7 @@ export const Route = createFileRoute("/api/public/hooks/refingerprint-v3")({
               wrote += result.wrote;
               picked += result.picked;
               empty += result.empty;
-               retries += result.retries;
+              retries += result.retries;
               errors.push(...result.errors);
               if (result.picked === 0 || result.remaining === 0 || result.errors.length > 0) break;
             }
@@ -108,26 +139,28 @@ export const Route = createFileRoute("/api/public/hooks/refingerprint-v3")({
           if (after.pending === 0) {
             unscheduled = await unscheduleRefingerprintV3Cron(supabaseAdmin, CRON_JOB_NAME);
           }
+          const status = errors.length > 0 ? 500 : 200;
           const output = {
             success: errors.length === 0,
             picked,
             wrote,
             empty,
-             retries,
+            retries,
             remaining: after.pending,
             unscheduled,
             elapsedMs: Date.now() - started,
             errors: errors.slice(0, 10),
           };
+          await tick(status, errors.length === 0, wrote, after.pending, errors[0] ?? null);
           console.log("[refingerprint-v3-cron]", JSON.stringify(output));
-          return Response.json(output, { status: errors.length > 0 ? 500 : 200 });
-
+          return Response.json(output, { status });
         } catch (error) {
-           const message =
-             error instanceof Error
-               ? `${error.name}: ${error.message || "No error message"}`
-               : String(error) || "Unknown error";
-           console.error("[refingerprint-v3-cron] failed:", message);
+          const message =
+            error instanceof Error
+              ? `${error.name}: ${error.message || "No error message"}`
+              : String(error) || "Unknown error";
+          console.error("[refingerprint-v3-cron] failed:", message);
+          await tick(500, false, 0, null, message);
           return Response.json({ success: false, error: message }, { status: 500 });
         }
       },
