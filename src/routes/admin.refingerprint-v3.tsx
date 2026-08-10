@@ -113,20 +113,32 @@ function NotelessTail({ mainPending }: { mainPending: number | null }) {
   );
 }
 
+type Tick = {
+  at: string;
+  status: number;
+  ok: boolean;
+  wrote: number;
+  remaining: number | null;
+  reason: string | null;
+};
+
 function RefingerprintV3Monitor() {
   const readProgress = useServerFn(refingerprintV3Progress);
+  const readTick = useServerFn(refingerprintV3TickHealth);
   const setPaused = useServerFn(refingerprintV3SetPaused);
   const [progress, setProgress] = useState<Progress | null>(null);
+  const [tick, setTick] = useState<Tick | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pauseBusy, setPauseBusy] = useState(false);
 
   useEffect(() => {
     let alive = true;
     const read = () =>
-      readProgress()
-        .then((value) => {
+      Promise.all([readProgress(), readTick().catch(() => null)])
+        .then(([value, health]) => {
           if (alive) {
             setProgress(value);
+            setTick(health as Tick | null);
             setError(null);
           }
         })
@@ -139,13 +151,15 @@ function RefingerprintV3Monitor() {
       alive = false;
       clearInterval(poll);
     };
-  }, [readProgress]);
+  }, [readProgress, readTick]);
 
   const stalled =
     !progress?.paused &&
     progress != null &&
     progress.wrote5m === 0 &&
     (progress?.pending ?? 0) > 0;
+  const tickFailed = tick != null && !tick.ok;
+
 
   async function togglePaused() {
     if (!progress) return;
