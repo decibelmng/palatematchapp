@@ -164,11 +164,11 @@ export async function refreshRefingerprintV3Progress(
  * The old count(*) took 60-120s under a throttled instance and held a
  * PostgREST connection for the whole of it, which is what starved the pool.
  */
-export async function getRefingerprintV3PendingCount(supabaseAdmin: AdminClient) {
+export async function getRefingerprintV3PendingCount(supabaseAdmin: AdminClient, jobId: string) {
   const { data, error } = await supabaseAdmin
     .from("catalog_progress_cache")
     .select("snapshot")
-    .eq("job_id", JOB_ID_ANY)
+    .eq("job_id", jobId)
     .maybeSingle();
   if (error) throw new Error(error.message);
   return Number((data?.snapshot as any)?.pending ?? 0);
